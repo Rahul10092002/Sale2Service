@@ -1,0 +1,353 @@
+import axios from "axios";
+import WhatsAppTemplate from "../models/WhatsAppTemplate.js";
+import ReminderLog from "../models/ReminderLog.js";
+import {
+  sendWhatsappMessageViaMSG91,
+  sendTextMessageViaMSG91,
+} from "../config/msg91.js";
+
+export default class WhatsAppService {
+  constructor() {
+    this.apiUrl =
+      process.env.WHATSAPP_API_URL || "https://graph.facebook.com/v17.0";
+    this.apiKey = process.env.WHATSAPP_API_KEY;
+    this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  }
+
+  /**
+   * Send WhatsApp message using template
+   */
+  async sendMessage(
+    phoneNumber,
+    templateName,
+    variables = {},
+    reminderLogId = null,
+  ) {
+    try {
+      // Get template
+      const template = await WhatsAppTemplate.findOne({
+        template_name: templateName,
+        is_active: true,
+        approval_status: "APPROVED",
+      });
+
+      if (!template) {
+        throw new Error(`Template ${templateName} not found or not approved`);
+      }
+
+      // Replace variables in template
+      let message = template.template_content;
+      for (const [key, value] of Object.entries(variables)) {
+        const regex = new RegExp(`{{${key}}}`, "g");
+        message = message.replace(regex, value || "");
+      }
+
+      // Clean phone number (remove any formatting)
+      const cleanPhoneNumber = phoneNumber.replace(/[^\d]/g, "");
+
+      // If MSG91 is configured (explicit flag or endpoint), prefer MSG91
+      if (process.env.MSG91_API_ENDPOINT || process.env.USE_MSG91 === "true") {
+        try {
+          const componentArray = Object.values(variables || {});
+          const resp = await sendWhatsappMessageViaMSG91({
+            templateName,
+            to: cleanPhoneNumber,
+            components: componentArray,
+          });
+
+          const providerId =
+            resp?.data?.[0]?.message_id ||
+            resp?.message_id ||
+            resp?.messages?.[0]?.id ||
+            null;
+
+          if (reminderLogId) {
+            await ReminderLog.findByIdAndUpdate(reminderLogId, {
+              message_status: "SENT",
+              message_content: message,
+              provider_message_id: providerId,
+              sent_at: new Date(),
+            });
+          }
+
+          return {
+            success: true,
+            messageId: providerId,
+            status: "SENT",
+            message,
+            raw: resp,
+          };
+        } catch (err) {
+          console.error(
+            "MSG91 send failed:",
+            err?.response?.data || err.message,
+          );
+          if (reminderLogId) {
+            await ReminderLog.findByIdAndUpdate(reminderLogId, {
+              message_status: "FAILED",
+              failure_reason: err?.response?.data || err.message,
+              $inc: { retry_count: 1 },
+            });
+          }
+
+          return { success: false, error: err?.response?.data || err.message };
+        }
+      }
+
+      // Fallback: Send message via WhatsApp Business API
+      const response = await axios.post(
+        `${this.apiUrl}/${this.phoneNumberId}/messages`,
+        {
+          messaging_product: "whatsapp",
+          to: cleanPhoneNumber,
+          type: "text",
+          text: {
+            body: message,
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      // Update reminder log on success
+      if (reminderLogId) {
+        await ReminderLog.findByIdAndUpdate(reminderLogId, {
+          message_status: "SENT",
+          message_content: message,
+          provider_message_id: response.data.messages[0].id,
+          sent_at: new Date(),
+        });
+      }
+
+      return {
+        success: true,
+        messageId: response.data.messages[0].id,
+        status: "SENT",
+        message,
+      };
+    } catch (error) {
+      console.error(
+        "WhatsApp send error:",
+        error.response?.data || error.message,
+      );
+
+      // Update reminder log with failure
+      if (reminderLogId) {
+        await ReminderLog.findByIdAndUpdate(reminderLogId, {
+          message_status: "FAILED",
+          failure_reason: error.response?.data?.error?.message || error.message,
+          $inc: { retry_count: 1 },
+        });
+      }
+
+      return {
+        success: false,
+        error: error.response?.data?.error?.message || error.message,
+      };
+    }
+  }
+
+  /**
+   * Send simple text message (without template)
+   */
+  async sendTextMessage(phoneNumber, message, reminderLogId = null) {
+    try {
+      const cleanPhoneNumber = phoneNumber.replace(/[^\d]/g, "");
+      // Prefer MSG91 if configured
+      if (process.env.MSG91_API_ENDPOINT || process.env.USE_MSG91 === "true") {
+        try {
+          const resp = await sendTextMessageViaMSG91({
+            to: cleanPhoneNumber,
+            message,
+          });
+
+          const providerId =
+            resp?.data?.[0]?.message_id ||
+            resp?.message_id ||
+            resp?.messages?.[0]?.id ||
+            null;
+
+          if (reminderLogId) {
+            await ReminderLog.findByIdAndUpdate(reminderLogId, {
+              message_status: "SENT",
+              message_content: message,
+              provider_message_id: providerId,
+              sent_at: new Date(),
+            });
+          }
+
+          return {
+            success: true,
+            messageId: providerId,
+            status: "SENT",
+            message,
+            raw: resp,
+          };
+        } catch (err) {
+          console.error(
+            "MSG91 text send failed:",
+            err?.response?.data || err.message,
+          );
+          if (reminderLogId) {
+            await ReminderLog.findByIdAndUpdate(reminderLogId, {
+              message_status: "FAILED",
+              failure_reason: err?.response?.data || err.message,
+              $inc: { retry_count: 1 },
+            });
+          }
+
+          return { success: false, error: err?.response?.data || err.message };
+        }
+      }
+
+      const response = await axios.post(
+        `${this.apiUrl}/${this.phoneNumberId}/messages`,
+        {
+          messaging_product: "whatsapp",
+          to: cleanPhoneNumber,
+          type: "text",
+          text: {
+            body: message,
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (reminderLogId) {
+        await ReminderLog.findByIdAndUpdate(reminderLogId, {
+          message_status: "SENT",
+          message_content: message,
+          provider_message_id: response.data.messages[0].id,
+          sent_at: new Date(),
+        });
+      }
+
+      return {
+        success: true,
+        messageId: response.data.messages[0].id,
+        status: "SENT",
+      };
+    } catch (error) {
+      console.error(
+        "WhatsApp text message error:",
+        error.response?.data || error.message,
+      );
+
+      if (reminderLogId) {
+        await ReminderLog.findByIdAndUpdate(reminderLogId, {
+          message_status: "FAILED",
+          failure_reason: error.response?.data?.error?.message || error.message,
+          $inc: { retry_count: 1 },
+        });
+      }
+
+      return {
+        success: false,
+        error: error.response?.data?.error?.message || error.message,
+      };
+    }
+  }
+
+  /**
+   * Get template variables for different entities
+   */
+  async getTemplateVariables(entity, entityType = "PRODUCT", extraData = {}) {
+    const variables = {
+      shop_name: process.env.SHOP_NAME || "Our Shop",
+      ...extraData,
+    };
+
+    try {
+      if (entityType === "PRODUCT" && entity) {
+        // InvoiceItem with populated relations
+        variables.customer_name =
+          entity.invoice_id?.customer_id?.full_name || "Customer";
+        variables.product_name = entity.product_name || "";
+        variables.serial_number = entity.serial_number || "";
+        variables.warranty_end_date = entity.warranty_end_date
+          ? new Date(entity.warranty_end_date).toLocaleDateString()
+          : "";
+        variables.warranty_start_date = entity.warranty_start_date
+          ? new Date(entity.warranty_start_date).toLocaleDateString()
+          : "";
+        variables.invoice_number = entity.invoice_id?.invoice_number || "";
+        variables.company = entity.company || "";
+      }
+
+      if (entityType === "SERVICE" && entity) {
+        // ServiceSchedule with populated relations
+        variables.service_date = entity.scheduled_date
+          ? new Date(entity.scheduled_date).toLocaleDateString()
+          : "";
+        variables.service_number = entity.service_number || "";
+        variables.new_service_date = entity.rescheduled_date
+          ? new Date(entity.rescheduled_date).toLocaleDateString()
+          : "";
+
+        // If service schedule has product info
+        if (entity.service_plan_id?.invoice_item_id) {
+          const item = entity.service_plan_id.invoice_item_id;
+          variables.customer_name =
+            item.invoice_id?.customer_id?.full_name || "Customer";
+          variables.product_name = item.product_name || "";
+          variables.serial_number = item.serial_number || "";
+        }
+      }
+
+      if (entityType === "INVOICE" && entity) {
+        variables.customer_name = entity.customer_id?.full_name || "Customer";
+        variables.invoice_number = entity.invoice_number || "";
+        variables.invoice_date = entity.invoice_date
+          ? new Date(entity.invoice_date).toLocaleDateString()
+          : "";
+        variables.total_amount = entity.total_amount
+          ? `₹${entity.total_amount.toFixed(2)}`
+          : "";
+        variables.pending_amount = entity.pending_amount
+          ? `₹${entity.pending_amount.toFixed(2)}`
+          : "";
+      }
+    } catch (error) {
+      console.error("Error building template variables:", error);
+    }
+
+    return variables;
+  }
+
+  /**
+   * Validate WhatsApp phone number format
+   */
+  isValidWhatsAppNumber(phoneNumber) {
+    if (!phoneNumber) return false;
+    const cleanNumber = phoneNumber.replace(/[^\d]/g, "");
+    return cleanNumber.length >= 10 && cleanNumber.length <= 15;
+  }
+
+  /**
+   * Format phone number for WhatsApp (add country code if missing)
+   */
+  formatPhoneNumber(phoneNumber, defaultCountryCode = "91") {
+    if (!phoneNumber) return null;
+
+    let cleanNumber = phoneNumber.replace(/[^\d]/g, "");
+
+    // If number doesn't start with country code and is 10 digits, add default
+    if (
+      cleanNumber.length === 10 &&
+      !cleanNumber.startsWith(defaultCountryCode)
+    ) {
+      cleanNumber = defaultCountryCode + cleanNumber;
+    }
+
+    return cleanNumber;
+  }
+}

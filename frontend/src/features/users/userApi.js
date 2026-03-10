@@ -1,0 +1,46 @@
+import { baseApi } from "../../services/baseApi.js";
+
+export const userApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    // Get all users
+    getUsers: builder.query({
+      query: () => "/users",
+      providesTags: ["User"],
+      transformResponse: (response) => response.data,
+    }),
+
+    // Get user by ID
+    getUserById: builder.query({
+      query: (id) => `/users/${id}`,
+      providesTags: (result, error, id) => [{ type: "User", id }],
+      transformResponse: (response) => response.data,
+    }),
+
+    // Add new user
+    addUser: builder.mutation({
+      query: (userData) => ({
+        url: "/users",
+        method: "POST",
+        body: userData,
+      }),
+      invalidatesTags: ["User"],
+    }),
+
+    // Delete user
+    deleteUser: builder.mutation({
+      query: (id) => ({
+        url: `/users/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["User"],
+    }),
+  }),
+  overrideExisting: false,
+});
+
+export const {
+  useGetUsersQuery,
+  useGetUserByIdQuery,
+  useAddUserMutation,
+  useDeleteUserMutation,
+} = userApi;

@@ -1,0 +1,554 @@
+import cron from "node-cron";
+import ReminderRule from "../models/ReminderRule.js";
+import ReminderLog from "../models/ReminderLog.js";
+import InvoiceItem from "../models/InvoiceItem.js";
+import ServiceSchedule from "../models/ServiceSchedule.js";
+import Invoice from "../models/Invoice.js";
+import Customer from "../models/Customer.js";
+import ServicePlan from "../models/ServicePlan.js";
+import Shop from "../models/Shop.js";
+import WhatsAppService from "./whatsappService.js";
+import { sendWhatsappMessageViaMSG91 } from "../config/msg91.js";
+
+export default class SchedulerService {
+  constructor() {
+    this.whatsappService = new WhatsAppService();
+    this.isRunning = false;
+  }
+
+  /**
+   * Start all scheduled jobs
+   */
+  startScheduler() {
+    if (this.isRunning) {
+      console.log("Scheduler already running");
+      return;
+    }
+
+    // Run every hour to check for reminders
+    cron.schedule("0 * * * *", async () => {
+      console.log("Running hourly reminder check...");
+      await this.processAllReminders();
+    });
+
+    // Run daily at 9 AM for service schedules
+    cron.schedule("0 9 * * *", async () => {
+      console.log("Running daily service reminders...");
+      await this.processServiceReminders();
+    });
+
+    // Run daily at 10 AM for warranty reminders
+    cron.schedule("0 10 * * *", async () => {
+      console.log("Running daily warranty reminders...");
+      await this.processWarrantyReminders();
+    });
+
+    // Run daily at 11 AM for payment reminders
+    cron.schedule("0 11 * * *", async () => {
+      console.log("Running daily payment reminders...");
+      await this.processPaymentReminders();
+    });
+
+    this.isRunning = true;
+    console.log("Reminder scheduler started successfully");
+  }
+
+  /**
+   * Stop scheduler
+   */
+  stopScheduler() {
+    this.isRunning = false;
+    console.log("Reminder scheduler stopped");
+  }
+
+  /**
+   * Process all types of reminders
+   */
+  async processAllReminders() {
+    try {
+      await Promise.all([
+        this.processServiceReminders(),
+        this.processWarrantyReminders(),
+        this.processPaymentReminders(),
+      ]);
+    } catch (error) {
+      console.error("Process all reminders error:", error);
+    }
+  }
+
+  /**
+   * Process service-related reminders
+   */
+  async processServiceReminders() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const threeDaysFromNow = new Date(today);
+      threeDaysFromNow.setDate(today.getDate() + 3);
+
+      const oneDayFromNow = new Date(today);
+      oneDayFromNow.setDate(today.getDate() + 1);
+
+      // Find upcoming services (3 days and 1 day before)
+      const upcomingServices = await ServiceSchedule.find({
+        $or: [
+          {
+            scheduled_date: {
+              $gte: threeDaysFromNow,
+              $lt: new Date(threeDaysFromNow.getTime() + 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            scheduled_date: {
+              $gte: oneDayFromNow,
+              $lt: new Date(oneDayFromNow.getTime() + 24 * 60 * 60 * 1000),
+            },
+          },
+        ],
+        status: "PENDING",
+        deleted_at: null,
+      }).populate({
+        path: "service_plan_id",
+        populate: {
+          path: "invoice_item_id",
+          populate: {
+            path: "invoice_id",
+            populate: {
+              path: "customer_id",
+            },
+          },
+        },
+      });
+
+      for (const service of upcomingServices) {
+        await this.createServiceReminder(service, "SERVICE_DUE");
+      }
+
+      // Find missed services (past due date)
+      const missedServices = await ServiceSchedule.find({
+        scheduled_date: { $lt: today },
+        status: "PENDING",
+        deleted_at: null,
+      }).populate({
+        path: "service_plan_id",
+        populate: {
+          path: "invoice_item_id",
+          populate: {
+            path: "invoice_id",
+            populate: {
+              path: "customer_id",
+            },
+          },
+        },
+      });
+
+      for (const service of missedServices) {
+        // Update status to missed
+        service.status = "MISSED";
+        await service.save();
+
+        // Send missed service reminder (only once)
+        await this.createServiceReminder(service, "SERVICE_MISSED");
+      }
+    } catch (error) {
+      console.error("Process service reminders error:", error);
+    }
+  }
+
+  /**
+   * Process warranty expiry reminders
+   */
+  async processWarrantyReminders() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Find warranties expiring in 30, 15, 3 days
+      const reminderDays = [30, 15, 3];
+
+      for (const days of reminderDays) {
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + days);
+
+        const nextDay = new Date(targetDate);
+        nextDay.setDate(targetDate.getDate() + 1);
+
+        const expiringWarranties = await InvoiceItem.find({
+          warranty_end_date: {
+            $gte: targetDate,
+            $lt: nextDay,
+          },
+          deleted_at: null,
+        }).populate({
+          path: "invoice_id",
+          populate: {
+            path: "customer_id",
+          },
+        });
+
+        for (const item of expiringWarranties) {
+          await this.createWarrantyReminder(item, "WARRANTY_EXPIRY");
+        }
+      }
+
+      // Find expired warranties (day after expiry)
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+
+      const expiredWarranties = await InvoiceItem.find({
+        warranty_end_date: {
+          $gte: yesterday,
+          $lt: today,
+        },
+        deleted_at: null,
+      }).populate({
+        path: "invoice_id",
+        populate: {
+          path: "customer_id",
+        },
+      });
+
+      for (const item of expiredWarranties) {
+        await this.createWarrantyReminder(item, "WARRANTY_EXPIRED");
+      }
+    } catch (error) {
+      console.error("Process warranty reminders error:", error);
+    }
+  }
+
+  /**
+   * Process payment pending reminders
+   */
+  async processPaymentReminders() {
+    try {
+      const today = new Date();
+      const threeDaysAgo = new Date(today);
+      threeDaysAgo.setDate(today.getDate() - 3);
+
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 7);
+
+      const fifteenDaysAgo = new Date(today);
+      fifteenDaysAgo.setDate(today.getDate() - 15);
+
+      // Find pending payments (3, 7, 15 days after invoice date)
+      const pendingInvoices = await Invoice.find({
+        $or: [
+          {
+            invoice_date: {
+              $gte: new Date(threeDaysAgo.getTime()),
+              $lt: new Date(threeDaysAgo.getTime() + 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            invoice_date: {
+              $gte: new Date(sevenDaysAgo.getTime()),
+              $lt: new Date(sevenDaysAgo.getTime() + 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            invoice_date: {
+              $gte: new Date(fifteenDaysAgo.getTime()),
+              $lt: new Date(fifteenDaysAgo.getTime() + 24 * 60 * 60 * 1000),
+            },
+          },
+        ],
+        payment_status: { $in: ["UNPAID", "PARTIAL"] },
+        deleted_at: null,
+      }).populate("customer_id");
+
+      for (const invoice of pendingInvoices) {
+        await this.createPaymentReminder(invoice, "PAYMENT_PENDING");
+      }
+    } catch (error) {
+      console.error("Process payment reminders error:", error);
+    }
+  }
+
+  /**
+   * Create service reminder
+   */
+  async createServiceReminder(serviceSchedule, eventType) {
+    try {
+      if (
+        !serviceSchedule.service_plan_id?.invoice_item_id?.invoice_id
+          ?.customer_id
+      ) {
+        console.log("Service schedule missing required populated data");
+        return;
+      }
+
+      const invoiceItem = serviceSchedule.service_plan_id.invoice_item_id;
+      const customer = invoiceItem.invoice_id.customer_id;
+
+      // Check if reminder already sent for this schedule and event type
+      const existingLog = await ReminderLog.findOne({
+        entity_id: serviceSchedule.service_schedule_id,
+        entity_type: "SERVICE",
+        template_name: "service_reminder_hindi",
+        message_status: { $in: ["SENT", "DELIVERED"] },
+        createdAt: {
+          $gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Within last 24 hours
+        },
+      });
+
+      if (existingLog) {
+        console.log(
+          `Service reminder already sent for schedule ${serviceSchedule.service_schedule_id}`,
+        );
+        return;
+      }
+
+      // Validate phone number
+      // Format and validate phone number
+      const formattedNumber = this.whatsappService.formatPhoneNumber(
+        customer.whatsapp_number,
+      );
+
+      if (!this.whatsappService.isValidWhatsAppNumber(formattedNumber)) {
+        console.log(
+          `Invalid WhatsApp number for customer ${customer.full_name}: ${customer.whatsapp_number}`,
+        );
+        return;
+      }
+
+      // Get shop information
+      const shop = await Shop.findById(invoiceItem.invoice_id.shop_id);
+      if (!shop || shop.deleted_at) {
+        console.log("Shop not found for service reminder");
+        return;
+      }
+
+      // Prepare template variables for service_reminder_hindi
+      // {{1}}: Customer name, {{2}}: Product name, {{3}}: Service date, {{4}}: Shop name
+      const serviceDate = new Date(serviceSchedule.scheduled_date);
+      const dateStr = `${serviceDate.getDate()}-${String(serviceDate.getMonth() + 1).padStart(2, "0")}-${serviceDate.getFullYear()}`;
+      const vars = {
+        1: customer.full_name,
+        2: invoiceItem.product_name,
+        3: dateStr,
+        4: shop.shop_name_hi || shop.shop_name,
+      };
+
+      // Build human-readable message content (Hindi) for logging/storage
+      const messageContent = `नमस्ते ${vars[1]},\n\nआपकी ${vars[2]} की सर्विस की अगली तिथि ${vars[3]} को निर्धारित है।\n\nकृपया समय पर सर्विस करवा लें ताकि बेहतर प्रदर्शन बना रहे।\n\nअधिक जानकारी के लिए संपर्क करें: ${vars[4]}\nधन्यवाद 🙏`;
+
+      // Create reminder log with message content to satisfy schema
+      const reminderLog = new ReminderLog({
+        entity_id: serviceSchedule.service_schedule_id,
+        entity_type: "SERVICE",
+        recipient_number: formattedNumber,
+        recipient_name: customer.full_name,
+        message_content: messageContent,
+        template_name: "service_reminder_hindi",
+      });
+
+      await reminderLog.save();
+
+      // Send WhatsApp message via MSG91
+      try {
+        const sendResp = await sendWhatsappMessageViaMSG91({
+          templateName: "service_reminder_hindi",
+          to: formattedNumber,
+          components: vars,
+          campaignName: "service_reminder",
+          hospitalId: shop._id,
+          userName: customer.full_name,
+          messageType: "service_reminder",
+        });
+
+        console.log("WhatsApp service reminder send result:", sendResp);
+        console.log(
+          `Service reminder sent successfully to ${customer.full_name} (${customer.whatsapp_number})`,
+        );
+      } catch (waErr) {
+        console.error(
+          `Failed to send service reminder to ${customer.full_name}:`,
+          waErr,
+        );
+      }
+    } catch (error) {
+      console.error("Create service reminder error:", error);
+    }
+  }
+
+  /**
+   * Create warranty reminder
+   */
+  async createWarrantyReminder(invoiceItem, eventType) {
+    try {
+      if (!invoiceItem.invoice_id?.customer_id) {
+        console.log("Invoice item missing required populated data");
+        return;
+      }
+
+      const customer = invoiceItem.invoice_id.customer_id;
+
+      // Check if reminder already sent
+      const templateName =
+        eventType === "WARRANTY_EXPIRY"
+          ? "warranty_expiry_v1"
+          : "warranty_expired_v1";
+      const existingLog = await ReminderLog.findOne({
+        entity_id: invoiceItem.invoice_item_id,
+        entity_type: "PRODUCT",
+        template_name: templateName,
+        message_status: { $in: ["SENT", "DELIVERED"] },
+        createdAt: {
+          $gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Within last 24 hours
+        },
+      });
+
+      if (existingLog) {
+        console.log(
+          `Warranty reminder already sent for product ${invoiceItem.serial_number}`,
+        );
+        return;
+      }
+
+      // Validate phone number
+      // Format and validate phone number
+      const formattedNumber = this.whatsappService.formatPhoneNumber(
+        customer.whatsapp_number,
+      );
+
+      if (!this.whatsappService.isValidWhatsAppNumber(formattedNumber)) {
+        console.log(
+          `Invalid WhatsApp number for customer ${customer.full_name}: ${customer.whatsapp_number}`,
+        );
+        return;
+      }
+
+      // Create reminder log
+      const reminderLog = new ReminderLog({
+        entity_id: invoiceItem.invoice_item_id,
+        entity_type: "PRODUCT",
+        recipient_number: formattedNumber,
+        recipient_name: customer.full_name,
+        message_content: "",
+        template_name: templateName,
+      });
+
+      await reminderLog.save();
+
+      // Get template variables
+      const variables = await this.whatsappService.getTemplateVariables(
+        invoiceItem,
+        "PRODUCT",
+      );
+
+      // Send WhatsApp message
+      const result = await this.whatsappService.sendMessage(
+        formattedNumber,
+        templateName,
+        variables,
+        reminderLog._id,
+      );
+
+      if (result.success) {
+        console.log(
+          `Warranty reminder sent successfully to ${customer.full_name} for product ${invoiceItem.serial_number}`,
+        );
+      } else {
+        console.log(`Failed to send warranty reminder: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Create warranty reminder error:", error);
+    }
+  }
+
+  /**
+   * Create payment reminder
+   */
+  async createPaymentReminder(invoice, eventType) {
+    try {
+      if (!invoice.customer_id) {
+        console.log("Invoice missing customer data");
+        return;
+      }
+
+      const customer = invoice.customer_id;
+
+      // Check if reminder already sent
+      const existingLog = await ReminderLog.findOne({
+        entity_id: invoice.invoice_id,
+        entity_type: "INVOICE",
+        template_name: "payment_pending_v1",
+        message_status: { $in: ["SENT", "DELIVERED"] },
+        createdAt: {
+          $gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Within last 24 hours
+        },
+      });
+
+      if (existingLog) {
+        console.log(
+          `Payment reminder already sent for invoice ${invoice.invoice_number}`,
+        );
+        return;
+      }
+
+      // Validate phone number
+      // Format and validate phone number
+      const formattedNumber = this.whatsappService.formatPhoneNumber(
+        customer.whatsapp_number,
+      );
+
+      if (!this.whatsappService.isValidWhatsAppNumber(formattedNumber)) {
+        console.log(
+          `Invalid WhatsApp number for customer ${customer.full_name}: ${customer.whatsapp_number}`,
+        );
+        return;
+      }
+
+      // Create reminder log
+      const reminderLog = new ReminderLog({
+        entity_id: invoice.invoice_id,
+        entity_type: "INVOICE",
+        recipient_number: formattedNumber,
+        recipient_name: customer.full_name,
+        message_content: "",
+        template_name: "payment_pending_v1",
+      });
+
+      await reminderLog.save();
+
+      // Calculate pending amount
+      const pendingAmount = invoice.total_amount - (invoice.paid_amount || 0);
+
+      // Get template variables
+      const variables = await this.whatsappService.getTemplateVariables(
+        invoice,
+        "INVOICE",
+        { pending_amount: `₹${pendingAmount.toFixed(2)}` },
+      );
+
+      // Send WhatsApp message
+      const result = await this.whatsappService.sendMessage(
+        formattedNumber,
+        "payment_pending_v1",
+        variables,
+        reminderLog._id,
+      );
+
+      if (result.success) {
+        console.log(
+          `Payment reminder sent successfully to ${customer.full_name} for invoice ${invoice.invoice_number}`,
+        );
+      } else {
+        console.log(`Failed to send payment reminder: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Create payment reminder error:", error);
+    }
+  }
+
+  /**
+   * Manual trigger for testing
+   */
+  async runManualTest() {
+    console.log("Running manual reminder test...");
+    await this.processAllReminders();
+    console.log("Manual test completed");
+  }
+}

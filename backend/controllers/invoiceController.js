@@ -479,7 +479,7 @@ export default class InvoiceController {
       // Use MSG91 sender
       console.log("Sending WhatsApp message with config:", msgConfig);
       const sendResp = await sendWhatsappMessageViaMSG91(msgConfig);
-  
+
       if (!sendResp) {
         return res
           .status(500)

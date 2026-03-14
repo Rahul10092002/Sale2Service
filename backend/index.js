@@ -78,7 +78,9 @@ const selfPing = async () => {
     const response = await fetch(`${baseUrl}/`);
 
     if (response.ok) {
-      console.log(`🏓 Self-ping successful at ${new Date().toISOString()}`);
+      console.log(
+        `🏓 Self-ping successful at ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`,
+      );
     } else {
       console.warn(`⚠️ Self-ping returned status: ${response.status}`);
     }

@@ -2,7 +2,6 @@ import axios from "axios";
 import MessageLog from "../models/MessageLog.js";
 import mongoose from "mongoose";
 
-
 export const sendWhatsappMessageViaMSG91 = async ({
   templateName,
   to,

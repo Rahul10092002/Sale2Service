@@ -128,9 +128,9 @@ export default class PaymentReminderScheduler extends BaseScheduler {
         variables: variables,
         reminderLogId: reminderLog._id,
         metadata: {
-          campaignName: "payment_reminder",
+          campaignName: "payment_reminders",
           customerName: customer.full_name,
-          messageType: "payment_reminder",
+          messageType: "payment_reminders",
         },
       });
 
@@ -163,7 +163,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
   getPaymentTemplateByDays(days) {
     // Using the same template for all payment reminders
     // Could be customized later for different urgency levels
-    return "payment_reminder";
+    return "payment_reminders";
   }
 
   /**
@@ -174,7 +174,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
   getPaymentTemplateVariables(invoice) {
     const customer = invoice.customer_id;
 
-    // Based on Hindi template for payment_reminder:
+    // Based on Hindi template for payment_reminders:
     // {{1}}: Customer name, {{2}}: Payment amount, {{3}}: Invoice number, {{4}}: Due date, {{5}}: Shop name
     return {
       1: customer.full_name || "Customer",

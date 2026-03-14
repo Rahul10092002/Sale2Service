@@ -75,12 +75,10 @@ export const sendWhatsappMessageViaMSG91 = async ({
     });
 
     if (media && media.url) {
-      componentPayload["header"] = {
+      componentPayload["header_1"] = {
         type: "document",
-        document: {
-          link: media.url,
-          filename: media.filename || "document.pdf",
-        },
+        filename: media.filename || "document.pdf",
+        value: media.url,
       };
     }
 

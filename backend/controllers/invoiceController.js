@@ -354,23 +354,20 @@ export default class InvoiceController {
 
           // Prepare components with header document if PDF is available
           const msgConfig = {
-            templateName: "invoice_create",
+            templateName: "invoice_created",
             to: formattedNumber,
             components: vars,
-            campaignName: "invoice_create",
+            campaignName: "invoice_created",
             hospitalId: shop._id,
             userName: newInvoice.customer_id?.full_name || "",
-            messageType: "invoice_create",
+            messageType: "invoice_created",
           };
 
           // Add header document separately if PDF is available
           if (newInvoice.invoice_pdf) {
-            msgConfig.header = {
-              type: "document",
-              document: {
-                link: newInvoice.invoice_pdf,
-                filename: `Invoice_${invoiceNumber}.pdf`,
-              },
+            msgConfig.media = {
+              url: newInvoice.invoice_pdf,
+              filename: `Invoice_${invoiceNumber}.pdf`,
             };
           }
 
@@ -462,23 +459,20 @@ export default class InvoiceController {
 
       // Prepare message config with header document if PDF is available
       const msgConfig = {
-        templateName: "invoice_create",
+        templateName: "invoice_created",
         to: customerNumber,
         components: vars,
-        campaignName: "invoice_create",
+        campaignName: "invoice_created",
         hospitalId: shop._id,
         userName: customer?.full_name || "",
-        messageType: "invoice_create",
+        messageType: "invoice_created",
       };
 
       // Add header document separately if PDF is available
       if (invoice.invoice_pdf) {
-        msgConfig.header = {
-          type: "document",
-          document: {
-            link: invoice.invoice_pdf,
-            filename: `Invoice_${invoice.invoice_number}.pdf`,
-          },
+        msgConfig.media = {
+          url: invoice.invoice_pdf,
+          filename: `Invoice_${invoice.invoice_number}.pdf`,
         };
       }
 

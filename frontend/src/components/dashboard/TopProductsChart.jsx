@@ -39,7 +39,7 @@ const CustomTooltip = ({ active, payload }) => {
 const TopProductsChart = ({ data, height = 300 }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 min-w-0 overflow-hidden">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Top Products
         </h3>
@@ -62,7 +62,7 @@ const TopProductsChart = ({ data, height = 300 }) => {
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 5, right: 20, left: 100, bottom: 5 }}
+          margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
@@ -76,7 +76,8 @@ const TopProductsChart = ({ data, height = 300 }) => {
             dataKey="name"
             stroke="#6b7280"
             style={{ fontSize: "12px" }}
-            width={90}
+            width={60}
+            tick={{ fontSize: 10, textAnchor: "end" }}
           />
           <Tooltip content={<CustomTooltip />} />
           <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>

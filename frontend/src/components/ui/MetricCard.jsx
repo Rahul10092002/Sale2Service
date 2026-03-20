@@ -45,7 +45,7 @@ const MetricCard = ({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow ${onClick ? "cursor-pointer" : ""}`}
+      className={`bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow ${onClick ? "cursor-pointer" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between">

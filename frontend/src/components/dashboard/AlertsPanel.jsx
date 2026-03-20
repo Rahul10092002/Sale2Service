@@ -80,8 +80,8 @@ const AlertsPanel = ({ alerts }) => {
               className={`flex items-start gap-3 p-4 rounded-lg border ${styles.container}`}
             >
               <Icon className={`w-5 h-5 ${styles.icon} shrink-0 mt-0.5`} />
-              <div className="flex-1">
-                <p className={`text-sm font-medium ${styles.text}`}>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium ${styles.text} break-words`}>
                   {alert.message}
                 </p>
                 {alert.action && (

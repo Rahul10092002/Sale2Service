@@ -35,7 +35,7 @@ const CustomTooltip = ({ active, payload }) => {
 const InvoiceStatusChart = ({ data, height = 300 }) => {
   if (!data) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 min-w-0 overflow-hidden">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Invoice Status
         </h3>
@@ -55,7 +55,7 @@ const InvoiceStatusChart = ({ data, height = 300 }) => {
 
   if (chartData.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 min-w-0 overflow-hidden">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Invoice Status
         </h3>
@@ -72,7 +72,7 @@ const InvoiceStatusChart = ({ data, height = 300 }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white rounded-lg shadow p-6 min-w-0 overflow-hidden">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">
         Invoice Status
       </h3>

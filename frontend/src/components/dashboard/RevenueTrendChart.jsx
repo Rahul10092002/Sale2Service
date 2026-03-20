@@ -41,7 +41,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 const RevenueTrendChart = ({ data, height = 300 }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 min-w-0 overflow-hidden">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Revenue Trend
         </h3>
@@ -73,12 +73,15 @@ const RevenueTrendChart = ({ data, height = 300 }) => {
           <XAxis
             dataKey="displayDate"
             stroke="#6b7280"
-            style={{ fontSize: "12px" }}
+            style={{ fontSize: "10px" }}
+            tick={{ fontSize: 10 }}
           />
           <YAxis
             stroke="#6b7280"
-            style={{ fontSize: "12px" }}
+            style={{ fontSize: "10px" }}
+            tick={{ fontSize: 10 }}
             tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+            width={40}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend />

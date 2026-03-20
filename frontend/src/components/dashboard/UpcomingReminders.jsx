@@ -123,19 +123,19 @@ const UpcomingReminders = ({
                       )}
                     </div>
 
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-gray-900 truncate">
                       {reminder.reminderType === "service"
                         ? `${reminder.serviceName} - Visit #${reminder.serviceNumber}`
                         : `${reminder.productName} (${reminder.serialNumber})`}
                     </p>
 
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-gray-600 mt-1 truncate">
                       {reminder.customerName}
                     </p>
 
                     {reminder.reminderType === "warranty" &&
                       reminder.invoiceNumber && (
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">
                           Invoice: {reminder.invoiceNumber}
                         </p>
                       )}
@@ -153,9 +153,9 @@ const UpcomingReminders = ({
                 </div>
 
                 {reminder.customerPhone && (
-                  <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
-                    <Phone className="w-3 h-3" />
-                    <span>{reminder.customerPhone}</span>
+                  <div className="flex items-center gap-1 mt-2 text-xs text-gray-500 min-w-0">
+                    <Phone className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{reminder.customerPhone}</span>
                   </div>
                 )}
               </div>

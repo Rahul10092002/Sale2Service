@@ -117,17 +117,45 @@ export default class InvoiceController {
       // Step 3: Generate invoice number if not provided
       let invoiceNumber = invoice.invoice_number;
       if (!invoiceNumber) {
-        const currentYear = new Date().getFullYear();
-        const invoiceCount = await Invoice.countDocuments({
-          shop_id: user.shopId,
-          invoice_date: {
-            $gte: new Date(currentYear, 0, 1),
-            $lt: new Date(currentYear + 1, 0, 1),
-          },
-          deleted_at: null,
-        }).session(session);
+        // Generate unique invoice number using epoch timestamp + random suffix
+        // This eliminates race conditions and ensures absolute uniqueness
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const timestamp = currentDate.getTime(); // Epoch timestamp
 
-        invoiceNumber = `INV-${currentYear}-${String(invoiceCount + 1).padStart(4, "0")}`;
+        // Generate 3-character random suffix for additional uniqueness
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let randomSuffix = "";
+        for (let i = 0; i < 3; i++) {
+          randomSuffix += chars.charAt(
+            Math.floor(Math.random() * chars.length),
+          );
+        }
+
+        // Format: INV-2026-1710936547123-A1K (Year-Timestamp-RandomSuffix)
+        invoiceNumber = `INV-${currentYear}-${timestamp}-${randomSuffix}`;
+
+        // Backup check: If by extremely rare chance this exists, try again with new suffix
+        let attempts = 0;
+        while (attempts < 3) {
+          const existingInvoice = await Invoice.findOne({
+            invoice_number: invoiceNumber,
+            shop_id: user.shopId,
+            deleted_at: null,
+          }).session(session);
+
+          if (!existingInvoice) break;
+
+          // Generate new random suffix
+          randomSuffix = "";
+          for (let i = 0; i < 3; i++) {
+            randomSuffix += chars.charAt(
+              Math.floor(Math.random() * chars.length),
+            );
+          }
+          invoiceNumber = `INV-${currentYear}-${timestamp}-${randomSuffix}`;
+          attempts++;
+        }
       }
 
       // Step 4: Calculate totals
@@ -477,7 +505,6 @@ export default class InvoiceController {
       }
 
       // Use MSG91 sender
-      console.log("Sending WhatsApp message with config:", msgConfig);
       const sendResp = await sendWhatsappMessageViaMSG91(msgConfig);
 
       if (!sendResp) {

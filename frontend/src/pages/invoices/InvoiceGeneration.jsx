@@ -194,30 +194,16 @@ const InvoiceGenerationPage = () => {
             <div className="lg:col-span-4 space-y-8">
               {/* Customer Information Section */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Customer Information
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Enter customer details and address
-                  </p>
-                </div>
-                <div className="p-6">
+               
+                <div className="">
                   <CustomerInformationForm />
                 </div>
               </div>
 
               {/* Invoice Items Section */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Invoice Items
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Add products with warranty tracking
-                  </p>
-                </div>
-                <div className="p-6">
+               
+                <div className="">
                   <InvoiceItemsForm />
                 </div>
               </div>

@@ -4,8 +4,11 @@ import { getToken } from "../utils/token.js";
 import { showToast } from "../features/ui/uiSlice.js";
 
 // Use VITE_API_BASE_URL when available; fall back to localhost (Postman default)
+  
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://sale2service.onrender.com/v1";
+  import.meta.env.VITE_ENVIRONMENT === "production"
+    ? import.meta.env.VITE_PROD_API_URL
+    : import.meta.env.VITE_LOCAL_API_URL;
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,

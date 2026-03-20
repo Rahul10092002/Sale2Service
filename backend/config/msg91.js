@@ -42,7 +42,6 @@ export const sendWhatsappMessageViaMSG91 = async ({
   };
 
   // validate endpoint URL early to avoid axios "Invalid URL"
-  console.log("MSG91_API_ENDPOINT:", process.env.MSG91_API_ENDPOINT);
   try {
     // eslint-disable-next-line no-new
     new URL(process.env.MSG91_API_ENDPOINT);
@@ -105,7 +104,7 @@ export const sendWhatsappMessageViaMSG91 = async ({
         },
       },
     };
-
+ console.log("MSG91 WhatsApp payload:", payload);
     const resp = await axios.post(process.env.MSG91_API_ENDPOINT, payload, {
       headers: {
         "Content-Type": "application/json",

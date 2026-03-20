@@ -37,7 +37,7 @@ const TopNav = ({
             </button>
 
             <div className="ml-3 text-lg font-semibold text-gray-900">
-              <span className="hidden sm:inline">{title}</span>
+              <span className=" sm:inline">{title}</span>
             </div>
           </div>
 

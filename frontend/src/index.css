@@ -10,3 +10,26 @@
     scrollbar-width: none; /* Firefox */
   }
 }
+
+/* Hide default spinner controls on number inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield !important;
+}
+
+/* Additional specificity for custom components */
+.no-spinner input[type="number"]::-webkit-outer-spin-button,
+.no-spinner input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+.no-spinner input[type="number"] {
+  -moz-appearance: textfield !important;
+}

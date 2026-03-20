@@ -129,26 +129,28 @@ const CustomerInformationForm = () => {
               <div className="relative">
                 <div className="flex">
                   <Input
-                    type="tel"
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    step="1"
                     value={customer.whatsapp_number}
                     onChange={(e) =>
                       updateCustomerData({ whatsapp_number: e.target.value })
                     }
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => {
-                      // keep searching on blur but delay hiding suggestions so clicks register
                       handleCustomerSearch();
                       setTimeout(() => setIsFocused(false), 150);
                     }}
                     placeholder="+91 9876543210"
                     error={errors["customer.whatsapp_number"]}
-                    className="rounded-r-none"
+                    className="rounded-r-none flex-1 h-10 no-spinner"
                   />
                   <Button
                     type="button"
                     onClick={handleCustomerSearch}
                     disabled={isSearching || !customer.whatsapp_number}
-                    className="px-3 rounded-l-none border-l-0"
+                    className="rounded-l-none border-l-0 px-3 h-10 flex items-center justify-center min-w-0"
                   >
                     <Search className="w-4 h-4" />
                   </Button>
@@ -177,9 +179,6 @@ const CustomerInformationForm = () => {
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Include country code. We'll search for existing customer.
-              </p>
             </div>
 
             <div>

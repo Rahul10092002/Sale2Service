@@ -133,46 +133,54 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="w-full space-y-6">
+      <div className="w-full space-y-4 sm:space-y-6 px-2 sm:px-0">
         {/* Header */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-800">
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-800 truncate">
                 {getWelcomeMessage()}
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate">
                 {user?.full_name || user?.email}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <PeriodSelector value={period} onChange={setPeriod} />
-              <button
-                onClick={handleRefresh}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                title="Refresh"
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <PeriodSelector value={period} onChange={setPeriod} />
+                <button
+                  onClick={handleRefresh}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+                  title="Refresh"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-600 ${summaryLoading ? "animate-spin" : ""}`}
+                  />
+                </button>
+              </div>
+              <Button
+                variant="danger"
+                onClick={handleLogout}
+                className="w-full sm:w-auto"
               >
-                <RefreshCw
-                  className={`w-5 h-5 text-gray-600 ${summaryLoading ? "animate-spin" : ""}`}
-                />
-              </button>
-              <Button variant="danger" onClick={handleLogout}>
                 Logout
               </Button>
             </div>
           </div>
 
           {/* Pinned shortcuts */}
-          <div className="mt-3">
+          <div className="mt-3 sm:mt-4">
             <ShortcutGrid items={shortcutItems} />
           </div>
         </div>
 
         {/* Loading State */}
         {isLoading && (
-          <div className="text-center py-12">
-            <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
-            <p className="text-gray-600 mt-2">Loading dashboard...</p>
+          <div className="text-center py-8 sm:py-12">
+            <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 animate-spin mx-auto" />
+            <p className="text-sm sm:text-base text-gray-600 mt-2">
+              Loading dashboard...
+            </p>
           </div>
         )}
 
@@ -180,7 +188,7 @@ const Dashboard = () => {
         {!isLoading && summary && (
           <>
             {/* Key Metrics Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <MetricCard
                 title="Revenue"
                 value={`₹${summary.revenue?.total?.toLocaleString("en-IN") || 0}`}
@@ -217,7 +225,7 @@ const Dashboard = () => {
             </div>
 
             {/* Service Plans, Warranties & Alerts */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {summary.servicePlans && (
                 <MetricCard
                   title="Active Service Plans"
@@ -236,7 +244,9 @@ const Dashboard = () => {
                   color="purple"
                 />
               )}
-              <AlertsPanel alerts={summary.alerts} />
+              <div className="sm:col-span-2 lg:col-span-1">
+                <AlertsPanel alerts={summary.alerts} />
+              </div>
             </div>
 
             {/* Upcoming Reminders */}
@@ -247,12 +257,12 @@ const Dashboard = () => {
             />
 
             {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <RevenueTrendChart data={revenueTrend} />
               <InvoiceStatusChart data={summary.invoices} />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <TopProductsChart data={topProducts} />
               <PaymentMethodsChart data={paymentMethods} />
             </div>
@@ -264,13 +274,13 @@ const Dashboard = () => {
 
         {/* Empty State */}
         {!isLoading && !summary && (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-500">
+          <div className="bg-white rounded-lg shadow p-6 sm:p-12 text-center">
+            <p className="text-sm sm:text-base text-gray-500">
               No data available. Start by creating your first invoice!
             </p>
             <Button
               variant="primary"
-              className="mt-4"
+              className="mt-4 w-full sm:w-auto"
               onClick={() => (window.location.href = "/invoices/new")}
             >
               Create Invoice

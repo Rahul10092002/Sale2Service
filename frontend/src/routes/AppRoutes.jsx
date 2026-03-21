@@ -5,6 +5,8 @@ import {
   rehydrateAuth,
   selectIsAuthenticated,
 } from "../features/auth/authSlice.js";
+import { useCurrentUser } from "../features/auth/hooks.js";
+import { updateUser } from "../features/auth/authSlice.js";
 import { ROUTES } from "../utils/constants.js";
 
 // Components
@@ -32,11 +34,20 @@ import Settings from "../pages/settings/Settings.jsx";
 const AppRoutes = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  // Trigger RTK Query to fetch the current user when authenticated
+  const { data: currentUserData } = useCurrentUser();
 
   // Rehydrate auth state on app start
   useEffect(() => {
     dispatch(rehydrateAuth());
   }, [dispatch]);
+
+  // When the current user query returns, update the auth slice with the fresh user
+  React.useEffect(() => {
+    if (currentUserData && currentUserData.user) {
+      dispatch(updateUser({ user: currentUserData.user, shopId: currentUserData.shopId }));
+    }
+  }, [currentUserData, dispatch]);
 
   return (
     <Routes>

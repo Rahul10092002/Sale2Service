@@ -1,16 +1,25 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getToken, setToken, removeToken } from "../../utils/token.js";
+import {
+  getToken,
+  setToken,
+  removeToken,
+  getUser,
+  setUser,
+  getShopId,
+  setShopId,
+  clearAuthData,
+} from "../../utils/token.js";
 
 /**
  * Initial auth state
- * Attempts to rehydrate token from localStorage on app start
+ * Attempts to rehydrate token and user data from localStorage on app start
  */
 const initialState = {
   accessToken: getToken() || null,
-  user: null,
-  shopId: null,
-  role: null,
-  isAuthenticated: !!getToken(),
+  user: getUser() || null,
+  shopId: getShopId() || null,
+  role: getUser()?.role || null,
+  isAuthenticated: !!getToken() && !!getUser(),
 };
 
 /**
@@ -35,8 +44,12 @@ const authSlice = createSlice({
       state.role = user?.role || null;
       state.isAuthenticated = true;
 
-      // Persist token to localStorage
+      // Persist data to localStorage
       setToken(accessToken);
+      setUser(user);
+      if (shopId) {
+        setShopId(shopId);
+      }
     },
 
     /**
@@ -48,6 +61,12 @@ const authSlice = createSlice({
       state.user = user;
       state.shopId = shopId;
       state.role = user?.role || null;
+
+      // Update localStorage
+      setUser(user);
+      if (shopId) {
+        setShopId(shopId);
+      }
     },
 
     /**
@@ -60,8 +79,8 @@ const authSlice = createSlice({
       state.role = null;
       state.isAuthenticated = false;
 
-      // Remove token from localStorage
-      removeToken();
+      // Remove all data from localStorage
+      clearAuthData();
     },
 
     /**
@@ -69,13 +88,28 @@ const authSlice = createSlice({
      */
     rehydrateAuth: (state) => {
       const token = getToken();
-      if (token) {
+      const user = getUser();
+      const shopId = getShopId();
+
+      if (token && user) {
+        // Restore complete authentication state
         state.accessToken = token;
+        state.user = user;
+        state.shopId = shopId;
+        state.role = user.role || null;
         state.isAuthenticated = true;
       } else {
-        // If no token, ensure state is clean
+        // If token or user data is missing, clear state
         state.accessToken = null;
+        state.user = null;
+        state.shopId = null;
+        state.role = null;
         state.isAuthenticated = false;
+
+        // Clear potentially corrupted localStorage data
+        if (!token || !user) {
+          clearAuthData();
+        }
       }
     },
   },

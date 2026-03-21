@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { X } from "lucide-react";
 
 const Dialog = ({
   open,
@@ -53,13 +54,14 @@ const Dialog = ({
     "2xl": "max-w-2xl",
     "3xl": "max-w-3xl",
     "4xl": "max-w-4xl",
+    "5xl": "max-w-5xl",
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-opacity-30 backdrop-blur-md bg-opacity-40">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
       <div
         ref={dialogRef}
-        className={`bg-white rounded-xl shadow-2xl w-full ${maxWidthClasses[maxWidth]} max-h-[90vh] overflow-hidden flex flex-col ${className}`}
+        className={`bg-white border border-gray-200 rounded-xl shadow-lg animate-slide-in w-full ${maxWidthClasses[maxWidth]} max-h-[90vh] overflow-hidden flex flex-col ${className}`}
         // Prevent clicks inside dialog from bubbling up
         onClick={(e) => e.stopPropagation()}
       >
@@ -77,10 +79,12 @@ const DialogHeader = ({
   className = "",
 }) => (
   <div
-    className={`flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 ${className}`}
+    className={`px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-xl flex items-center justify-between ${className}`}
   >
     <div className="flex items-center space-x-3">
-      {icon && <div className="p-2 bg-blue-100 rounded-lg">{icon}</div>}
+      {icon && (
+        <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">{icon}</div>
+      )}
       <div>
         <h2 className="text-xl font-semibold text-gray-900">{children}</h2>
         {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
@@ -89,23 +93,26 @@ const DialogHeader = ({
     {onClose && (
       <button
         onClick={onClose}
-        className="p-2 text-red-400 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 inline-flex items-center justify-center border-transparent"
+        aria-label="Close dialog"
       >
-        Close
+        <X className="w-5 h-5" />
       </button>
     )}
   </div>
 );
 
 const DialogBody = ({ children, className = "" }) => (
-  <div className={`p-6 overflow-y-auto max-h-[calc(90vh-140px)] ${className}`}>
+  <div
+    className={`px-6 py-4 custom-scrollbar overflow-y-auto flex-1 ${className}`}
+  >
     {children}
   </div>
 );
 
 const DialogFooter = ({ children, className = "" }) => (
   <div
-    className={`flex justify-end pt-6 border-t border-gray-200 ${className}`}
+    className={`px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex justify-end space-x-2 ${className}`}
   >
     {children}
   </div>

@@ -384,7 +384,6 @@ export default class ServiceController {
     }
   }
 
- 
   async getServiceVisits(req, res) {
     try {
       const { user } = req;
@@ -1005,9 +1004,39 @@ export default class ServiceController {
     try {
       const { user } = req;
       const { id } = req.params;
-      const { notes } = req.body;
+      const {
+        notes,
+        amount_collected = 0,
+        payment_method = "CASH",
+        technician_name = "",
+        issue_reported = "",
+        work_done = "",
+        service_type = "MAINTENANCE",
+      } = req.body;
 
-      // Find the service schedule and validate ownership
+      // Validate required fields
+      if (!technician_name?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Technician name is required",
+        });
+      }
+
+      if (!issue_reported?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Issue reported is required",
+        });
+      }
+
+      if (!work_done?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Work done description is required",
+        });
+      }
+
+      // Find the service schedule and validate ownership FIRST
       const schedule =
         await ServiceSchedule.findById(id).populate("service_plan_id");
 
@@ -1034,24 +1063,70 @@ export default class ServiceController {
         });
       }
 
-      // Create service visit record
+      // Map frontend service category to business service type
+      const getBusinessServiceType = (
+        category,
+        serviceCharge,
+        amountCollected,
+      ) => {
+        if (serviceCharge === 0) return "FREE";
+        if (amountCollected >= serviceCharge) return "PAID";
+        if (category === "WARRANTY_SERVICE" || amountCollected === 0)
+          return "WARRANTY";
+        return "GOODWILL";
+      };
+
+      const businessServiceType = getBusinessServiceType(
+        service_type,
+        schedule.service_charge || 0,
+        parseFloat(amount_collected) || 0,
+      );
+
+      // Ensure required fields have proper values
+      const finalIssueReported =
+        issue_reported?.trim() || "Regular maintenance service";
+      const finalWorkDone =
+        work_done?.trim() || notes?.trim() || "Service completed successfully";
+      const finalTechnicianName =
+        technician_name?.trim() || "Unknown Technician";
+
+      // Create service visit record with proper linking
       const serviceVisit = new ServiceVisit({
         service_schedule_id: schedule._id,
         visit_date: new Date(),
-        service_type: "WARRANTY", // Default to warranty service
-        technician_name: "System Auto Complete",
-        issue_reported: "Service completed via system",
-        work_done: notes || "Service marked as completed",
-        service_status: "COMPLETED",
+        service_type: businessServiceType,
+        service_category: service_type,
+        technician_name: finalTechnicianName,
+        technician_contact: "",
+        issue_reported: finalIssueReported,
+        work_done: finalWorkDone,
+        service_cost: schedule.service_charge || 0,
+        amount_collected: parseFloat(amount_collected) || 0,
+        payment_method: payment_method,
+        internal_notes: notes || "",
         created_by: user.userId,
       });
 
       await serviceVisit.save();
 
-      // Update schedule status
+      // Update schedule with completion details and link to service visit
       schedule.status = "COMPLETED";
       schedule.completed_at = new Date();
       schedule.completed_by = user.userId;
+      schedule.amount_collected = parseFloat(amount_collected) || 0;
+      schedule.service_visit_id = serviceVisit._id;
+
+      // Update payment status based on amount collected vs service charge
+      if (schedule.service_charge === 0) {
+        schedule.payment_status = "FREE";
+      } else if (schedule.amount_collected >= schedule.service_charge) {
+        schedule.payment_status = "PAID";
+      } else if (schedule.amount_collected > 0) {
+        schedule.payment_status = "PARTIAL";
+      } else {
+        schedule.payment_status = "PENDING";
+      }
+
       if (notes) schedule.notes = notes;
       await schedule.save();
 

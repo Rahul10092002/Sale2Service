@@ -105,6 +105,9 @@ const InvoiceEdit = () => {
             batch_number: item.batch_number || "",
             purchase_source: item.purchase_source || "",
             cost_price: item.cost_price || 0,
+            // Include service plan data
+            service_plan_enabled: item.service_plan_enabled || false,
+            service_plan: item.service_plan || null,
           })) || [],
       };
 
@@ -214,6 +217,48 @@ const InvoiceEdit = () => {
           product_name: item.product_name,
           serial_number: item.serial_number,
           price: parseFloat(item.selling_price),
+          selling_price: parseFloat(item.selling_price),
+          cost_price: parseFloat(item.cost_price || 0),
+          quantity: parseInt(item.quantity || 1),
+          product_category: item.product_category || "BATTERY",
+          company: item.company || "",
+          model_number: item.model_number || "",
+          warranty_type: item.warranty_type || "STANDARD",
+          warranty_start_date: item.warranty_start_date,
+          warranty_duration_months: parseInt(
+            item.warranty_duration_months || 12,
+          ),
+          warranty_end_date: item.warranty_end_date,
+          pro_warranty_end_date: item.pro_warranty_end_date,
+          manufacturing_date: item.manufacturing_date,
+          capacity_rating: item.capacity_rating,
+          voltage: item.voltage,
+          batch_number: item.batch_number,
+          purchase_source: item.purchase_source,
+          notes: item.notes,
+          // Include service plan data
+          service_plan_enabled: item.service_plan_enabled || false,
+          service_plan:
+            item.service_plan_enabled && item.service_plan
+              ? {
+                  service_interval_type:
+                    item.service_plan.service_interval_type,
+                  service_interval_value: parseInt(
+                    item.service_plan.service_interval_value || 1,
+                  ),
+                  total_services: parseInt(
+                    item.service_plan.total_services || 1,
+                  ),
+                  service_start_date: item.service_plan.service_start_date,
+                  service_end_date: item.service_plan.service_end_date,
+                  service_description:
+                    item.service_plan.service_description || "",
+                  service_charge: parseFloat(
+                    item.service_plan.service_charge || 0,
+                  ),
+                  is_active: item.service_plan.is_active !== false,
+                }
+              : null,
         })),
       };
 

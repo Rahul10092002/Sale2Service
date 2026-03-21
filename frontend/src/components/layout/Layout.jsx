@@ -24,7 +24,7 @@ const Layout = ({ children, title }) => {
   const onToggleCollapse = () => setCollapsed((c) => !c);
 
   return (
-    <div className="h-screen bg-blue-gray-50/50 flex text-gray-900">
+    <div className="h-screen flex bg-gray-50 text-gray-900 transition-colors duration-300">
       {/* Left: fixed full-height sidebar (desktop) */}
       <div
         className={`hidden lg:block ${collapsed ? "w-20" : "w-64"} h-screen sticky top-0 overflow-auto transition-all duration-200  no-scrollbar`}
@@ -62,9 +62,9 @@ const Layout = ({ children, title }) => {
         <ToastContainer />
 
         <main
-          className={`flex-1 overflow-auto transition-all duration-200 ease-in-out `}
+          className={`flex-1 overflow-auto transition-all duration-300 ease-in-out bg-gray-50 text-gray-900`}
         >
-          <div className="max-w-7xl mx-auto">{children}</div>
+          <div className="max-w-7xl mx-auto bg-gray-50">{children}</div>
         </main>
       </div>
     </div>

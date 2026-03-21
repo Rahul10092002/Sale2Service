@@ -51,6 +51,11 @@ const servicePlanSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    service_charge: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     deleted_at: {
       type: Date,
       default: null,

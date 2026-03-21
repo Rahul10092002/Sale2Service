@@ -16,37 +16,37 @@ const navItems = [
   {
     key: "dashboard",
     label: "Dashboard",
-    icon: <Home className="w-5 h-5 text-indigo-600" />,
+    icon: <Home className="w-5 h-5" />,
     path: ROUTES.DASHBOARD,
   },
   {
     key: "invoices",
     label: "Invoices",
-    icon: <Receipt className="w-5 h-5 text-indigo-600" />,
+    icon: <Receipt className="w-5 h-5" />,
     path: ROUTES.INVOICES,
   },
   {
     key: "products",
     label: "Products",
-    icon: <Box className="w-5 h-5 text-indigo-600" />,
+    icon: <Box className="w-5 h-5" />,
     path: ROUTES.PRODUCTS,
   },
   {
     key: "customers",
     label: "Customers",
-    icon: <User className="w-5 h-5 text-indigo-600" />,
+    icon: <User className="w-5 h-5" />,
     path: ROUTES.CUSTOMERS,
   },
   {
     key: "users",
     label: "Users",
-    icon: <User className="w-5 h-5 text-indigo-600" />,
+    icon: <User className="w-5 h-5" />,
     path: ROUTES.USERS,
   },
   {
     key: "settings",
     label: "Settings",
-    icon: <Settings className="w-5 h-5 text-indigo-600" />,
+    icon: <Settings className="w-5 h-5" />,
     path: ROUTES.SETTINGS,
   },
 ];
@@ -62,64 +62,91 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
     <>
       {/* Backdrop for mobile drawer */}
       <div
-        className={`fixed inset-0 bg-opacity-30 backdrop-blur-md bg-opacity-40 z-30 transition-opacity lg:hidden ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"}  no-scrollbar`}
+        className={`fixed inset-0 z-30 transition-opacity lg:hidden ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"} no-scrollbar`}
+        style={{ background: "rgba(15, 23, 42, 0.7)" }}
         onClick={onClose}
       />
 
       <aside
-        className={`fixed z-40 top-0 left-0 h-screen bg-white shadow-lg transform transition-transform lg:static lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"} ${collapsed ? "w-20" : "w-64"} border-r border-gray-200 flex flex-col no-scrollbar`}
+        className={`fixed z-40 top-0 left-0 h-screen bg-white shadow-xl transform transition-all duration-300 lg:static lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"} ${collapsed ? "w-20" : "w-64"} border-r border-gray-200 flex flex-col no-scrollbar`}
         style={{ minWidth: collapsed ? 80 : 256 }}
       >
-        <div className="h-14 flex items-center px-4 border-b border-gray-100">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-md flex items-center justify-center text-white font-bold">
-              S
-            </div>
-            {!collapsed && <div className="font-semibold">Sale2Service</div>}
+        {/* Header with logo */}
+        <div className="h-16 flex items-center bg-white border-b border-gray-200">
+          <div className="flex items-center space-x-2 w-full">
+            <img
+              src={collapsed ? "/logo_without_text.png" : "/Logo_warranty.png"}
+              alt="WarrantyDesk Logo"
+              className={`${collapsed ? " ml-2 w-10 h-10" : "w-full h-8 max-w-48"} object-contain`}
+            />
           </div>
 
           <div className="ml-auto hidden lg:block">
             <button
               onClick={onToggleCollapse}
-              className="p-2 rounded-md hover:bg-gray-100"
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors duration-200"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {collapsed ? (
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               ) : (
-                <ChevronRight className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               )}
             </button>
           </div>
         </div>
 
-        <nav className="p-2 mt-2">
-          {navItems.map((it) => (
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
+          {navItems.map((item) => (
             <Link
-              key={it.key}
-              to={it.path}
+              key={item.key}
+              to={item.path}
               onClick={() => {
                 // Close mobile sidebar when navigating
                 if (window.innerWidth < 1024) {
                   onClose();
                 }
               }}
-              className={`flex items-center gap-3 rounded-md p-3 transition-colors ${
-                isActive(it.path)
-                  ? "bg-indigo-50 text-indigo-700 border-r-2 border-indigo-500"
-                  : "text-gray-700 hover:bg-gray-50"
+              className={`flex items-center gap-3 rounded-lg p-3 transition-all duration-200 group ${
+                isActive(item.path)
+                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-500 shadow-sm"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
               } ${collapsed ? "justify-center" : ""}`}
             >
-              <span className="shrink-0">{it.icon}</span>
+              <span
+                className={`shrink-0 ${isActive(item.path) ? "text-blue-600" : "text-gray-500 group-hover:text-blue-600"}`}
+              >
+                {item.icon}
+              </span>
               {!collapsed && (
-                <span className="text-sm font-medium">{it.label}</span>
+                <span className="text-sm font-medium truncate">
+                  {item.label}
+                </span>
+              )}
+
+              {/* Active indicator dot for collapsed state */}
+              {collapsed && isActive(item.path) && (
+                <div className="absolute right-2 w-2 h-2 bg-blue-500 rounded-full"></div>
               )}
             </Link>
           ))}
         </nav>
 
-        <div className="mt-auto p-4 border-t border-gray-100">
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50/50">
           {!collapsed && (
-            <div className="text-xs text-gray-500">Role: Owner</div>
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-xs text-gray-600 font-medium">
+                WarrantyDesk Pro
+              </span>
+            </div>
+          )}
+          {collapsed && (
+            <div className="flex justify-center">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            </div>
           )}
         </div>
       </aside>

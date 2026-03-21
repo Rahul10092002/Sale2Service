@@ -25,7 +25,7 @@ import {
   useGetWarrantyStatsQuery,
 } from "../../services/dashboardApi.js";
 import {
-  DollarSign,
+  IndianRupee,
   FileText,
   Users,
   Wrench,
@@ -121,48 +121,55 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-6 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
+      <div className="min-h-screen bg-transparent py-6 overflow-x-hidden">
+        <div className="px-4 sm:px-6 lg:px-8 min-w-0">
           {/* Welcome Section with Shortcuts */}
-          <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
-            <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between mb-4">
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-gray-800 truncate">
-                  {getWelcomeMessage()}
-                </h1>
-                <p className="text-xs sm:text-sm lg:text-base text-gray-500 mt-1 truncate">
-                  {user?.full_name || user?.email}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
-                <div className="min-w-0">
-                  <PeriodSelector value={period} onChange={setPeriod} />
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 mb-6">
+            <div className="px-6 py-4">
+              <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between mb-6">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent mb-2">
+                    {getWelcomeMessage()}
+                  </h1>
+                  <p className="text-sm sm:text-base text-gray-600">
+                    Manage Sales & Warranty in One Place
+                  </p>
                 </div>
-                <button
-                  onClick={handleRefresh}
-                  className="p-2 sm:p-3 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
-                  title="Refresh"
-                >
-                  <RefreshCw
-                    className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-gray-600 ${summaryLoading ? "animate-spin" : ""}`}
-                  />
-                </button>
+                <div className="flex items-center gap-3 flex-wrap shrink-0">
+                  <div className="min-w-0">
+                    <PeriodSelector value={period} onChange={setPeriod} />
+                  </div>
+                  <button
+                    onClick={handleRefresh}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors duration-200 p-3"
+                    title="Refresh"
+                  >
+                    <RefreshCw
+                      className={`w-5 h-5 ${summaryLoading ? "animate-spin" : ""}`}
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Pinned shortcuts */}
-            <div className="mt-4 sm:mt-6 overflow-hidden">
-              <ShortcutGrid items={shortcutItems} />
+              {/* Pinned shortcuts */}
+              <div className="overflow-hidden">
+                <ShortcutGrid items={shortcutItems} />
+              </div>
             </div>
           </div>
 
           {/* Loading State */}
           {isLoading && (
-            <div className="text-center py-8 sm:py-12">
-              <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 animate-spin mx-auto" />
-              <p className="text-sm sm:text-base text-gray-600 mt-2">
-                Loading dashboard...
-              </p>
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+              <div className="px-6 py-4 text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
+                  <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Loading Dashboard
+                </h3>
+                <p className="text-gray-600">Fetching your latest data...</p>
+              </div>
             </div>
           )}
 
@@ -170,19 +177,20 @@ const Dashboard = () => {
           {!isLoading && summary && (
             <div className="space-y-6 overflow-hidden">
               {/* Key Metrics Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 p-2">
-                <div className="min-w-0">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Key Metrics
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                   <MetricCard
-                    title="Revenue"
+                    title="Total Revenue"
                     value={`₹${summary.revenue?.total?.toLocaleString("en-IN") || 0}`}
                     subtitle={`${summary.revenue?.count || 0} invoice${summary.revenue?.count !== 1 ? "s" : ""}`}
                     trend={summary.revenue?.changePercentage}
-                    icon={DollarSign}
+                    icon={IndianRupee}
                     color="blue"
                     onClick={() => (window.location.href = "/invoices")}
                   />
-                </div>
-                <div className="min-w-0">
                   <MetricCard
                     title="Invoices"
                     value={summary.invoices?.total || 0}
@@ -191,8 +199,6 @@ const Dashboard = () => {
                     color="purple"
                     onClick={() => (window.location.href = "/invoices")}
                   />
-                </div>
-                <div className="min-w-0">
                   <MetricCard
                     title="Customers"
                     value={summary.customers?.total || 0}

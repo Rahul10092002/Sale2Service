@@ -694,11 +694,47 @@ export default class InvoiceController {
         deleted_at: null,
       });
 
+      // Get service plans for each invoice item and transform data
+      const itemsWithServicePlans = await Promise.all(
+        invoiceItems.map(async (item) => {
+          const servicePlan = await ServicePlan.findOne({
+            invoice_item_id: item._id,
+            deleted_at: null,
+          });
+
+          // Transform item to include service plan data as frontend expects
+          const itemData = item.toObject();
+
+          if (servicePlan) {
+            itemData.service_plan_enabled = servicePlan.is_active;
+            itemData.service_plan = {
+              service_interval_type: servicePlan.service_interval_type,
+              service_interval_value: servicePlan.service_interval_value,
+              total_services: servicePlan.total_services,
+              service_start_date: servicePlan.service_start_date
+                ?.toISOString()
+                ?.split("T")[0],
+              service_end_date: servicePlan.service_end_date
+                ?.toISOString()
+                ?.split("T")[0],
+              service_description: servicePlan.notes || "",
+              service_charge: 0, // Default since not in ServicePlan model
+              is_active: servicePlan.is_active,
+            };
+          } else {
+            itemData.service_plan_enabled = false;
+            itemData.service_plan = null;
+          }
+
+          return itemData;
+        }),
+      );
+
       res.json({
         success: true,
         data: {
           invoice,
-          invoice_items: invoiceItems,
+          invoice_items: itemsWithServicePlans,
         },
       });
     } catch (error) {
@@ -973,7 +1009,23 @@ export default class InvoiceController {
       existingCustomer.updated_at = new Date();
       await existingCustomer.save({ session });
 
-      // Step 2: Delete existing invoice items
+      // Step 2: Delete existing invoice items and their related service plans
+      // First, find all invoice items for this invoice to get their IDs
+      const existingItems = await InvoiceItem.find({
+        invoice_id: id,
+        deleted_at: null,
+      }).session(session);
+
+      const existingItemIds = existingItems.map((item) => item._id);
+
+      // Delete existing service plans for these invoice items
+      if (existingItemIds.length > 0) {
+        await ServicePlan.deleteMany({
+          invoice_item_id: { $in: existingItemIds },
+        }).session(session);
+      }
+
+      // Now delete the invoice items
       await InvoiceItem.deleteMany({
         invoice_id: id,
       }).session(session);
@@ -1063,6 +1115,7 @@ export default class InvoiceController {
             service_end_date: serviceEnd,
             service_description: item.service_plan.service_description,
             service_charge: item.service_plan.service_charge || 0,
+            notes: item.service_plan.service_description || "",
             is_active: item.service_plan.is_active !== false,
             created_by: user.userId,
           });
@@ -1222,14 +1275,11 @@ export default class InvoiceController {
         const scheduledDate = new Date(currentDate);
         const serviceSchedule = new ServiceSchedule({
           service_plan_id: servicePlan._id,
-          shop_id: servicePlan.shop_id,
           scheduled_date: scheduledDate,
           service_number: scheduleCount + 1,
           original_date: scheduledDate,
           status: "PENDING",
-          service_charge: servicePlan.service_charge,
-          service_description: servicePlan.service_description,
-          created_by: servicePlan.created_by,
+          service_charge: servicePlan.service_charge || 0,
         });
 
         if (session) {
@@ -1411,6 +1461,10 @@ export default class InvoiceController {
           cancelled_by: schedule.cancelled_by,
           cancellation_reason: schedule.cancellation_reason,
           notes: schedule.notes,
+          service_charge: schedule.service_charge,
+          amount_collected: schedule.amount_collected,
+          payment_status: schedule.payment_status,
+          service_visit_id: schedule.service_visit_id,
         };
       });
 
@@ -1552,6 +1606,98 @@ export default class InvoiceController {
       res.status(500).json({
         success: false,
         message: "Failed to create service plan",
+      });
+    } finally {
+      session.endSession();
+    }
+  }
+
+  /**
+   * Update service plan charges for existing service plans
+   */
+  async updateServicePlanCharges(req, res) {
+    const session = await mongoose.startSession();
+    let transactionStarted = false;
+
+    try {
+      await session.startTransaction();
+      transactionStarted = true;
+
+      const { itemId } = req.params;
+      const { user } = req;
+      const { service_charge } = req.body;
+
+      // Validate invoice item exists and belongs to user's shop
+      const invoiceItem = await InvoiceItem.findById(itemId)
+        .populate({
+          path: "invoice_id",
+          select: "shop_id",
+        })
+        .session(session);
+
+      if (!invoiceItem || !invoiceItem.invoice_id) {
+        return res.status(404).json({
+          success: false,
+          message: "Invoice item not found",
+        });
+      }
+
+      if (
+        invoiceItem.invoice_id.shop_id.toString() !== user.shopId.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied",
+        });
+      }
+
+      // Find existing service plan
+      const existingPlan = await ServicePlan.findOne({
+        invoice_item_id: itemId,
+        deleted_at: null,
+      }).session(session);
+
+      if (!existingPlan) {
+        return res.status(404).json({
+          success: false,
+          message: "Service plan not found for this product",
+        });
+      }
+
+      // Update service plan charge
+      existingPlan.service_charge = parseFloat(service_charge) || 0;
+      await existingPlan.save({ session });
+
+      // Update all existing service schedules with new charge
+      await ServiceSchedule.updateMany(
+        {
+          service_plan_id: existingPlan._id,
+          deleted_at: null,
+        },
+        {
+          $set: {
+            service_charge: parseFloat(service_charge) || 0,
+          },
+        },
+        { session },
+      );
+
+      await session.commitTransaction();
+      transactionStarted = false;
+
+      res.status(200).json({
+        success: true,
+        data: existingPlan,
+        message: "Service plan charges updated successfully",
+      });
+    } catch (error) {
+      if (transactionStarted) {
+        await session.abortTransaction();
+      }
+      console.error("Update service plan charges error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update service plan charges",
       });
     } finally {
       session.endSession();

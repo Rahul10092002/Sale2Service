@@ -273,19 +273,40 @@ const ProductCard = React.memo(function ProductCard({
                 checked={item.service_plan_enabled || false}
                 onChange={(e) => {
                   if (e.target.checked) {
-                    updateItemImmediate(item.id, {
-                      service_plan_enabled: true,
-                      service_plan: {
-                        service_interval_type: "MONTHLY",
-                        service_interval_value: 1,
-                        service_start_date: new Date()
-                          .toISOString()
-                          .split("T")[0],
-                        service_description: `Regular service for ${item.product_name || "Product"}`,
-                        service_charge: 0,
-                        is_active: true,
-                      },
-                    });
+                    // Check if service plan already exists (for editing scenarios)
+                    const existingServicePlan = item.service_plan;
+
+                    if (existingServicePlan) {
+                      // Preserve existing service plan data
+                      updateItemImmediate(item.id, {
+                        service_plan_enabled: true,
+                        service_plan: {
+                          ...existingServicePlan,
+                          is_active: true, // Ensure it's active
+                        },
+                      });
+                    } else {
+                      // Create new service plan with defaults
+                      const intervalType = "MONTHLY";
+                      const intervalValue = 1;
+                      const serviceStartDate = computeServiceStartDate(
+                        intervalType,
+                        intervalValue,
+                      );
+
+                      updateItemImmediate(item.id, {
+                        service_plan_enabled: true,
+                        service_plan: {
+                          service_interval_type: intervalType,
+                          service_interval_value: intervalValue,
+                          service_start_date: serviceStartDate,
+                          service_description: `Regular service for ${item.product_name || "Product"}`,
+                          service_charge: 0,
+                          total_services: 1,
+                          is_active: true,
+                        },
+                      });
+                    }
                   } else {
                     const {
                       service_plan,
@@ -311,15 +332,24 @@ const ProductCard = React.memo(function ProductCard({
                     value={
                       item.service_plan?.service_interval_type || "MONTHLY"
                     }
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const newIntervalType = e.target.value;
+                      const intervalValue =
+                        item.service_plan?.service_interval_value || 1;
+                      const newServiceStartDate = computeServiceStartDate(
+                        newIntervalType,
+                        intervalValue,
+                      );
+
                       updateItemImmediate(item.id, {
                         ...item,
                         service_plan: {
                           ...item.service_plan,
-                          service_interval_type: e.target.value,
+                          service_interval_type: newIntervalType,
+                          service_start_date: newServiceStartDate,
                         },
-                      })
-                    }
+                      });
+                    }}
                     options={[
                       { value: "MONTHLY", label: "Monthly" },
                       { value: "QUARTERLY", label: "Quarterly (3 months)" },
@@ -339,15 +369,24 @@ const ProductCard = React.memo(function ProductCard({
                   <Input
                     type="number"
                     value={item.service_plan?.service_interval_value || 1}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const newIntervalValue = parseInt(e.target.value) || 1;
+                      const intervalType =
+                        item.service_plan?.service_interval_type || "MONTHLY";
+                      const newServiceStartDate = computeServiceStartDate(
+                        intervalType,
+                        newIntervalValue,
+                      );
+
                       updateItem(item.id, {
                         ...item,
                         service_plan: {
                           ...item.service_plan,
-                          service_interval_value: parseInt(e.target.value) || 1,
+                          service_interval_value: newIntervalValue,
+                          service_start_date: newServiceStartDate,
                         },
-                      })
-                    }
+                      });
+                    }}
                     placeholder="1"
                     min="1"
                   />
@@ -473,18 +512,21 @@ const ProductCard = React.memo(function ProductCard({
 
               <div className="bg-blue-50 p-3 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Service Plan Summary:</strong> Service will be
-                  scheduled every{" "}
-                  {item.service_plan?.service_interval_value || 1}{" "}
+                  <strong>Service Plan Summary:</strong> First service will be
+                  scheduled {item.service_plan?.service_interval_value || 1}{" "}
                   {item.service_plan?.service_interval_type
                     ?.toLowerCase()
                     .replace("_", " ") || "month(s)"}{" "}
-                  starting from{" "}
+                  from today ({" "}
                   {item.service_plan?.service_start_date
                     ? new Date(
                         item.service_plan.service_start_date,
                       ).toLocaleDateString()
-                    : "selected date"}{" "}
+                    : "calculated date"}{" "}
+                  ), then every {item.service_plan?.service_interval_value || 1}{" "}
+                  {item.service_plan?.service_interval_type
+                    ?.toLowerCase()
+                    .replace("_", " ") || "month(s)"}{" "}
                   at ₹{item.service_plan?.service_charge || 0} per service.
                 </p>
               </div>
@@ -635,6 +677,38 @@ const ProductCard = React.memo(function ProductCard({
 });
 
 export default ProductCard;
+
+// Helper: compute service start date based on interval type and value (first service after the interval)
+function computeServiceStartDate(intervalType, intervalValue) {
+  const today = new Date();
+  let monthsToAdd = 0;
+
+  switch ((intervalType || "MONTHLY").toUpperCase()) {
+    case "MONTHLY":
+      monthsToAdd = intervalValue || 1;
+      break;
+    case "QUARTERLY":
+      monthsToAdd = 3 * (intervalValue || 1);
+      break;
+    case "SEMI_ANNUALLY":
+    case "HALF_YEARLY":
+      monthsToAdd = 6 * (intervalValue || 1);
+      break;
+    case "ANNUALLY":
+    case "YEARLY":
+      monthsToAdd = 12 * (intervalValue || 1);
+      break;
+    case "CUSTOM":
+      monthsToAdd = intervalValue || 1;
+      break;
+    default:
+      monthsToAdd = intervalValue || 1;
+  }
+
+  const startDate = new Date(today);
+  startDate.setMonth(startDate.getMonth() + monthsToAdd);
+  return startDate.toISOString().split("T")[0];
+}
 
 // Helper: compute service end date based on start date, interval and count
 function computeServiceEndDate(

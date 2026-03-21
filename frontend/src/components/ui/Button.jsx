@@ -1,11 +1,11 @@
 import React from "react";
 
 /**
- * Reusable Button component with multiple variants
+ * WarrantyDesk Button component with professional styling
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Button content
- * @param {string} props.variant - Button variant (primary, secondary, danger)
- * @param {string} props.size - Button size (sm, md, lg)
+ * @param {string} props.variant - Button variant (primary, secondary, success, danger, outline, gradient)
+ * @param {string} props.size - Button size (xs, sm, md, lg, xl)
  * @param {boolean} props.loading - Loading state
  * @param {boolean} props.disabled - Disabled state
  * @param {string} props.className - Additional CSS classes
@@ -24,24 +24,29 @@ const Button = ({
   ...props
 }) => {
   const baseClasses =
-    "font-medium rounded-lg transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2";
+    "font-medium rounded-lg transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm";
 
   const variantClasses = {
     primary:
       "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-400",
     secondary:
-      "bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 disabled:bg-gray-400",
-    outline:
-      "border-2 border-blue-600 text-blue-600 hover:bg-blue-50 focus:ring-blue-500 disabled:border-blue-400 disabled:text-blue-400",
+      "bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500 disabled:bg-gray-50 disabled:text-gray-400",
+    success:
+      "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 disabled:bg-green-400",
     danger:
       "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-400",
+    outline:
+      "border-2 border-blue-600 text-blue-600 hover:bg-blue-50 focus:ring-blue-500 disabled:border-blue-400 disabled:text-blue-400",
+    gradient:
+      "bg-gradient-to-r from-blue-600 to-green-600 text-white hover:from-blue-700 hover:to-green-700 focus:ring-blue-500 disabled:from-blue-400 disabled:to-green-400 shadow-lg hover:shadow-xl",
   };
 
   const sizeClasses = {
-    xs: "px-2 py-1 text-xs",
-    sm: "px-4 py-3 text-sm",
-    md: "px-6 py-3 text-base",
-    lg: "px-8 py-4 text-lg",
+    xs: "px-2 py-1 text-xs gap-1",
+    sm: "px-3 py-2 text-sm gap-1.5",
+    md: "px-4 py-2.5 text-base gap-2",
+    lg: "px-6 py-3 text-lg gap-2.5",
+    xl: "px-8 py-4 text-xl gap-3",
   };
 
   const isDisabled = disabled || loading;
@@ -55,7 +60,7 @@ const Button = ({
         ${baseClasses}
         ${variantClasses[variant]}
         ${sizeClasses[size]}
-        ${isDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}
+        ${isDisabled ? "cursor-not-allowed opacity-60 transform-none shadow-none" : "cursor-pointer"}
         ${className}
       `}
       {...props}

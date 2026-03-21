@@ -39,6 +39,11 @@ export const ServiceTableModal = ({
   const [showCompleteModal, setShowCompleteModal] = useState(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [completionNotes, setCompletionNotes] = useState("");
+  const [amountCollected, setAmountCollected] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [technicianName, setTechnicianName] = useState("");
+  const [issueReported, setIssueReported] = useState("");
+  const [workDone, setWorkDone] = useState("");
 
   // RTK Query hooks
   const {
@@ -65,16 +70,58 @@ export const ServiceTableModal = ({
   const markServiceComplete = async (scheduleId) => {
     console.log("markServiceComplete called with scheduleId:", scheduleId);
 
-    try {
-      console.log("Calling markComplete mutation with:", {
-        id: scheduleId,
-        notes: completionNotes,
-      });
+    // Comprehensive validation for required fields
+    const errors = [];
 
-      const result = await markComplete({
+    if (!issueReported.trim()) {
+      errors.push("Issue reported is required");
+    }
+
+    if (!workDone.trim()) {
+      errors.push("Work done description is required");
+    }
+
+    if (!technicianName.trim()) {
+      errors.push("Technician name is required");
+    }
+
+    if (!completionNotes.trim()) {
+      errors.push("Service type is required");
+    }
+
+    // Validate payment amount
+    if (amountCollected < 0) {
+      errors.push("Amount collected cannot be negative");
+    }
+
+    if (paymentMethod !== "NONE" && amountCollected === 0) {
+      errors.push(
+        "Amount collected is required when payment method is selected",
+      );
+    }
+
+    if (errors.length > 0) {
+      alert(
+        "Please fix the following errors:\n\n" +
+          errors.map((e) => "• " + e).join("\n"),
+      );
+      return;
+    }
+
+    try {
+      const completeData = {
         id: scheduleId,
-        notes: completionNotes,
-      }).unwrap();
+        amount_collected: parseFloat(amountCollected) || 0,
+        payment_method: paymentMethod,
+        technician_name: technicianName.trim(),
+        service_type: completionNotes || "MAINTENANCE",
+        issue_reported: issueReported.trim(),
+        work_done: workDone.trim(),
+      };
+
+      console.log("Calling markComplete mutation with:", completeData);
+
+      const result = await markComplete(completeData).unwrap();
 
       console.log("markComplete result:", result);
 
@@ -83,7 +130,13 @@ export const ServiceTableModal = ({
 
       refetch();
       setShowCompleteModal(null);
-      setCompletionNotes("");
+      // Reset form fields
+      setAmountCollected(0);
+      setPaymentMethod("CASH");
+      setTechnicianName("");
+      setCompletionNotes("MAINTENANCE");
+      setIssueReported("Regular maintenance service");
+      setWorkDone("Service completed successfully");
     } catch (err) {
       console.error("Mark complete error:", err);
       const errorMessage =
@@ -250,6 +303,12 @@ export const ServiceTableModal = ({
                         Description
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Service Charge
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount Collected
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Completion Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -282,6 +341,33 @@ export const ServiceTableModal = ({
                           {schedule.service_description ||
                             serviceData.plan?.service_description}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {schedule.service_charge
+                            ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
+                            : serviceData.plan?.service_charge
+                              ? `₹${serviceData.plan.service_charge.toLocaleString("en-IN")}`
+                              : "Free"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              schedule.payment_status === "PAID"
+                                ? "bg-green-100 text-green-800"
+                                : schedule.payment_status === "PARTIAL"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : schedule.payment_status === "FREE"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {schedule.amount_collected
+                              ? `₹${schedule.amount_collected.toLocaleString("en-IN")}`
+                              : "₹0"}
+                            <span className="ml-1">
+                              ({schedule.payment_status || "PENDING"})
+                            </span>
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {schedule.completed_at
                             ? formatDate(schedule.completed_at)
@@ -299,6 +385,22 @@ export const ServiceTableModal = ({
                                     "Table Complete button clicked for schedule:",
                                     schedule._id,
                                   );
+                                  // Initialize and open completion modal
+                                  const scheduleData = schedule;
+                                  const serviceCharge =
+                                    scheduleData.service_charge ||
+                                    serviceData.plan?.service_charge ||
+                                    0;
+                                  setAmountCollected(serviceCharge);
+                                  setPaymentMethod(
+                                    serviceCharge === 0 ? "NONE" : "CASH",
+                                  );
+                                  setTechnicianName("");
+                                  setCompletionNotes("MAINTENANCE");
+                                  setIssueReported(
+                                    "Regular maintenance service",
+                                  );
+                                  setWorkDone("Service completed successfully");
                                   setShowCompleteModal(schedule._id);
                                 }}
                                 disabled={actionLoading}
@@ -342,9 +444,29 @@ export const ServiceTableModal = ({
                           {schedule.status === "overdue" && (
                             <div className="flex justify-end space-x-2">
                               <button
-                                onClick={() =>
-                                  setShowCompleteModal(schedule._id)
-                                }
+                                onClick={() => {
+                                  console.log(
+                                    "Overdue Complete button clicked for schedule:",
+                                    schedule._id,
+                                  );
+                                  // Initialize and open completion modal
+                                  const scheduleData = schedule;
+                                  const serviceCharge =
+                                    scheduleData.service_charge ||
+                                    serviceData.plan?.service_charge ||
+                                    0;
+                                  setAmountCollected(serviceCharge);
+                                  setPaymentMethod(
+                                    serviceCharge === 0 ? "NONE" : "CASH",
+                                  );
+                                  setTechnicianName("");
+                                  setCompletionNotes("MAINTENANCE");
+                                  setIssueReported(
+                                    "Regular maintenance service",
+                                  );
+                                  setWorkDone("Service completed successfully");
+                                  setShowCompleteModal(schedule._id);
+                                }}
                                 disabled={actionLoading}
                                 className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
@@ -393,7 +515,7 @@ export const ServiceTableModal = ({
         <Modal
           open={true}
           onClose={() => setShowCompleteModal(null)}
-          maxWidth="md"
+          maxWidth="xl"
           className="z-[60]"
         >
           <DialogHeader
@@ -406,28 +528,171 @@ export const ServiceTableModal = ({
             onClose={() => setShowCompleteModal(null)}
           />
           <DialogBody>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <p className="text-gray-600">
-                Are you sure you want to mark this service as completed?
+                Complete the service and record payment details (if applicable).
               </p>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Completion Notes (Optional)
-                </label>
-                <textarea
-                  value={completionNotes}
-                  onChange={(e) => setCompletionNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  rows="3"
-                  placeholder="Add any notes about the service completion..."
-                />
+              {/* Service Details Display */}
+              {serviceData?.schedules?.find(
+                (s) => s._id === showCompleteModal,
+              ) && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Service Details
+                  </h4>
+                  <div className="text-sm text-gray-600">
+                    <p>
+                      Service Charge:{" "}
+                      {serviceData.schedules.find(
+                        (s) => s._id === showCompleteModal,
+                      )?.service_charge || serviceData.plan?.service_charge
+                        ? `₹${(
+                            serviceData.schedules.find(
+                              (s) => s._id === showCompleteModal,
+                            )?.service_charge ||
+                            serviceData.plan?.service_charge
+                          ).toLocaleString("en-IN")}`
+                        : "Free"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount Collected *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-500">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      value={amountCollected}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        if (value >= 0) {
+                          setAmountCollected(value);
+                        }
+                      }}
+                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Method *
+                  </label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => {
+                      setPaymentMethod(e.target.value);
+                      if (e.target.value === "NONE") {
+                        setAmountCollected(0);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    required
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CARD">Card</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                    <option value="CHEQUE">Cheque</option>
+                    <option value="NONE">No Payment (Free Service)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Service Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Technician Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={technicianName}
+                    onChange={(e) => setTechnicianName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Enter technician name (required)"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Service Type *
+                  </label>
+                  <select
+                    value={completionNotes}
+                    onChange={(e) => setCompletionNotes(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    required
+                  >
+                    <option value="">Select service type</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="REPAIR">Repair</option>
+                    <option value="INSTALLATION">Installation</option>
+                    <option value="INSPECTION">Inspection</option>
+                    <option value="CALIBRATION">Calibration</option>
+                    <option value="WARRANTY_SERVICE">Warranty Service</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Issue and Work Description */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Issue Reported *
+                  </label>
+                  <textarea
+                    value={issueReported}
+                    onChange={(e) => setIssueReported(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    rows="3"
+                    placeholder="Describe the issue reported by customer (required)"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Work Done *
+                  </label>
+                  <textarea
+                    value={workDone}
+                    onChange={(e) => setWorkDone(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    rows="3"
+                    placeholder="Describe the work performed (required)"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end space-x-3 pt-4 border-t">
                 <Button
                   variant="secondary"
-                  onClick={() => setShowCompleteModal(null)}
+                  onClick={() => {
+                    setShowCompleteModal(null);
+                    setAmountCollected(0);
+                    setPaymentMethod("CASH");
+                    setTechnicianName("");
+                    setCompletionNotes("MAINTENANCE");
+                    setIssueReported("Regular maintenance service");
+                    setWorkDone("Service completed successfully");
+                  }}
                   disabled={actionLoading}
                 >
                   Cancel
@@ -452,7 +717,7 @@ export const ServiceTableModal = ({
                     ) : (
                       <CheckCircle2 size={16} />
                     )}
-                    <span>Mark Complete</span>
+                    <span>Complete Service</span>
                   </div>
                 </Button>
               </div>

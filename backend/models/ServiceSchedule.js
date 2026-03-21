@@ -56,6 +56,32 @@ const serviceScheduleSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    service_charge: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    amount_collected: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    payment_status: {
+      type: String,
+      enum: ["PENDING", "PARTIAL", "PAID", "FREE"],
+      default: "PENDING",
+    },
+    completed_at: {
+      type: Date,
+    },
+    completed_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    service_visit_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ServiceVisit",
+    },
     deleted_at: {
       type: Date,
       default: null,

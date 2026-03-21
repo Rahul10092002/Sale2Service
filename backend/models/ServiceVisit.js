@@ -22,6 +22,19 @@ const serviceVisitSchema = new mongoose.Schema(
       enum: ["FREE", "WARRANTY", "PAID", "GOODWILL"],
       required: true,
     },
+    service_category: {
+      type: String,
+      enum: [
+        "MAINTENANCE",
+        "REPAIR",
+        "INSTALLATION",
+        "INSPECTION",
+        "CALIBRATION",
+        "WARRANTY_SERVICE",
+        "OTHER",
+      ],
+      default: "MAINTENANCE",
+    },
     technician_name: {
       type: String,
       required: true,
@@ -35,11 +48,13 @@ const serviceVisitSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      default: "Regular service visit",
     },
     work_done: {
       type: String,
       required: true,
       trim: true,
+      default: "Service completed",
     },
     next_action: {
       type: String,
@@ -107,6 +122,16 @@ const serviceVisitSchema = new mongoose.Schema(
     customer_feedback: {
       type: String,
       trim: true,
+    },
+    amount_collected: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    payment_method: {
+      type: String,
+      enum: ["CASH", "CARD", "UPI", "BANK_TRANSFER", "CHEQUE", "NONE", "OTHER"],
+      default: "CASH",
     },
     internal_notes: {
       type: String,

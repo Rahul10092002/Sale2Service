@@ -45,7 +45,12 @@ const AppRoutes = () => {
   // When the current user query returns, update the auth slice with the fresh user
   React.useEffect(() => {
     if (currentUserData && currentUserData.user) {
-      dispatch(updateUser({ user: currentUserData.user, shopId: currentUserData.shopId }));
+      dispatch(
+        updateUser({
+          user: currentUserData.user,
+          shopId: currentUserData.shopId,
+        }),
+      );
     }
   }, [currentUserData, dispatch]);
 

@@ -25,8 +25,8 @@ import CustomerEdit from "../pages/customers/CustomerEdit.jsx";
 import Products from "../pages/products/Products.jsx";
 import ProductView from "../pages/products/ProductView.jsx";
 import UserView from "../pages/users/UserView.jsx";
-import Logs from "../pages/logs/Logs.jsx";
 import Settings from "../pages/settings/Settings.jsx";
+import Logs from "../pages/logs/LogsSimplifiedClean.jsx";
 /**
  * Main app routing component
  * Handles all application routes and authentication state rehydration

@@ -75,7 +75,9 @@ const LogsPage = () => {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <p className="text-red-600">Error loading logs: {error.message || 'Unknown error'}</p>
+          <p className="text-red-600">
+            Error loading logs: {error.message || "Unknown error"}
+          </p>
           <Button onClick={handleRefresh} className="mt-4">
             Retry
           </Button>
@@ -95,20 +97,30 @@ const LogsPage = () => {
       {statsData && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <h3 className="text-sm font-medium text-blue-600">Total Messages</h3>
-            <p className="text-2xl font-bold text-blue-700">{statsData.total || 0}</p>
+            <h3 className="text-sm font-medium text-blue-600">
+              Total Messages
+            </h3>
+            <p className="text-2xl font-bold text-blue-700">
+              {statsData.total || 0}
+            </p>
           </div>
           <div className="bg-green-50 border border-green-200 rounded-lg p-6">
             <h3 className="text-sm font-medium text-green-600">Successful</h3>
-            <p className="text-2xl font-bold text-green-700">{statsData.successful || 0}</p>
+            <p className="text-2xl font-bold text-green-700">
+              {statsData.successful || 0}
+            </p>
           </div>
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <h3 className="text-sm font-medium text-red-600">Failed</h3>
-            <p className="text-2xl font-bold text-red-700">{statsData.failed || 0}</p>
+            <p className="text-2xl font-bold text-red-700">
+              {statsData.failed || 0}
+            </p>
           </div>
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
             <h3 className="text-sm font-medium text-yellow-600">Pending</h3>
-            <p className="text-2xl font-bold text-yellow-700">{statsData.pending || 0}</p>
+            <p className="text-2xl font-bold text-yellow-700">
+              {statsData.pending || 0}
+            </p>
           </div>
         </div>
       )}
@@ -136,25 +148,35 @@ const LogsPage = () => {
         {logsData?.logs?.length > 0 ? (
           <div className="space-y-4">
             {logsData.logs.map((log) => (
-              <div key={log._id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+              <div
+                key={log._id}
+                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+              >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <p className="text-sm text-gray-900 font-medium">
-                      {log.message || 'No message'}
+                      {log.message || "No message"}
                     </p>
                     <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                      <span>Type: {log.entity_type || 'Unknown'}</span>
-                      <span>Created: {log.createdAt ? new Date(log.createdAt).toLocaleDateString() : 'Unknown'}</span>
+                      <span>Type: {log.entity_type || "Unknown"}</span>
+                      <span>
+                        Created:{" "}
+                        {log.createdAt
+                          ? new Date(log.createdAt).toLocaleDateString()
+                          : "Unknown"}
+                      </span>
                     </div>
                   </div>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-4 ${
-                    log.message_status === 'sent' 
-                      ? 'bg-green-100 text-green-800'
-                      : log.message_status === 'failed'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {log.message_status || 'unknown'}
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-4 ${
+                      log.message_status === "sent"
+                        ? "bg-green-100 text-green-800"
+                        : log.message_status === "failed"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {log.message_status || "unknown"}
                   </span>
                 </div>
               </div>
@@ -168,7 +190,9 @@ const LogsPage = () => {
               </div>
             </div>
             <p className="text-lg font-medium">No logs found</p>
-            <p className="text-sm">Try adjusting your search or refresh the data.</p>
+            <p className="text-sm">
+              Try adjusting your search or refresh the data.
+            </p>
           </div>
         )}
 
@@ -180,7 +204,7 @@ const LogsPage = () => {
             </p>
             <div className="flex space-x-2">
               <Button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
                 variant="outline"
                 size="sm"
@@ -188,9 +212,13 @@ const LogsPage = () => {
                 Previous
               </Button>
               <Button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, logsData.totalPages))}
+                onClick={() =>
+                  setCurrentPage((prev) =>
+                    Math.min(prev + 1, logsData.totalPages),
+                  )
+                }
                 disabled={currentPage === logsData.totalPages}
-                variant="outline"  
+                variant="outline"
                 size="sm"
               >
                 Next

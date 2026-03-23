@@ -55,10 +55,20 @@ export const baseApi = createApi({
     "LogStats",
     "MessageLogs",
     "RecentActivity",
+    "DashboardSummary",
+    "RevenueTrend",
+    "TopProducts",
+    "PaymentMethodStats",
+    "ServiceReminders",
+    "WarrantyReminders",
+    "WarrantyStats",
   ],
 
-  refetchOnFocus: true,
+  // Prevent unnecessary API calls on focus/navigation
+  refetchOnFocus: false,
   refetchOnReconnect: true,
+  // Keep cached data for 5 minutes even if component unmounts
+  keepUnusedDataFor: 300,
   endpoints: (build) => ({
     getShopProfile: build.query({
       query: () => "/shop/profile",

@@ -33,7 +33,6 @@ import {
 } from "../../components/ui/Modal.jsx";
 import { ROUTES } from "../../utils/constants.js";
 import { LoadingSpinner } from "../../components/ui/index.js";
-import { ServiceIntegration } from "../../components/service/index.js";
 
 const InvoiceView = () => {
   const { id } = useParams();
@@ -482,9 +481,7 @@ const InvoiceView = () => {
                             <th className="text-left py-3 px-4 font-medium text-gray-700">
                               Serial Number
                             </th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-700">
-                              Service
-                            </th>
+                           
                             <th className="text-right py-3 px-4 font-medium text-gray-700">
                               Price
                             </th>
@@ -499,14 +496,7 @@ const InvoiceView = () => {
                               <td className="py-3 px-4 text-gray-600">
                                 {item.serial_number}
                               </td>
-                              <td className="py-3 px-4">
-                                <ServiceIntegration
-                                  itemId={item._id}
-                                  invoiceId={id}
-                                  product={item}
-                                  size="small"
-                                />
-                              </td>
+                             
                               <td className="py-3 px-4 text-right text-gray-900">
                                 {formatCurrency(
                                   item.selling_price || item.price || 0,

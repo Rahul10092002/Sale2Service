@@ -4,19 +4,27 @@ export const productApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getProducts: builder.query({
       query: (params) => ({ url: "/products", params: params || {} }),
-      providesTags: ["Product"],
+      providesTags: (result) => [
+        ...(result?.map(({ _id }) => ({ type: "Product", id: _id })) || []),
+        { type: "Product", id: "LIST" },
+      ],
+      // Keep product list cache for 5 minutes (changes less frequently)
+      keepUnusedDataFor: 300,
       transformResponse: (response) => response.data,
     }),
 
     getProductById: builder.query({
       query: (id) => `/products/${id}`,
       providesTags: (result, error, id) => [{ type: "Product", id }],
+      // Keep individual product cache for 10 minutes (rarely changes)
+      keepUnusedDataFor: 600,
       transformResponse: (response) => response.data,
     }),
 
     createProduct: builder.mutation({
       query: (payload) => ({ url: "/products", method: "POST", body: payload }),
-      invalidatesTags: ["Product"],
+      // Invalidate product list and top products on dashboard
+      invalidatesTags: [{ type: "Product", id: "LIST" }, "TopProducts"],
       transformResponse: (response) => response.data,
     }),
 
@@ -26,13 +34,23 @@ export const productApi = baseApi.injectEndpoints({
         method: "PUT",
         body: payload,
       }),
-      invalidatesTags: ["Product"],
+      // Invalidate specific product, list, and dashboard
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Product", id },
+        { type: "Product", id: "LIST" },
+        "TopProducts",
+      ],
       transformResponse: (response) => response.data,
     }),
 
     deleteProduct: builder.mutation({
       query: (id) => ({ url: `/products/${id}`, method: "DELETE" }),
-      invalidatesTags: ["Product"],
+      // Invalidate deleted product, list, and dashboard
+      invalidatesTags: (result, error, id) => [
+        { type: "Product", id },
+        { type: "Product", id: "LIST" },
+        "TopProducts",
+      ],
     }),
   }),
   overrideExisting: false,

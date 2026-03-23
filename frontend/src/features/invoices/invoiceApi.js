@@ -8,7 +8,12 @@ export const invoiceApi = baseApi.injectEndpoints({
         url: "/invoices",
         params: params || {},
       }),
-      providesTags: ["Invoice"],
+      providesTags: (result) => [
+        ...(result?.map(({ _id }) => ({ type: "Invoice", id: _id })) || []),
+        { type: "Invoice", id: "LIST" },
+      ],
+      // Keep invoice list cache for 3 minutes
+      keepUnusedDataFor: 180,
       transformResponse: (response) => response.data,
     }),
 
@@ -16,6 +21,8 @@ export const invoiceApi = baseApi.injectEndpoints({
     getInvoiceById: builder.query({
       query: (id) => `/invoices/${id}`,
       providesTags: (result, error, id) => [{ type: "Invoice", id }],
+      // Keep individual invoice cache for 5 minutes
+      keepUnusedDataFor: 300,
       transformResponse: (response) => response.data,
     }),
 
@@ -26,7 +33,12 @@ export const invoiceApi = baseApi.injectEndpoints({
         method: "POST",
         body: invoiceData,
       }),
-      invalidatesTags: ["Invoice"],
+      // Only invalidate the invoice list, not individual cached invoices
+      invalidatesTags: [
+        { type: "Invoice", id: "LIST" },
+        "DashboardSummary",
+        "InvoiceStats",
+      ],
       transformResponse: (response) => response.data,
     }),
 
@@ -37,7 +49,13 @@ export const invoiceApi = baseApi.injectEndpoints({
         method: "PUT",
         body: invoiceData,
       }),
-      invalidatesTags: ["Invoice"],
+      // Invalidate specific invoice and the list
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Invoice", id },
+        { type: "Invoice", id: "LIST" },
+        "DashboardSummary",
+        "InvoiceStats",
+      ],
       transformResponse: (response) => response.data,
     }),
 
@@ -47,7 +65,13 @@ export const invoiceApi = baseApi.injectEndpoints({
         url: `/invoices/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Invoice"],
+      // Invalidate deleted invoice and the list
+      invalidatesTags: (result, error, id) => [
+        { type: "Invoice", id },
+        { type: "Invoice", id: "LIST" },
+        "DashboardSummary",
+        "InvoiceStats",
+      ],
     }),
 
     // Get next invoice number

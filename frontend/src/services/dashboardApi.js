@@ -15,7 +15,9 @@ export const dashboardApi = baseApi.injectEndpoints({
         url: "/dashboard/summary",
         params: { period },
       }),
-      providesTags: ["Dashboard"],
+      providesTags: ["DashboardSummary"],
+      // Keep summary cache for 2 minutes
+      keepUnusedDataFor: 120,
     }),
 
     /**
@@ -26,7 +28,9 @@ export const dashboardApi = baseApi.injectEndpoints({
         url: "/dashboard/revenue-trend",
         params: { days },
       }),
-      providesTags: ["Dashboard", "Revenue"],
+      providesTags: ["RevenueTrend"],
+      // Keep revenue data cache for 3 minutes
+      keepUnusedDataFor: 180,
     }),
 
     /**
@@ -37,7 +41,9 @@ export const dashboardApi = baseApi.injectEndpoints({
         url: "/dashboard/top-products",
         params: { limit },
       }),
-      providesTags: ["Dashboard", "Products"],
+      providesTags: ["TopProducts"],
+      // Keep products cache for 3 minutes
+      keepUnusedDataFor: 180,
     }),
 
     /**
@@ -48,7 +54,9 @@ export const dashboardApi = baseApi.injectEndpoints({
         url: "/dashboard/recent-activity",
         params: { limit },
       }),
-      providesTags: ["Dashboard"],
+      providesTags: ["RecentActivity"],
+      // Keep activity cache for 1 minute (more dynamic data)
+      keepUnusedDataFor: 60,
     }),
 
     /**
@@ -59,7 +67,9 @@ export const dashboardApi = baseApi.injectEndpoints({
         url: "/dashboard/payment-methods",
         params: { period },
       }),
-      providesTags: ["Dashboard"],
+      providesTags: ["PaymentMethodStats"],
+      // Keep payment stats cache for 5 minutes
+      keepUnusedDataFor: 300,
     }),
 
     /**
@@ -70,7 +80,9 @@ export const dashboardApi = baseApi.injectEndpoints({
         url: "/dashboard/invoice-stats",
         params: { period },
       }),
-      providesTags: ["Dashboard", "Invoice"],
+      providesTags: ["InvoiceStats"],
+      // Keep invoice stats cache for 3 minutes
+      keepUnusedDataFor: 180,
     }),
 
     /**
@@ -81,7 +93,9 @@ export const dashboardApi = baseApi.injectEndpoints({
         url: "/dashboard/service-reminders",
         params: { period },
       }),
-      providesTags: ["Dashboard"],
+      providesTags: ["ServiceReminders"],
+      // Keep reminder cache for 2 minutes
+      keepUnusedDataFor: 120,
     }),
 
     /**
@@ -92,7 +106,9 @@ export const dashboardApi = baseApi.injectEndpoints({
         url: "/dashboard/warranty-reminders",
         params: { period },
       }),
-      providesTags: ["Dashboard"],
+      providesTags: ["WarrantyReminders"],
+      // Keep warranty reminder cache for 2 minutes
+      keepUnusedDataFor: 120,
     }),
 
     /**
@@ -100,7 +116,9 @@ export const dashboardApi = baseApi.injectEndpoints({
      */
     getWarrantyStats: builder.query({
       query: () => "/dashboard/warranty-stats",
-      providesTags: ["Dashboard"],
+      providesTags: ["WarrantyStats"],
+      // Keep warranty stats cache for 5 minutes
+      keepUnusedDataFor: 300,
     }),
   }),
   overrideExisting: false,

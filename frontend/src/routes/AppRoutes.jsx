@@ -27,17 +27,28 @@ import ProductView from "../pages/products/ProductView.jsx";
 import UserView from "../pages/users/UserView.jsx";
 import Settings from "../pages/settings/Settings.jsx";
 
-// Import hooks and components for full Logs functionality
-import { useState } from "react";
-import { Button } from "../components/ui/index.js";
-import {
-  useGetReminderStatsQuery,
-  useGetReminderLogsQuery,
-} from "../services/baseApi.js";
+// Dynamic import for Logs component using React.lazy()
+import { lazy, Suspense } from "react";
 
-// Full-featured Logs component with RTK Query
-const LogsPage = () => {
-  const [currentPage, setCurrentPage] = useState(1);
+// Lazy load the Logs component to avoid build issues
+const LogsPage = lazy(() => import("../pages/logs/Logs.jsx"));
+
+// Loading fallback component
+const LogsLoading = () => (
+  <div className="flex justify-center items-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    <span className="ml-3 text-gray-600">Loading logs...</span>
+  </div>
+);
+
+// Wrapper component with Suspense
+const LogsPageWrapper = () => (
+  <Suspense fallback={<LogsLoading />}>
+    <LogsPage />
+  </Suspense>
+);
+
+/**
   const [searchTerm, setSearchTerm] = useState("");
 
   // RTK Query hooks for data fetching
@@ -93,7 +104,6 @@ const LogsPage = () => {
         <p className="text-gray-600">View system activity and message logs</p>
       </header>
 
-      {/* Stats Cards */}
       {statsData && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
@@ -125,7 +135,6 @@ const LogsPage = () => {
         </div>
       )}
 
-      {/* Main Logs Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Activity Logs</h2>
@@ -144,7 +153,6 @@ const LogsPage = () => {
           />
         </div>
 
-        {/* Logs Display */}
         {logsData?.logs?.length > 0 ? (
           <div className="space-y-4">
             {logsData.logs.map((log) => (
@@ -196,7 +204,6 @@ const LogsPage = () => {
           </div>
         )}
 
-        {/* Pagination */}
         {logsData?.totalPages > 1 && (
           <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-700">

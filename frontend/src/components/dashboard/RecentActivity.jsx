@@ -17,7 +17,6 @@ const RecentActivity = ({ data, limit = 5 }) => {
       </div>
     );
   }
-
   const getStatusColor = (status) => {
     switch (status) {
       case "PAID":
@@ -31,7 +30,9 @@ const RecentActivity = ({ data, limit = 5 }) => {
     }
   };
 
-  const formatTimestamp = (timestamp) => {
+  const formatTimestamp = (activity) => {
+    const timestamp =
+      activity.timestamp || activity.createdAt || activity.sent_at;
     if (!timestamp) return "Unknown time";
 
     const date = new Date(timestamp);
@@ -43,6 +44,27 @@ const RecentActivity = ({ data, limit = 5 }) => {
       console.warn("Date formatting error:", error, timestamp);
       return "Invalid date";
     }
+  };
+
+  const getActivityTitle = (activity) => {
+    if (activity.title) return activity.title;
+    const typeLabel =
+      activity.entity_type === "INVOICE"
+        ? "Invoice"
+        : activity.entity_type === "PRODUCT"
+          ? "Product"
+          : activity.entity_type === "CUSTOMER"
+            ? "Customer"
+            : "Activity";
+    return `${typeLabel} message sent`;
+  };
+
+  const getActivityDescription = (activity) => {
+    if (activity.description) return activity.description;
+    const parts = [];
+    if (activity.recipient_name) parts.push(`To: ${activity.recipient_name}`);
+    if (activity.message_status) parts.push(activity.message_status);
+    return parts.join(" · ") || "";
   };
 
   const displayData = data.slice(0, limit);
@@ -63,15 +85,15 @@ const RecentActivity = ({ data, limit = 5 }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {activity.title}
+                {getActivityTitle(activity)}
               </p>
               <p className="text-sm text-gray-600 truncate">
-                {activity.description}
+                {getActivityDescription(activity)}
               </p>
               <div className="flex items-center gap-2 mt-1">
                 <Clock className="w-3 h-3 text-gray-400" />
                 <span className="text-xs text-gray-500">
-                  {formatTimestamp(activity.timestamp)}
+                  {formatTimestamp(activity)}
                 </span>
               </div>
             </div>

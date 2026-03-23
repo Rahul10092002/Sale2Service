@@ -5,7 +5,7 @@ export const productApi = baseApi.injectEndpoints({
     getProducts: builder.query({
       query: (params) => ({ url: "/products", params: params || {} }),
       providesTags: (result) => [
-        ...(result?.map(({ _id }) => ({ type: "Product", id: _id })) || []),
+        ...(result?.products?.map(({ _id }) => ({ type: "Product", id: _id })) || []),
         { type: "Product", id: "LIST" },
       ],
       // Keep product list cache for 5 minutes (changes less frequently)

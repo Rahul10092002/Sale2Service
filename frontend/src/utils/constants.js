@@ -23,6 +23,7 @@ export const ROUTES = {
   SALES: "/sales",
   WARRANTY: "/warranty",
   SERVICES: "/services",
+  LOGS: "/logs",
   SETTINGS: "/settings",
 };
 

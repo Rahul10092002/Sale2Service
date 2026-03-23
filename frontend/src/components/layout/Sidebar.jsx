@@ -8,6 +8,7 @@ import {
   Receipt,
   Box,
   Wrench,
+  Activity,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "../../utils/constants.js";
@@ -42,6 +43,12 @@ const navItems = [
     label: "Users",
     icon: <User className="w-5 h-5" />,
     path: ROUTES.USERS,
+  },
+  {
+    key: "logs",
+    label: "Logs",
+    icon: <Activity className="w-5 h-5" />,
+    path: ROUTES.LOGS,
   },
   {
     key: "settings",

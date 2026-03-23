@@ -15,10 +15,11 @@ const Products = () => {
   const [page, setPage] = useState(1);
   const [showServiceTable, setShowServiceTable] = useState(null);
 
-  const {
-    data: response,
-    isLoading,
-  } = useGetProductsQuery({ search: searchTerm, page, limit: 10 });
+  const { data: response, isLoading } = useGetProductsQuery({
+    search: searchTerm,
+    page,
+    limit: 10,
+  });
 
   const products = response?.products || [];
   const pagination = response?.pagination || {
@@ -108,10 +109,10 @@ const Products = () => {
                         </div>
                       </div>
                       <div>
-                        <div className="font-bold text-gray-800 text-base">
+                        <div className="font-bold text-gray-800 text-base capitalize">
                           {product.product_name}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 ">
                           <p>Serial: {product.serial_number}</p>
                           <p>
                             {product.company} · {product.model_number}

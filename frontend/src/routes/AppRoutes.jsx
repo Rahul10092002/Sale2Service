@@ -26,7 +26,7 @@ import Products from "../pages/products/Products.jsx";
 import ProductView from "../pages/products/ProductView.jsx";
 import UserView from "../pages/users/UserView.jsx";
 import Settings from "../pages/settings/Settings.jsx";
-
+import Logs from "../pages/logs/Logs.jsx";
 /**
  * Main app routing component
  * Handles all application routes and authentication state rehydration
@@ -176,6 +176,14 @@ const AppRoutes = () => {
           </PrivateRoute>
         }
       />
+      <Route
+        path={ROUTES.LOGS}
+        element={
+          <PrivateRoute>
+            <Logs />
+          </PrivateRoute>
+        }
+      />  
       <Route
         path={ROUTES.SETTINGS}
         element={

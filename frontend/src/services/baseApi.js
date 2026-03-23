@@ -4,7 +4,7 @@ import { getToken } from "../utils/token.js";
 import { showToast } from "../features/ui/uiSlice.js";
 
 // Use VITE_API_BASE_URL when available; fall back to localhost (Postman default)
-  
+
 const API_BASE_URL =
   import.meta.env.VITE_ENVIRONMENT === "production"
     ? import.meta.env.VITE_PROD_API_URL
@@ -51,6 +51,10 @@ export const baseApi = createApi({
     "Dashboard",
     "Revenue",
     "Products",
+    "ReminderLogs",
+    "LogStats",
+    "MessageLogs",
+    "RecentActivity",
   ],
 
   refetchOnFocus: true,
@@ -123,6 +127,77 @@ export const baseApi = createApi({
         }
       },
     }),
+
+    // Logs API endpoints
+    getReminderLogs: build.query({
+      query: (params = {}) => {
+        const searchParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            searchParams.append(key, value);
+          }
+        });
+        return `/logs/reminders?${searchParams}`;
+      },
+      providesTags: ["ReminderLogs"],
+    }),
+
+    getReminderStats: build.query({
+      query: (params = {}) => {
+        const searchParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            searchParams.append(key, value);
+          }
+        });
+        return `/logs/stats?${searchParams}`;
+      },
+      providesTags: ["LogStats"],
+    }),
+
+    getMessageLogs: build.query({
+      query: (params = {}) => {
+        const searchParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            searchParams.append(key, value);
+          }
+        });
+        return `/logs/messages?${searchParams}`;
+      },
+      providesTags: ["MessageLogs"],
+    }),
+
+    getRecentActivity: build.query({
+      query: (params = {}) => {
+        const searchParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            searchParams.append(key, value);
+          }
+        });
+        return `/logs/recent?${searchParams}`;
+      },
+      providesTags: ["RecentActivity"],
+    }),
+
+    getReminderLogById: build.query({
+      query: (id) => `/logs/reminders/${id}`,
+      providesTags: (result, error, id) => [{ type: "ReminderLogs", id }],
+    }),
+
+    getLogsSummary: build.query({
+      query: (period = "7d") => `/logs/stats?period=${period}`,
+      providesTags: ["LogStats"],
+    }),
+
+    retryReminder: build.mutation({
+      query: (id) => ({
+        url: `/logs/reminders/${id}/retry`,
+        method: "POST",
+      }),
+      invalidatesTags: ["ReminderLogs", "LogStats"],
+    }),
   }),
 });
 
@@ -132,4 +207,11 @@ export const {
   useUpdateShopProfileMutation,
   useUploadShopLogoMutation,
   useDeleteShopLogoMutation,
+  useGetReminderLogsQuery,
+  useGetReminderStatsQuery,
+  useGetMessageLogsQuery,
+  useGetRecentActivityQuery,
+  useGetReminderLogByIdQuery,
+  useGetLogsSummaryQuery,
+  useRetryReminderMutation,
 } = baseApi;

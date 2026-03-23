@@ -12,6 +12,7 @@ import serviceRouter from "./routes/service.js";
 import debugRouter from "./routes/debug.js";
 import dashboardRouter from "./routes/dashboard.js";
 import fileUploadRouter from "./routes/fileUpload.js";
+import logsRouter from "./routes/logs.js";
 import SchedulerService from "./scheduler/index.js";
 
 dotenv.config();
@@ -46,6 +47,7 @@ app.use("/v1/services", serviceRouter);
 // Removed unused service plan routes
 app.use("/v1/dashboard", dashboardRouter);
 app.use("/v1/files", fileUploadRouter);
+app.use("/v1/logs", logsRouter);
 // Dev-only debug endpoints
 app.use("/v1/debug", debugRouter);
 

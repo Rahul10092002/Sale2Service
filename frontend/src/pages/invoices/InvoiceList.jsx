@@ -88,8 +88,18 @@ const InvoiceList = () => {
     );
   }
   const formatDate = (dateString) => {
-    const options = { year: "numeric", month: "short", day: "numeric" };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    if (!dateString) return "No date";
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Invalid date";
+
+    try {
+      const options = { year: "numeric", month: "short", day: "numeric" };
+      return date.toLocaleDateString(undefined, options);
+    } catch (error) {
+      console.warn("Date formatting error:", error, dateString);
+      return "Invalid date";
+    }
   };
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-IN", {
@@ -114,7 +124,6 @@ const InvoiceList = () => {
     <>
       <div className="min-h-screen bg-gray-50 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-       
           {/* Modern Filters & Search */}
           <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-6 gap-4">
             <div className="flex items-center space-x-4">
@@ -298,6 +307,10 @@ const InvoiceList = () => {
                             : "N/A"}
                         </div>
                         <div className="text-sm text-gray-600">
+                          <p>
+                            Mobile No.:{" "}
+                            {invoice.customer_id?.whatsapp_number || "N/A"}
+                          </p>
                           <p>Invoice Number: {invoice.invoice_number || ""}</p>
                           <p>
                             Invoice Date:{" "}

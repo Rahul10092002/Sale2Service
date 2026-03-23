@@ -31,6 +31,20 @@ const RecentActivity = ({ data, limit = 5 }) => {
     }
   };
 
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return "Unknown time";
+
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return "Invalid date";
+
+    try {
+      return formatDistanceToNow(date, { addSuffix: true });
+    } catch (error) {
+      console.warn("Date formatting error:", error, timestamp);
+      return "Invalid date";
+    }
+  };
+
   const displayData = data.slice(0, limit);
 
   return (
@@ -57,9 +71,7 @@ const RecentActivity = ({ data, limit = 5 }) => {
               <div className="flex items-center gap-2 mt-1">
                 <Clock className="w-3 h-3 text-gray-400" />
                 <span className="text-xs text-gray-500">
-                  {formatDistanceToNow(new Date(activity.timestamp), {
-                    addSuffix: true,
-                  })}
+                  {formatTimestamp(activity.timestamp)}
                 </span>
               </div>
             </div>

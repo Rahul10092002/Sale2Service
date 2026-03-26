@@ -271,94 +271,165 @@ const InvoiceList = () => {
                 </div>
 
                 {/* Invoice Rows */}
-                {invoices.map((invoice, index) => (
-                  <div
-                    key={invoice._id}
-                    className={`flex flex-col md:grid md:grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4 rounded-sm ${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-100"
-                    }  shadow-sm`}
-                  >
-                    {/* S No. */}
-                    <div className="text-gray-600 md:block hidden">
-                      {(currentPage - 1) * 10 + index + 1}
-                    </div>
+                {invoices.map((invoice, index) => {
+                  const customerName = invoice.customer_id?.full_name
+                    ? invoice.customer_id.full_name
+                        .split(" ")
+                        .map(
+                          (word) =>
+                            word.charAt(0).toUpperCase() + word.slice(1),
+                        )
+                        .join(" ")
+                    : "N/A";
 
-                    {/* Invoice Details */}
-                    <div className="flex gap-3 items-center w-full md:w-auto">
-                      <div
-                        className="cursor-pointer"
-                        onClick={() => handleViewInvoice(invoice._id)}
-                      >
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <FileText className="w-6 h-6 text-blue-600" />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-800 text-base">
-                          {invoice.customer_id?.full_name
-                            ? invoice.customer_id.full_name
-                                .split(" ")
-                                .map(
-                                  (word) =>
-                                    word.charAt(0).toUpperCase() +
-                                    word.slice(1),
-                                )
-                                .join(" ")
-                            : "N/A"}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          <p>
-                            Mobile No.:{" "}
-                            {invoice.customer_id?.whatsapp_number || "N/A"}
-                          </p>
-                          <p>Invoice Number: {invoice.invoice_number || ""}</p>
-                          <p>
-                            Invoice Date:{" "}
-                            {formatDate(invoice.invoice_date) || ""}
-                          </p>
-                          <p className="md:hidden">
-                            Phone:{" "}
-                            {invoice.customer_id?.whatsapp_number || "N/A"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Payment Details */}
-                    <div className="text-gray-600 w-full md:w-auto">
-                      <div className="text-sm">
-                        <p>Payment Mode: {invoice.payment_mode || ""}</p>
-                        <p>
-                          Total Amount: {formatCurrency(invoice.total_amount)}
-                        </p>
-                        <p>
-                          Status:{" "}
+                  return (
+                    <div
+                      key={invoice._id}
+                      className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                    >
+                      {/* ── Mobile Card ── */}
+                      <div className="md:hidden p-4 border-b border-gray-100">
+                        {/* Header: icon + invoice number + status pill */}
+                        <div className="flex items-start gap-3 mb-3">
+                          <div
+                            className="shrink-0 cursor-pointer"
+                            onClick={() => handleViewInvoice(invoice._id)}
+                          >
+                            <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
+                              <FileText className="w-6 h-6 text-blue-600" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-gray-900 leading-tight truncate">
+                              {customerName}
+                            </p>
+                            <p className="text-xs font-mono text-indigo-600 mt-0.5">
+                              {invoice.invoice_number}
+                            </p>
+                          </div>
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(invoice.payment_status)}`}
+                            className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 mt-0.5 ${getPaymentStatusColor(invoice.payment_status)}`}
                           >
                             {invoice.payment_status || "UNPAID"}
                           </span>
-                        </p>
-                        {invoice.discount > 0 && (
-                          <p className="text-green-600">
-                            Discount: {formatCurrency(invoice.discount)}
-                          </p>
-                        )}
+                        </div>
+
+                        {/* Amount + Date chips */}
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <div className="bg-gray-50 rounded-lg px-3 py-2">
+                            <p className="text-xs text-gray-400 mb-0.5">
+                              Total Amount
+                            </p>
+                            <p className="text-sm font-semibold text-gray-800">
+                              {formatCurrency(invoice.total_amount)}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg px-3 py-2">
+                            <p className="text-xs text-gray-400 mb-0.5">
+                              Invoice Date
+                            </p>
+                            <p className="text-xs font-medium text-gray-700">
+                              {formatDate(invoice.invoice_date)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Payment mode + discount row */}
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          {invoice.payment_mode && (
+                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                              {invoice.payment_mode}
+                            </span>
+                          )}
+                          {invoice.discount > 0 && (
+                            <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">
+                              Discount: {formatCurrency(invoice.discount)}
+                            </span>
+                          )}
+                          {invoice.customer_id?.whatsapp_number && (
+                            <span className="text-xs text-gray-400">
+                              {invoice.customer_id.whatsapp_number}
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          className="w-full bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                          onClick={() => handleViewInvoice(invoice._id)}
+                        >
+                          <Eye className="w-4 h-4" />
+                          View Details
+                        </button>
+                      </div>
+
+                      {/* ── Desktop Row ── */}
+                      <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4">
+                        <div className="text-gray-600">
+                          {(currentPage - 1) * 10 + index + 1}
+                        </div>
+                        <div className="flex gap-3 items-center">
+                          <div
+                            className="cursor-pointer"
+                            onClick={() => handleViewInvoice(invoice._id)}
+                          >
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <FileText className="w-6 h-6 text-blue-600" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-bold text-gray-800 text-base">
+                              {customerName}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              <p>
+                                Mobile No.:{" "}
+                                {invoice.customer_id?.whatsapp_number || "N/A"}
+                              </p>
+                              <p>
+                                Invoice Number: {invoice.invoice_number || ""}
+                              </p>
+                              <p>
+                                Invoice Date:{" "}
+                                {formatDate(invoice.invoice_date) || ""}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-gray-600">
+                          <div className="text-sm">
+                            <p>Payment Mode: {invoice.payment_mode || ""}</p>
+                            <p>
+                              Total Amount:{" "}
+                              {formatCurrency(invoice.total_amount)}
+                            </p>
+                            <p>
+                              Status:{" "}
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(invoice.payment_status)}`}
+                              >
+                                {invoice.payment_status || "UNPAID"}
+                              </span>
+                            </p>
+                            {invoice.discount > 0 && (
+                              <p className="text-green-600">
+                                Discount: {formatCurrency(invoice.discount)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <button
+                            className="bg-blue-500 text-white px-3 py-2 rounded-md text-xs font-medium hover:bg-blue-600 transition-colors flex items-center gap-1"
+                            onClick={() => handleViewInvoice(invoice._id)}
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Details
+                          </button>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Actions */}
-                    <div className="relative w-full md:w-auto flex flex-wrap gap-2 justify-end md:justify-start">
-                      <button
-                        className="bg-blue-500 text-white px-3 py-2 rounded-md text-xs font-medium hover:bg-blue-600 transition-colors flex items-center gap-1"
-                        onClick={() => handleViewInvoice(invoice._id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {invoices.length === 0 && (
                   <div className="text-center py-8">

@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Save, X } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
+import { ROUTES } from "../../utils/constants.js";
 import {
   useInvoiceForm,
   useInvoiceActions,
@@ -11,6 +13,7 @@ import InvoiceItemsForm from "../../components/invoice/InvoiceItemsForm.jsx";
 import InvoiceSummary from "../../components/invoice/InvoiceSummary.jsx";
 
 const InvoiceGenerationPage = () => {
+  const navigate = useNavigate();
   const {
     currentInvoice,
     errors,
@@ -168,7 +171,16 @@ const InvoiceGenerationPage = () => {
                 saved.
               </p>
               <div className="flex justify-center gap-4">
-                <Button variant="outline">View Invoice</Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    navigate(
+                      `${ROUTES.INVOICES}/${submitResult.data.invoice._id}`,
+                    )
+                  }
+                >
+                  View Invoice
+                </Button>
                 <Button
                   onClick={() => {
                     setSubmitResult(null);

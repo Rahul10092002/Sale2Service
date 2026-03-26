@@ -162,50 +162,105 @@ const Users = () => {
             users.map((user, index) => (
               <div
                 key={user.id}
-                className={`flex flex-col md:grid md:grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4 rounded-lg ${
-                  index % 2 === 0 ? "bg-white" : "bg-gray-100"
-                } mb-2 shadow-sm`}
+                className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
               >
-                {/* S No. */}
-                <div className="text-gray-600 md:block hidden">{index + 1}</div>
-
-                {/* User Details */}
-                <div className="flex gap-3 items-center w-full md:w-auto">
-                  <div
-                    className="cursor-pointer"
-                    onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
-                  >
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <UsersIcon className="w-6 h-6 text-blue-600" />
+                {/* ── Mobile Card ── */}
+                <div className="md:hidden p-4 border-b border-gray-100">
+                  {/* Header: icon + name + role badge */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div
+                      className="shrink-0 cursor-pointer"
+                      onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
+                    >
+                      <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <UsersIcon className="w-6 h-6 text-blue-600" />
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <div className="font-bold text-gray-800 text-base">
-                      {user.name}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-900 leading-tight truncate">
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">
+                        {user.email}
+                      </p>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <p>Email: {user.email}</p>
-                      <p>Phone: {user.phone}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Role & Date */}
-                <div className="text-gray-600 w-full md:w-auto">
-                  <div className="text-sm">
                     <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mb-2 ${getRoleBadge(user.role)}`}
+                      className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 mt-0.5 ${getRoleBadge(user.role)}`}
                     >
                       {user.role}
                     </span>
-                    <p className="text-gray-500">
-                      Created: {new Date(user.created_at).toLocaleDateString()}
-                    </p>
+                  </div>
+
+                  {/* Phone + Joined chips */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="bg-gray-50 rounded-lg px-3 py-2">
+                      <p className="text-xs text-gray-400 mb-0.5">Phone</p>
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {user.phone || "—"}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg px-3 py-2">
+                      <p className="text-xs text-gray-400 mb-0.5">Joined</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        {new Date(user.created_at).toLocaleDateString("en-IN")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      className="flex-1 bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
+                      onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
+                    >
+                      View Details
+                    </button>
+                    {user.role !== "OWNER" && (
+                      <button
+                        onClick={() => openDeleteModal(user)}
+                        className="px-4 py-2.5 rounded-xl text-sm font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="relative w-full md:w-auto flex justify-end md:justify-start">
+                {/* ── Desktop Row ── */}
+                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4">
+                  <div className="text-gray-600">{index + 1}</div>
+                  <div className="flex gap-3 items-center">
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
+                    >
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <UsersIcon className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-800 text-base">
+                        {user.name}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <p>Email: {user.email}</p>
+                        <p>Phone: {user.phone}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-gray-600">
+                    <div className="text-sm">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mb-2 ${getRoleBadge(user.role)}`}
+                      >
+                        {user.role}
+                      </span>
+                      <p className="text-gray-500">
+                        Created:{" "}
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <button
                       className="text-indigo-600 hover:text-indigo-900 p-2 hover:bg-indigo-50 rounded"

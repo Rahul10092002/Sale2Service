@@ -475,7 +475,6 @@ const InvoiceView = () => {
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-gray-200">
-                            <th className="text-left py-3 px-4 font-medium text-gray-700 w-10"></th>
                             <th className="text-left py-3 px-4 font-medium text-gray-700">
                               Product Name
                             </th>
@@ -491,20 +490,8 @@ const InvoiceView = () => {
                         <tbody className="divide-y divide-gray-100">
                           {items.map((item, index) => (
                             <tr key={index}>
-                              <td className="py-3 px-4">
-                                {item.product_images?.[0] ? (
-                                  <img
-                                    src={item.product_images[0]}
-                                    alt={item.product_name || "Product"}
-                                    className="w-10 h-10 rounded-lg object-cover border border-gray-200 shrink-0"
-                                  />
-                                ) : (
-                                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs shrink-0">
-                                    —
-                                  </div>
-                                )}
-                              </td>
-                              <td className="py-3 px-4 text-gray-900">
+                             
+                              <td className="py-3 px-4 text-gray-900 underline cursor-pointer" onClick={() => {navigate(`/products/${item._id}`)}}>
                                 {item.product_name}
                               </td>
                               <td className="py-3 px-4 text-gray-600">

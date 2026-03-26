@@ -73,34 +73,49 @@ const Dialog = ({
 
 const DialogHeader = ({
   children,
+  title,
   icon,
   subtitle,
   onClose,
   className = "",
-}) => (
-  <div
-    className={`px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-xl flex items-center justify-between ${className}`}
-  >
-    <div className="flex items-center space-x-3">
-      {icon && (
-        <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">{icon}</div>
-      )}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900">{children}</h2>
-        {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
+}) => {
+  // `title` can be a string or JSX (old call-site pattern).
+  // `children` is the recommended text-only pattern used with `icon` prop.
+  const headingContent = title ?? children;
+
+  return (
+    <div
+      className={`px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-xl flex items-center justify-between ${className}`}
+    >
+      <div className="flex items-center space-x-3">
+        {icon && (
+          <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">{icon}</div>
+        )}
+        <div>
+          {typeof headingContent === "string" ? (
+            <h2 className="text-xl font-semibold text-gray-900">
+              {headingContent}
+            </h2>
+          ) : (
+            <div className="text-xl font-semibold text-gray-900">
+              {headingContent}
+            </div>
+          )}
+          {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
+        </div>
       </div>
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 inline-flex items-center justify-center border-transparent"
+          aria-label="Close dialog"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      )}
     </div>
-    {onClose && (
-      <button
-        onClick={onClose}
-        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 inline-flex items-center justify-center border-transparent"
-        aria-label="Close dialog"
-      >
-        <X className="w-5 h-5" />
-      </button>
-    )}
-  </div>
-);
+  );
+};
 
 const DialogBody = ({ children, className = "" }) => (
   <div

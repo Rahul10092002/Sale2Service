@@ -160,73 +160,170 @@ const Customers = () => {
         {customers.map((customer, index) => (
           <div
             key={customer._id}
-            className={`flex flex-col md:grid md:grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4 rounded-lg ${
-              index % 2 === 0 ? "bg-white" : "bg-gray-100"
-            }  shadow-sm`}
+            className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
           >
-            {/* S No. */}
-            <div className="text-gray-600 md:block hidden">
-              {(page - 1) * 10 + index + 1}
-            </div>
-
-            {/* Customer Details */}
-            <div className="flex gap-3 items-center w-full md:w-auto">
-              <div
-                className="cursor-pointer"
-                onClick={() => navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)}
-              >
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-              <div>
-                <div className="font-bold text-gray-800 text-base">
-                  {customer.full_name}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <p>Type: {customer.customer_type || "RETAIL"}</p>
-                  <p>GST: {customer.gst_number || "N/A"}</p>
-                  <div className="md:hidden">
-                    <p>Phone: {customer.whatsapp_number}</p>
-                    <p>Email: {customer.email || "N/A"}</p>
+            {/* ── Mobile Card ── */}
+            <div className="md:hidden p-4 border-b border-gray-100">
+              {/* Header: icon + name + type badge */}
+              <div className="flex items-start gap-3 mb-3">
+                <div
+                  className="shrink-0 cursor-pointer"
+                  onClick={() => navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)}
+                >
+                  <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <User className="w-6 h-6 text-blue-600" />
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Contact Info */}
-            <div className="text-gray-600 w-full md:w-auto">
-              <div className="text-sm">
-                <p>Phone: {customer.whatsapp_number}</p>
-                <p>Email: {customer.email || "N/A"}</p>
-                <p>
-                  Address:{" "}
-                  {customer.address?.line1
-                    ? `${customer.address.line1}, ${customer.address?.city || ""}`
-                    : "N/A"}
-                </p>
-                {customer.date_of_birth && (
-                  <p>
-                    DOB: {new Date(customer.date_of_birth).toLocaleDateString()}
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 leading-tight truncate">
+                    {customer.full_name}
                   </p>
-                )}
-                {customer.anniversary_date && (
-                  <p>
-                    Anniversary:{" "}
-                    {new Date(customer.anniversary_date).toLocaleDateString()}
-                  </p>
-                )}
+                  {customer.gst_number && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      GST: {customer.gst_number}
+                    </p>
+                  )}
+                </div>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 mt-0.5 ${
+                    customer.customer_type === "BUSINESS"
+                      ? "bg-purple-100 text-purple-700"
+                      : customer.customer_type === "DEALER"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-blue-100 text-blue-700"
+                  }`}
+                >
+                  {customer.customer_type || "RETAIL"}
+                </span>
               </div>
-            </div>
 
-            {/* Actions */}
-            <div className="relative w-full md:w-auto flex justify-end md:justify-start">
+              {/* Phone + Email chips */}
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-gray-400 mb-0.5">Phone</p>
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    {customer.whatsapp_number}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-gray-400 mb-0.5">Email</p>
+                  <p className="text-xs font-medium text-gray-700 truncate">
+                    {customer.email || "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Address */}
+              {customer.address?.line1 && (
+                <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
+                  <p className="text-xs text-gray-400 mb-0.5">Address</p>
+                  <p className="text-xs text-gray-600">
+                    {customer.address.line1}
+                    {customer.address.city ? `, ${customer.address.city}` : ""}
+                  </p>
+                </div>
+              )}
+
+              {/* DOB / Anniversary */}
+              {(customer.date_of_birth || customer.anniversary_date) && (
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {customer.date_of_birth && (
+                    <div className="bg-gray-50 rounded-lg px-3 py-2">
+                      <p className="text-xs text-gray-400 mb-0.5">Birthday</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        {new Date(customer.date_of_birth).toLocaleDateString(
+                          "en-IN",
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  {customer.anniversary_date && (
+                    <div className="bg-gray-50 rounded-lg px-3 py-2">
+                      <p className="text-xs text-gray-400 mb-0.5">
+                        Anniversary
+                      </p>
+                      <p className="text-xs font-medium text-gray-700">
+                        {new Date(
+                          customer.anniversary_date,
+                        ).toLocaleDateString("en-IN")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <button
-                className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
+                className="w-full bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
                 onClick={() => navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)}
               >
                 View Details
               </button>
+            </div>
+
+            {/* ── Desktop Row ── */}
+            <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4">
+              <div className="text-gray-600">
+                {(page - 1) * 10 + index + 1}
+              </div>
+              <div className="flex gap-3 items-center">
+                <div
+                  className="cursor-pointer"
+                  onClick={() =>
+                    navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)
+                  }
+                >
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <User className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+                <div>
+                  <div className="font-bold text-gray-800 text-base">
+                    {customer.full_name}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <p>Type: {customer.customer_type || "RETAIL"}</p>
+                    <p>GST: {customer.gst_number || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-gray-600">
+                <div className="text-sm">
+                  <p>Phone: {customer.whatsapp_number}</p>
+                  <p>Email: {customer.email || "N/A"}</p>
+                  <p>
+                    Address:{" "}
+                    {customer.address?.line1
+                      ? `${customer.address.line1}, ${
+                          customer.address?.city || ""
+                        }`
+                      : "N/A"}
+                  </p>
+                  {customer.date_of_birth && (
+                    <p>
+                      DOB:{" "}
+                      {new Date(customer.date_of_birth).toLocaleDateString()}
+                    </p>
+                  )}
+                  {customer.anniversary_date && (
+                    <p>
+                      Anniversary:{" "}
+                      {new Date(
+                        customer.anniversary_date,
+                      ).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <button
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
+                  onClick={() =>
+                    navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)
+                  }
+                >
+                  View Details
+                </button>
+              </div>
             </div>
           </div>
         ))}

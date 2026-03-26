@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   RotateCcw,
   XCircle,
+  Pencil,
+  Settings,
 } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import {
@@ -26,7 +28,10 @@ import {
   DialogBody,
 } from "../../components/ui/Modal.jsx";
 import { useGetProductByIdQuery } from "../../features/products/productApi.js";
-import { useGetInvoiceItemServicesQuery } from "../../features/invoices/invoiceApi.js";
+import {
+  useGetInvoiceItemServicesQuery,
+  useUpdateServicePlanMutation,
+} from "../../features/invoices/invoiceApi.js";
 import {
   useMarkServiceCompleteMutation,
   useRescheduleServiceMutation,
@@ -77,7 +82,73 @@ const ProductView = () => {
     useRescheduleServiceMutation();
   const [cancelServiceMutation, { isLoading: cancelling }] =
     useCancelServiceMutation();
+  const [updateServicePlanMutation, { isLoading: updatingPlan }] =
+    useUpdateServicePlanMutation();
   const actionLoading = markingComplete || rescheduling || cancelling;
+
+  // Service plan edit modal state
+  const [showEditPlanModal, setShowEditPlanModal] = useState(false);
+  const [planIntervalType, setPlanIntervalType] = useState("MONTHLY");
+  const [planIntervalValue, setPlanIntervalValue] = useState(1);
+  const [planTotalServices, setPlanTotalServices] = useState(1);
+  const [planStartDate, setPlanStartDate] = useState("");
+  const [planCharge, setPlanCharge] = useState(0);
+  const [planDescription, setPlanDescription] = useState("");
+
+  const openEditPlanModal = () => {
+    const plan = serviceData?.plan;
+    if (plan) {
+      setPlanIntervalType(plan.service_interval_type || "MONTHLY");
+      setPlanIntervalValue(plan.service_interval_value || 1);
+      setPlanTotalServices(plan.total_services || 1);
+      setPlanStartDate(
+        plan.service_start_date
+          ? new Date(plan.service_start_date).toISOString().split("T")[0]
+          : "",
+      );
+      setPlanCharge(plan.service_charge || 0);
+      setPlanDescription(plan.service_description || "");
+    }
+    setShowEditPlanModal(true);
+  };
+
+  const handleUpdateServicePlan = async () => {
+    if (!planStartDate) {
+      dispatch(
+        showToast({ message: "Service start date is required", type: "error" }),
+      );
+      return;
+    }
+    try {
+      await updateServicePlanMutation({
+        itemId: id,
+        service_interval_type: planIntervalType,
+        service_interval_value: Number(planIntervalValue),
+        total_services: Number(planTotalServices),
+        service_start_date: planStartDate,
+        service_charge: parseFloat(planCharge) || 0,
+        service_description: planDescription,
+      }).unwrap();
+      dispatch(
+        showToast({
+          message: "Service plan updated successfully!",
+          type: "success",
+        }),
+      );
+      refetchService();
+      setShowEditPlanModal(false);
+    } catch (err) {
+      dispatch(
+        showToast({
+          message:
+            err?.data?.message ||
+            err?.message ||
+            "Failed to update service plan",
+          type: "error",
+        }),
+      );
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -611,10 +682,22 @@ const ProductView = () => {
               {product.hasServicePlan && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                   <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-indigo-500" />
-                      Service Details
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-indigo-500" />
+                        Service Details
+                      </h3>
+                      {serviceData?.plan && (
+                        <button
+                          onClick={openEditPlanModal}
+                          disabled={actionLoading || updatingPlan}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                          Edit Service Plan
+                        </button>
+                      )}
+                    </div>
 
                     {serviceLoading ? (
                       <div className="flex items-center justify-center py-8">
@@ -1147,6 +1230,143 @@ const ProductView = () => {
                       <Calendar size={16} />
                     )}
                     <span>Reschedule</span>
+                  </div>
+                </Button>
+              </div>
+            </div>
+          </DialogBody>
+        </Modal>
+      )}
+
+      {/* Edit Service Plan Modal */}
+      {showEditPlanModal && (
+        <Modal
+          open={true}
+          onClose={() => setShowEditPlanModal(false)}
+          maxWidth="lg"
+        >
+          <DialogHeader
+            icon={<Settings className="text-indigo-600" size={20} />}
+           
+            onClose={() => setShowEditPlanModal(false)}
+          >
+            <span>Edit Service Plan</span>
+          </DialogHeader>
+          <DialogBody>
+            <div className="space-y-5">
+              <p className="text-sm text-gray-500">
+                Update the service plan configuration. Pending schedules will be
+                regenerated based on new settings. Completed services are
+                preserved.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Service Interval Type *
+                  </label>
+                  <select
+                    value={planIntervalType}
+                    onChange={(e) => setPlanIntervalType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="QUARTERLY">Quarterly (3 months)</option>
+                    <option value="HALF_YEARLY">Half-Yearly (6 months)</option>
+                    <option value="YEARLY">Yearly (12 months)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Interval Value *
+                  </label>
+                  <input
+                    type="number"
+                    value={planIntervalValue}
+                    onChange={(e) => setPlanIntervalValue(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    min="1"
+                    placeholder="1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Total Services *
+                  </label>
+                  <input
+                    type="number"
+                    value={planTotalServices}
+                    onChange={(e) => setPlanTotalServices(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    min="1"
+                    placeholder="1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Service Start Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={planStartDate}
+                    onChange={(e) => setPlanStartDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Service Charge (₹) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-500">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      value={planCharge}
+                      onChange={(e) => setPlanCharge(e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      min="0"
+                      step="0.01"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Service Description
+                  </label>
+                  <textarea
+                    value={planDescription}
+                    onChange={(e) => setPlanDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    rows="3"
+                    placeholder="Describe the service to be performed..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowEditPlanModal(false)}
+                  disabled={updatingPlan}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleUpdateServicePlan}
+                  disabled={updatingPlan || !planStartDate}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  <div className="flex items-center space-x-1">
+                    {updatingPlan ? (
+                      <LoadingSpinner size="xs" />
+                    ) : (
+                      <Settings size={16} />
+                    )}
+                    <span>Save Changes</span>
                   </div>
                 </Button>
               </div>

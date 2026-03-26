@@ -82,6 +82,13 @@ invoiceRouter.put(
   (req, res) => invoiceController.updateServicePlanCharges(req, res),
 );
 
+// Update full service plan details for a specific invoice item
+invoiceRouter.put(
+  "/items/:itemId/services",
+  authorize("OWNER", "ADMIN", "STAFF"),
+  (req, res) => invoiceController.updateServicePlan(req, res),
+);
+
 // Send invoice by ID (WhatsApp template)
 invoiceRouter.post(
   "/:id/send",

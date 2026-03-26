@@ -100,182 +100,256 @@ const Products = () => {
                 {products.map((product, index) => (
                   <div
                     key={product._id}
-                    className={`flex flex-col md:grid md:grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 items-start p-4 rounded-lg ${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-100"
-                    }  shadow-sm`}
+                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                   >
-                    {/* S No. */}
-                    <div className="text-gray-600 md:block hidden pt-1">
-                      {(page - 1) * pagination.limit + index + 1}
-                    </div>
-
-                    {/* Product Details */}
-                    <div className="flex gap-3 items-center w-full md:w-auto">
-                      <div
-                        className="cursor-pointer"
-                        onClick={() => handleViewProduct(product._id)}
-                      >
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Package className="w-6 h-6 text-blue-600" />
+                    {/* ── Mobile Card ── */}
+                    <div className="md:hidden p-4 border-b border-gray-100">
+                      {/* Header: icon + name + status */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div
+                          className="shrink-0 cursor-pointer"
+                          onClick={() => handleViewProduct(product._id)}
+                        >
+                          <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <Package className="w-6 h-6 text-blue-600" />
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-800 text-base capitalize">
-                          {product.product_name}
-                        </div>
-                        <div className="text-sm text-gray-600 ">
-                          <p>Serial: {product.serial_number}</p>
-                          <p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 capitalize leading-tight truncate">
+                            {product.product_name}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
                             {product.company} · {product.model_number}
                           </p>
-                          <p className="md:hidden">Status: {product.status}</p>
+                          <p className="text-xs text-gray-400">
+                            S/N: {product.serial_number}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 mt-0.5 ${
+                            product.status === "ACTIVE"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {product.status}
+                        </span>
+                      </div>
+
+                      {/* Price + Warranty chips */}
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div className="bg-gray-50 rounded-lg px-3 py-2">
+                          <p className="text-xs text-gray-400 mb-0.5">Price</p>
+                          <p className="text-sm font-semibold text-gray-800">
+                            {formatCurrency(product.selling_price)}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg px-3 py-2">
+                          <p className="text-xs text-gray-400 mb-0.5">
+                            Warranty
+                          </p>
+                          <p className="text-xs font-medium text-gray-700">
+                            {product.warranty_end_date
+                              ? new Date(
+                                  product.warranty_end_date,
+                                ).toLocaleDateString("en-IN")
+                              : "N/A"}
+                          </p>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Info & Service */}
-                    <div className="text-gray-600 w-full md:w-auto">
-                      <div className="text-sm">
-                        <p>Price: {formatCurrency(product.selling_price)}</p>
-                        <p>
-                          Warranty:{" "}
-                          {product.warranty_end_date
-                            ? new Date(
-                                product.warranty_end_date,
-                              ).toLocaleDateString()
-                            : "N/A"}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <ServiceBadge
-                            itemId={product._id}
-                            invoiceId={product.invoice_id}
-                            product={product}
-                            hasService={product.hasServicePlan}
-                            nextServiceDate={product.nextServiceDate}
-                          />
-                          {product.hasServicePlan && (
-                            <button
-                              onClick={() => setShowServiceTable(product)}
-                              className="p-1 rounded-md hover:bg-blue-100"
-                              title="View Service Table"
-                            >
-                              <Table className="w-3 h-3 text-blue-600" />
-                            </button>
-                          )}
-                        </div>
+                      {/* Service badge */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <ServiceBadge
+                          itemId={product._id}
+                          invoiceId={product.invoice_id}
+                          product={product}
+                          hasService={product.hasServicePlan}
+                          nextServiceDate={product.nextServiceDate}
+                        />
+                        {product.hasServicePlan && (
+                          <button
+                            onClick={() => setShowServiceTable(product)}
+                            className="p-1 rounded-md hover:bg-blue-100"
+                            title="View Service Table"
+                          >
+                            <span className="w-3.5 h-3.5 text-blue-600">View Services</span>
+                          </button>
+                        )}
                       </div>
-                    </div>
 
-                    {/* Customer & Invoice */}
-                    <div className="text-sm text-gray-600 w-full md:w-auto">
+                      {/* Customer + Invoice */}
                       {product.customer ? (
-                        <div>
-                          <div className="flex items-center gap-1 font-medium text-gray-800">
-                            <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                            <span className="truncate">
-                              {product.customer.full_name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 text-gray-500 mt-0.5">
-                            <Phone className="w-3 h-3 shrink-0" />
-                            <span>{product.customer.whatsapp_number}</span>
+                        <div className="bg-indigo-50 rounded-lg px-3 py-2 mb-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                              <span className="text-sm font-medium text-gray-800 truncate">
+                                {product.customer.full_name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-500 shrink-0">
+                              <Phone className="w-3 h-3 shrink-0" />
+                              <span className="text-xs">
+                                {product.customer.whatsapp_number}
+                              </span>
+                            </div>
                           </div>
                           {product.invoice && (
-                            <div className="mt-1">
-                              <div className="flex items-center gap-1">
-                                <FileText className="w-3 h-3 text-indigo-400 shrink-0" />
-                                <span className="font-mono text-xs text-indigo-700">
-                                  {product.invoice.invoice_number}
-                                </span>
-                              </div>
-                              <div className="text-xs text-gray-400 mt-0.5">
+                            <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-indigo-100 flex-wrap">
+                              <FileText className="w-3 h-3 text-indigo-400 shrink-0" />
+                              <span className="font-mono text-xs text-indigo-700">
+                                {product.invoice.invoice_number}
+                              </span>
+                              <span className="text-xs text-gray-400">·</span>
+                              <span className="text-xs text-gray-400">
                                 {new Date(
                                   product.invoice.invoice_date,
                                 ).toLocaleDateString("en-IN")}
-                                {" · "}
-                                <span
-                                  className={`font-medium ${
-                                    product.invoice.payment_status === "PAID"
-                                      ? "text-green-600"
-                                      : product.invoice.payment_status ===
-                                          "PARTIAL"
-                                        ? "text-yellow-600"
-                                        : "text-red-500"
-                                  }`}
-                                >
-                                  {product.invoice.payment_status}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  setExpandedCustomer((prev) => ({
-                                    ...prev,
-                                    [product._id]: !prev[product._id],
-                                  }))
-                                }
-                                className="flex items-center gap-0.5 text-xs text-indigo-500 hover:text-indigo-700 mt-1"
+                              </span>
+                              <span
+                                className={`ml-auto text-xs font-semibold ${
+                                  product.invoice.payment_status === "PAID"
+                                    ? "text-green-600"
+                                    : product.invoice.payment_status ===
+                                        "PARTIAL"
+                                      ? "text-yellow-600"
+                                      : "text-red-500"
+                                }`}
                               >
-                                {expandedCustomer[product._id] ? (
-                                  <>
-                                    <ChevronUp className="w-3 h-3" /> Less
-                                  </>
-                                ) : (
-                                  <>
-                                    <ChevronDown className="w-3 h-3" /> More
-                                  </>
-                                )}
-                              </button>
-                              {expandedCustomer[product._id] && (
-                                <div className="mt-1 text-xs text-gray-500 space-y-0.5 pl-1 border-l-2 border-indigo-100">
-                                  {product.customer.address?.line1 && (
-                                    <p>{product.customer.address.line1}</p>
-                                  )}
-                                  {product.customer.address?.city && (
-                                    <p>
-                                      {product.customer.address.city}
-                                      {product.customer.address.state
-                                        ? `, ${product.customer.address.state}`
-                                        : ""}
-                                      {product.customer.address.pincode
-                                        ? ` - ${product.customer.address.pincode}`
-                                        : ""}
-                                    </p>
-                                  )}
-                                  <p>
-                                    Total:{" "}
-                                    {formatCurrency(
-                                      product.invoice.total_amount,
-                                    )}
-                                  </p>
-                                  {product.invoice.payment_status !==
-                                    "PAID" && (
-                                    <p className="text-red-500">
-                                      Due:{" "}
-                                      {formatCurrency(
-                                        product.invoice.amount_due,
-                                      )}
-                                    </p>
-                                  )}
-                                </div>
-                              )}
+                                {product.invoice.payment_status}
+                              </span>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <span className="text-gray-400 text-xs">
+                        <p className="text-xs text-gray-400 mb-3">
                           No customer data
-                        </span>
+                        </p>
                       )}
-                    </div>
 
-                    {/* Actions */}
-                    <div className="relative w-full md:w-auto flex justify-end md:justify-start">
+                      {/* Action button */}
                       <button
-                        className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
+                        className="w-full bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
                         onClick={() => handleViewProduct(product._id)}
                       >
                         View Details
                       </button>
+                    </div>
+
+                    {/* ── Desktop Row ── */}
+                    <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 items-start p-4">
+                      <div className="text-gray-600 pt-1">
+                        {(page - 1) * pagination.limit + index + 1}
+                      </div>
+                      <div className="flex gap-3 items-center">
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => handleViewProduct(product._id)}
+                        >
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Package className="w-6 h-6 text-blue-600" />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-800 text-base capitalize">
+                            {product.product_name}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <p>Serial: {product.serial_number}</p>
+                            <p>
+                              {product.company} · {product.model_number}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-gray-600">
+                        <div className="text-sm">
+                          <p>Price: {formatCurrency(product.selling_price)}</p>
+                          <p>
+                            Warranty:{" "}
+                            {product.warranty_end_date
+                              ? new Date(
+                                  product.warranty_end_date,
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <ServiceBadge
+                              itemId={product._id}
+                              invoiceId={product.invoice_id}
+                              product={product}
+                              hasService={product.hasServicePlan}
+                              nextServiceDate={product.nextServiceDate}
+                            />
+                            {product.hasServicePlan && (
+                              <button
+                                onClick={() => setShowServiceTable(product)}
+                                className="p-1 rounded-md hover:bg-blue-100"
+                                title="View Service Table"
+                              >
+                                <Table className="w-3 h-3 text-blue-600" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {product.customer ? (
+                          <div>
+                            <div className="flex items-center gap-1 font-medium text-gray-800">
+                              <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                              <span className="truncate">
+                                {product.customer.full_name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-500 mt-0.5">
+                              <Phone className="w-3 h-3 shrink-0" />
+                              <span>{product.customer.whatsapp_number}</span>
+                            </div>
+                            {product.invoice && (
+                              <div className="mt-1">
+                                <div className="flex items-center gap-1">
+                                  <FileText className="w-3 h-3 text-indigo-400 shrink-0" />
+                                  <span className="font-mono text-xs text-indigo-700">
+                                    {product.invoice.invoice_number}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-400 mt-0.5">
+                                  {new Date(
+                                    product.invoice.invoice_date,
+                                  ).toLocaleDateString("en-IN")}
+                                  {" · "}
+                                  <span
+                                    className={`font-medium ${
+                                      product.invoice.payment_status === "PAID"
+                                        ? "text-green-600"
+                                        : product.invoice.payment_status ===
+                                            "PARTIAL"
+                                          ? "text-yellow-600"
+                                          : "text-red-500"
+                                    }`}
+                                  >
+                                    {product.invoice.payment_status}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">
+                            No customer data
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <button
+                          className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
+                          onClick={() => handleViewProduct(product._id)}
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

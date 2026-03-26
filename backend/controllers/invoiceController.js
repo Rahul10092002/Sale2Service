@@ -1203,6 +1203,181 @@ export default class InvoiceController {
   }
 
   /**
+   * Update full service plan details for an invoice item.
+   * Keeps completed/cancelled schedules; deletes pending ones and regenerates.
+   */
+  async updateServicePlan(req, res) {
+    const session = await mongoose.startSession();
+    let transactionStarted = false;
+
+    try {
+      await session.startTransaction();
+      transactionStarted = true;
+
+      const { itemId } = req.params;
+      const { user } = req;
+      const {
+        service_interval_type,
+        service_interval_value,
+        total_services,
+        service_start_date,
+        service_charge,
+        service_description,
+      } = req.body;
+
+      if (
+        !service_interval_type ||
+        !service_interval_value ||
+        !service_start_date
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "service_interval_type, service_interval_value, and service_start_date are required",
+        });
+      }
+
+      // Validate invoice item belongs to this shop
+      const invoiceItem = await InvoiceItem.findById(itemId)
+        .populate({ path: "invoice_id", select: "shop_id" })
+        .session(session);
+
+      if (!invoiceItem || !invoiceItem.invoice_id) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Invoice item not found" });
+      }
+
+      if (
+        invoiceItem.invoice_id.shop_id.toString() !== user.shopId.toString()
+      ) {
+        return res
+          .status(403)
+          .json({ success: false, message: "Access denied" });
+      }
+
+      // Find existing service plan
+      const existingPlan = await ServicePlan.findOne({
+        invoice_item_id: itemId,
+        deleted_at: null,
+      }).session(session);
+
+      if (!existingPlan) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message: "Service plan not found for this product",
+          });
+      }
+
+      const totalServicesCount =
+        total_services && Number(total_services) > 0
+          ? Number(total_services)
+          : 1;
+
+      const serviceStart = new Date(service_start_date);
+      const serviceEnd = this.computeServiceEndDate(
+        serviceStart,
+        service_interval_type,
+        Number(service_interval_value),
+        totalServicesCount,
+      );
+
+      // Update plan fields
+      existingPlan.service_interval_type = service_interval_type;
+      existingPlan.service_interval_value = Number(service_interval_value);
+      existingPlan.total_services = totalServicesCount;
+      existingPlan.service_start_date = serviceStart;
+      existingPlan.service_end_date = serviceEnd;
+      existingPlan.service_charge = parseFloat(service_charge) || 0;
+      if (service_description !== undefined) {
+        existingPlan.service_description = service_description;
+        existingPlan.notes = service_description;
+      }
+      await existingPlan.save({ session });
+
+      // Count already-completed schedules so we preserve them
+      const completedCount = await ServiceSchedule.countDocuments({
+        service_plan_id: existingPlan._id,
+        status: { $in: ["COMPLETED"] },
+        deleted_at: null,
+      }).session(session);
+
+      // Delete all non-terminal pending schedules
+      await ServiceSchedule.deleteMany({
+        service_plan_id: existingPlan._id,
+        status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+      }).session(session);
+
+      // Regenerate pending schedules for remaining count
+      const remainingCount = Math.max(totalServicesCount - completedCount, 0);
+
+      if (remainingCount > 0) {
+        const currentDate = new Date(serviceStart);
+        for (let i = 0; i < remainingCount; i++) {
+          const scheduledDate = new Date(currentDate);
+          const serviceSchedule = new ServiceSchedule({
+            service_plan_id: existingPlan._id,
+            scheduled_date: scheduledDate,
+            service_number: completedCount + i + 1,
+            original_date: scheduledDate,
+            status: "PENDING",
+            service_charge: parseFloat(service_charge) || 0,
+          });
+          await serviceSchedule.save({ session });
+
+          if (i < remainingCount - 1) {
+            switch (service_interval_type) {
+              case "QUARTERLY":
+                currentDate.setMonth(
+                  currentDate.getMonth() + 3 * Number(service_interval_value),
+                );
+                break;
+              case "HALF_YEARLY":
+                currentDate.setMonth(
+                  currentDate.getMonth() + 6 * Number(service_interval_value),
+                );
+                break;
+              case "YEARLY":
+                currentDate.setFullYear(
+                  currentDate.getFullYear() + Number(service_interval_value),
+                );
+                break;
+              default: // MONTHLY / CUSTOM
+                currentDate.setMonth(
+                  currentDate.getMonth() + Number(service_interval_value),
+                );
+            }
+          }
+        }
+      }
+
+      await session.commitTransaction();
+      transactionStarted = false;
+
+      return res.status(200).json({
+        success: true,
+        message: "Service plan updated successfully",
+        data: existingPlan,
+      });
+    } catch (error) {
+      if (transactionStarted) {
+        try {
+          await session.abortTransaction();
+        } catch (_) {}
+      }
+      console.error("Update service plan error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update service plan",
+      });
+    } finally {
+      session.endSession();
+    }
+  }
+
+  /**
    * Delete an invoice (soft delete)
    */
   async deleteInvoice(req, res) {

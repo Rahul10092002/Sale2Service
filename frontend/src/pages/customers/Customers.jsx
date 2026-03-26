@@ -168,7 +168,9 @@ const Customers = () => {
               <div className="flex items-start gap-3 mb-3">
                 <div
                   className="shrink-0 cursor-pointer"
-                  onClick={() => navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)}
+                  onClick={() =>
+                    navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)
+                  }
                 >
                   <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
                     <User className="w-6 h-6 text-blue-600" />
@@ -243,9 +245,9 @@ const Customers = () => {
                         Anniversary
                       </p>
                       <p className="text-xs font-medium text-gray-700">
-                        {new Date(
-                          customer.anniversary_date,
-                        ).toLocaleDateString("en-IN")}
+                        {new Date(customer.anniversary_date).toLocaleDateString(
+                          "en-IN",
+                        )}
                       </p>
                     </div>
                   )}
@@ -262,9 +264,7 @@ const Customers = () => {
 
             {/* ── Desktop Row ── */}
             <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4">
-              <div className="text-gray-600">
-                {(page - 1) * 10 + index + 1}
-              </div>
+              <div className="text-gray-600">{(page - 1) * 10 + index + 1}</div>
               <div className="flex gap-3 items-center">
                 <div
                   className="cursor-pointer"
@@ -307,9 +307,7 @@ const Customers = () => {
                   {customer.anniversary_date && (
                     <p>
                       Anniversary:{" "}
-                      {new Date(
-                        customer.anniversary_date,
-                      ).toLocaleDateString()}
+                      {new Date(customer.anniversary_date).toLocaleDateString()}
                     </p>
                   )}
                 </div>

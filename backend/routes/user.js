@@ -19,6 +19,11 @@ userRouter.get("/", (req, res) => userController.listUsers(req, res));
 // Get user by ID
 userRouter.get("/:id", (req, res) => userController.getUserById(req, res));
 
+// Update user (OWNER and ADMIN can update)
+userRouter.put("/:id", authorize("OWNER", "ADMIN"), (req, res) =>
+  userController.updateUser(req, res),
+);
+
 // Delete user (OWNER and ADMIN can delete)
 userRouter.delete("/:id", authorize("OWNER", "ADMIN"), (req, res) =>
   userController.deleteUser(req, res),

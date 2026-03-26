@@ -77,6 +77,37 @@ export default class UserController {
   }
 
   /**
+   * Update user
+   * PUT /users/:id
+   */
+  async updateUser(req, res) {
+    try {
+      const userId = req.params.id;
+      const shopId = req.user.shopId;
+      const { name, phone, role } = req.body;
+
+      const result = await userService.updateUser(
+        userId,
+        shopId,
+        { name, phone, role },
+        req.user,
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "User updated successfully",
+        data: result,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        error_code: "UPDATE_FAILED",
+      });
+    }
+  }
+
+  /**
    * Delete user
    * DELETE /users/:id
    */

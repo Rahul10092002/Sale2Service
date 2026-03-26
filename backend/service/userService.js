@@ -112,6 +112,51 @@ export default class UserService {
   }
 
   /**
+   * Update user (name, phone, role)
+   * OWNER can update anyone; ADMIN can update STAFF only
+   */
+  async updateUser(userId, shopId, updates, requestingUser) {
+    const user = await User.findOne({
+      _id: userId,
+      shop_id: shopId,
+      deleted_at: null,
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (user.role === "OWNER") {
+      throw new Error("Cannot modify shop owner");
+    }
+
+    if (requestingUser.role === "ADMIN" && user.role === "ADMIN") {
+      throw new Error("Admin cannot modify other admins");
+    }
+
+    const { name, phone, role } = updates;
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (role && ["STAFF", "ADMIN"].includes(role)) {
+      if (requestingUser.role === "ADMIN" && role === "ADMIN") {
+        throw new Error("Admin cannot promote users to Admin");
+      }
+      user.role = role;
+    }
+
+    await user.save();
+
+    return {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      created_at: user.createdAt,
+    };
+  }
+
+  /**
    * Delete user (soft delete)
    */
   async deleteUser(userId, shopId, requestingUser) {

@@ -363,18 +363,90 @@ export const getAlerts = async (shopId) => {
   const alerts = [];
 
   // Overdue invoices
-  const overdueInvoices = await Invoice.countDocuments({
+  const overdueInvoiceList = await Invoice.find({
     shop_id: shopId,
     payment_status: { $in: ["UNPAID", "PARTIAL"] },
     due_date: { $lt: new Date() },
-  });
+    deleted_at: null,
+  })
+    .populate("customer_id", "full_name whatsapp_number")
+    .select("invoice_number total_amount due_date payment_status customer_id")
+    .sort({ due_date: 1 })
+    .limit(10);
+
+  const overdueInvoices = overdueInvoiceList.length;
 
   if (overdueInvoices > 0) {
     alerts.push({
       type: "warning",
       category: "invoices",
-      message: `${overdueInvoices} overdue invoice${overdueInvoices > 1 ? "s" : ""} need follow-up`,
+      message: `${overdueInvoices} invoice${overdueInvoices > 1 ? "s" : ""} with payment overdue — need follow-up`,
       count: overdueInvoices,
+      items: overdueInvoiceList.map((inv) => ({
+        id: inv._id,
+        invoice_number: inv.invoice_number,
+        customer_name: inv.customer_id?.full_name || "Unknown",
+        phone: inv.customer_id?.whatsapp_number || "",
+        total_amount: inv.total_amount,
+        due_date: inv.due_date,
+        payment_status: inv.payment_status,
+      })),
+    });
+  }
+
+  // Missed or overdue service visits
+  const overdueServiceList = await ServiceSchedule.find({
+    deleted_at: null,
+    status: { $in: ["MISSED", "PENDING"] },
+    scheduled_date: { $lt: new Date() },
+  })
+    .populate({
+      path: "service_plan_id",
+      select: "invoice_item_id shop_id",
+      match: { shop_id: shopId, deleted_at: null },
+      populate: {
+        path: "invoice_item_id",
+        select: "_id product_name invoice_id",
+        populate: {
+          path: "invoice_id",
+          select: "invoice_number customer_id",
+          populate: {
+            path: "customer_id",
+            select: "full_name whatsapp_number",
+          },
+        },
+      },
+    })
+    .sort({ scheduled_date: 1 })
+    .limit(10);
+
+  // Filter to this shop only (match on populate doesn't exclude parent docs)
+  const shopServiceList = overdueServiceList.filter(
+    (s) => s.service_plan_id?.shop_id?.toString() === shopId.toString(),
+  );
+
+  if (shopServiceList.length > 0) {
+    alerts.push({
+      type: "error",
+      category: "service",
+      message: `${shopServiceList.length} service visit${shopServiceList.length > 1 ? "s" : ""} missed or overdue`,
+      count: shopServiceList.length,
+      items: shopServiceList.map((s) => {
+        const invoiceItem = s.service_plan_id?.invoice_item_id;
+        const invoice = invoiceItem?.invoice_id;
+        const customer = invoice?.customer_id;
+        return {
+          id: invoice?._id,
+          product_id: invoiceItem?._id,
+          invoice_number: invoice?.invoice_number || "",
+          customer_name: customer?.full_name || "Unknown",
+          phone: customer?.whatsapp_number || "",
+          product_name: invoiceItem?.product_name || "Unknown product",
+          scheduled_date: s.scheduled_date,
+          service_number: s.service_number,
+          status: s.status,
+        };
+      }),
     });
   }
 

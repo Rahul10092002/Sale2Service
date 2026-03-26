@@ -1,6 +1,7 @@
 import InvoiceItem from "../models/InvoiceItem.js";
 import ServicePlan from "../models/ServicePlan.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
+import Invoice from "../models/Invoice.js";
 
 export default class ProductController {
   // Create product (invoice item)
@@ -58,6 +59,11 @@ export default class ProductController {
         product_name,
         company,
         status,
+        product_category,
+        has_service_plan, // 'yes' | 'no'
+        service_due_days, // '7' | '14' | '30' | '60' | '90'
+        warranty_status, // 'expired' | '30' | '60' | '90' | '180'
+        payment_status, // 'PAID' | 'PARTIAL' | 'UNPAID'
       } = req.query;
 
       const query = { shop_id: user.shopId, deleted_at: null };
@@ -67,6 +73,7 @@ export default class ProductController {
         query.product_name = { $regex: product_name, $options: "i" };
       if (company) query.company = { $regex: company, $options: "i" };
       if (status) query.status = status;
+      if (product_category) query.product_category = product_category;
 
       if (search) {
         query.$or = [
@@ -75,6 +82,76 @@ export default class ProductController {
           { company: { $regex: search, $options: "i" } },
           { model_number: { $regex: search, $options: "i" } },
         ];
+      }
+
+      // Warranty expiry filter
+      if (warranty_status) {
+        const now = new Date();
+        if (warranty_status === "expired") {
+          query.warranty_end_date = { $lt: now };
+        } else {
+          const days = parseInt(warranty_status);
+          const future = new Date(now);
+          future.setDate(future.getDate() + days);
+          query.warranty_end_date = { $gte: now, $lte: future };
+        }
+      }
+
+      // Filters that require cross-collection lookups — collect allowed product ID sets
+      let allowedProductIds = null; // null = no restriction
+
+      if (has_service_plan === "yes") {
+        const ids = await ServicePlan.distinct("invoice_item_id", {
+          shop_id: user.shopId,
+          deleted_at: null,
+        });
+        allowedProductIds = ids;
+      } else if (has_service_plan === "no") {
+        const ids = await ServicePlan.distinct("invoice_item_id", {
+          shop_id: user.shopId,
+          deleted_at: null,
+        });
+        query._id = { $nin: ids };
+      }
+
+      if (service_due_days) {
+        const now = new Date();
+        const future = new Date();
+        future.setDate(future.getDate() + parseInt(service_due_days));
+
+        const planIds = await ServiceSchedule.distinct("service_plan_id", {
+          scheduled_date: { $gte: now, $lte: future },
+          status: { $in: ["PENDING", "RESCHEDULED"] },
+        });
+
+        const productIds = await ServicePlan.distinct("invoice_item_id", {
+          _id: { $in: planIds },
+          shop_id: user.shopId,
+          deleted_at: null,
+        });
+
+        if (allowedProductIds !== null) {
+          const allowed = new Set(productIds.map(String));
+          allowedProductIds = allowedProductIds.filter((id) =>
+            allowed.has(String(id)),
+          );
+        } else {
+          allowedProductIds = productIds;
+        }
+      }
+
+      if (allowedProductIds !== null) {
+        query._id = { ...(query._id || {}), $in: allowedProductIds };
+      }
+
+      // Payment status filter — lookup invoices by payment_status
+      if (payment_status) {
+        const invoiceIds = await Invoice.distinct("_id", {
+          shop_id: user.shopId,
+          payment_status,
+          deleted_at: null,
+        });
+        query.invoice_id = { $in: invoiceIds };
       }
 
       const skip = (page - 1) * parseInt(limit);

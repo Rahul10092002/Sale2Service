@@ -1,19 +1,11 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../features/ui/uiSlice.js";
-import {
-  Trash2,
-  Plus,
-  Eye,
-  AlertCircle,
-  X,
-  Users as UsersIcon,
-} from "lucide-react";
+import { Plus, Eye, Users as UsersIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   useGetUsersQuery,
   useAddUserMutation,
-  useDeleteUserMutation,
 } from "../../features/users/userApi.js";
 import Button from "../../components/ui/Button.jsx";
 import Input from "../../components/ui/Input.jsx";
@@ -24,18 +16,14 @@ import {
   Dialog,
   DialogHeader,
   DialogBody,
-  DialogFooter,
 } from "../../components/ui/Modal.jsx";
 
 const Users = () => {
   const navigate = useNavigate();
   const { data: users = [], isLoading, error, refetch } = useGetUsersQuery();
   const [addUser] = useAddUserMutation();
-  const [deleteUser] = useDeleteUserMutation();
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
   const dispatch = useDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -73,28 +61,6 @@ const Users = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleDeleteUser = async () => {
-    if (!selectedUser) return;
-    setIsSubmitting(true);
-
-    try {
-      await deleteUser(selectedUser.id).unwrap();
-      setShowDeleteModal(false);
-      setSelectedUser(null);
-      showAlert("User deleted successfully", "success");
-      refetch();
-    } catch (error) {
-      showAlert(error?.data?.message || "Failed to delete user", "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const openDeleteModal = (user) => {
-    setSelectedUser(user);
-    setShowDeleteModal(true);
   };
 
   const getRoleBadge = (role) => {
@@ -207,23 +173,13 @@ const Users = () => {
                     </div>
                   </div>
 
-                  {/* Action buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      className="flex-1 bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
-                      onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
-                    >
-                      View Details
-                    </button>
-                    {user.role !== "OWNER" && (
-                      <button
-                        onClick={() => openDeleteModal(user)}
-                        className="px-4 py-2.5 rounded-xl text-sm font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
+                  {/* Action button */}
+                  <button
+                    className="w-full bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
+                    onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
+                  >
+                    View Details
+                  </button>
                 </div>
 
                 {/* ── Desktop Row ── */}
@@ -261,24 +217,13 @@ const Users = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      className="text-indigo-600 hover:text-indigo-900 p-2 hover:bg-indigo-50 rounded"
-                      title="View Details"
-                      onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    {user.role !== "OWNER" && (
-                      <button
-                        onClick={() => openDeleteModal(user)}
-                        className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded"
-                        title="Delete User"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                  <button
+                    className="text-indigo-600 hover:text-indigo-900 p-2 hover:bg-indigo-50 rounded"
+                    title="View Details"
+                    onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))
@@ -366,55 +311,6 @@ const Users = () => {
             </div>
           </div>
         </Dialog>
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteModal && selectedUser && (
-          <Dialog
-            open={showDeleteModal}
-            onClose={() => setShowDeleteModal(false)}
-            maxWidth="xl"
-          >
-            <DialogHeader onClose={() => setShowDeleteModal(false)}>
-              Confirm Delete
-            </DialogHeader>
-            <DialogBody>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                  <AlertCircle className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-gray-600">
-                    Are you sure you want to delete{" "}
-                    <span className="font-medium">{selectedUser.name}</span>?
-                    This action cannot be undone.
-                  </p>
-                </div>
-              </div>
-            </DialogBody>
-            <DialogFooter>
-              <div className="flex gap-3 w-full">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setShowDeleteModal(false)}
-                  className="flex-1"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  onClick={handleDeleteUser}
-                  className="flex-1 bg-red-600 hover:bg-red-700"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? <LoadingSpinner size="sm" /> : "Delete"}
-                </Button>
-              </div>
-            </DialogFooter>
-          </Dialog>
-        )}
       </div>
     </>
   );

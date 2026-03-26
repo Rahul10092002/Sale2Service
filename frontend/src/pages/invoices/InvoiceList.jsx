@@ -263,9 +263,10 @@ const InvoiceList = () => {
             ) : (
               <div className="">
                 {/* Desktop Header */}
-                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 text-gray-500 text-sm font-semibold bg-gray-200 p-4 rounded-t-lg">
+                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 text-gray-500 text-sm font-semibold bg-gray-200 p-4 rounded-t-lg">
                   <div>S No.</div>
                   <div>Invoice Details</div>
+                  <div>Items</div>
                   <div>Payment Details</div>
                   <div>Actions</div>
                 </div>
@@ -313,6 +314,30 @@ const InvoiceList = () => {
                             {invoice.payment_status || "UNPAID"}
                           </span>
                         </div>
+
+                        {/* Items list */}
+                        {invoice.invoice_items?.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-xs text-gray-400 mb-1">Items</p>
+                            <div className="flex flex-wrap gap-1">
+                              {invoice.invoice_items
+                                .slice(0, 3)
+                                .map((item, i) => (
+                                  <span
+                                    key={i}
+                                    className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full"
+                                  >
+                                    {item.product_name} ×{item.quantity}
+                                  </span>
+                                ))}
+                              {invoice.invoice_items.length > 3 && (
+                                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                                  +{invoice.invoice_items.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Amount + Date chips */}
                         <div className="grid grid-cols-2 gap-2 mb-3">
@@ -362,8 +387,10 @@ const InvoiceList = () => {
                         </button>
                       </div>
 
-                      {/* ── Desktop Row ── */}
-                      <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4">
+                      {/* ── Desktop Row ── */} 
+                      <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 items-center p-4 cursor-pointer"
+                      onClick={() => handleViewInvoice(invoice._id)}
+                      >
                         <div className="text-gray-600">
                           {(currentPage - 1) * 10 + index + 1}
                         </div>
@@ -395,6 +422,40 @@ const InvoiceList = () => {
                             </div>
                           </div>
                         </div>
+                        {/* Items column */}
+                        <div className="text-sm text-gray-600">
+                          {invoice.invoice_items?.length > 0 ? (
+                            <div className="space-y-1">
+                              {invoice.invoice_items
+                                .slice(0, 3)
+                                .map((item, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-center gap-1.5"
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
+                                    <span className="truncate text-gray-700">
+                                      {item.product_name}
+                                    </span>
+                                    <span className="text-gray-400 shrink-0">
+                                      ×{item.quantity}
+                                    </span>
+                                  </div>
+                                ))}
+                              {invoice.invoice_items.length > 3 && (
+                                <p className="text-xs text-gray-400">
+                                  +{invoice.invoice_items.length - 3} more item
+                                  {invoice.invoice_items.length - 3 > 1
+                                    ? "s"
+                                    : ""}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </div>
+                        {/* Payment Details column */}
                         <div className="text-gray-600">
                           <div className="text-sm">
                             <p>Payment Mode: {invoice.payment_mode || ""}</p>

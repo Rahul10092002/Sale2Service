@@ -16,10 +16,7 @@ import {
 } from "../../components/dashboard/index.js";
 import {
   useGetDashboardSummaryQuery,
-  useGetRevenueTrendQuery,
-  useGetTopProductsQuery,
   useGetRecentActivityQuery,
-  useGetPaymentMethodStatsQuery,
   useGetUpcomingServiceRemindersQuery,
   useGetUpcomingWarrantyRemindersQuery,
   useGetWarrantyStatsQuery,
@@ -44,10 +41,7 @@ const Dashboard = () => {
     isLoading: summaryLoading,
     refetch: refetchSummary,
   } = useGetDashboardSummaryQuery(period);
-  const { data: revenueTrendData } = useGetRevenueTrendQuery(30);
-  const { data: topProductsData } = useGetTopProductsQuery(5);
   const { data: recentActivityData } = useGetRecentActivityQuery(8);
-  const { data: paymentMethodsData } = useGetPaymentMethodStatsQuery("month");
   const { data: serviceRemindersData } =
     useGetUpcomingServiceRemindersQuery(period);
   const { data: warrantyRemindersData } =
@@ -55,10 +49,7 @@ const Dashboard = () => {
   const { data: warrantyStatsData } = useGetWarrantyStatsQuery();
 
   const summary = summaryData?.data;
-  const revenueTrend = revenueTrendData?.data || [];
-  const topProducts = topProductsData?.data || [];
   const recentActivity = recentActivityData?.data || [];
-  const paymentMethods = paymentMethodsData?.data || [];
   const serviceReminders = serviceRemindersData?.data || [];
   const warrantyReminders = warrantyRemindersData?.data || [];
   const warrantyStats = warrantyStatsData?.data;
@@ -66,38 +57,14 @@ const Dashboard = () => {
   // Check if main data is loading
   const isLoading = summaryLoading;
 
-  // Shortcut items for pinned grid (mobile-first). Role-aware items added for owners.
+  // Shortcut items — quick actions NOT directly reachable from the sidebar.
   const shortcutItems = [
     {
       label: "New Invoice",
       onClick: () => (window.location.href = "/invoices/new"),
     },
-    {
-      label: "Quick Payment",
-      onClick: () => (window.location.href = "/payments/new"),
-    },
-    {
-      label: "Find Customer",
-      onClick: () => (window.location.href = "/customers"),
-    },
-    { label: "Products", onClick: () => (window.location.href = "/products") },
-    {
-      label: "Start Visit",
-      onClick: () => (window.location.href = "/services"),
-    },
-    {
-      label: "Reminders",
-      onClick: () => (window.location.href = "/reminders"),
-    },
-    { label: "Reports", onClick: () => (window.location.href = "/reports") },
-  ];
 
-  if (role === USER_ROLES.OWNER) {
-    shortcutItems.push({
-      label: "Shop Settings",
-      onClick: () => (window.location.href = "/shops/settings"),
-    });
-  }
+  ];
 
   /**
    * Get role-specific welcome message
@@ -151,10 +118,7 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Pinned shortcuts */}
-              <div className="overflow-hidden">
-                <ShortcutGrid items={shortcutItems} />
-              </div>
+             
             </div>
           </div>
 
@@ -184,7 +148,8 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                   <MetricCard
                     title="Total Revenue"
-                    value={`₹${summary.revenue?.total?.toLocaleString("en-IN") || 0}`}
+                    // round off to nearest 10 for cleaner display, can adjust as needed
+                    value={`₹${Math.round(summary.revenue?.total / 10) * 10 || 0}`}
                     subtitle={`${summary.revenue?.count || 0} invoice${summary.revenue?.count !== 1 ? "s" : ""}`}
                     trend={summary.revenue?.changePercentage}
                     icon={IndianRupee}
@@ -307,14 +272,6 @@ const Dashboard = () => {
           {
             label: "New Invoice",
             onClick: () => (window.location.href = "/invoices/new"),
-          },
-          {
-            label: "Quick Payment",
-            onClick: () => (window.location.href = "/payments/new"),
-          },
-          {
-            label: "Add Customer",
-            onClick: () => (window.location.href = "/customers/new"),
           },
           {
             label: "Refresh Data",

@@ -20,6 +20,7 @@ import {
   XCircle,
   Pencil,
   Settings,
+  Edit,
 } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import {
@@ -28,6 +29,7 @@ import {
   DialogBody,
 } from "../../components/ui/Modal.jsx";
 import { useGetProductByIdQuery } from "../../features/products/productApi.js";
+import EditProductModal from "./EditProductModal.jsx";
 import {
   useGetInvoiceItemServicesQuery,
   useUpdateServicePlanMutation,
@@ -85,6 +87,9 @@ const ProductView = () => {
   const [updateServicePlanMutation, { isLoading: updatingPlan }] =
     useUpdateServicePlanMutation();
   const actionLoading = markingComplete || rescheduling || cancelling;
+
+  // Edit product modal
+  const [showEditProductModal, setShowEditProductModal] = useState(false);
 
   // Service plan edit modal state
   const [showEditPlanModal, setShowEditPlanModal] = useState(false);
@@ -957,14 +962,14 @@ const ProductView = () => {
                     )}
 
                     <button
-                      onClick={() => window.print()}
+                      onClick={() => setShowEditProductModal(true)}
                       className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
                     >
                       <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                        <Package className="w-5 h-5 text-indigo-600" />
+                        <Edit className="w-5 h-5 text-indigo-600" />
                       </div>
                       <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-                        Print Details
+                        Edit Details
                       </span>
                     </button>
                   </div>
@@ -1374,6 +1379,12 @@ const ProductView = () => {
           </DialogBody>
         </Modal>
       )}
+      <EditProductModal
+        open={showEditProductModal}
+        onClose={() => setShowEditProductModal(false)}
+        product={product}
+        productId={id}
+      />
     </>
   );
 };

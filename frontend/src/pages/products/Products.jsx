@@ -1,13 +1,12 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Search,
   Table,
   Package,
   User,
   FileText,
-  ChevronDown,
-  ChevronUp,
   Phone,
+  Filter,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input } from "../../components/ui/index.js";
@@ -18,18 +17,100 @@ import {
   ServiceTableModal,
 } from "../../components/service/index.js";
 
+const CATEGORY_OPTIONS = [
+  { value: "", label: "All Categories" },
+  { value: "BATTERY", label: "Battery" },
+  { value: "INVERTER", label: "Inverter" },
+  { value: "UPS", label: "UPS" },
+  { value: "SOLAR_PANEL", label: "Solar Panel" },
+  { value: "CHARGER", label: "Charger" },
+  { value: "ACCESSORIES", label: "Accessories" },
+  { value: "OTHER", label: "Other" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "", label: "All Statuses" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "REPLACED", label: "Replaced" },
+  { value: "RETURNED", label: "Returned" },
+  { value: "UNDER_SERVICE", label: "Under Service" },
+];
+
+const SERVICE_PLAN_OPTIONS = [
+  { value: "", label: "Any Service Plan" },
+  { value: "yes", label: "Has Service Plan" },
+  { value: "no", label: "No Service Plan" },
+];
+
+const SERVICE_DUE_OPTIONS = [
+  { value: "", label: "Any Service Due" },
+  { value: "7", label: "Due in 7 days" },
+  { value: "14", label: "Due in 14 days" },
+  { value: "30", label: "Due in 30 days" },
+  { value: "60", label: "Due in 60 days" },
+  { value: "90", label: "Due in 90 days" },
+];
+
+const WARRANTY_OPTIONS = [
+  { value: "", label: "Any Warranty" },
+  { value: "expired", label: "Expired" },
+  { value: "30", label: "Expiring in 30 days" },
+  { value: "60", label: "Expiring in 60 days" },
+  { value: "90", label: "Expiring in 90 days" },
+  { value: "180", label: "Expiring in 6 months" },
+];
+
+const PAYMENT_OPTIONS = [
+  { value: "", label: "Any Payment" },
+  { value: "PAID", label: "Paid" },
+  { value: "PARTIAL", label: "Partial" },
+  { value: "UNPAID", label: "Unpaid" },
+];
+
+const DEFAULT_FILTERS = {
+  product_category: "",
+  status: "",
+  has_service_plan: "",
+  service_due_days: "",
+  warranty_status: "",
+  payment_status: "",
+};
+
 const Products = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [showServiceTable, setShowServiceTable] = useState(null);
-  const [expandedCustomer, setExpandedCustomer] = useState({});
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
+  const filterRef = useRef(null);
 
-  const { data: response, isLoading } = useGetProductsQuery({
-    search: searchTerm,
-    page,
-    limit: 10,
-  });
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setShowFilters(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
+
+  const queryParams = useMemo(() => {
+    const params = { search: searchTerm, page, limit: 10 };
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v) params[k] = v;
+    });
+    return params;
+  }, [searchTerm, page, filters]);
+
+  const { data: response, isLoading } = useGetProductsQuery(queryParams);
 
   const products = response?.products || [];
   const pagination = response?.pagination || {
@@ -61,15 +142,161 @@ const Products = () => {
     <>
       <div className="min-h-screen bg-gray-50 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Filters & Search */}
           <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-6 gap-4">
-            <div className="flex items-center space-x-4 w-2/3">
-              <div className="flex-1 flex items-center space-x-3 border border-gray-300 bg-white rounded-full px-4 py-2 shadow-sm">
+            <div className="flex items-center space-x-4">
+              {/* Filter Icon with Dropdown */}
+              <div className="relative" ref={filterRef}>
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center justify-center bg-blue-100 rounded-md p-2 hover:bg-blue-200 transition-colors"
+                >
+                  <Filter className="h-5 w-5 text-blue-600" />
+                </button>
+                {showFilters && (
+                  <div className="absolute top-12 left-0 bg-white border border-gray-200 rounded-md shadow-lg p-4 z-10 w-96">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col">
+                        <label className="text-sm text-gray-600 font-medium mb-1">
+                          Category:
+                        </label>
+                        <select
+                          value={filters.product_category}
+                          onChange={(e) =>
+                            handleFilterChange(
+                              "product_category",
+                              e.target.value,
+                            )
+                          }
+                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                        >
+                          {CATEGORY_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <label className="text-sm text-gray-600 font-medium mb-1">
+                          Status:
+                        </label>
+                        <select
+                          value={filters.status}
+                          onChange={(e) =>
+                            handleFilterChange("status", e.target.value)
+                          }
+                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                        >
+                          {STATUS_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <label className="text-sm text-gray-600 font-medium mb-1">
+                          Service Plan:
+                        </label>
+                        <select
+                          value={filters.has_service_plan}
+                          onChange={(e) =>
+                            handleFilterChange(
+                              "has_service_plan",
+                              e.target.value,
+                            )
+                          }
+                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                        >
+                          {SERVICE_PLAN_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <label className="text-sm text-gray-600 font-medium mb-1">
+                          Service Due:
+                        </label>
+                        <select
+                          value={filters.service_due_days}
+                          onChange={(e) =>
+                            handleFilterChange(
+                              "service_due_days",
+                              e.target.value,
+                            )
+                          }
+                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                        >
+                          {SERVICE_DUE_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <label className="text-sm text-gray-600 font-medium mb-1">
+                          Warranty:
+                        </label>
+                        <select
+                          value={filters.warranty_status}
+                          onChange={(e) =>
+                            handleFilterChange(
+                              "warranty_status",
+                              e.target.value,
+                            )
+                          }
+                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                        >
+                          {WARRANTY_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <label className="text-sm text-gray-600 font-medium mb-1">
+                          Payment:
+                        </label>
+                        <select
+                          value={filters.payment_status}
+                          onChange={(e) =>
+                            handleFilterChange("payment_status", e.target.value)
+                          }
+                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                        >
+                          {PAYMENT_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Search Bar */}
+              <div className="flex items-center space-x-3 border border-gray-300 bg-white rounded-full px-4 py-2 max-w-xs shadow-sm">
                 <Search className="h-5 w-5 text-gray-500" />
                 <input
-                  placeholder="Search by serial, product, company or model..."
+                  placeholder="Search products..."
                   className="bg-transparent focus:outline-none text-gray-600 placeholder-gray-400 w-full text-sm"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
                 />
               </div>
             </div>
@@ -173,7 +400,9 @@ const Products = () => {
                             className="p-1 rounded-md hover:bg-blue-100"
                             title="View Service Table"
                           >
-                            <span className="w-3.5 h-3.5 text-blue-600">View Services</span>
+                            <span className="w-3.5 h-3.5 text-blue-600">
+                              View Services
+                            </span>
                           </button>
                         )}
                       </div>

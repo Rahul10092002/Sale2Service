@@ -7,6 +7,7 @@ import {
   Shield,
   Settings,
   ImagePlus,
+  Camera,
   X,
 } from "lucide-react";
 import { Button, Input, SelectField } from "../ui/index.js";
@@ -91,6 +92,7 @@ const ProductCard = React.memo(function ProductCard({
   const [imageUploading, setImageUploading] = React.useState(false);
   const [imageError, setImageError] = React.useState(null);
   const fileInputRef = React.useRef(null);
+  const cameraInputRef = React.useRef(null);
 
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0];
@@ -299,28 +301,56 @@ const ProductCard = React.memo(function ProductCard({
               </button>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
-              {imageUploading ? (
-                <span className="text-xs text-indigo-600 text-center px-2">
-                  Uploading…
-                </span>
-              ) : (
-                <>
-                  <ImagePlus className="w-6 h-6 text-gray-400" />
-                  <span className="text-xs text-gray-500 text-center">
-                    Add photo
+            <div className="flex items-center gap-3">
+              {/* Upload from gallery */}
+              <label className="flex flex-col items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+                {imageUploading ? (
+                  <span className="text-xs text-indigo-600 text-center px-2">
+                    Uploading…
                   </span>
-                </>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                disabled={imageUploading}
-                onChange={handleImageChange}
-              />
-            </label>
+                ) : (
+                  <>
+                    <ImagePlus className="w-6 h-6 text-gray-400" />
+                    <span className="text-xs text-gray-500 text-center">
+                      Add photo
+                    </span>
+                  </>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  disabled={imageUploading}
+                  onChange={handleImageChange}
+                />
+              </label>
+
+              {/* Capture from camera */}
+              <label className="flex flex-col items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors">
+                {imageUploading ? (
+                  <span className="text-xs text-green-600 text-center px-2">
+                    Uploading…
+                  </span>
+                ) : (
+                  <>
+                    <Camera className="w-6 h-6 text-gray-400" />
+                    <span className="text-xs text-gray-500 text-center">
+                      Take photo
+                    </span>
+                  </>
+                )}
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  className="hidden"
+                  disabled={imageUploading}
+                  onChange={handleImageChange}
+                />
+              </label>
+            </div>
           )}
 
           {imageError && (

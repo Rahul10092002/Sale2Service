@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Receipt, Calendar, CreditCard } from "lucide-react";
 import { Input, SelectField } from "../ui/index.js";
 import { INVOICE_CONSTANTS } from "../../utils/constants.js";
@@ -6,6 +6,7 @@ import { useInvoiceForm } from "../../features/invoices/hooks.js";
 
 const InvoiceDetailsForm = () => {
   const { currentInvoice, updateInvoiceData, errors } = useInvoiceForm();
+  const [rawAmountPaid, setRawAmountPaid] = useState(null);
 
   const { invoice } = currentInvoice;
 
@@ -116,12 +117,18 @@ const InvoiceDetailsForm = () => {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={invoice.amount_paid || 0}
-                  onChange={(e) =>
+                  value={
+                    rawAmountPaid !== null
+                      ? rawAmountPaid
+                      : invoice.amount_paid || 0
+                  }
+                  onChange={(e) => {
+                    setRawAmountPaid(e.target.value);
                     updateInvoiceData({
                       amount_paid: parseFloat(e.target.value) || 0,
-                    })
-                  }
+                    });
+                  }}
+                  onBlur={() => setRawAmountPaid(null)}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Remaining: {formatCurrency(invoice.amount_due)}
@@ -129,8 +136,6 @@ const InvoiceDetailsForm = () => {
               </div>
             )}
           </div>
-
-          
         </div>
       </div>
     </div>

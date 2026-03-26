@@ -6,9 +6,51 @@ import {
   Package,
   Shield,
   Settings,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import { Button, Input, SelectField } from "../ui/index.js";
 import { INVOICE_CONSTANTS } from "../../utils/constants.js";
+import { getToken } from "../../utils/token.js";
+
+const API_BASE_URL =
+  import.meta.env.VITE_ENVIRONMENT === "production"
+    ? import.meta.env.VITE_PROD_API_URL
+    : import.meta.env.VITE_LOCAL_API_URL;
+
+/**
+ * Compress an image File using the canvas API.
+ * Returns a Blob (JPEG, quality 0.78, max 900px on longest side).
+ */
+const compressImage = (file) =>
+  new Promise((resolve, reject) => {
+    const MAX_PX = 900;
+    const QUALITY = 0.78;
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const ratio = Math.min(MAX_PX / img.width, MAX_PX / img.height, 1);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Canvas compression failed"));
+        },
+        "image/jpeg",
+        QUALITY,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = objectUrl;
+  });
 
 const ProductCard = React.memo(function ProductCard({
   item,
@@ -22,6 +64,72 @@ const ProductCard = React.memo(function ProductCard({
   recalculateInvoice,
 }) {
   const isExpanded = expandedSections.productMetadata[item.id] || false;
+
+  // rawNumbers tracks the raw string the user is currently typing so that
+  // backspacing to "" doesn't immediately snap back to the fallback value.
+  const [rawNumbers, setRawNumbers] = React.useState({});
+
+  const setRaw = (key, value) =>
+    setRawNumbers((prev) => ({ ...prev, [key]: value }));
+
+  const clearRaw = (key) =>
+    setRawNumbers((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+  // Returns the raw string if the user is editing, otherwise the stored value.
+  const numVal = (key, itemValue, fallback) =>
+    key in rawNumbers
+      ? rawNumbers[key]
+      : itemValue !== undefined && itemValue !== null && itemValue !== ""
+        ? itemValue
+        : fallback;
+
+  // ── Image upload state ──────────────────────────────────────────
+  const [imageUploading, setImageUploading] = React.useState(false);
+  const [imageError, setImageError] = React.useState(null);
+  const fileInputRef = React.useRef(null);
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageError(null);
+    setImageUploading(true);
+    try {
+      const compressed = await compressImage(file);
+      const formData = new FormData();
+      formData.append("product_image", compressed, "product.jpg");
+
+      const token = getToken();
+      const response = await fetch(`${API_BASE_URL}/files/product-image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(json.message || "Upload failed");
+      }
+      updateItemImmediate(item.id, {
+        product_image_url: json.data.image_url,
+      });
+    } catch (err) {
+      console.error("Product image upload error:", err);
+      setImageError(err.message || "Upload failed");
+    } finally {
+      setImageUploading(false);
+      // Reset the file input so the same file can be re-selected if needed
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeImage = () => {
+    updateItemImmediate(item.id, { product_image_url: null });
+    setImageError(null);
+  };
+  // ── End image upload state ──────────────────────────────────────
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -130,13 +238,15 @@ const ProductCard = React.memo(function ProductCard({
             </label>
             <Input
               type="number"
-              value={item.selling_price || ""}
+              value={numVal("selling_price", item.selling_price, "")}
               onChange={(e) => {
+                setRaw("selling_price", e.target.value);
                 updateItem(item.id, {
                   selling_price: Number(e.target.value) || 0,
                 });
                 recalculateInvoice();
               }}
+              onBlur={() => clearRaw("selling_price")}
               placeholder="0.00"
               min="0"
               step="0.01"
@@ -150,17 +260,72 @@ const ProductCard = React.memo(function ProductCard({
             </label>
             <Input
               type="number"
-              value={item.quantity || 1}
+              value={numVal("quantity", item.quantity, 1)}
               onChange={(e) => {
+                setRaw("quantity", e.target.value);
                 updateItem(item.id, {
                   quantity: parseInt(e.target.value) || 1,
                 });
                 recalculateInvoice();
               }}
+              onBlur={() => clearRaw("quantity")}
               placeholder="1"
               min="1"
             />
           </div>
+        </div>
+
+        {/* Product Image Upload */}
+        <div className="border-t border-gray-200 pt-4">
+          <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 mb-3">
+            <ImagePlus className="w-4 h-4 text-indigo-600" />
+            Product Image
+          </h4>
+
+          {item.product_image_url ? (
+            <div className="relative inline-block">
+              <img
+                src={item.product_image_url}
+                alt="Product"
+                className="w-32 h-32 object-cover rounded-lg border border-gray-200"
+              />
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                title="Remove image"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+              {imageUploading ? (
+                <span className="text-xs text-indigo-600 text-center px-2">
+                  Uploading…
+                </span>
+              ) : (
+                <>
+                  <ImagePlus className="w-6 h-6 text-gray-400" />
+                  <span className="text-xs text-gray-500 text-center">
+                    Add photo
+                  </span>
+                </>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                disabled={imageUploading}
+                onChange={handleImageChange}
+              />
+            </label>
+          )}
+
+          {imageError && (
+            <p className="mt-2 text-xs text-red-600">{imageError}</p>
+          )}
         </div>
 
         <div className="border-t border-gray-200 pt-4">
@@ -196,13 +361,19 @@ const ProductCard = React.memo(function ProductCard({
               </label>
               <Input
                 type="number"
-                value={item.warranty_duration_months || 12}
+                value={numVal(
+                  "warranty_duration_months",
+                  item.warranty_duration_months,
+                  12,
+                )}
                 onChange={(e) => {
+                  setRaw("warranty_duration_months", e.target.value);
                   updateItem(item.id, {
                     warranty_duration_months: parseInt(e.target.value) || 12,
                   });
                   recalculateInvoice();
                 }}
+                onBlur={() => clearRaw("warranty_duration_months")}
                 placeholder="12"
                 min="1"
                 max="120"
@@ -368,8 +539,13 @@ const ProductCard = React.memo(function ProductCard({
                   </label>
                   <Input
                     type="number"
-                    value={item.service_plan?.service_interval_value || 1}
+                    value={numVal(
+                      "sp_interval_value",
+                      item.service_plan?.service_interval_value,
+                      1,
+                    )}
                     onChange={(e) => {
+                      setRaw("sp_interval_value", e.target.value);
                       const newIntervalValue = parseInt(e.target.value) || 1;
                       const intervalType =
                         item.service_plan?.service_interval_type || "MONTHLY";
@@ -387,6 +563,7 @@ const ProductCard = React.memo(function ProductCard({
                         },
                       });
                     }}
+                    onBlur={() => clearRaw("sp_interval_value")}
                     placeholder="1"
                     min="1"
                   />
@@ -423,16 +600,22 @@ const ProductCard = React.memo(function ProductCard({
                   </label>
                   <Input
                     type="number"
-                    value={item.service_plan?.service_charge || 0}
-                    onChange={(e) =>
+                    value={numVal(
+                      "sp_service_charge",
+                      item.service_plan?.service_charge,
+                      0,
+                    )}
+                    onChange={(e) => {
+                      setRaw("sp_service_charge", e.target.value);
                       updateItem(item.id, {
                         ...item,
                         service_plan: {
                           ...item.service_plan,
                           service_charge: parseFloat(e.target.value) || 0,
                         },
-                      })
-                    }
+                      });
+                    }}
+                    onBlur={() => clearRaw("sp_service_charge")}
                     placeholder="0.00"
                     min="0"
                     step="0.01"
@@ -445,8 +628,13 @@ const ProductCard = React.memo(function ProductCard({
                   </label>
                   <Input
                     type="number"
-                    value={item.service_plan?.total_services || 1}
+                    value={numVal(
+                      "sp_total_services",
+                      item.service_plan?.total_services,
+                      1,
+                    )}
                     onChange={(e) => {
+                      setRaw("sp_total_services", e.target.value);
                       const total = parseInt(e.target.value) || 1;
                       const start =
                         item.service_plan?.service_start_date ||
@@ -471,6 +659,7 @@ const ProductCard = React.memo(function ProductCard({
                         },
                       });
                     }}
+                    onBlur={() => clearRaw("sp_total_services")}
                     placeholder="1"
                     min="1"
                   />
@@ -629,13 +818,15 @@ const ProductCard = React.memo(function ProductCard({
                 </label>
                 <Input
                   type="number"
-                  value={item.cost_price || ""}
+                  value={numVal("cost_price", item.cost_price, "")}
                   onChange={(e) => {
+                    setRaw("cost_price", e.target.value);
                     updateItem(item.id, {
                       cost_price: Number(e.target.value) || 0,
                     });
                     recalculateInvoice();
                   }}
+                  onBlur={() => clearRaw("cost_price")}
                   placeholder="0.00"
                   min="0"
                   step="0.01"

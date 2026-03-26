@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../features/ui/uiSlice.js";
 import {
   X,
   Calendar,
@@ -40,6 +42,7 @@ export const ServiceTableModal = ({
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [completionNotes, setCompletionNotes] = useState("");
   const [amountCollected, setAmountCollected] = useState(0);
+  const [rawAmountCollected, setRawAmountCollected] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [technicianName, setTechnicianName] = useState("");
   const [issueReported, setIssueReported] = useState("");
@@ -65,6 +68,7 @@ export const ServiceTableModal = ({
     useCancelServiceMutation();
 
   const actionLoading = markingComplete || rescheduling || cancelling;
+  const dispatch = useDispatch();
 
   // Service management functions
   const markServiceComplete = async (scheduleId) => {
@@ -101,9 +105,13 @@ export const ServiceTableModal = ({
     }
 
     if (errors.length > 0) {
-      alert(
-        "Please fix the following errors:\n\n" +
-          errors.map((e) => "• " + e).join("\n"),
+      dispatch(
+        showToast({
+          message:
+            "Please fix the following errors:\n\n" +
+            errors.map((e) => "• " + e).join("\n"),
+          type: "error",
+        }),
       );
       return;
     }
@@ -126,7 +134,12 @@ export const ServiceTableModal = ({
       console.log("markComplete result:", result);
 
       // Show success message
-      alert("Service marked as completed successfully!");
+      dispatch(
+        showToast({
+          message: "Service marked as completed successfully!",
+          type: "success",
+        }),
+      );
 
       refetch();
       setShowCompleteModal(null);
@@ -143,14 +156,19 @@ export const ServiceTableModal = ({
         err?.data?.message ||
         err?.message ||
         "Failed to mark service as complete";
-      alert(`Error: ${errorMessage}`);
+      dispatch(showToast({ message: errorMessage, type: "error" }));
     }
   };
 
   const rescheduleService = async (scheduleId) => {
     try {
       if (!rescheduleDate) {
-        alert("Please select a new date for the service.");
+        dispatch(
+          showToast({
+            message: "Please select a new date for the service.",
+            type: "error",
+          }),
+        );
         return;
       }
 
@@ -161,7 +179,12 @@ export const ServiceTableModal = ({
       }).unwrap();
 
       // Show success message
-      alert("Service rescheduled successfully!");
+      dispatch(
+        showToast({
+          message: "Service rescheduled successfully!",
+          type: "success",
+        }),
+      );
 
       refetch();
       setShowRescheduleModal(null);
@@ -170,7 +193,7 @@ export const ServiceTableModal = ({
       console.error("Reschedule error:", err);
       const errorMessage =
         err?.data?.message || err?.message || "Failed to reschedule service";
-      alert(`Error: ${errorMessage}`);
+      dispatch(showToast({ message: errorMessage, type: "error" }));
     }
   };
 
@@ -190,14 +213,19 @@ export const ServiceTableModal = ({
       }).unwrap();
 
       // Show success message
-      alert("Service cancelled successfully!");
+      dispatch(
+        showToast({
+          message: "Service cancelled successfully!",
+          type: "success",
+        }),
+      );
 
       refetch();
     } catch (err) {
       console.error("Cancel error:", err);
       const errorMessage =
         err?.data?.message || err?.message || "Failed to cancel service";
-      alert(`Error: ${errorMessage}`);
+      dispatch(showToast({ message: errorMessage, type: "error" }));
     }
   };
 
@@ -571,13 +599,19 @@ export const ServiceTableModal = ({
                     </span>
                     <input
                       type="number"
-                      value={amountCollected}
+                      value={
+                        rawAmountCollected !== null
+                          ? rawAmountCollected
+                          : amountCollected
+                      }
                       onChange={(e) => {
+                        setRawAmountCollected(e.target.value);
                         const value = parseFloat(e.target.value) || 0;
                         if (value >= 0) {
                           setAmountCollected(value);
                         }
                       }}
+                      onBlur={() => setRawAmountCollected(null)}
                       className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                       placeholder="0"
                       min="0"

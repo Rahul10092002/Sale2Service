@@ -221,7 +221,7 @@ const InvoiceView = () => {
     );
   }
   return (
-    < >
+    <>
       <div className="min-h-screen bg-white p-4">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -475,13 +475,14 @@ const InvoiceView = () => {
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-gray-200">
+                            <th className="text-left py-3 px-4 font-medium text-gray-700 w-10"></th>
                             <th className="text-left py-3 px-4 font-medium text-gray-700">
                               Product Name
                             </th>
                             <th className="text-left py-3 px-4 font-medium text-gray-700">
                               Serial Number
                             </th>
-                           
+
                             <th className="text-right py-3 px-4 font-medium text-gray-700">
                               Price
                             </th>
@@ -490,13 +491,26 @@ const InvoiceView = () => {
                         <tbody className="divide-y divide-gray-100">
                           {items.map((item, index) => (
                             <tr key={index}>
+                              <td className="py-3 px-4">
+                                {item.product_images?.[0] ? (
+                                  <img
+                                    src={item.product_images[0]}
+                                    alt={item.product_name || "Product"}
+                                    className="w-10 h-10 rounded-lg object-cover border border-gray-200 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs shrink-0">
+                                    —
+                                  </div>
+                                )}
+                              </td>
                               <td className="py-3 px-4 text-gray-900">
                                 {item.product_name}
                               </td>
                               <td className="py-3 px-4 text-gray-600">
                                 {item.serial_number}
                               </td>
-                             
+
                               <td className="py-3 px-4 text-right text-gray-900">
                                 {formatCurrency(
                                   item.selling_price || item.price || 0,

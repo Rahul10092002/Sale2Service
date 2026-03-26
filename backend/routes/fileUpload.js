@@ -3,6 +3,7 @@ import { authenticate, authorize } from "../middleware/auth.js";
 import {
   upload,
   uploadMemory,
+  uploadImageMemory,
   handleMulterError,
 } from "../middleware/upload.js";
 import fileUploadController from "../controllers/fileUploadController.js";
@@ -54,6 +55,18 @@ router.get(
   "/secure-url/:publicId",
   authorize("OWNER", "ADMIN", "STAFF"),
   fileUploadController.generateSecureUrl,
+);
+
+/**
+ * Upload product image to Cloudinary
+ * POST /product-image
+ */
+router.post(
+  "/product-image",
+  authorize("OWNER", "ADMIN", "STAFF"),
+  uploadImageMemory.single("product_image"),
+  handleMulterError,
+  fileUploadController.uploadProductImage,
 );
 
 export default router;

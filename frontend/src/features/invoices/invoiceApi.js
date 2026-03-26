@@ -9,7 +9,10 @@ export const invoiceApi = baseApi.injectEndpoints({
         params: params || {},
       }),
       providesTags: (result) => [
-        ...(result?.invoices?.map(({ _id }) => ({ type: "Invoice", id: _id })) || []),
+        ...(result?.invoices?.map(({ _id }) => ({
+          type: "Invoice",
+          id: _id,
+        })) || []),
         { type: "Invoice", id: "LIST" },
       ],
       // Keep invoice list cache for 3 minutes

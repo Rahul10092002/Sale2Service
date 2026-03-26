@@ -24,6 +24,7 @@ const InvoiceGenerationPage = () => {
 
   const { createInvoice } = useInvoiceActions();
   const [submitResult, setSubmitResult] = useState(null);
+  const [rawDiscount, setRawDiscount] = useState(null);
 
   // Comprehensive validation for all sections
   const validateAllSections = useCallback(() => {
@@ -167,7 +168,7 @@ const InvoiceGenerationPage = () => {
                 saved.
               </p>
               <div className="flex justify-center gap-4">
-                <Button variant="outline" >View Invoice</Button>
+                <Button variant="outline">View Invoice</Button>
                 <Button
                   onClick={() => {
                     setSubmitResult(null);
@@ -194,7 +195,6 @@ const InvoiceGenerationPage = () => {
             <div className="lg:col-span-4 space-y-8">
               {/* Customer Information Section */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-               
                 <div className="">
                   <CustomerInformationForm />
                 </div>
@@ -202,7 +202,6 @@ const InvoiceGenerationPage = () => {
 
               {/* Invoice Items Section */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-               
                 <div className="">
                   <InvoiceItemsForm />
                 </div>
@@ -242,12 +241,18 @@ const InvoiceGenerationPage = () => {
                       </label>
                       <input
                         type="number"
-                        value={currentInvoice.invoice.discount || 0}
+                        value={
+                          rawDiscount !== null
+                            ? rawDiscount
+                            : currentInvoice.invoice.discount || 0
+                        }
                         onChange={(e) => {
+                          setRawDiscount(e.target.value);
                           const discount = parseFloat(e.target.value) || 0;
                           updateInvoiceData({ discount });
                           setTimeout(() => recalculateInvoice(), 0);
                         }}
+                        onBlur={() => setRawDiscount(null)}
                         placeholder="0.00"
                         min="0"
                         step="0.01"

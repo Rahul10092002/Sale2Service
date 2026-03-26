@@ -248,6 +248,10 @@ export default class InvoiceController {
           batch_number: item.batch_number,
           purchase_source: item.purchase_source,
           notes: item.notes,
+          // Product image uploaded to Cloudinary before invoice creation
+          product_images: item.product_image_url
+            ? [item.product_image_url]
+            : [],
         });
 
         await invoiceItem.save({ session });

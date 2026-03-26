@@ -83,7 +83,16 @@ export default class ProductController {
         InvoiceItem.find(query)
           .sort({ createdAt: -1 })
           .skip(skip)
-          .limit(parseInt(limit)),
+          .limit(parseInt(limit))
+          .populate({
+            path: "invoice_id",
+            select:
+              "invoice_number invoice_date total_amount payment_status amount_paid amount_due",
+            populate: {
+              path: "customer_id",
+              select: "full_name whatsapp_number address",
+            },
+          }),
         InvoiceItem.countDocuments(query),
       ]);
 
@@ -97,9 +106,34 @@ export default class ProductController {
               deleted_at: null,
             });
 
+            const invoice = product.invoice_id;
+            const invoiceData = invoice
+              ? {
+                  _id: invoice._id,
+                  invoice_number: invoice.invoice_number,
+                  invoice_date: invoice.invoice_date,
+                  total_amount: invoice.total_amount,
+                  payment_status: invoice.payment_status,
+                  amount_paid: invoice.amount_paid,
+                  amount_due: invoice.amount_due,
+                }
+              : null;
+
+            const customerData = invoice?.customer_id
+              ? {
+                  _id: invoice.customer_id._id,
+                  full_name: invoice.customer_id.full_name,
+                  whatsapp_number: invoice.customer_id.whatsapp_number,
+                  address: invoice.customer_id.address,
+                }
+              : null;
+
             if (!servicePlan) {
               return {
                 ...product.toObject(),
+                invoice_id: product.invoice_id?._id ?? product.invoice_id,
+                invoice: invoiceData,
+                customer: customerData,
                 hasServicePlan: false,
                 nextServiceDate: null,
               };
@@ -115,6 +149,9 @@ export default class ProductController {
 
             return {
               ...product.toObject(),
+              invoice_id: product.invoice_id?._id ?? product.invoice_id,
+              invoice: invoiceData,
+              customer: customerData,
               hasServicePlan: true,
               servicePlan: {
                 _id: servicePlan._id,
@@ -134,6 +171,9 @@ export default class ProductController {
             );
             return {
               ...product.toObject(),
+              invoice_id: product.invoice_id?._id ?? product.invoice_id,
+              invoice: null,
+              customer: null,
               hasServicePlan: false,
               nextServiceDate: null,
             };
@@ -171,13 +211,82 @@ export default class ProductController {
         _id: id,
         shop_id: user.shopId,
         deleted_at: null,
+      }).populate({
+        path: "invoice_id",
+        select:
+          "invoice_number invoice_date total_amount payment_status amount_paid amount_due",
+        populate: {
+          path: "customer_id",
+          select: "full_name whatsapp_number address email alternate_phone",
+        },
       });
+
       if (!product)
         return res
           .status(404)
           .json({ success: false, message: "Product not found" });
 
-      res.json({ success: true, data: { product } });
+      const invoice = product.invoice_id;
+      const invoiceData = invoice
+        ? {
+            _id: invoice._id,
+            invoice_number: invoice.invoice_number,
+            invoice_date: invoice.invoice_date,
+            total_amount: invoice.total_amount,
+            payment_status: invoice.payment_status,
+            amount_paid: invoice.amount_paid,
+            amount_due: invoice.amount_due,
+          }
+        : null;
+
+      const customerData = invoice?.customer_id
+        ? {
+            _id: invoice.customer_id._id,
+            full_name: invoice.customer_id.full_name,
+            whatsapp_number: invoice.customer_id.whatsapp_number,
+            email: invoice.customer_id.email,
+            alternate_phone: invoice.customer_id.alternate_phone,
+            address: invoice.customer_id.address,
+          }
+        : null;
+
+      // Fetch service plan and schedules
+      const servicePlan = await ServicePlan.findOne({
+        invoice_item_id: product._id,
+        deleted_at: null,
+      });
+
+      const nextSchedule = servicePlan
+        ? await ServiceSchedule.findOne({
+            service_plan_id: servicePlan._id,
+            scheduled_date: { $gte: new Date() },
+            status: { $in: ["PENDING", "RESCHEDULED"] },
+            deleted_at: null,
+          }).sort({ scheduled_date: 1 })
+        : null;
+
+      res.json({
+        success: true,
+        data: {
+          product: {
+            ...product.toObject(),
+            invoice_id: product.invoice_id?._id ?? product.invoice_id,
+            invoice: invoiceData,
+            customer: customerData,
+            hasServicePlan: !!servicePlan,
+            servicePlan: servicePlan
+              ? {
+                  _id: servicePlan._id,
+                  service_interval_type: servicePlan.service_interval_type,
+                  service_interval_value: servicePlan.service_interval_value,
+                  total_services: servicePlan.total_services,
+                  service_charge: servicePlan.service_charge,
+                }
+              : null,
+            nextServiceDate: nextSchedule ? nextSchedule.scheduled_date : null,
+          },
+        },
+      });
     } catch (error) {
       console.error("Get product error:", error);
       res

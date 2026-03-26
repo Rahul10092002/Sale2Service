@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../features/ui/uiSlice.js";
 import {
   Trash2,
   Plus,
@@ -34,7 +36,7 @@ const Users = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [alert, setAlert] = useState(null);
+  const dispatch = useDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -45,8 +47,7 @@ const Users = () => {
   });
 
   const showAlert = (message, type = "success") => {
-    setAlert({ message, type });
-    setTimeout(() => setAlert(null), 5000);
+    dispatch(showToast({ message, type }));
   };
 
   const handleInputChange = (e) => {
@@ -128,18 +129,8 @@ const Users = () => {
   return (
     <>
       <div className="p-6">
-        {alert && (
-          <div className="mb-6">
-            <Alert
-              type={alert.type}
-              title={alert.type === "success" ? "Success" : "Error"}
-              message={alert.message}
-            />
-          </div>
-        )}
-
+        {/* Users management table */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Users Management</h1>
           <Button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2"

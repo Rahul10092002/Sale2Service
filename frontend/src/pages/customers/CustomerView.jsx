@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
+import { showToast } from "../../features/ui/uiSlice.js";
 import {
   ArrowLeft,
   User,
@@ -46,6 +48,7 @@ const CustomerView = () => {
 
   const [deleteInvoice] = useDeleteInvoiceMutation();
   const [deleteCustomer] = useDeleteCustomerMutation();
+  const dispatch = useDispatch();
 
   const customer = customerResp?.customer;
   // prefer paginated invoicesResp if available, else fallback to invoices returned with customerResp
@@ -71,7 +74,9 @@ const CustomerView = () => {
         navigate(ROUTES.CUSTOMERS);
       } catch (err) {
         console.error(err);
-        alert("Failed to delete customer");
+        dispatch(
+          showToast({ message: "Failed to delete customer", type: "error" }),
+        );
       }
     }
   };
@@ -128,7 +133,7 @@ const CustomerView = () => {
 
   if (error || !customer) {
     return (
-      < >
+      <>
         <div className="p-6">
           <Alert
             type="error"
@@ -147,7 +152,7 @@ const CustomerView = () => {
     );
   }
   return (
-    < >
+    <>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 py-6">
           {/* Header */}
@@ -479,7 +484,12 @@ const CustomerView = () => {
                                     refetchInvoices();
                                   } catch (err) {
                                     console.error(err);
-                                    alert("Failed to delete invoice");
+                                    dispatch(
+                                      showToast({
+                                        message: "Failed to delete invoice",
+                                        type: "error",
+                                      }),
+                                    );
                                   }
                                 }
                               }}

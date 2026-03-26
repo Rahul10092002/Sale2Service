@@ -5,7 +5,10 @@ export const customerApi = baseApi.injectEndpoints({
     getCustomers: builder.query({
       query: (params) => ({ url: "/customers", params: params || {} }),
       providesTags: (result) => [
-        ...(result?.customers?.map(({ _id }) => ({ type: "Customer", id: _id })) || []),
+        ...(result?.customers?.map(({ _id }) => ({
+          type: "Customer",
+          id: _id,
+        })) || []),
         { type: "Customer", id: "LIST" },
       ],
       // Keep customer list cache for 3 minutes

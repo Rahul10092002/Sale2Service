@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from "react";
+import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { showToast } from "../../features/ui/uiSlice.js";
 import {
   Plus,
   Search,
@@ -15,7 +17,6 @@ import {
 import Button from "../../components/ui/Button.jsx";
 import Input from "../../components/ui/Input.jsx";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
-import Alert from "../../components/ui/Alert.jsx";
 import { ROUTES } from "../../utils/constants.js";
 import {
   Dialog,
@@ -29,7 +30,7 @@ const Customers = () => {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [alert, setAlert] = useState(null);
+  const dispatch = useDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -58,8 +59,7 @@ const Customers = () => {
   });
 
   const showAlert = (message, type = "success") => {
-    setAlert({ message, type });
-    setTimeout(() => setAlert(null), 5000);
+    dispatch(showToast({ message, type }));
   };
 
   const handleInputChange = (e) => {
@@ -244,19 +244,9 @@ const Customers = () => {
   }
 
   return (
-    < >
+    <>
       <div className="min-h-screen bg-gray-50 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {alert && (
-            <div className="mb-6">
-              <Alert
-                type={alert.type}
-                title={alert.type === "success" ? "Success" : "Error"}
-                message={alert.message}
-              />
-            </div>
-          )}
-
           <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-6 gap-4">
             <div className="flex items-center space-x-4 w-[45%] min-w-62.5">
               <div className="flex items-center space-x-3 border border-gray-300 bg-white rounded-full px-4 py-2 w-full shadow-sm">

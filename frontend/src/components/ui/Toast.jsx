@@ -13,7 +13,7 @@ const Toast = ({ message, variant = "success", onClose, autoClose = 5000 }) => {
   if (!message) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 w-96">
+    <div className="fixed top-4 right-4 z-[100] w-96">
       <Alert
         variant={variant}
         dismissible

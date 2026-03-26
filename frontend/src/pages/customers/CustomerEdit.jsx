@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
+import { showToast } from "../../features/ui/uiSlice.js";
 import { ArrowLeft, Save, X } from "lucide-react";
 import {
   useGetCustomerByIdQuery,
@@ -14,7 +16,7 @@ import { ROUTES } from "../../utils/constants.js";
 const CustomerEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [alert, setAlert] = useState(null);
+  const dispatch = useDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: customerResp, isLoading, error } = useGetCustomerByIdQuery(id);
@@ -60,8 +62,7 @@ const CustomerEdit = () => {
   }, [customerResp]);
 
   const showAlert = (message, type = "success") => {
-    setAlert({ message, type });
-    setTimeout(() => setAlert(null), 5000);
+    dispatch(showToast({ message, type }));
   };
 
   const handleInputChange = (e) => {
@@ -118,14 +119,8 @@ const CustomerEdit = () => {
   }
 
   return (
-    < >
+    <>
       <div className="max-w-4xl mx-auto p-6">
-        {alert && (
-          <div className="mb-6">
-            <Alert type={alert.type} message={alert.message} />
-          </div>
-        )}
-
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">

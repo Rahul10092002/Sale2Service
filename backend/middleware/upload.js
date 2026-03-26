@@ -48,6 +48,30 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// File filter for image files
+const imageFileFilter = (req, file, cb) => {
+  const allowedExtensions = [".jpg", ".jpeg", ".png", ".webp", ".heic"];
+  const fileExtension = path.extname(file.originalname).toLowerCase();
+  const allowedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+  ];
+
+  if (
+    allowedExtensions.includes(fileExtension) &&
+    allowedMimeTypes.includes(file.mimetype)
+  ) {
+    cb(null, true);
+  } else {
+    cb(
+      new Error("Only image files (JPEG, PNG, WebP, HEIC) are allowed!"),
+      false,
+    );
+  }
+};
+
 // Configure multer with options
 const upload = multer({
   storage,
@@ -66,6 +90,16 @@ const uploadMemory = multer({
   fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max file size
+    files: 1,
+  },
+});
+
+// Memory storage for image uploads (already compressed client-side)
+const uploadImageMemory = multer({
+  storage: memoryStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max for images
     files: 1,
   },
 });
@@ -107,9 +141,17 @@ const handleMulterError = (error, req, res, next) => {
       message: "Invalid file type. Only PDF files are allowed.",
       error_code: "INVALID_FILE_TYPE",
     });
+  } else if (
+    error.message === "Only image files (JPEG, PNG, WebP, HEIC) are allowed!"
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid file type. Only image files are allowed.",
+      error_code: "INVALID_FILE_TYPE",
+    });
   }
 
   next(error);
 };
 
-export { upload, uploadMemory, handleMulterError };
+export { upload, uploadMemory, uploadImageMemory, handleMulterError };

@@ -400,7 +400,7 @@ function Logs() {
                               <MessageSquare className="w-5 h-5 text-blue-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="font-bold text-gray-800 text-sm mb-2">
+                              <div className="font-bold text-gray-800 text-sm mb-2 capitalize">
                                 {log.recipient_name || "N/A"}
                               </div>
                               <div className="text-xs text-gray-600 space-y-1">
@@ -434,13 +434,8 @@ function Logs() {
                               {log.message_content && (
                                 <div>
                                   <p className="font-medium mb-1">Message:</p>
-                                  <div className="text-xs bg-gray-100 p-2 rounded border italic max-h-16 overflow-y-auto">
-                                    "
-                                    {log.message_content.length > 100
-                                      ? log.message_content.substring(0, 100) +
-                                        "..."
-                                      : log.message_content}
-                                    "
+                                  <div className="text-xs bg-gray-100 p-2 rounded border italic max-h-16 overflow-y-auto ">
+                                    "{log.message_content}"
                                   </div>
                                 </div>
                               )}
@@ -501,7 +496,7 @@ function Logs() {
                   <div
                     className={`${
                       index % 2 === 0 ? "bg-white" : "bg-gray-200"
-                    } border-b border-gray-100 p-4 `} 
+                    } border-b border-gray-100 p-4 `}
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -719,6 +714,6 @@ function Logs() {
       </div>
     </div>
   );
-};
+}
 
 export default Logs;

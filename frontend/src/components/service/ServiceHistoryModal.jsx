@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../features/ui/uiSlice.js";
 import {
   X,
   Calendar,
@@ -56,6 +58,7 @@ export const ServiceHistoryModal = ({
     useCancelServiceMutation();
 
   const actionLoading = markingComplete || rescheduling || cancelling;
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (isOpen && itemId) {
@@ -107,7 +110,12 @@ export const ServiceHistoryModal = ({
       setCompletionNotes("");
     } catch (err) {
       console.error("Mark complete error:", err);
-      alert(`Error: ${err.message || "Failed to mark service as complete"}`);
+      dispatch(
+        showToast({
+          message: err.message || "Failed to mark service as complete",
+          type: "error",
+        }),
+      );
     }
   };
 
@@ -126,7 +134,12 @@ export const ServiceHistoryModal = ({
       setRescheduleDate("");
     } catch (err) {
       console.error("Reschedule error:", err);
-      alert(`Error: ${err.message || "Failed to reschedule service"}`);
+      dispatch(
+        showToast({
+          message: err.message || "Failed to reschedule service",
+          type: "error",
+        }),
+      );
     }
   };
 
@@ -150,7 +163,12 @@ export const ServiceHistoryModal = ({
       await fetchServiceData();
     } catch (err) {
       console.error("Cancel error:", err);
-      alert(`Error: ${err.message || "Failed to cancel service"}`);
+      dispatch(
+        showToast({
+          message: err.message || "Failed to cancel service",
+          type: "error",
+        }),
+      );
     }
   };
 

@@ -1,5 +1,7 @@
 import React from "react";
+import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
+import { showToast } from "../../features/ui/uiSlice.js";
 import {
   ArrowLeft,
   Users,
@@ -26,6 +28,7 @@ const UserView = () => {
   const navigate = useNavigate();
   const { data: user, isLoading, error } = useGetUserByIdQuery(id);
   const [deleteUser] = useDeleteUserMutation();
+  const dispatch = useDispatch();
 
   const getRoleBadge = (role) => {
     const styles = {
@@ -49,7 +52,9 @@ const UserView = () => {
         navigate(ROUTES.USERS);
       } catch (error) {
         console.error("Failed to delete user:", error);
-        alert("Failed to delete user");
+        dispatch(
+          showToast({ message: "Failed to delete user", type: "error" }),
+        );
       }
     }
   };

@@ -211,6 +211,61 @@ class FileUploadController {
       });
     }
   }
+
+  /**
+   * Upload product image to Cloudinary (already compressed client-side)
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async uploadProductImage(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No image uploaded",
+          error_code: "NO_FILE",
+        });
+      }
+
+      const { user } = req;
+      const file = req.file;
+      const timestamp = Date.now();
+      const uniqueFileName = `product_${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
+
+      const uploadResult = await cloudinaryUpload.uploadImageFromBuffer(
+        file.buffer,
+        {
+          folder: "product-images",
+          fileName: uniqueFileName,
+          tags: ["product-image", `user_${user.userId}`, `shop_${user.shopId}`],
+          overwrite: false,
+          // Server-side quality optimisation as a safety net (client already compressed)
+          transformation: [{ quality: "auto:good", fetch_format: "auto" }],
+        },
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Product image uploaded successfully",
+        data: {
+          image_url: uploadResult.url,
+          public_id: uploadResult.public_id,
+          width: uploadResult.width,
+          height: uploadResult.height,
+          file_size: uploadResult.bytes,
+          uploaded_at: uploadResult.created_at,
+        },
+      });
+    } catch (error) {
+      console.error("Upload product image error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to upload product image",
+        error: error.message,
+        error_code: "UPLOAD_FAILED",
+      });
+    }
+  }
 }
 
 export default new FileUploadController();

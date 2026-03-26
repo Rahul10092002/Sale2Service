@@ -59,10 +59,8 @@ const Layout = ({ children, title }) => {
     const angle = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI));
     if (angle > SWIPE_ANGLE_LIMIT && angle < 180 - SWIPE_ANGLE_LIMIT) return; // too vertical
 
-    const currentIndex = NAV_PAGES.findIndex(
-      (p) => location.pathname === p || location.pathname.startsWith(p + "/"),
-    );
-    if (currentIndex === -1) return; // not a sidebar page
+    const currentIndex = NAV_PAGES.findIndex((p) => location.pathname === p);
+    if (currentIndex === -1) return; // not a top-level sidebar page — skip on detail/other pages
 
     if (dx < 0) {
       // swipe left → next page

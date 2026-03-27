@@ -3,21 +3,39 @@ import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { dirname, resolve } from "path";
+import { dirname, resolve, join } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Ensure Puppeteer uses the project-local Chrome (installed by scripts/install-chrome.js).
-// This makes the binary path consistent between Render's build and runtime containers.
-if (
-  !process.env.PUPPETEER_CACHE_DIR &&
-  !process.env.PUPPETEER_EXECUTABLE_PATH
-) {
-  process.env.PUPPETEER_CACHE_DIR = resolve(
-    __dirname,
-    "../../.cache/puppeteer",
-  );
+/**
+ * Resolve the Chrome executable path.
+ * Priority:
+ *  1. PUPPETEER_EXECUTABLE_PATH env var (manual override)
+ *  2. Project-local cache installed by scripts/install-chrome.js
+ *     (.cache/puppeteer lives INSIDE the repo so it survives Render's
+ *      separate build vs. runtime HOME directories)
+ *  3. Fall back to whatever puppeteer.executablePath() returns
+ */
+function resolveChromePath() {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
+  // Project-local cache: backend/.cache/puppeteer/chrome/<version>/chrome-linux64/chrome
+  const localCacheDir = resolve(__dirname, "../.cache/puppeteer/chrome");
+  if (fs.existsSync(localCacheDir)) {
+    const versions = fs.readdirSync(localCacheDir);
+    if (versions.length > 0) {
+      // Pick the latest version directory
+      const latest = versions.sort().at(-1);
+      const candidate = join(localCacheDir, latest, "chrome-linux64", "chrome");
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+
+  // Last resort: let puppeteer decide (works locally / when HOME is stable)
+  return puppeteer.executablePath();
 }
 
 export class PDFGenerator {
@@ -44,8 +62,7 @@ export class PDFGenerator {
         "--single-process",
       ],
       headless: true,
-      executablePath:
-        process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+      executablePath: resolveChromePath(),
     };
     const browser = await puppeteer.launch(launchOptions);
 
@@ -111,8 +128,7 @@ export class PDFGenerator {
         "--single-process",
       ],
       headless: true,
-      executablePath:
-        process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+      executablePath: resolveChromePath(),
     };
     const browser = await puppeteer.launch(launchOptions);
 

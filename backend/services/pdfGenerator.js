@@ -59,7 +59,6 @@ export class PDFGenerator {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
-        "--single-process",
       ],
       headless: true,
       executablePath: resolveChromePath(),
@@ -69,7 +68,7 @@ export class PDFGenerator {
     try {
       const page = await browser.newPage();
       // Wait for network to be mostly idle so external resources (images) load
-      await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+      await page.setContent(htmlContent, { waitUntil: "networkidle2" });
 
       // Ensure all images have finished loading (resolves even on error)
       await page.evaluate(() =>
@@ -125,7 +124,6 @@ export class PDFGenerator {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
-        "--single-process",
       ],
       headless: true,
       executablePath: resolveChromePath(),
@@ -135,7 +133,7 @@ export class PDFGenerator {
     try {
       const page = await browser.newPage();
       // Wait for network to be mostly idle so external resources (images) load
-      await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+      await page.setContent(htmlContent, { waitUntil: "networkidle2" });
 
       // Ensure all images have finished loading (resolves even on error)
       await page.evaluate(() =>

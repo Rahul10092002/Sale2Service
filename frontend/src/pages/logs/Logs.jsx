@@ -275,71 +275,57 @@ function Logs() {
 
         {/* Stats Summary */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <MessageSquare className="w-4 h-4 text-blue-600" />
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+            <div className="flex flex-wrap divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+              {[
+                {
+                  label: "Total",
+                  value: stats.summary.total,
+                  icon: <MessageSquare className="w-4 h-4 text-blue-600" />,
+                  bg: "bg-blue-100",
+                },
+                {
+                  label: "Sent",
+                  value: stats.summary.sent,
+                  icon: <CheckCircle className="w-4 h-4 text-green-600" />,
+                  bg: "bg-green-100",
+                },
+                {
+                  label: "Delivered",
+                  value: stats.summary.delivered,
+                  icon: <Send className="w-4 h-4 text-purple-600" />,
+                  bg: "bg-purple-100",
+                },
+                {
+                  label: "Failed",
+                  value: stats.summary.failed,
+                  icon: <XCircle className="w-4 h-4 text-red-600" />,
+                  bg: "bg-red-100",
+                },
+                {
+                  label: "Pending",
+                  value: stats.summary.pending,
+                  icon: <Clock className="w-4 h-4 text-yellow-600" />,
+                  bg: "bg-yellow-100",
+                },
+              ].map(({ label, value, icon, bg }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 px-5 py-3 flex-1 min-w-[140px]"
+                >
+                  <div
+                    className={`w-8 h-8 ${bg} rounded-full flex items-center justify-center shrink-0`}
+                  >
+                    {icon}
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">{label}</p>
+                    <p className="text-base font-semibold text-gray-900 leading-tight">
+                      {value.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm text-gray-600">Total</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {stats.summary.total.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-gray-600">Sent</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {stats.summary.sent.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <Send className="w-4 h-4 text-purple-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-gray-600">Delivered</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {stats.summary.delivered.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                  <XCircle className="w-4 h-4 text-red-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-gray-600">Failed</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {stats.summary.failed.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-yellow-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-gray-600">Pending</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {stats.summary.pending.toLocaleString()}
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         )}

@@ -18,10 +18,20 @@ export class PDFGenerator {
 
   // Convert HTML to PDF
   async generatePDF(htmlContent, outputPath, options = {}) {
-    const browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    const launchOptions = {
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+      ],
       headless: true,
-    });
+    };
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+    const browser = await puppeteer.launch(launchOptions);
 
     try {
       const page = await browser.newPage();
@@ -76,10 +86,20 @@ export class PDFGenerator {
 
   // Generate PDF and return buffer instead of saving to file
   async generatePDFBuffer(htmlContent, options = {}) {
-    const browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    const launchOptions = {
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+      ],
       headless: true,
-    });
+    };
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+    const browser = await puppeteer.launch(launchOptions);
 
     try {
       const page = await browser.newPage();

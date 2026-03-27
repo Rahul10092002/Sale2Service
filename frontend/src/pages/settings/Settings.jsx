@@ -7,11 +7,50 @@ import {
   useUploadShopLogoMutation,
   useDeleteShopLogoMutation,
 } from "../../services/baseApi.js";
+import {
+  Store,
+  Phone,
+  MapPin,
+  FileText,
+  Clock,
+  ImagePlus,
+  Trash2,
+  Save,
+  Upload,
+  CheckCircle,
+  Languages,
+  Briefcase,
+} from "lucide-react";
+
+const FieldGroup = ({ icon: Icon, label, required, children }) => (
+  <div className="space-y-1.5">
+    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+      {Icon && <Icon className="w-3.5 h-3.5 text-gray-400" />}
+      {label}
+      {required && <span className="text-red-400">*</span>}
+    </label>
+    {children}
+  </div>
+);
+
+const inputCls =
+  "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400 hover:border-gray-300";
+
+const SectionCard = ({ title, description, children }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="px-6 py-4 border-b border-gray-50 bg-gray-50/60">
+      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+      {description && (
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      )}
+    </div>
+    <div className="p-6">{children}</div>
+  </div>
+);
 
 const Settings = () => {
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [saved, setSaved] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
   const dispatch = useDispatch();
@@ -26,44 +65,41 @@ const Settings = () => {
     logo_url: "",
   });
 
-  // Use RTK Query to fetch profile
   const { data, isLoading: queryLoading, error } = useGetShopProfileQuery();
   const [updateProfile, { isLoading: isUpdating }] =
     useUpdateShopProfileMutation();
   const [uploadLogo, { isLoading: logoUploading }] =
     useUploadShopLogoMutation();
   const [deleteLogo, { isLoading: logoDeleting }] = useDeleteShopLogoMutation();
-  useEffect(() => {
-    setLoading(queryLoading);
-  }, [queryLoading]);
 
   useEffect(() => {
     if (data && data.data) {
       setForm((prev) => ({ ...prev, ...data.data }));
     }
     if (error) {
-      // global toast is handled in baseApi; optionally keep inline message
-      setMessage(error?.data?.message || "Unable to load profile");
+      dispatch(
+        showToast({
+          message: error?.data?.message || "Unable to load profile",
+          type: "error",
+        }),
+      );
     }
-  }, [data, error]);
+  }, [data, error, dispatch]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
+    setSaved(false);
   };
 
   const handleLogoUpload = async (file) => {
     if (!file) return;
-
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       dispatch(
         showToast({ message: "Please select an image file", type: "error" }),
       );
       return;
     }
-
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       dispatch(
         showToast({
@@ -73,34 +109,23 @@ const Settings = () => {
       );
       return;
     }
-
     try {
       const formData = new FormData();
       formData.append("logo", file);
-
       const result = await uploadLogo(formData).unwrap();
-      setForm((prev) => ({
-        ...prev,
-        logo_url: result.data.logo_url,
-      }));
-    } catch (error) {
-      // Error handling is done in the RTK Query onQueryStarted
-      console.error("Logo upload error:", error);
+      setForm((prev) => ({ ...prev, logo_url: result.data.logo_url }));
+    } catch (err) {
+      console.error("Logo upload error:", err);
     }
   };
 
   const handleLogoDelete = async () => {
     if (!form.logo_url) return;
-
     try {
       await deleteLogo().unwrap();
-      setForm((prev) => ({
-        ...prev,
-        logo_url: "",
-      }));
-    } catch (error) {
-      // Error handling is done in the RTK Query onQueryStarted
-      console.error("Logo delete error:", error);
+      setForm((prev) => ({ ...prev, logo_url: "" }));
+    } catch (err) {
+      console.error("Logo delete error:", err);
     }
   };
 
@@ -108,235 +133,271 @@ const Settings = () => {
     e.preventDefault();
     setDragOver(true);
   };
-
   const handleDragLeave = (e) => {
     e.preventDefault();
     setDragOver(false);
   };
-
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) {
-      handleLogoUpload(file);
-    }
+    if (file) handleLogoUpload(file);
   };
-
   const handleFileInput = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      handleLogoUpload(file);
-    }
+    if (file) handleLogoUpload(file);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setMessage(null);
+    setSaved(false);
     try {
       await updateProfile(form).unwrap();
-      // updateShopProfile mutation dispatches global toast; keep optional inline message
-      setMessage("Shop profile updated successfully");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      setMessage(err?.data?.message || err.message || "Update failed");
+      dispatch(
+        showToast({
+          message: err?.data?.message || err.message || "Update failed",
+          type: "error",
+        }),
+      );
     } finally {
       setSaving(false);
     }
   };
 
+  const isBusy = saving || isUpdating;
+
   return (
-    <>
-      <div className="p-6 max-w-3xl">
-        <h2 className="text-xl font-semibold mb-4">Shop Settings</h2>
+    <div className="p-4 sm:p-6 max-w-2xl space-y-5">
+      {/* Page header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Shop Settings</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Manage your shop profile and preferences
+          </p>
+        </div>
+        {queryLoading && (
+          <span className="text-xs text-gray-400 animate-pulse mt-1">
+            Loading...
+          </span>
+        )}
+      </div>
 
-        {message && <div className="mb-4 text-sm text-gray-700">{message}</div>}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Shop Name (English)
-            </label>
-            <input
-              name="shop_name"
-              value={form.shop_name}
-              onChange={handleChange}
-              className="w-full border px-3 py-2 rounded"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Shop Name (Hindi)
-            </label>
-            <input
-              name="shop_name_hi"
-              value={form.shop_name_hi}
-              onChange={handleChange}
-              className="w-full border px-3 py-2 rounded"
-              placeholder="दुकान का नाम"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Business Type
-            </label>
-            <input
-              name="business_type"
-              value={form.business_type}
-              onChange={handleChange}
-              className="w-full border px-3 py-2 rounded"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Address</label>
-            <textarea
-              name="address"
-              value={form.address}
-              onChange={handleChange}
-              className="w-full border px-3 py-2 rounded"
-              rows={3}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Phone</label>
-              <input
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                className="w-full border px-3 py-2 rounded"
-              />
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Business Details */}
+        <SectionCard
+          title="Business Details"
+          description="Basic information shown on invoices and communications"
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldGroup icon={Store} label="Shop Name (English)" required>
+                <input
+                  name="shop_name"
+                  value={form.shop_name}
+                  onChange={handleChange}
+                  placeholder="My Shop"
+                  className={inputCls}
+                  required
+                />
+              </FieldGroup>
+              <FieldGroup icon={Languages} label="Shop Name (Hindi)">
+                <input
+                  name="shop_name_hi"
+                  value={form.shop_name_hi}
+                  onChange={handleChange}
+                  placeholder="दुकान का नाम"
+                  className={inputCls}
+                />
+              </FieldGroup>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                GST Number
-              </label>
+            <FieldGroup icon={Briefcase} label="Business Type">
               <input
-                name="gst_number"
-                value={form.gst_number}
+                name="business_type"
+                value={form.business_type}
                 onChange={handleChange}
-                className="w-full border px-3 py-2 rounded"
+                placeholder="e.g. Electronics, Retail…"
+                className={inputCls}
               />
-            </div>
+            </FieldGroup>
+          </div>
+        </SectionCard>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Timezone</label>
+        {/* Contact & Compliance */}
+        <SectionCard
+          title="Contact & Compliance"
+          description="Contact details and regulatory information"
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldGroup icon={Phone} label="Phone">
+                <input
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  placeholder="+91 98765 43210"
+                  className={inputCls}
+                />
+              </FieldGroup>
+              <FieldGroup icon={FileText} label="GST Number">
+                <input
+                  name="gst_number"
+                  value={form.gst_number}
+                  onChange={handleChange}
+                  placeholder="22AAAAA0000A1Z5"
+                  className={`${inputCls} uppercase`}
+                />
+              </FieldGroup>
+            </div>
+            <FieldGroup icon={Clock} label="Timezone">
               <input
                 name="timezone"
                 value={form.timezone}
                 onChange={handleChange}
-                className="w-full border px-3 py-2 rounded"
+                placeholder="Asia/Kolkata"
+                className={inputCls}
               />
-            </div>
+            </FieldGroup>
+            <FieldGroup icon={MapPin} label="Address">
+              <textarea
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                placeholder="Shop address…"
+                className={`${inputCls} resize-none`}
+                rows={3}
+              />
+            </FieldGroup>
           </div>
+        </SectionCard>
 
-          <div>
-            <label className="block text-sm font-medium mb-3">Shop Logo</label>
-            <div className="bg-gray-50 rounded-lg p-6 border-2 border-dashed border-gray-300">
-              {form.logo_url ? (
-                // Logo Preview Section
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
-                    <img
-                      src={form.logo_url}
-                      alt="Shop Logo"
-                      className="w-20 h-20 object-cover rounded-lg shadow-md border"
-                    />
+        {/* Logo */}
+        <SectionCard
+          title="Shop Logo"
+          description="Appears on invoices and printed documents"
+        >
+          {form.logo_url ? (
+            <div className="flex items-center gap-5">
+              <div className="relative shrink-0">
+                <img
+                  src={form.logo_url}
+                  alt="Shop Logo"
+                  className="w-20 h-20 object-cover rounded-xl shadow border border-gray-100"
+                />
+                {logoUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-xl">
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
-                      Current Logo
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Logo is set and will appear on invoices
-                    </p>
-                    <div className="mt-3 flex space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={logoUploading}
-                        className="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 disabled:opacity-50"
-                      >
-                        {logoUploading ? "Uploading..." : "Change Logo"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleLogoDelete}
-                        disabled={logoDeleting || logoUploading}
-                        className="px-3 py-1.5 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50"
-                      >
-                        {logoDeleting ? "Deleting..." : "Remove"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                // Upload Section
-                <div
-                  className={`text-center transition-colors ${
-                    dragOver ? "bg-indigo-50 border-indigo-300" : ""
-                  }`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                >
-                  <div className="mx-auto h-12 w-12 text-gray-400 mb-3">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Upload shop logo
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Drag and drop your logo here or click to browse
-                  </p>
-                  <p className="text-xs text-gray-400 mt-2">
-                    Supports JPG, PNG up to 5MB
-                  </p>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">
+                  Logo uploaded
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Will appear on all invoices and documents
+                </p>
+                <div className="flex gap-2 mt-3">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={logoUploading}
-                    className="mt-3 px-4 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50"
+                    disabled={logoUploading || logoDeleting}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition-colors"
                   >
-                    {logoUploading ? "Uploading..." : "Choose File"}
+                    <Upload className="w-3.5 h-3.5" />
+                    {logoUploading ? "Uploading…" : "Change"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogoDelete}
+                    disabled={logoDeleting || logoUploading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-50 text-red-600 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    {logoDeleting ? "Removing…" : "Remove"}
                   </button>
                 </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileInput}
-                className="hidden"
-              />
+              </div>
             </div>
-          </div>
-
-          <div className="pt-4">
-            <button
-              type="submit"
-              disabled={saving || isUpdating}
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          ) : (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`relative flex flex-col items-center justify-center gap-3 py-10 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+                dragOver
+                  ? "border-blue-400 bg-blue-50"
+                  : "border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50/40"
+              }`}
             >
-              {saving || isUpdating ? "Saving..." : "Save Settings"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </>
+              <div
+                className={`p-3 rounded-full ${dragOver ? "bg-blue-100" : "bg-white border border-gray-200"}`}
+              >
+                <ImagePlus
+                  className={`w-6 h-6 ${dragOver ? "text-blue-500" : "text-gray-400"}`}
+                />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-gray-700">
+                  {logoUploading
+                    ? "Uploading…"
+                    : "Drop your logo here or click to browse"}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  JPG, PNG · max 5 MB
+                </p>
+              </div>
+              {logoUploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-xl">
+                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInput}
+            className="hidden"
+          />
+        </SectionCard>
+
+        {/* Save Bar */}
+        <div className="flex items-center justify-between pt-1">
+          {saved ? (
+            <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
+              <CheckCircle className="w-4 h-4" />
+              Saved successfully
+            </span>
+          ) : (
+            <span />
+          )}
+          <button
+            type="submit"
+            disabled={isBusy}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-60 transition-all shadow-sm hover:shadow-md"
+          >
+            {isBusy ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save Settings
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 

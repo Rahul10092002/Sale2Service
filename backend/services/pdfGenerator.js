@@ -2,6 +2,23 @@ import ejs from "ejs";
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Ensure Puppeteer uses the project-local Chrome (installed by scripts/install-chrome.js).
+// This makes the binary path consistent between Render's build and runtime containers.
+if (
+  !process.env.PUPPETEER_CACHE_DIR &&
+  !process.env.PUPPETEER_EXECUTABLE_PATH
+) {
+  process.env.PUPPETEER_CACHE_DIR = resolve(
+    __dirname,
+    "../../.cache/puppeteer",
+  );
+}
 
 export class PDFGenerator {
   constructor() {}
@@ -27,10 +44,9 @@ export class PDFGenerator {
         "--single-process",
       ],
       headless: true,
+      executablePath:
+        process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
     };
-    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-    }
     const browser = await puppeteer.launch(launchOptions);
 
     try {
@@ -95,10 +111,9 @@ export class PDFGenerator {
         "--single-process",
       ],
       headless: true,
+      executablePath:
+        process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
     };
-    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-    }
     const browser = await puppeteer.launch(launchOptions);
 
     try {

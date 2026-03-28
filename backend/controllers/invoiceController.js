@@ -381,18 +381,18 @@ export default class InvoiceController {
             4: newInvoice.due_date
               ? new Date(newInvoice.due_date).toLocaleDateString()
               : "",
-            5: shop.shop_name_hi || shop.shop_name_hi,
+            5: shop.shop_name_hi || shop.shop_name || "",
           };
 
           // Prepare components with header document if PDF is available
           const msgConfig = {
-            templateName: "invoice_created",
+            templateName: "invoice_create",
             to: formattedNumber,
             components: vars,
-            campaignName: "invoice_created",
+            campaignName: "invoice_create",
             hospitalId: shop._id,
             userName: newInvoice.customer_id?.full_name || "",
-            messageType: "invoice_created",
+            messageType: "invoice_create",
           };
 
           // Add header document separately if PDF is available
@@ -475,7 +475,48 @@ export default class InvoiceController {
       const customer = invoice.customer_id;
       const customerNumber = customer?.whatsapp_number;
 
-      // Prepare template variables similar to create flow
+      // Ensure PDF exists — the invoice_create template always requires a document header.
+      // Also regenerate if stored URL is a /raw/upload/ URL (served as octet-stream, Meta rejects it).
+      let pdfUrl = invoice.invoice_pdf;
+      if (!pdfUrl || pdfUrl.includes("/raw/upload/")) {
+        try {
+          const invoiceItems = await InvoiceItem.find({ invoice_id: id });
+          const pdfService = new InvoicePDFService();
+          const pdfResult = await pdfService.generateInvoicePDF(
+            invoice,
+            customer,
+            invoiceItems,
+            shop,
+          );
+          const cloudinaryResult = await cloudinaryUpload.uploadPDFFromBuffer(
+            pdfResult.buffer,
+            {
+              folder: "invoices",
+              fileName: `invoice_${invoice.invoice_number}_${Date.now()}`,
+              tags: [
+                "invoice",
+                "regenerated",
+                `invoice_${invoice._id}`,
+                `shop_${user.shopId}`,
+              ],
+              overwrite: false,
+            },
+          );
+          pdfUrl = cloudinaryResult.url;
+          await Invoice.findByIdAndUpdate(id, {
+            invoice_pdf: pdfUrl,
+            pdf_public_id: cloudinaryResult.public_id,
+          });
+        } catch (pdfErr) {
+          console.error("PDF generation failed in sendInvoice:", pdfErr);
+          return res.status(500).json({
+            success: false,
+            message: "Cannot send invoice: PDF generation failed",
+          });
+        }
+      }
+
+      // Prepare template variables
       const vars = {
         1: invoice.invoice_number,
         2: new Date(invoice.invoice_date).toLocaleDateString(),
@@ -489,24 +530,20 @@ export default class InvoiceController {
         5: shop.shop_name_hi || shop.shop_name || "",
       };
 
-      // Prepare message config with header document if PDF is available
+      // invoice_create template always requires header_1 document
       const msgConfig = {
-        templateName: "invoice_created",
+        templateName: "invoice_create",
         to: customerNumber,
         components: vars,
-        campaignName: "invoice_created",
+        campaignName: "invoice_create",
         hospitalId: shop._id,
         userName: customer?.full_name || "",
-        messageType: "invoice_created",
-      };
-
-      // Add header document separately if PDF is available
-      if (invoice.invoice_pdf) {
-        msgConfig.media = {
-          url: invoice.invoice_pdf,
+        messageType: "invoice_create",
+        media: {
+          url: pdfUrl,
           filename: `Invoice_${invoice.invoice_number}.pdf`,
-        };
-      }
+        },
+      };
 
       // Use MSG91 sender
       const sendResp = await sendWhatsappMessageViaMSG91(msgConfig);
@@ -1263,12 +1300,10 @@ export default class InvoiceController {
       }).session(session);
 
       if (!existingPlan) {
-        return res
-          .status(404)
-          .json({
-            success: false,
-            message: "Service plan not found for this product",
-          });
+        return res.status(404).json({
+          success: false,
+          message: "Service plan not found for this product",
+        });
       }
 
       const totalServicesCount =

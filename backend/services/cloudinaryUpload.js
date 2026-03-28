@@ -26,7 +26,7 @@ class CloudinaryUploadService {
       const public_id = fileName ? fileName : undefined;
 
       const uploadOptions = {
-        resource_type: "raw", // For non-image files like PDFs
+        resource_type: "image", // PDFs uploaded as image type get /image/upload/ URLs with application/pdf content-type
         folder,
         public_id,
         tags,
@@ -80,7 +80,7 @@ class CloudinaryUploadService {
       return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
-            resource_type: "raw",
+            resource_type: "image", // PDFs uploaded as image type get /image/upload/ URLs with application/pdf content-type
             folder,
             public_id,
             tags,

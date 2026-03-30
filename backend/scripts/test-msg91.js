@@ -29,12 +29,12 @@ async function run() {
 
   try {
     const resp = await sendWhatsappMessageViaMSG91({
-      templateName: "invoice_create",
+      templateName: "invoice_created",
       to,
       components,
-      campaignName: "invoice_create",
+      campaignName: "invoice_created",
       userName: process.env.TEST_USER || "System",
-      messageType: "invoice_create",
+      messageType: "invoice_created",
     });
 
     console.log("MSG91 response:", resp);

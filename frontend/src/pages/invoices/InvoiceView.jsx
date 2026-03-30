@@ -14,12 +14,16 @@ import {
   Clock,
   Send,
   Eye,
+  BellRing,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import {
   useGetInvoiceByIdQuery,
   useDeleteInvoiceMutation,
   useSendInvoiceMutation,
+  useSendPaymentReminderMutation,
+  useRecordPaymentMutation,
   useDownloadInvoicePDFMutation,
   usePreviewInvoicePDFMutation,
 } from "../../features/invoices/invoiceApi.js";
@@ -48,6 +52,8 @@ const InvoiceView = () => {
 
   const [deleteInvoice] = useDeleteInvoiceMutation();
   const [sendInvoice] = useSendInvoiceMutation();
+  const [sendPaymentReminder] = useSendPaymentReminderMutation();
+  const [recordPayment] = useRecordPaymentMutation();
   const [downloadPDF] = useDownloadInvoicePDFMutation();
   const [previewPDF] = usePreviewInvoicePDFMutation();
   const dispatch = useDispatch();
@@ -55,8 +61,13 @@ const InvoiceView = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [isPreviewingPDF, setIsPreviewingPDF] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMode, setPaymentMode] = useState("CASH");
+  const [isRecordingPayment, setIsRecordingPayment] = useState(false);
 
   const handleEditInvoice = () => {
     navigate(`${ROUTES.INVOICES}/${id}/edit`);
@@ -103,6 +114,75 @@ const InvoiceView = () => {
       );
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleSendPaymentReminder = async () => {
+    setIsSendingReminder(true);
+    try {
+      await sendPaymentReminder(id).unwrap();
+      dispatch(
+        showToast({
+          message: "Payment reminder sent via WhatsApp",
+          type: "success",
+        }),
+      );
+    } catch (err) {
+      console.error("Failed to send payment reminder:", err);
+      dispatch(
+        showToast({
+          message:
+            err?.data?.message ||
+            err.message ||
+            "Failed to send payment reminder",
+          type: "error",
+        }),
+      );
+    } finally {
+      setIsSendingReminder(false);
+    }
+  };
+
+  const openPaymentModal = () => {
+    setPaymentAmount(
+      String(invoiceObj.amount_due || invoiceObj.total_amount || ""),
+    );
+    setPaymentMode(invoiceObj.payment_mode || "CASH");
+    setShowPaymentModal(true);
+  };
+
+  const handleRecordPayment = async () => {
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) {
+      dispatch(
+        showToast({ message: "Enter a valid payment amount", type: "error" }),
+      );
+      return;
+    }
+    setIsRecordingPayment(true);
+    try {
+      const result = await recordPayment({
+        invoiceId: id,
+        amount,
+        payment_mode: paymentMode,
+      }).unwrap();
+      dispatch(
+        showToast({
+          message: result?.message || "Payment recorded",
+          type: "success",
+        }),
+      );
+      setShowPaymentModal(false);
+    } catch (err) {
+      dispatch(
+        showToast({
+          message:
+            err?.data?.message || err.message || "Failed to record payment",
+          type: "error",
+        }),
+      );
+    } finally {
+      setIsRecordingPayment(false);
     }
   };
 
@@ -490,8 +570,12 @@ const InvoiceView = () => {
                         <tbody className="divide-y divide-gray-100">
                           {items.map((item, index) => (
                             <tr key={index}>
-                             
-                              <td className="py-3 px-4 text-gray-900 underline cursor-pointer" onClick={() => {navigate(`/products/${item._id}`)}}>
+                              <td
+                                className="py-3 px-4 text-gray-900 underline cursor-pointer"
+                                onClick={() => {
+                                  navigate(`/products/${item._id}`);
+                                }}
+                              >
                                 {item.product_name}
                               </td>
                               <td className="py-3 px-4 text-gray-600">
@@ -615,6 +699,48 @@ const InvoiceView = () => {
                       </span>
                     </button>
 
+                    {["UNPAID", "PARTIAL"].includes(
+                      invoiceObj.payment_status,
+                    ) && (
+                      <button
+                        onClick={handleSendPaymentReminder}
+                        disabled={isSendingReminder}
+                        className="w-full flex items-center space-x-3 p-3 text-left border border-orange-200 rounded-lg hover:bg-orange-50 hover:border-orange-300 transition-all duration-200 group disabled:opacity-50"
+                      >
+                        <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                          <BellRing className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                          {isSendingReminder
+                            ? "Sending..."
+                            : "Send Payment Reminder"}
+                        </span>
+                      </button>
+                    )}
+
+                    {["UNPAID", "PARTIAL"].includes(
+                      invoiceObj.payment_status,
+                    ) && (
+                      <button
+                        onClick={openPaymentModal}
+                        className="w-full flex items-center space-x-3 p-3 text-left border border-emerald-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-200 group"
+                      >
+                        <div className="shrink-0 group-hover:scale-110 transition-transform duration-200">
+                          <CheckCircle className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 block">
+                            Mark As Paid
+                          </span>
+                          {invoiceObj.amount_due > 0 && (
+                            <span className="text-xs text-emerald-600">
+                              Due: ₹{Number(invoiceObj.amount_due).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    )}
+
                     <button
                       onClick={openDeleteModal}
                       className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
@@ -659,6 +785,97 @@ const InvoiceView = () => {
                 disabled={isDeleting}
               >
                 {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </Dialog>
+        )}
+
+        {/* Record Payment Modal */}
+        {showPaymentModal && (
+          <Dialog
+            open={showPaymentModal}
+            onClose={() => setShowPaymentModal(false)}
+          >
+            <DialogHeader onClose={() => setShowPaymentModal(false)}>
+              Record Payment
+            </DialogHeader>
+            <DialogBody>
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Total Amount:</span>
+                    <span className="font-medium">
+                      ₹{Number(invoiceObj.total_amount || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-gray-500">Already Paid:</span>
+                    <span className="font-medium text-green-700">
+                      ₹{Number(invoiceObj.amount_paid || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between mt-1 border-t pt-1">
+                    <span className="text-gray-700 font-medium">
+                      Amount Due:
+                    </span>
+                    <span className="font-bold text-red-600">
+                      ₹{Number(invoiceObj.amount_due || 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Amount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    max={invoiceObj.amount_due || invoiceObj.total_amount}
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    placeholder="Enter amount"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Mode
+                  </label>
+                  <select
+                    value={paymentMode}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CARD">Card</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                    <option value="MIXED">Mixed</option>
+                    <option value="CREDIT">Credit</option>
+                  </select>
+                </div>
+              </div>
+            </DialogBody>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowPaymentModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="ml-2"
+                onClick={handleRecordPayment}
+                disabled={
+                  isRecordingPayment ||
+                  !paymentAmount ||
+                  parseFloat(paymentAmount) <= 0
+                }
+              >
+                {isRecordingPayment ? "Saving..." : "Record Payment"}
               </Button>
             </DialogFooter>
           </Dialog>

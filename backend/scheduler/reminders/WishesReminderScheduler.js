@@ -112,7 +112,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
    */
   async sendBirthdayWish(customer) {
     try {
-      const templateName = "birthday_wish_hindi";
+      const templateName = "birthday_wish";
 
       // Check if wish already sent today (24-hour window)
       const alreadySent = await this.isReminderAlreadySent(
@@ -139,7 +139,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         return;
       }
 
-      // Prepare template variables for birthday_wish_hindi
+      // Prepare template variables for birthday_wish
       // {{1}}: Customer name, {{2}}: Shop name
       const variables = {
         1: customer.full_name,
@@ -196,7 +196,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
    */
   async sendAnniversaryWish(customer) {
     try {
-      const templateName = "anniversary_wish_hindi";
+      const templateName = "anniversary_wish";
 
       // Check if wish already sent today (24-hour window)
       const alreadySent = await this.isReminderAlreadySent(
@@ -223,7 +223,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         return;
       }
 
-      // Prepare template variables for anniversary_wish_hindi
+      // Prepare template variables for anniversary_wish
       // {{1}}: Customer name, {{2}}: Shop name
       const variables = {
         1: customer.full_name,

@@ -26,12 +26,11 @@ class CloudinaryUploadService {
       const public_id = fileName ? fileName : undefined;
 
       const uploadOptions = {
-        resource_type: "image", // PDFs uploaded as image type get /image/upload/ URLs with application/pdf content-type
+        resource_type: "raw", // PDFs must be raw to serve as application/pdf — image type rasterizes and serves wrong MIME type
         folder,
         public_id,
         tags,
         overwrite,
-        format: "pdf",
         // Add metadata for better organization
         context: {
           purpose: "invoice",
@@ -80,12 +79,11 @@ class CloudinaryUploadService {
       return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
-            resource_type: "image", // PDFs uploaded as image type get /image/upload/ URLs with application/pdf content-type
+            resource_type: "raw", // PDFs must be raw to serve as application/pdf — image type rasterizes and serves wrong MIME type
             folder,
             public_id,
             tags,
             overwrite,
-            format: "pdf",
             context: {
               purpose: "invoice",
               uploaded_at: new Date().toISOString(),

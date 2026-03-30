@@ -116,9 +116,12 @@ export default class SchedulerService {
   /**
    * Manual trigger for testing specific reminder types
    * @param {string} type - Type of reminder to test ("wishes", "service", "warranty", "payment", "all")
+   * @param {boolean} forceResend - Skip dedup check (for testing)
    */
-  async runManualTest(type = "all") {
-    console.log(`[SchedulerService] Running manual test for: ${type}`);
+  async runManualTest(type = "all", forceResend = false) {
+    console.log(
+      `[SchedulerService] Running manual test for: ${type}${forceResend ? " (force resend enabled)" : ""}`,
+    );
 
     try {
       switch (type.toLowerCase()) {
@@ -126,7 +129,7 @@ export default class SchedulerService {
           await this.wishesScheduler.processWishesReminders();
           break;
         case "service":
-          await this.serviceScheduler.processServiceReminders();
+          await this.serviceScheduler.processServiceReminders(forceResend);
           break;
         case "warranty":
           await this.warrantyScheduler.processWarrantyReminders();

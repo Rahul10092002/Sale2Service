@@ -172,19 +172,16 @@ export default class PaymentReminderScheduler extends BaseScheduler {
    * @returns {Object} - Template variables
    */
   getPaymentTemplateVariables(invoice) {
-    const customer = invoice.customer_id;
-
-    // Based on Hindi template for payment_reminders:
-    // {{1}}: Customer name, {{2}}: Payment amount, {{3}}: Invoice number, {{4}}: Due date, {{5}}: Shop name
+    // Template payment_reminders has 4 params:
+    // {{1}}: Amount, {{2}}: Invoice number, {{3}}: Due date, {{4}}: Shop name
     return {
-      1: customer.full_name || "Customer",
-      2:
+      1:
         typeof invoice.total_amount === "number"
           ? invoice.total_amount.toFixed(2)
           : String(invoice.total_amount || "0"),
-      3: invoice.invoice_number || "N/A",
-      4: formatDateForMessage(invoice.due_date),
-      5: process.env.SHOP_NAME || "Our Shop",
+      2: invoice.invoice_number || "N/A",
+      3: formatDateForMessage(invoice.due_date),
+      4: process.env.SHOP_NAME || "Our Shop",
     };
   }
 

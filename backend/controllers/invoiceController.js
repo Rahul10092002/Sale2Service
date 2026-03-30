@@ -386,13 +386,13 @@ export default class InvoiceController {
 
           // Prepare components with header document if PDF is available
           const msgConfig = {
-            templateName: "invoice_create",
+            templateName: "invoice_created",
             to: formattedNumber,
             components: vars,
-            campaignName: "invoice_create",
+            campaignName: "invoice_created",
             hospitalId: shop._id,
             userName: newInvoice.customer_id?.full_name || "",
-            messageType: "invoice_create",
+            messageType: "invoice_created",
           };
 
           // Add header document separately if PDF is available
@@ -475,10 +475,11 @@ export default class InvoiceController {
       const customer = invoice.customer_id;
       const customerNumber = customer?.whatsapp_number;
 
-      // Ensure PDF exists — the invoice_create template always requires a document header.
-      // Also regenerate if stored URL is a /raw/upload/ URL (served as octet-stream, Meta rejects it).
+      // Ensure PDF exists — the invoice_created template always requires a document header.
+      // Also regenerate if stored URL is an /image/upload/ URL (Cloudinary rasterises PDFs stored as
+      // image resource type and serves the wrong MIME type; Meta rejects anything that isn't application/pdf).
       let pdfUrl = invoice.invoice_pdf;
-      if (!pdfUrl || pdfUrl.includes("/raw/upload/")) {
+      if (!pdfUrl || pdfUrl.includes("/image/upload/")) {
         try {
           const invoiceItems = await InvoiceItem.find({ invoice_id: id });
           const pdfService = new InvoicePDFService();
@@ -530,15 +531,15 @@ export default class InvoiceController {
         5: shop.shop_name_hi || shop.shop_name || "",
       };
 
-      // invoice_create template always requires header_1 document
+      // invoice_created template always requires header_1 document
       const msgConfig = {
-        templateName: "invoice_create",
+        templateName: "invoice_created",
         to: customerNumber,
         components: vars,
-        campaignName: "invoice_create",
+        campaignName: "invoice_created",
         hospitalId: shop._id,
         userName: customer?.full_name || "",
-        messageType: "invoice_create",
+        messageType: "invoice_created",
         media: {
           url: pdfUrl,
           filename: `Invoice_${invoice.invoice_number}.pdf`,
@@ -564,6 +565,246 @@ export default class InvoiceController {
       return res.status(500).json({
         success: false,
         message: error.message || "Failed to send invoice",
+      });
+    }
+  }
+
+  /**
+   * Send payment reminder via WhatsApp for an unpaid/partial invoice
+   * POST /invoices/:id/send-payment-reminder
+   */
+  async sendPaymentReminder(req, res) {
+    try {
+      const { id } = req.params;
+      const { user } = req;
+
+      const invoice = await Invoice.findOne({
+        _id: id,
+        shop_id: user.shopId,
+        deleted_at: null,
+      }).populate("customer_id");
+
+      if (!invoice) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Invoice not found" });
+      }
+
+      if (!["UNPAID", "PARTIAL"].includes(invoice.payment_status)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Payment reminder can only be sent for unpaid or partially paid invoices",
+        });
+      }
+
+      const shop = await Shop.findById(user.shopId);
+      if (!shop || shop.deleted_at) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Shop not found" });
+      }
+
+      const customer = invoice.customer_id;
+      if (!customer) {
+        return res.status(400).json({
+          success: false,
+          message: "Customer not found for this invoice",
+        });
+      }
+
+      const { formatPhoneNumber, isValidWhatsAppNumber, formatDateForMessage } =
+        await import("../scheduler/core/utils.js");
+
+      const phoneNumber = formatPhoneNumber(customer.whatsapp_number);
+      if (!phoneNumber || !isValidWhatsAppNumber(phoneNumber)) {
+        return res.status(400).json({
+          success: false,
+          message: "Customer does not have a valid WhatsApp number",
+        });
+      }
+
+      // Template variables matching payment_reminders template (4 params):
+      // {{1}}: Amount due, {{2}}: Invoice number, {{3}}: Due date, {{4}}: Shop name
+      const vars = {
+        1:
+          typeof invoice.amount_due === "number"
+            ? invoice.amount_due.toFixed(2)
+            : String(invoice.amount_due || "0"),
+        2: invoice.invoice_number || "N/A",
+        3: formatDateForMessage(invoice.due_date),
+        4: shop.shop_name_hi || shop.shop_name || "",
+      };
+
+      const msgConfig = {
+        templateName: "payment_reminders",
+        to: phoneNumber,
+        components: vars,
+        campaignName: "payment_reminders",
+        hospitalId: shop._id,
+        userName: customer.full_name || "",
+        messageType: "payment_reminders",
+      };
+
+      const sendResp = await sendWhatsappMessageViaMSG91(msgConfig);
+
+      if (!sendResp) {
+        return res
+          .status(500)
+          .json({ success: false, message: "Failed to send payment reminder" });
+      }
+
+      return res.json({
+        success: true,
+        message: "Payment reminder sent via WhatsApp",
+        data: sendResp,
+      });
+    } catch (error) {
+      console.error("sendPaymentReminder error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to send payment reminder",
+      });
+    }
+  }
+
+  /**
+   * Record a payment (full or partial) against an invoice
+   * POST /invoices/:id/record-payment
+   * Body: { amount, payment_mode }
+   */
+  async recordPayment(req, res) {
+    try {
+      const { id } = req.params;
+      const { user } = req;
+      const { amount, payment_mode } = req.body;
+
+      const paymentAmount = Number(amount);
+      if (!paymentAmount || paymentAmount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Payment amount must be a positive number",
+        });
+      }
+
+      const invoice = await Invoice.findOne({
+        _id: id,
+        shop_id: user.shopId,
+        deleted_at: null,
+      });
+
+      if (!invoice) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Invoice not found" });
+      }
+
+      if (invoice.payment_status === "PAID") {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invoice is already fully paid" });
+      }
+
+      const newAmountPaid = Math.min(
+        (invoice.amount_paid || 0) + paymentAmount,
+        invoice.total_amount,
+      );
+      const newAmountDue = Math.max(0, invoice.total_amount - newAmountPaid);
+
+      let newStatus;
+      if (newAmountDue === 0) {
+        newStatus = "PAID";
+      } else if (newAmountPaid > 0) {
+        newStatus = "PARTIAL";
+      } else {
+        newStatus = "UNPAID";
+      }
+
+      const validPaymentModes = [
+        "CASH",
+        "UPI",
+        "CARD",
+        "BANK_TRANSFER",
+        "MIXED",
+        "CREDIT",
+      ];
+      const updatedPaymentMode =
+        payment_mode && validPaymentModes.includes(payment_mode.toUpperCase())
+          ? payment_mode.toUpperCase()
+          : invoice.payment_mode;
+
+      const updatedInvoice = await Invoice.findByIdAndUpdate(
+        id,
+        {
+          amount_paid: newAmountPaid,
+          amount_due: newAmountDue,
+          payment_status: newStatus,
+          payment_mode: updatedPaymentMode,
+        },
+        { new: true },
+      ).populate("customer_id", "full_name whatsapp_number");
+
+      // Send payment_received WhatsApp notification (non-fatal)
+      try {
+        const shop = await Shop.findById(user.shopId);
+        const customer = updatedInvoice.customer_id;
+        const {
+          formatPhoneNumber,
+          isValidWhatsAppNumber,
+          formatDateForMessage,
+        } = await import("../scheduler/core/utils.js");
+        const phoneNumber = formatPhoneNumber(customer?.whatsapp_number);
+
+        if (
+          shop &&
+          !shop.deleted_at &&
+          phoneNumber &&
+          isValidWhatsAppNumber(phoneNumber)
+        ) {
+          // Template payment_received (4 params):
+          // {{1}}: Amount paid, {{2}}: Invoice number, {{3}}: Payment date, {{4}}: Shop name
+          const vars = {
+            1: paymentAmount.toFixed(2),
+            2: invoice.invoice_number || "N/A",
+            3: formatDateForMessage(new Date()),
+            4: shop.shop_name_hi || shop.shop_name || "",
+          };
+
+          await sendWhatsappMessageViaMSG91({
+            templateName: "payment_received",
+            to: phoneNumber,
+            components: vars,
+            campaignName: "payment_received",
+            hospitalId: shop._id,
+            userName: customer?.full_name || "",
+            messageType: "payment_received",
+          });
+        }
+      } catch (waErr) {
+        console.error(
+          "payment_received WhatsApp send error (non-fatal):",
+          waErr,
+        );
+      }
+
+      return res.json({
+        success: true,
+        message:
+          newStatus === "PAID"
+            ? "Invoice marked as fully paid"
+            : `Partial payment of ₹${paymentAmount.toFixed(2)} recorded`,
+        data: {
+          invoice: updatedInvoice,
+          amount_paid: newAmountPaid,
+          amount_due: newAmountDue,
+          payment_status: newStatus,
+        },
+      });
+    } catch (error) {
+      console.error("recordPayment error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to record payment",
       });
     }
   }

@@ -20,14 +20,15 @@ export default class ServiceReminderScheduler extends BaseScheduler {
 
   /**
    * Process all service reminders
+   * @param {boolean} forceResend - Skip dedup check (for testing)
    */
-  async processServiceReminders() {
+  async processServiceReminders(forceResend = false) {
     try {
       this.logInfo("Processing service reminders...");
 
       await Promise.all([
-        this.processUpcomingServices(),
-        this.processMissedServices(),
+        this.processUpcomingServices(forceResend),
+        this.processMissedServices(forceResend),
       ]);
 
       this.logInfo("Service reminders processing completed");
@@ -38,8 +39,9 @@ export default class ServiceReminderScheduler extends BaseScheduler {
 
   /**
    * Process upcoming service reminders (3 days and 1 day before)
+   * @param {boolean} forceResend - Skip dedup check (for testing)
    */
-  async processUpcomingServices() {
+  async processUpcomingServices(forceResend = false) {
     try {
       // Check 3 days ahead
       const threeDaysRange = createDateRange(3);
@@ -78,7 +80,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       this.logInfo(`Found ${upcomingServices.length} upcoming services`);
 
       for (const service of upcomingServices) {
-        await this.sendUpcomingServiceReminder(service);
+        await this.sendUpcomingServiceReminder(service, forceResend);
       }
     } catch (error) {
       this.logError("processUpcomingServices", error);
@@ -87,8 +89,9 @@ export default class ServiceReminderScheduler extends BaseScheduler {
 
   /**
    * Process missed service reminders (past due date)
+   * @param {boolean} forceResend - Skip dedup check (for testing)
    */
-  async processMissedServices() {
+  async processMissedServices(forceResend = false) {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -113,7 +116,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       this.logInfo(`Found ${missedServices.length} missed services`);
 
       for (const service of missedServices) {
-        await this.sendMissedServiceReminder(service);
+        await this.sendMissedServiceReminder(service, forceResend);
       }
     } catch (error) {
       this.logError("processMissedServices", error);
@@ -123,21 +126,29 @@ export default class ServiceReminderScheduler extends BaseScheduler {
   /**
    * Send upcoming service reminder
    * @param {Object} serviceSchedule - Service schedule object
+   * @param {boolean} forceResend - Skip dedup check (for testing)
    */
-  async sendUpcomingServiceReminder(serviceSchedule) {
+  async sendUpcomingServiceReminder(serviceSchedule, forceResend = false) {
     try {
       // Validate service schedule structure
       if (
         !serviceSchedule.service_plan_id?.invoice_item_id?.invoice_id
           ?.customer_id
       ) {
-        this.logError(
-          "sendUpcomingServiceReminder",
-          new Error("Invalid service schedule structure"),
-          {
-            serviceId: serviceSchedule.service_schedule_id,
-          },
+        const missingLink = !serviceSchedule.service_plan_id
+          ? "service_plan_id"
+          : !serviceSchedule.service_plan_id.invoice_item_id
+            ? "invoice_item_id"
+            : !serviceSchedule.service_plan_id.invoice_item_id.invoice_id
+              ? "invoice_id"
+              : "customer_id";
+        this.logInfo(
+          `Cancelling orphaned service schedule (${missingLink} missing): ${serviceSchedule.service_schedule_id}`,
         );
+        await ServiceSchedule.findByIdAndUpdate(serviceSchedule._id, {
+          status: "CANCELLED",
+          notes: `Auto-cancelled: ${missingLink} reference no longer exists`,
+        });
         return;
       }
 
@@ -145,12 +156,14 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       const customer = invoiceItem.invoice_id.customer_id;
 
       // Check if reminder already sent
-      const alreadySent = await this.isReminderAlreadySent(
-        serviceSchedule.service_schedule_id,
-        "SERVICE",
-        "service_reminder_hindi",
-        24, // allow re-send after 24 hours (1 day)
-      );
+      const alreadySent =
+        !forceResend &&
+        (await this.isReminderAlreadySent(
+          serviceSchedule.service_schedule_id,
+          "SERVICE",
+          "service_reminder_hindi",
+          24, // allow re-send after 24 hours (1 day)
+        ));
 
       if (alreadySent) {
         this.logInfo(
@@ -245,21 +258,29 @@ export default class ServiceReminderScheduler extends BaseScheduler {
   /**
    * Send missed service reminder
    * @param {Object} serviceSchedule - Service schedule object
+   * @param {boolean} forceResend - Skip dedup check (for testing)
    */
-  async sendMissedServiceReminder(serviceSchedule) {
+  async sendMissedServiceReminder(serviceSchedule, forceResend = false) {
     try {
       // Validate service schedule structure
       if (
         !serviceSchedule.service_plan_id?.invoice_item_id?.invoice_id
           ?.customer_id
       ) {
-        this.logError(
-          "sendMissedServiceReminder",
-          new Error("Invalid service schedule structure"),
-          {
-            serviceId: serviceSchedule.service_schedule_id,
-          },
+        const missingLink = !serviceSchedule.service_plan_id
+          ? "service_plan_id"
+          : !serviceSchedule.service_plan_id.invoice_item_id
+            ? "invoice_item_id"
+            : !serviceSchedule.service_plan_id.invoice_item_id.invoice_id
+              ? "invoice_id"
+              : "customer_id";
+        this.logInfo(
+          `Cancelling orphaned service schedule (${missingLink} missing): ${serviceSchedule.service_schedule_id}`,
         );
+        await ServiceSchedule.findByIdAndUpdate(serviceSchedule._id, {
+          status: "CANCELLED",
+          notes: `Auto-cancelled: ${missingLink} reference no longer exists`,
+        });
         return;
       }
 
@@ -267,12 +288,14 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       const customer = invoiceItem.invoice_id.customer_id;
 
       // Check if reminder already sent
-      const alreadySent = await this.isReminderAlreadySent(
-        serviceSchedule.service_schedule_id,
-        "SERVICE",
-        "service_missed_v1",
-        24, // allow re-send after 24 hours (1 day)
-      );
+      const alreadySent =
+        !forceResend &&
+        (await this.isReminderAlreadySent(
+          serviceSchedule.service_schedule_id,
+          "SERVICE",
+          "service_missed_v1",
+          24, // allow re-send after 24 hours (1 day)
+        ));
 
       if (alreadySent) {
         this.logInfo(

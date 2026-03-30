@@ -96,6 +96,20 @@ invoiceRouter.post(
   (req, res) => invoiceController.sendInvoice(req, res),
 );
 
+// Send payment reminder via WhatsApp (UNPAID/PARTIAL invoices only)
+invoiceRouter.post(
+  "/:id/send-payment-reminder",
+  authorize("OWNER", "ADMIN", "STAFF"),
+  (req, res) => invoiceController.sendPaymentReminder(req, res),
+);
+
+// Record a payment (full or partial) against an invoice
+invoiceRouter.post(
+  "/:id/record-payment",
+  authorize("OWNER", "ADMIN", "STAFF"),
+  (req, res) => invoiceController.recordPayment(req, res),
+);
+
 // Generate and download invoice PDF
 invoiceRouter.get(
   "/:id/pdf",

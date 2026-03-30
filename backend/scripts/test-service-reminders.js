@@ -41,6 +41,8 @@ try {
 
 async function main() {
   try {
+    const forceResend = process.argv.includes("--force");
+
     const mongoUri =
       process.env.MONGODB_URI ||
       process.env.MONGO_URI ||
@@ -60,7 +62,7 @@ async function main() {
     console.log("Scheduler status:", status);
 
     console.log("Running service reminder test...");
-    await scheduler.runManualTest("service");
+    await scheduler.runManualTest("service", forceResend);
 
     console.log("Running warranty reminder test...");
     await scheduler.runManualTest("warranty");

@@ -123,6 +123,31 @@ export const invoiceApi = baseApi.injectEndpoints({
       transformResponse: (response) => response.data,
     }),
 
+    // Send payment reminder via WhatsApp (UNPAID/PARTIAL invoices only)
+    sendPaymentReminder: builder.mutation({
+      query: (invoiceId) => ({
+        url: `/invoices/${invoiceId}/send-payment-reminder`,
+        method: "POST",
+      }),
+      transformResponse: (response) => response.data,
+    }),
+
+    // Record a payment (full or partial) against an invoice
+    recordPayment: builder.mutation({
+      query: ({ invoiceId, amount, payment_mode }) => ({
+        url: `/invoices/${invoiceId}/record-payment`,
+        method: "POST",
+        body: { amount, payment_mode },
+      }),
+      invalidatesTags: (result, error, { invoiceId }) => [
+        { type: "Invoice", id: invoiceId },
+        { type: "Invoice", id: "LIST" },
+        "DashboardSummary",
+        "InvoiceStats",
+      ],
+      transformResponse: (response) => response.data,
+    }),
+
     // Get services for a specific invoice item
     getInvoiceItemServices: builder.query({
       query: ({ invoiceId, itemId }) =>
@@ -180,6 +205,8 @@ export const {
   useUpdateInvoiceMutation,
   useDeleteInvoiceMutation,
   useSendInvoiceMutation,
+  useSendPaymentReminderMutation,
+  useRecordPaymentMutation,
   useGetNextInvoiceNumberQuery,
   useCheckSerialNumberMutation,
   useSearchCustomerMutation,

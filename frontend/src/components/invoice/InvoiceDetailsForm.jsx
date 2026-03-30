@@ -57,9 +57,17 @@ const InvoiceDetailsForm = () => {
                 id="payment-status"
                 label="Payment Status"
                 value={invoice.payment_status}
-                onChange={(e) =>
-                  updateInvoiceData({ payment_status: e.target.value })
-                }
+                onChange={(e) => {
+                  const newStatus = e.target.value;
+                  updateInvoiceData({ payment_status: newStatus });
+                  // Clear amount_paid when switching away from PARTIAL
+                  if (
+                    newStatus !== INVOICE_CONSTANTS.PAYMENT_STATUSES.PARTIAL
+                  ) {
+                    updateInvoiceData({ amount_paid: 0 });
+                    setRawAmountPaid(null);
+                  }
+                }}
                 options={Object.entries(INVOICE_CONSTANTS.PAYMENT_STATUSES).map(
                   ([key, value]) => ({
                     value: value,

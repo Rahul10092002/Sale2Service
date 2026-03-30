@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import mongoose from "mongoose";
 import Customer from "../models/Customer.js";
 import Invoice from "../models/Invoice.js";
@@ -8,6 +9,12 @@ import ServiceSchedule from "../models/ServiceSchedule.js";
 import { sendWhatsappMessageViaMSG91 } from "../config/msg91.js";
 import { InvoicePDFService } from "../services/invoicePDFService.js";
 import cloudinaryUpload from "../services/cloudinaryUpload.js";
+
+// Temporary in-memory store for PDF buffers used during WhatsApp delivery.
+// Meta/MSG91 fetches the URL we provide; serving from our own backend avoids
+// Cloudinary CDN propagation race (error 131053). Tokens are single-use,
+// expire in 5 minutes, and are keyed by a cryptographically random UUID.
+const tempPdfStore = new Map();
 
 export default class InvoiceController {
   /**
@@ -308,6 +315,7 @@ export default class InvoiceController {
       ]);
 
       // Generate and store PDF in Cloudinary after successful invoice creation
+      let pdfBuffer = null; // kept accessible to the WhatsApp IIFE below
       try {
         // Generate PDF
         const pdfService = new InvoicePDFService();
@@ -317,13 +325,14 @@ export default class InvoiceController {
           createdInvoiceItems,
           shop,
         );
+        pdfBuffer = pdfResult.buffer;
 
         // Upload to Cloudinary
         const cloudinaryResult = await cloudinaryUpload.uploadPDFFromBuffer(
           pdfResult.buffer,
           {
             folder: "invoices",
-            fileName: `invoice_${newInvoice.invoice_number}_${Date.now()}`,
+            fileName: `invoice_${newInvoice.invoice_number}_${Date.now()}.pdf`,
             tags: [
               "invoice",
               "auto-generated",
@@ -362,57 +371,7 @@ export default class InvoiceController {
         newInvoice.pdf_error = pdfError.message;
       }
 
-      // Send invoice notification via WhatsApp (non-fatal; errors won't block response)
-      try {
-        const { formatPhoneNumber, isValidWhatsAppNumber } =
-          await import("../scheduler/core/utils.js");
-
-        const customerNumber = newInvoice.customer_id?.whatsapp_number;
-        const formattedNumber = formatPhoneNumber(customerNumber);
-
-        if (formattedNumber && isValidWhatsAppNumber(formattedNumber)) {
-          const vars = {
-            1: invoiceNumber,
-            2: new Date(newInvoice.invoice_date).toLocaleDateString(),
-            3:
-              typeof totalAmount === "number"
-                ? totalAmount.toFixed(2)
-                : String(totalAmount),
-            4: newInvoice.due_date
-              ? new Date(newInvoice.due_date).toLocaleDateString()
-              : "",
-            5: shop.shop_name_hi || shop.shop_name || "",
-          };
-
-          // Prepare components with header document if PDF is available
-          const msgConfig = {
-            templateName: "invoice_created",
-            to: formattedNumber,
-            components: vars,
-            campaignName: "invoice_created",
-            hospitalId: shop._id,
-            userName: newInvoice.customer_id?.full_name || "",
-            messageType: "invoice_created",
-          };
-
-          // Add header document separately if PDF is available
-          if (newInvoice.invoice_pdf) {
-            msgConfig.media = {
-              url: newInvoice.invoice_pdf,
-              filename: `Invoice_${invoiceNumber}.pdf`,
-            };
-          }
-
-          // Use MSG91 sender for WhatsApp template messages
-          const sendResp = await sendWhatsappMessageViaMSG91(msgConfig);
-          // WhatsApp send result available (not logged)
-        } else {
-          // Skipping WhatsApp send - invalid number
-        }
-      } catch (waErr) {
-        console.error("WhatsApp send error (non-fatal):", waErr);
-      }
-
+      // Respond immediately — WhatsApp notification is fired asynchronously below
       res.status(201).json({
         success: true,
         message: "Invoice created successfully",
@@ -427,6 +386,74 @@ export default class InvoiceController {
           pdf_error: newInvoice.pdf_error || null,
         },
       });
+
+      // Send WhatsApp notification asynchronously — fire-and-forget IIFE.
+      // We serve the PDF from our own backend (tempPdfStore) rather than
+      // passing the Cloudinary URL directly to Meta. This eliminates error 131053
+      // caused by CDN propagation delays where Meta's edge hits a node that
+      // hasn't yet received the freshly uploaded file.
+      (async () => {
+        try {
+          const { formatPhoneNumber, isValidWhatsAppNumber } =
+            await import("../scheduler/core/utils.js");
+
+          const customerNumber = newInvoice.customer_id?.whatsapp_number;
+          const formattedNumber = formatPhoneNumber(customerNumber);
+          if (!formattedNumber || !isValidWhatsAppNumber(formattedNumber))
+            return;
+
+          const vars = {
+            1: invoiceNumber,
+            2: new Date(newInvoice.invoice_date).toLocaleDateString(),
+            3:
+              typeof totalAmount === "number"
+                ? totalAmount.toFixed(2)
+                : String(totalAmount),
+            4: newInvoice.due_date
+              ? new Date(newInvoice.due_date).toLocaleDateString()
+              : "",
+            5: shop.shop_name_hi || shop.shop_name || "",
+          };
+
+          const msgConfig = {
+            templateName: "invoice_created",
+            to: formattedNumber,
+            components: vars,
+            campaignName: "invoice_created",
+            hospitalId: shop._id,
+            userName: newInvoice.customer_id?.full_name || "",
+            messageType: "invoice_created",
+          };
+
+          if (pdfBuffer) {
+            // Serve from our backend so Meta can fetch immediately without CDN delay
+            const token = randomUUID();
+            tempPdfStore.set(token, {
+              buffer: pdfBuffer,
+              filename: `Invoice_${invoiceNumber}.pdf`,
+              expires: Date.now() + 5 * 60 * 1000,
+            });
+            setTimeout(() => tempPdfStore.delete(token), 5 * 60 * 1000);
+            const backendUrl = (process.env.BACKEND_URL || "").replace(
+              /\/$/,
+              "",
+            );
+            msgConfig.media = {
+              url: `${backendUrl}/v1/invoices/public-pdf/${token}`,
+              filename: `Invoice_${invoiceNumber}.pdf`,
+            };
+          } else if (newInvoice.invoice_pdf) {
+            msgConfig.media = {
+              url: newInvoice.invoice_pdf,
+              filename: `Invoice_${invoiceNumber}.pdf`,
+            };
+          }
+
+          await sendWhatsappMessageViaMSG91(msgConfig);
+        } catch (waErr) {
+          console.error("WhatsApp send error (non-fatal):", waErr);
+        }
+      })();
     } catch (error) {
       await session.abortTransaction();
       console.error("Invoice creation error:", error);
@@ -439,6 +466,31 @@ export default class InvoiceController {
     } finally {
       session.endSession();
     }
+  }
+
+  /**
+   * Serve a PDF temporarily stored in memory for WhatsApp delivery.
+   * This is a public (unauthenticated) endpoint — the token is a single-use
+   * cryptographically random UUID that expires in 5 minutes.
+   * GET /invoices/public-pdf/:token
+   */
+  async servePublicPdf(req, res) {
+    const { token } = req.params;
+    const entry = tempPdfStore.get(token);
+    if (!entry || entry.expires < Date.now()) {
+      tempPdfStore.delete(token);
+      return res
+        .status(404)
+        .json({ success: false, message: "PDF not found or expired" });
+    }
+    tempPdfStore.delete(token); // single-use
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${entry.filename}"`,
+    );
+    res.setHeader("Content-Length", entry.buffer.length);
+    return res.send(entry.buffer);
   }
 
   /**
@@ -479,7 +531,11 @@ export default class InvoiceController {
       // Also regenerate if stored URL is an /image/upload/ URL (Cloudinary rasterises PDFs stored as
       // image resource type and serves the wrong MIME type; Meta rejects anything that isn't application/pdf).
       let pdfUrl = invoice.invoice_pdf;
-      if (!pdfUrl || pdfUrl.includes("/image/upload/")) {
+      if (
+        !pdfUrl ||
+        pdfUrl.includes("/image/upload/") ||
+        !pdfUrl.endsWith(".pdf")
+      ) {
         try {
           const invoiceItems = await InvoiceItem.find({ invoice_id: id });
           const pdfService = new InvoicePDFService();
@@ -493,7 +549,7 @@ export default class InvoiceController {
             pdfResult.buffer,
             {
               folder: "invoices",
-              fileName: `invoice_${invoice.invoice_number}_${Date.now()}`,
+              fileName: `invoice_${invoice.invoice_number}_${Date.now()}.pdf`,
               tags: [
                 "invoice",
                 "regenerated",
@@ -508,6 +564,18 @@ export default class InvoiceController {
             invoice_pdf: pdfUrl,
             pdf_public_id: cloudinaryResult.public_id,
           });
+
+          // Serve the freshly generated PDF from our backend memory so Meta
+          // can download it immediately (avoids CDN propagation race / 131053).
+          const token = randomUUID();
+          tempPdfStore.set(token, {
+            buffer: pdfResult.buffer,
+            filename: `Invoice_${invoice.invoice_number}.pdf`,
+            expires: Date.now() + 5 * 60 * 1000,
+          });
+          setTimeout(() => tempPdfStore.delete(token), 5 * 60 * 1000);
+          const backendUrl = (process.env.BACKEND_URL || "").replace(/\/$/, "");
+          pdfUrl = `${backendUrl}/v1/invoices/public-pdf/${token}`;
         } catch (pdfErr) {
           console.error("PDF generation failed in sendInvoice:", pdfErr);
           return res.status(500).json({
@@ -2203,15 +2271,20 @@ export default class InvoiceController {
           }
         }
 
-        // Verify if the PDF actually exists in Cloudinary before redirecting
+        // Verify if the PDF actually exists in Cloudinary and proxy it
         try {
           const fetch = await import("node-fetch");
-          const response = await fetch.default(correctedUrl, {
-            method: "HEAD",
-          });
+          const response = await fetch.default(correctedUrl);
 
           if (response.ok) {
-            return res.redirect(correctedUrl);
+            const pdfBuffer = Buffer.from(await response.arrayBuffer());
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader(
+              "Content-Disposition",
+              `attachment; filename="Invoice_${invoice.invoice_number}.pdf"`,
+            );
+            res.setHeader("Content-Length", pdfBuffer.length);
+            return res.send(pdfBuffer);
           } else {
             // Clear the invalid URL from database
             await Invoice.findByIdAndUpdate(invoice._id, {
@@ -2220,7 +2293,7 @@ export default class InvoiceController {
             }).catch(() => {});
           }
         } catch (verifyError) {
-          // Failed to verify - clear invalid URL and regenerate
+          // Failed to fetch - clear invalid URL and regenerate
           await Invoice.findByIdAndUpdate(invoice._id, {
             invoice_pdf: null,
             pdf_public_id: null,
@@ -2261,7 +2334,7 @@ export default class InvoiceController {
           pdfResult.buffer,
           {
             folder: "invoices",
-            fileName: `invoice_${invoice.invoice_number}_${Date.now()}`,
+            fileName: `invoice_${invoice.invoice_number}_${Date.now()}.pdf`,
             tags: [
               "invoice",
               "generated",
@@ -2286,7 +2359,7 @@ export default class InvoiceController {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${pdfResult.filename}"`,
+        `attachment; filename="Invoice_${invoice.invoice_number}.pdf"`,
       );
       res.setHeader("Content-Length", pdfResult.buffer.length);
 
@@ -2345,15 +2418,20 @@ export default class InvoiceController {
           }
         }
 
-        // Verify if the PDF actually exists in Cloudinary before redirecting
+        // Verify if the PDF actually exists in Cloudinary and proxy it inline
         try {
           const fetch = await import("node-fetch");
-          const response = await fetch.default(correctedUrl, {
-            method: "HEAD",
-          });
+          const response = await fetch.default(correctedUrl);
 
           if (response.ok) {
-            return res.redirect(correctedUrl);
+            const pdfBuffer = Buffer.from(await response.arrayBuffer());
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader(
+              "Content-Disposition",
+              `inline; filename="Invoice_${invoice.invoice_number}.pdf"`,
+            );
+            res.setHeader("Content-Length", pdfBuffer.length);
+            return res.send(pdfBuffer);
           } else {
             // Clear the invalid URL from database
             await Invoice.findByIdAndUpdate(invoice._id, {
@@ -2362,7 +2440,7 @@ export default class InvoiceController {
             }).catch(() => {});
           }
         } catch (verifyError) {
-          // Failed to verify - clear invalid URL and regenerate
+          // Failed to fetch - clear invalid URL and regenerate
           await Invoice.findByIdAndUpdate(invoice._id, {
             invoice_pdf: null,
             pdf_public_id: null,
@@ -2403,7 +2481,7 @@ export default class InvoiceController {
           pdfResult.buffer,
           {
             folder: "invoices",
-            fileName: `invoice_${invoice.invoice_number}_${Date.now()}`,
+            fileName: `invoice_${invoice.invoice_number}_${Date.now()}.pdf`,
             tags: [
               "invoice",
               "generated",
@@ -2428,7 +2506,7 @@ export default class InvoiceController {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `inline; filename="${pdfResult.filename}"`,
+        `inline; filename="Invoice_${invoice.invoice_number}.pdf"`,
       );
       res.setHeader("Content-Length", pdfResult.buffer.length);
 

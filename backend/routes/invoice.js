@@ -5,6 +5,12 @@ import { authenticate, authorize } from "../middleware/auth.js";
 export const invoiceRouter = Router();
 const invoiceController = new InvoiceController();
 
+// Public route — serves a temporary PDF for WhatsApp/Meta media delivery.
+// Must be registered BEFORE the authenticate middleware below.
+invoiceRouter.get("/public-pdf/:token", (req, res) =>
+  invoiceController.servePublicPdf(req, res),
+);
+
 // Apply authentication to all routes
 invoiceRouter.use(authenticate);
 

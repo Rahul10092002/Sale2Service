@@ -124,6 +124,11 @@ const InvoiceGenerationPage = () => {
         customer: currentInvoice.customer,
         invoice: {
           ...currentInvoice.invoice,
+          // Ensure amount_paid is 0 for UNPAID invoices
+          amount_paid:
+            currentInvoice.invoice.payment_status === "PARTIAL"
+              ? currentInvoice.invoice.amount_paid
+              : 0,
           // Remove computed fields
           subtotal: undefined,
           tax: undefined,

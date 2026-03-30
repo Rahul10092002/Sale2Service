@@ -104,7 +104,7 @@ export const sendWhatsappMessageViaMSG91 = async ({
         },
       },
     };
- console.log("MSG91 WhatsApp payload:", payload);
+ 
     const resp = await axios.post(process.env.MSG91_API_ENDPOINT, payload, {
       headers: {
         "Content-Type": "application/json",

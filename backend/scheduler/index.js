@@ -45,28 +45,28 @@ export default class SchedulerService {
       await this.processAllReminders();
     });
 
-    // Run daily at 8 AM for birthday and anniversary wishes
-    cron.schedule("0 8 * * *", async () => {
+    // Run daily at 6 AM for birthday and anniversary wishes
+    cron.schedule("0 6 * * *", async () => {
       console.log(
         "[SchedulerService] Running daily wishes (birthday/anniversary)...",
       );
       await this.wishesScheduler.processWishesReminders();
     });
 
-    // Run daily at 9 AM for service schedules
-    cron.schedule("0 9 * * *", async () => {
+    // Run daily at 7 AM for service schedules
+    cron.schedule("0 7 * * *", async () => {
       console.log("[SchedulerService] Running daily service reminders...");
       await this.serviceScheduler.processServiceReminders();
     });
 
-    // Run daily at 10 AM for warranty reminders
-    cron.schedule("0 10 * * *", async () => {
+    // Run daily at 8 AM for warranty reminders
+    cron.schedule("0 8 * * *", async () => {
       console.log("[SchedulerService] Running daily warranty reminders...");
       await this.warrantyScheduler.processWarrantyReminders();
     });
 
-    // Run daily at 11 AM for payment reminders
-    cron.schedule("0 11 * * *", async () => {
+    // Run daily at 9 AM for payment reminders
+    cron.schedule("0 9 * * *", async () => {
       console.log("[SchedulerService] Running daily payment reminders...");
       await this.paymentScheduler.processPaymentReminders();
     });
@@ -75,10 +75,10 @@ export default class SchedulerService {
     console.log("[SchedulerService] Reminder scheduler started successfully");
     console.log("[SchedulerService] Schedule:");
     console.log("  - Hourly: All reminders check");
-    console.log("  - 8 AM: Birthday and anniversary wishes");
-    console.log("  - 9 AM: Service reminders");
-    console.log("  - 10 AM: Warranty reminders");
-    console.log("  - 11 AM: Payment reminders");
+    console.log("  - 6 AM: Birthday and anniversary wishes");
+    console.log("  - 7 AM: Service reminders");
+    console.log("  - 8 AM: Warranty reminders");
+    console.log("  - 9 AM: Payment reminders");
   }
 
   /**

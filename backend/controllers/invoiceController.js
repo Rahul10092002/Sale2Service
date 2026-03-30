@@ -470,8 +470,9 @@ export default class InvoiceController {
 
   /**
    * Serve a PDF temporarily stored in memory for WhatsApp delivery.
-   * This is a public (unauthenticated) endpoint — the token is a single-use
-   * cryptographically random UUID that expires in 5 minutes.
+   * This is a public (unauthenticated) endpoint — the token is a
+   * cryptographically random UUID that expires in 10 minutes.
+   * Token is NOT single-use so Meta can retry on failure.
    * GET /invoices/public-pdf/:token
    */
   async servePublicPdf(req, res) {
@@ -483,7 +484,7 @@ export default class InvoiceController {
         .status(404)
         .json({ success: false, message: "PDF not found or expired" });
     }
-    tempPdfStore.delete(token); // single-use
+    // Do NOT delete token here — Meta may retry the download
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
@@ -527,15 +528,32 @@ export default class InvoiceController {
       const customer = invoice.customer_id;
       const customerNumber = customer?.whatsapp_number;
 
-      // Ensure PDF exists — the invoice_created template always requires a document header.
-      // Also regenerate if stored URL is an /image/upload/ URL (Cloudinary rasterises PDFs stored as
-      // image resource type and serves the wrong MIME type; Meta rejects anything that isn't application/pdf).
-      let pdfUrl = invoice.invoice_pdf;
+      // Always serve the PDF from our own backend URL so Meta can reliably
+      // download it. Cloudinary RAW CDN URLs cause error 131053 because Meta's
+      // servers hit geographically distant edge nodes that may not yet have
+      // the file, or may be blocked. We proxy the bytes through our server.
+      let pdfBuffer = null;
+
       if (
-        !pdfUrl ||
-        pdfUrl.includes("/image/upload/") ||
-        !pdfUrl.endsWith(".pdf")
+        invoice.invoice_pdf &&
+        !invoice.invoice_pdf.includes("/image/upload/")
       ) {
+        // Fetch existing PDF from Cloudinary through our server
+        try {
+          const { default: nodeFetch } = await import("node-fetch");
+          const fetchResp = await nodeFetch(invoice.invoice_pdf, {
+            timeout: 10000,
+          });
+          if (fetchResp.ok) {
+            pdfBuffer = Buffer.from(await fetchResp.arrayBuffer());
+          }
+        } catch (_) {
+          // fall through to regenerate below
+        }
+      }
+
+      if (!pdfBuffer) {
+        // Generate fresh PDF (no valid stored URL, or fetch failed)
         try {
           const invoiceItems = await InvoiceItem.find({ invoice_id: id });
           const pdfService = new InvoicePDFService();
@@ -545,8 +563,10 @@ export default class InvoiceController {
             invoiceItems,
             shop,
           );
+          pdfBuffer = pdfResult.buffer;
+          // Upload and store the fresh PDF for future use
           const cloudinaryResult = await cloudinaryUpload.uploadPDFFromBuffer(
-            pdfResult.buffer,
+            pdfBuffer,
             {
               folder: "invoices",
               fileName: `invoice_${invoice.invoice_number}_${Date.now()}.pdf`,
@@ -559,23 +579,10 @@ export default class InvoiceController {
               overwrite: false,
             },
           );
-          pdfUrl = cloudinaryResult.url;
           await Invoice.findByIdAndUpdate(id, {
-            invoice_pdf: pdfUrl,
+            invoice_pdf: cloudinaryResult.url,
             pdf_public_id: cloudinaryResult.public_id,
           });
-
-          // Serve the freshly generated PDF from our backend memory so Meta
-          // can download it immediately (avoids CDN propagation race / 131053).
-          const token = randomUUID();
-          tempPdfStore.set(token, {
-            buffer: pdfResult.buffer,
-            filename: `Invoice_${invoice.invoice_number}.pdf`,
-            expires: Date.now() + 5 * 60 * 1000,
-          });
-          setTimeout(() => tempPdfStore.delete(token), 5 * 60 * 1000);
-          const backendUrl = (process.env.BACKEND_URL || "").replace(/\/$/, "");
-          pdfUrl = `${backendUrl}/v1/invoices/public-pdf/${token}`;
         } catch (pdfErr) {
           console.error("PDF generation failed in sendInvoice:", pdfErr);
           return res.status(500).json({
@@ -584,6 +591,18 @@ export default class InvoiceController {
           });
         }
       }
+
+      // Store buffer in temp map — Meta will fetch from our backend URL
+      const token = randomUUID();
+      const pdfFilename = `Invoice_${invoice.invoice_number}.pdf`;
+      tempPdfStore.set(token, {
+        buffer: pdfBuffer,
+        filename: pdfFilename,
+        expires: Date.now() + 10 * 60 * 1000,
+      });
+      setTimeout(() => tempPdfStore.delete(token), 10 * 60 * 1000);
+      const backendUrl = (process.env.BACKEND_URL || "").replace(/\/$/, "");
+      const pdfUrl = `${backendUrl}/v1/invoices/public-pdf/${token}`;
 
       // Prepare template variables
       const vars = {

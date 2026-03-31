@@ -9,10 +9,12 @@ import {
   ImagePlus,
   Camera,
   X,
+  ScanLine,
 } from "lucide-react";
 import { Button, Input, SelectField } from "../ui/index.js";
 import { INVOICE_CONSTANTS } from "../../utils/constants.js";
 import { getToken } from "../../utils/token.js";
+import SerialScanner from "./SerialScanner.jsx";
 
 const API_BASE_URL =
   import.meta.env.VITE_ENVIRONMENT === "production"
@@ -88,6 +90,8 @@ const ProductCard = React.memo(function ProductCard({
         ? itemValue
         : fallback;
 
+  // ── Serial scanner state ────────────────────────────────────────
+  const [showScanner, setShowScanner] = React.useState(false);
   // ── Image upload state ──────────────────────────────────────────
   const [imageUploading, setImageUploading] = React.useState(false);
   const [imageError, setImageError] = React.useState(null);
@@ -160,15 +164,37 @@ const ProductCard = React.memo(function ProductCard({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Serial Number *
             </label>
-            <Input
-              type="text"
-              value={item.serial_number || ""}
-              onChange={(e) =>
-                updateItem(item.id, { serial_number: e.target.value })
-              }
-              placeholder="Enter unique serial number"
-              error={errors[`item.${item.id}.serial_number`]}
-            />
+            <div className="flex gap-2 items-start">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  value={item.serial_number || ""}
+                  onChange={(e) =>
+                    updateItem(item.id, { serial_number: e.target.value })
+                  }
+                  placeholder="Enter or scan serial number"
+                  error={errors[`item.${item.id}.serial_number`]}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                title="Scan barcode / QR code"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <ScanLine className="w-4 h-4" />
+                <span className="hidden sm:inline">Scan</span>
+              </button>
+            </div>
+            {showScanner && (
+              <SerialScanner
+                onScan={(value) => {
+                  updateItemImmediate(item.id, { serial_number: value });
+                  setShowScanner(false);
+                }}
+                onClose={() => setShowScanner(false)}
+              />
+            )}
           </div>
 
           <div>

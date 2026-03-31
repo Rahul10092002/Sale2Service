@@ -146,7 +146,7 @@ Body: { "type": "service" }
 POST /v1/debug/test-message
 Body: {
   "phoneNumber": "your_test_number",
-  "templateName": "service_reminder_hindi"
+  "templateName": "service_reminder"
 }
 ```
 

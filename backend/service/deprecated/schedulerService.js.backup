@@ -286,7 +286,7 @@ export default class SchedulerService {
       const existingLog = await ReminderLog.findOne({
         entity_id: serviceSchedule.service_schedule_id,
         entity_type: "SERVICE",
-        template_name: "service_reminder_hindi",
+        template_name: "service_reminder",
         message_status: { $in: ["SENT", "DELIVERED"] },
         createdAt: {
           $gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Within last 24 hours
@@ -320,7 +320,7 @@ export default class SchedulerService {
         return;
       }
 
-      // Prepare template variables for service_reminder_hindi
+      // Prepare template variables for service_reminder
       // {{1}}: Customer name, {{2}}: Product name, {{3}}: Service date, {{4}}: Shop name
       const serviceDate = new Date(serviceSchedule.scheduled_date);
       const dateStr = `${serviceDate.getDate()}-${String(serviceDate.getMonth() + 1).padStart(2, "0")}-${serviceDate.getFullYear()}`;
@@ -341,7 +341,7 @@ export default class SchedulerService {
         recipient_number: formattedNumber,
         recipient_name: customer.full_name,
         message_content: messageContent,
-        template_name: "service_reminder_hindi",
+        template_name: "service_reminder",
       });
 
       await reminderLog.save();
@@ -349,7 +349,7 @@ export default class SchedulerService {
       // Send WhatsApp message via MSG91
       try {
         const sendResp = await sendWhatsappMessageViaMSG91({
-          templateName: "service_reminder_hindi",
+          templateName: "service_reminder",
           to: formattedNumber,
           components: vars,
           campaignName: "service_reminder",

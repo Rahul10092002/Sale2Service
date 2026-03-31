@@ -1,7 +1,12 @@
 import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import Customer from "../../models/Customer.js";
-import { createDateRange } from "../core/utils.js";
+import Shop from "../../models/Shop.js";
+import {
+  getISTTodayParts,
+  getISTDateParts,
+  getShopName,
+} from "../core/utils.js";
 
 /**
  * Wishes-specific reminder scheduler
@@ -36,9 +41,8 @@ export default class WishesReminderScheduler extends BaseScheduler {
    */
   async processBirthdayWishes() {
     try {
-      const today = new Date();
-      const todayMonth = today.getMonth() + 1; // 1-based month
-      const todayDate = today.getDate();
+      // Use IST date parts to avoid UTC/IST mismatch (server runs UTC)
+      const { month: todayMonth, date: todayDate } = getISTTodayParts();
 
       // Find customers whose birthday is today
       const birthdayCustomers = await Customer.find({
@@ -49,10 +53,10 @@ export default class WishesReminderScheduler extends BaseScheduler {
         deleted_at: null,
       });
 
-      // Filter by month and date (ignoring year)
+      // Filter by month and date in IST (ignoring year and time)
       const todayBirthdays = birthdayCustomers.filter((customer) => {
-        const dob = new Date(customer.date_of_birth);
-        return dob.getMonth() + 1 === todayMonth && dob.getDate() === todayDate;
+        const { month, date } = getISTDateParts(customer.date_of_birth);
+        return month === todayMonth && date === todayDate;
       });
 
       this.logInfo(
@@ -72,9 +76,8 @@ export default class WishesReminderScheduler extends BaseScheduler {
    */
   async processAnniversaryWishes() {
     try {
-      const today = new Date();
-      const todayMonth = today.getMonth() + 1; // 1-based month
-      const todayDate = today.getDate();
+      // Use IST date parts to avoid UTC/IST mismatch (server runs UTC)
+      const { month: todayMonth, date: todayDate } = getISTTodayParts();
 
       // Find customers whose anniversary is today
       const anniversaryCustomers = await Customer.find({
@@ -85,13 +88,10 @@ export default class WishesReminderScheduler extends BaseScheduler {
         deleted_at: null,
       });
 
-      // Filter by month and date (ignoring year)
+      // Filter by month and date in IST (ignoring year and time)
       const todayAnniversaries = anniversaryCustomers.filter((customer) => {
-        const anniversaryDate = new Date(customer.anniversary_date);
-        return (
-          anniversaryDate.getMonth() + 1 === todayMonth &&
-          anniversaryDate.getDate() === todayDate
-        );
+        const { month, date } = getISTDateParts(customer.anniversary_date);
+        return month === todayMonth && date === todayDate;
       });
 
       this.logInfo(
@@ -139,11 +139,14 @@ export default class WishesReminderScheduler extends BaseScheduler {
         return;
       }
 
+      // Fetch shop name from customer's shop_id
+      const shop = await Shop.findById(customer.shop_id);
+
       // Prepare template variables for birthday_wish
       // {{1}}: Customer name, {{2}}: Shop name
       const variables = {
         1: customer.full_name,
-        2: process.env.SHOP_NAME || "Our Shop",
+        2: getShopName(shop),
       };
 
       // Build message content for logging
@@ -223,11 +226,14 @@ export default class WishesReminderScheduler extends BaseScheduler {
         return;
       }
 
+      // Fetch shop name from customer's shop_id
+      const shop = await Shop.findById(customer.shop_id);
+
       // Prepare template variables for anniversary_wish
       // {{1}}: Customer name, {{2}}: Shop name
       const variables = {
         1: customer.full_name,
-        2: process.env.SHOP_NAME || "Our Shop",
+        2: getShopName(shop),
       };
 
       // Build message content for logging

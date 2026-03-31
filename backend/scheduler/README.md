@@ -47,7 +47,7 @@ backend/
 
 - **Upcoming Services**: 3 days and 1 day before scheduled service
 - **Missed Services**: Services past due date
-- **Template**: `service_reminder_hindi`, `service_missed_v1`
+- **Template**: `service_reminder`, `service_missed_v1`
 
 ### 2. Warranty Reminders
 
@@ -135,7 +135,7 @@ console.log(status);
 // Test sending a message
 const result = await scheduler.testMessage(
   "919876543210", // Phone number
-  "service_reminder_hindi", // Template name
+  "service_reminder", // Template name
   {
     // Variables
     1: "Customer Name",
@@ -162,7 +162,7 @@ GET /v1/debug/scheduler-status
 POST /v1/debug/test-message
 Body: {
   "phoneNumber": "919876543210",
-  "templateName": "service_reminder_hindi",
+  "templateName": "service_reminder",
   "variables": { "1": "Name", "2": "Product", ... }
 }
 ```

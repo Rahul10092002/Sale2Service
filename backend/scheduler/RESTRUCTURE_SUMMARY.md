@@ -112,17 +112,17 @@ Body: { "type": "service" }
 
 # Test messaging
 POST /v1/debug/test-message
-Body: { "phoneNumber": "919876543210", "templateName": "service_reminder_hindi" }
+Body: { "phoneNumber": "919876543210", "templateName": "service_reminder" }
 ```
 
 ## 📋 Reminder Types & Schedule
 
-| Type         | Schedule    | Templates                                     | Purpose                                      |
-| ------------ | ----------- | --------------------------------------------- | -------------------------------------------- |
-| **Service**  | 9 AM Daily  | `service_reminder_hindi`, `service_missed_v1` | Upcoming (3,1 days) & missed services        |
-| **Warranty** | 10 AM Daily | `warranty_expiry_v1`, `warranty_expired_v1`   | Expiring (30,15,3 days) & expired warranties |
-| **Payment**  | 11 AM Daily | `payment_pending_v1`                          | Pending payments (3,7,15 days after invoice) |
-| **All**      | Every Hour  | All templates                                 | Comprehensive check                          |
+| Type         | Schedule    | Templates                                   | Purpose                                      |
+| ------------ | ----------- | ------------------------------------------- | -------------------------------------------- |
+| **Service**  | 9 AM Daily  | `service_reminder`, `service_missed_v1`     | Upcoming (3,1 days) & missed services        |
+| **Warranty** | 10 AM Daily | `warranty_expiry_v1`, `warranty_expired_v1` | Expiring (30,15,3 days) & expired warranties |
+| **Payment**  | 11 AM Daily | `payment_pending_v1`                        | Pending payments (3,7,15 days after invoice) |
+| **All**      | Every Hour  | All templates                               | Comprehensive check                          |
 
 ## 🔧 Configuration
 

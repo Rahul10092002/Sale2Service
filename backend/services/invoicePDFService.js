@@ -232,10 +232,7 @@ export class InvoicePDFService {
         invoiceItems,
         shop,
       );
-      console.log(
-        "Prepared template data for invoice PDF generation",
-        templateData,
-      );
+    
       // Template path
       const templatePath = path.join(__dirname, "../templates/invoice.ejs");
 

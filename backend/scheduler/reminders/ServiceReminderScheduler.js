@@ -93,11 +93,14 @@ export default class ServiceReminderScheduler extends BaseScheduler {
    */
   async processMissedServices(forceResend = false) {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Use IST midnight so services scheduled for "today IST" are not flagged as missed
+      const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+      const nowIST = Date.now() + IST_OFFSET_MS;
+      const istMidnightMs = nowIST - (nowIST % (24 * 60 * 60 * 1000));
+      const todayISTStart = new Date(istMidnightMs - IST_OFFSET_MS);
 
       const missedServices = await ServiceSchedule.find({
-        scheduled_date: { $lt: today },
+        scheduled_date: { $lt: todayISTStart },
         status: "PENDING",
         deleted_at: null,
       }).populate({
@@ -161,7 +164,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
         (await this.isReminderAlreadySent(
           serviceSchedule.service_schedule_id,
           "SERVICE",
-          "service_reminder_hindi",
+          "service_reminder",
           24, // allow re-send after 24 hours (1 day)
         ));
 
@@ -199,7 +202,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
         return;
       }
 
-      // Prepare template variables for service_reminder_hindi
+      // Prepare template variables for service_reminder
       // {{1}}: Customer name, {{2}}: Product name, {{3}}: Service date, {{4}}: Shop name
       const serviceDate = formatDateForMessage(serviceSchedule.scheduled_date);
       const variables = {
@@ -219,13 +222,13 @@ export default class ServiceReminderScheduler extends BaseScheduler {
         recipientNumber: phoneValidation.formattedNumber,
         recipientName: customer.full_name,
         messageContent: messageContent,
-        templateName: "service_reminder_hindi",
+        templateName: "service_reminder",
       });
 
       // Send WhatsApp message
       const result = await this.messageSender.sendTemplateMessage({
         to: phoneValidation.formattedNumber,
-        templateName: "service_reminder_hindi",
+        templateName: "service_reminder",
         variables: variables,
         reminderLogId: reminderLog._id,
         metadata: {

@@ -45,7 +45,7 @@ export default class SchedulerService {
       await this.processAllReminders();
     });
 
-    // Run daily at 6 AM for birthday and anniversary wishes
+    // Run daily at 6 AM IST for birthday and anniversary wishes
     cron.schedule("0 6 * * *", async () => {
       console.log(
         "[SchedulerService] Running daily wishes (birthday/anniversary)...",
@@ -53,19 +53,19 @@ export default class SchedulerService {
       await this.wishesScheduler.processWishesReminders();
     });
 
-    // Run daily at 7 AM for service schedules
+    // Run daily at 7 AM IST for service schedules
     cron.schedule("0 7 * * *", async () => {
       console.log("[SchedulerService] Running daily service reminders...");
       await this.serviceScheduler.processServiceReminders();
     });
 
-    // Run daily at 8 AM for warranty reminders
+    // Run daily at 8 AM IST for warranty reminders
     cron.schedule("0 8 * * *", async () => {
       console.log("[SchedulerService] Running daily warranty reminders...");
       await this.warrantyScheduler.processWarrantyReminders();
     });
 
-    // Run daily at 9 AM for payment reminders
+    // Run daily at 9 AM IST for payment reminders
     cron.schedule("0 9 * * *", async () => {
       console.log("[SchedulerService] Running daily payment reminders...");
       await this.paymentScheduler.processPaymentReminders();
@@ -97,8 +97,8 @@ export default class SchedulerService {
     try {
       console.log("[SchedulerService] Processing all reminder types...");
 
+      // Wishes (birthday/anniversary) are handled by their own daily 6 AM cron — excluded here
       await Promise.all([
-        this.wishesScheduler.processWishesReminders(),
         this.serviceScheduler.processServiceReminders(),
         this.warrantyScheduler.processWarrantyReminders(),
         this.paymentScheduler.processPaymentReminders(),
@@ -139,7 +139,12 @@ export default class SchedulerService {
           break;
         case "all":
         default:
-          await this.processAllReminders();
+          // Wishes excluded from "all" — they have their own scheduled time
+          await Promise.all([
+            this.serviceScheduler.processServiceReminders(forceResend),
+            this.warrantyScheduler.processWarrantyReminders(),
+            this.paymentScheduler.processPaymentReminders(),
+          ]);
           break;
       }
       console.log(
@@ -183,7 +188,7 @@ export default class SchedulerService {
    */
   async testMessage(
     phoneNumber,
-    templateName = "service_reminder_hindi",
+    templateName = "service_reminder",
     variables = {},
   ) {
     try {

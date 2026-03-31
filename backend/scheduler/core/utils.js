@@ -64,24 +64,64 @@ export const isDateInRange = (targetDate, rangeStart, rangeEnd) => {
   return targetDate >= rangeStart && targetDate < rangeEnd;
 };
 
+// India Standard Time offset: UTC+5:30
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
 /**
- * Create date ranges for reminder checking
- * @param {number} daysOffset - Number of days from today (positive for future, negative for past)
- * @returns {object} - Object with start and end dates for the range
+ * Get the UTC-equivalent Date for the start of a day in IST.
+ * daysOffset=0 → today IST midnight (as UTC), daysOffset=1 → tomorrow IST midnight, etc.
+ * Example: IST midnight of March 31 = March 30 18:30:00 UTC
+ * @param {number} daysOffset - Days relative to today IST
+ * @returns {Date} - UTC Date representing IST midnight for the target day
+ */
+const getISTDayStartUTC = (daysOffset = 0) => {
+  const nowIST = Date.now() + IST_OFFSET_MS;
+  // Truncate to IST midnight (ms since epoch, IST)
+  const istMidnightMs = nowIST - (nowIST % (24 * 60 * 60 * 1000));
+  // Shift by daysOffset and convert back to UTC
+  return new Date(
+    istMidnightMs + daysOffset * 24 * 60 * 60 * 1000 - IST_OFFSET_MS,
+  );
+};
+
+/**
+ * Get today's date parts (month, date) in IST to avoid UTC/IST mismatch.
+ * @returns {{ month: number, date: number }} - 1-based month and day-of-month in IST
+ */
+export const getISTTodayParts = () => {
+  const nowIST = new Date(Date.now() + IST_OFFSET_MS);
+  return {
+    month: nowIST.getUTCMonth() + 1,
+    date: nowIST.getUTCDate(),
+  };
+};
+
+/**
+ * Get the month and day of a stored date in IST, regardless of how it was persisted.
+ * Handles both UTC-midnight storage (e.g. 1990-03-31T00:00Z) and
+ * IST-midnight storage (e.g. 1990-03-30T18:30Z).
+ * @param {Date|string} storedDate - Date from database
+ * @returns {{ month: number, date: number }} - 1-based month and day-of-month in IST
+ */
+export const getISTDateParts = (storedDate) => {
+  const dateIST = new Date(new Date(storedDate).getTime() + IST_OFFSET_MS);
+  return {
+    month: dateIST.getUTCMonth() + 1,
+    date: dateIST.getUTCDate(),
+  };
+};
+
+/**
+ * Create date ranges for reminder checking (IST-aware).
+ * Uses IST day boundaries so dates stored as either UTC midnight or IST midnight
+ * are correctly matched — no reminders are missed due to UTC/IST offset.
+ * @param {number} daysOffset - Days from today IST (positive = future, negative = past)
+ * @returns {{ start: Date, end: Date }} - UTC Date range covering the full IST day
  */
 export const createDateRange = (daysOffset) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const targetDate = new Date(today);
-  targetDate.setDate(today.getDate() + daysOffset);
-
-  const rangeEnd = new Date(targetDate);
-  rangeEnd.setDate(targetDate.getDate() + 1);
-
   return {
-    start: targetDate,
-    end: rangeEnd,
+    start: getISTDayStartUTC(daysOffset),
+    end: getISTDayStartUTC(daysOffset + 1),
   };
 };
 

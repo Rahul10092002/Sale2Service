@@ -7,10 +7,12 @@ import {
   FileText,
   Phone,
   Filter,
+  ScanLine,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input } from "../../components/ui/index.js";
 import { useGetProductsQuery } from "../../features/products/productApi.js";
+import SerialScanner from "../../components/invoice/SerialScanner.jsx";
 import { ROUTES } from "../../utils/constants.js";
 import {
   ServiceBadge,
@@ -83,6 +85,7 @@ const Products = () => {
   const [showServiceTable, setShowServiceTable] = useState(null);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const filterRef = useRef(null);
 
   useEffect(() => {
@@ -299,6 +302,28 @@ const Products = () => {
                   }}
                 />
               </div>
+
+              {/* Scan button */}
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium rounded-lg transition-colors"
+                title="Scan serial number"
+              >
+                <ScanLine className="h-4 w-4" />
+                <span className="hidden sm:inline">Scan</span>
+              </button>
+
+              {showScanner && (
+                <SerialScanner
+                  onScan={(value) => {
+                    setSearchTerm(value);
+                    setPage(1);
+                    setShowScanner(false);
+                  }}
+                  onClose={() => setShowScanner(false)}
+                />
+              )}
             </div>
           </div>
 

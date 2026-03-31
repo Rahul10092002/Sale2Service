@@ -13,12 +13,6 @@ productRouter.post("/", authorize("OWNER", "ADMIN", "STAFF"), (req, res) =>
 productRouter.get("/", authorize("OWNER", "ADMIN", "STAFF"), (req, res) =>
   productController.getProducts(req, res),
 );
-// Must be registered BEFORE /:id so Express doesn't treat "barcode-lookup" as an id
-productRouter.get(
-  "/barcode-lookup",
-  authorize("OWNER", "ADMIN", "STAFF"),
-  (req, res) => productController.lookupBarcode(req, res),
-);
 productRouter.get("/:id", authorize("OWNER", "ADMIN", "STAFF"), (req, res) =>
   productController.getProductById(req, res),
 );

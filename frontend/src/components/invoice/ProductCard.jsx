@@ -10,14 +10,11 @@ import {
   Camera,
   X,
   ScanLine,
-  CheckCircle,
-  Loader2,
 } from "lucide-react";
 import { Button, Input, SelectField } from "../ui/index.js";
 import { INVOICE_CONSTANTS } from "../../utils/constants.js";
 import { getToken } from "../../utils/token.js";
 import SerialScanner from "./SerialScanner.jsx";
-import { useLazyLookupBarcodeQuery } from "../../features/products/productApi.js";
 
 const API_BASE_URL =
   import.meta.env.VITE_ENVIRONMENT === "production"
@@ -95,38 +92,6 @@ const ProductCard = React.memo(function ProductCard({
 
   // ── Serial scanner state ────────────────────────────────────────
   const [showScanner, setShowScanner] = React.useState(false);
-  const [lookupResult, setLookupResult] = React.useState(null); // { found, source, data }
-  const [triggerLookup, { isFetching: lookupLoading }] =
-    useLazyLookupBarcodeQuery();
-
-  const handleBarcodeScan = async (value) => {
-    console.log("[BarcodeScanner] Scanned code:", value);
-    updateItemImmediate(item.id, { serial_number: value });
-    setShowScanner(false);
-    setLookupResult(null);
-    try {
-      console.log("[BarcodeScanner] Calling lookup API for:", value);
-      const result = await triggerLookup(value).unwrap();
-      console.log("[BarcodeScanner] Lookup result:", result);
-      setLookupResult(result);
-    } catch (err) {
-      console.warn("[BarcodeScanner] Lookup failed:", err);
-      // Network error — just skip lookup silently
-    }
-  };
-
-  const applyLookupResult = () => {
-    if (!lookupResult?.data) return;
-    const { product_name, company, model_number, product_category } =
-      lookupResult.data;
-    updateItemImmediate(item.id, {
-      ...(product_name && { product_name }),
-      ...(company && { company }),
-      ...(model_number && { model_number }),
-      ...(product_category && { product_category }),
-    });
-    setLookupResult(null);
-  };
   // ── Image upload state ──────────────────────────────────────────
   const [imageUploading, setImageUploading] = React.useState(false);
   const [imageError, setImageError] = React.useState(null);
@@ -223,64 +188,12 @@ const ProductCard = React.memo(function ProductCard({
             </div>
             {showScanner && (
               <SerialScanner
-                onScan={handleBarcodeScan}
+                onScan={(value) => {
+                  updateItemImmediate(item.id, { serial_number: value });
+                  setShowScanner(false);
+                }}
                 onClose={() => setShowScanner(false)}
               />
-            )}
-
-            {/* Barcode lookup result banner */}
-            {lookupLoading && (
-              <div className="mt-2 flex items-center gap-2 text-sm text-indigo-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Looking up product…
-              </div>
-            )}
-            {!lookupLoading && lookupResult?.found && (
-              <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-green-800">
-                        Product found
-                        {lookupResult.source === "db"
-                          ? " (your database)"
-                          : " (barcode database)"}
-                      </p>
-                      <p className="text-xs text-green-700 mt-0.5">
-                        {[
-                          lookupResult.data.product_name,
-                          lookupResult.data.company,
-                          lookupResult.data.model_number,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLookupResult(null)}
-                    className="shrink-0 text-green-500 hover:text-green-700"
-                    aria-label="Dismiss"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={applyLookupResult}
-                  className="mt-2 w-full py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
-                >
-                  Apply details (name, brand, model)
-                </button>
-              </div>
-            )}
-            {!lookupLoading && lookupResult !== null && !lookupResult.found && (
-              <p className="mt-1.5 text-xs text-gray-400">
-                Product not found in any database — please fill in details
-                manually.
-              </p>
             )}
           </div>
 

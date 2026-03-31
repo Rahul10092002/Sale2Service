@@ -422,6 +422,7 @@ export default class ProductController {
     }
 
     const cleanCode = code.trim();
+    console.log(`[lookupBarcode] code=${cleanCode}`);
 
     // 1. Check own DB
     try {
@@ -432,6 +433,7 @@ export default class ProductController {
       }).select("product_name company model_number product_category");
 
       if (product) {
+        console.log(`[lookupBarcode] Found in DB:`, product.product_name);
         return res.json({
           success: true,
           found: true,
@@ -444,12 +446,15 @@ export default class ProductController {
           },
         });
       }
-    } catch {
+      console.log(`[lookupBarcode] Not found in DB, trying external API...`);
+    } catch (err) {
+      console.warn(`[lookupBarcode] DB lookup error:`, err.message);
       // DB error — fall through to external API
     }
 
     // 2. Try upcitemdb (free tier, no API key required, 100 req/day)
     try {
+      console.log(`[lookupBarcode] Calling upcitemdb for UPC: ${cleanCode}`);
       const { data } = await axios.get(
         `https://api.upcitemdb.com/prod/trial/lookup`,
         {
@@ -457,9 +462,15 @@ export default class ProductController {
           timeout: 5000,
         },
       );
+      console.log(
+        `[lookupBarcode] upcitemdb response: items=${data?.items?.length ?? 0}`,
+      );
 
       if (data?.items?.length > 0) {
         const item = data.items[0];
+        console.log(
+          `[lookupBarcode] Found via API: ${item.title} / ${item.brand}`,
+        );
         return res.json({
           success: true,
           found: true,
@@ -473,10 +484,12 @@ export default class ProductController {
           },
         });
       }
-    } catch {
+    } catch (err) {
+      console.warn(`[lookupBarcode] upcitemdb error:`, err.message);
       // External API unavailable or rate-limited — just return not-found
     }
 
+    console.log(`[lookupBarcode] Not found anywhere for code: ${cleanCode}`);
     return res.json({ success: true, found: false });
   }
 

@@ -100,13 +100,17 @@ const ProductCard = React.memo(function ProductCard({
     useLazyLookupBarcodeQuery();
 
   const handleBarcodeScan = async (value) => {
+    console.log("[BarcodeScanner] Scanned code:", value);
     updateItemImmediate(item.id, { serial_number: value });
     setShowScanner(false);
     setLookupResult(null);
     try {
+      console.log("[BarcodeScanner] Calling lookup API for:", value);
       const result = await triggerLookup(value).unwrap();
+      console.log("[BarcodeScanner] Lookup result:", result);
       setLookupResult(result);
-    } catch {
+    } catch (err) {
+      console.warn("[BarcodeScanner] Lookup failed:", err);
       // Network error — just skip lookup silently
     }
   };

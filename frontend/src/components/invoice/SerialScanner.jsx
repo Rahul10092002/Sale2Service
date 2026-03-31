@@ -1,6 +1,21 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { X, ScanLine } from "lucide-react";
+
+// Focus only on formats used for product serial numbers.
+// Fewer formats = faster decode + higher accuracy per frame.
+const SERIAL_FORMATS = [
+  Html5QrcodeSupportedFormats.CODE_128, // Most common on industrial labels
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.CODE_93,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.ITF,
+  Html5QrcodeSupportedFormats.QR_CODE, // Keep QR in case serial is in QR format
+  Html5QrcodeSupportedFormats.DATA_MATRIX,
+];
 
 /**
  * Modal barcode / QR scanner for serial numbers.
@@ -73,14 +88,23 @@ const SerialScanner = ({ onScan, onClose }) => {
       if (container) container.innerHTML = "";
 
       try {
-        const html5Qrcode = new Html5Qrcode(readerId);
+        const html5Qrcode = new Html5Qrcode(readerId, {
+          formatsToSupport: SERIAL_FORMATS,
+          // Use Chrome/Edge native BarcodeDetector API when available —
+          // dramatically more accurate and faster than the JS fallback.
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          verbose: false,
+        });
         scannerRef.current = html5Qrcode;
 
         await html5Qrcode.start(
           { facingMode: "environment" },
           {
-            fps: 10,
-            qrbox: { width: 260, height: 140 },
+            fps: 15,
+            // Thin horizontal strip matches 1D barcode aspect ratio;
+            // keeps the code in the focal zone for sharper reads.
+            qrbox: { width: 280, height: 80 },
+            aspectRatio: 1.7777778, // 16:9 — higher camera resolution
           },
           (decodedText) => {
             if (unmounted) return;
@@ -149,7 +173,7 @@ const SerialScanner = ({ onScan, onClose }) => {
           <div
             id={readerId}
             className="rounded-lg overflow-hidden"
-            style={{ minHeight: 220 }}
+            style={{ minHeight: 200 }}
           />
         </div>
 
@@ -159,7 +183,7 @@ const SerialScanner = ({ onScan, onClose }) => {
             <p className="text-red-600">{error}</p>
           ) : scanning ? (
             <p className="text-gray-500">
-              Point your camera at a barcode or QR code
+              Align the barcode inside the red line
             </p>
           ) : (
             <p className="text-gray-400">Starting camera…</p>

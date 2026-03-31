@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { showToast } from "../../features/ui/uiSlice.js";
-import { ArrowLeft, Save, X } from "lucide-react";
+import { ArrowLeft, Save, X, Globe } from "lucide-react";
 import {
   useGetCustomerByIdQuery,
   useUpdateCustomerMutation,
@@ -32,6 +32,7 @@ const CustomerEdit = () => {
     anniversary_date: "",
     gst_number: "",
     customer_type: "RETAIL",
+    preferred_language: "ENGLISH",
     notes: "",
     address: { line1: "", line2: "", city: "", state: "", pincode: "" },
   });
@@ -49,6 +50,7 @@ const CustomerEdit = () => {
         anniversary_date: customer.anniversary_date?.split("T")[0] || "",
         gst_number: customer.gst_number || "",
         customer_type: customer.customer_type || "RETAIL",
+        preferred_language: customer.preferred_language || "ENGLISH",
         notes: customer.notes || "",
         address: {
           line1: customer.address?.line1 || "",
@@ -208,8 +210,27 @@ const CustomerEdit = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="RETAIL">Retail</option>
-                    <option value="WHOLESALE">Wholesale</option>
-                    <option value="CORPORATE">Corporate</option>
+                    <option value="BUSINESS">Business</option>
+                    <option value="DEALER">Dealer</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                    <Globe className="w-3.5 h-3.5 text-gray-400" />
+                    Preferred Language
+                  </label>
+                  <select
+                    name="preferred_language"
+                    value={formData.preferred_language}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="ENGLISH">English</option>
+                    <option value="HINDI">Hindi</option>
+                    <option value="TAMIL">Tamil</option>
+                    <option value="TELUGU">Telugu</option>
+                    <option value="KANNADA">Kannada</option>
+                    <option value="MALAYALAM">Malayalam</option>
                   </select>
                 </div>
               </div>

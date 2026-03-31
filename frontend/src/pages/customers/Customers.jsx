@@ -9,6 +9,15 @@ import {
   ChevronRight,
   User,
   Users as UsersIcon,
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
+  Globe,
+  Calendar,
+  Hash,
+  Building2,
+  MessageSquare,
 } from "lucide-react";
 import {
   useGetCustomersQuery,
@@ -24,6 +33,12 @@ import {
   DialogBody,
   DialogFooter,
 } from "../../components/ui/Modal.jsx";
+
+const inputCls =
+  "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400 hover:border-gray-300";
+
+const selectCls =
+  "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-700 hover:border-gray-300 cursor-pointer";
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -54,6 +69,7 @@ const Customers = () => {
     anniversary_date: "",
     gst_number: "",
     customer_type: "RETAIL",
+    preferred_language: "ENGLISH",
     notes: "",
     address: { line1: "", line2: "", city: "", state: "", pincode: "" },
   });
@@ -91,6 +107,7 @@ const Customers = () => {
         anniversary_date: "",
         gst_number: "",
         customer_type: "RETAIL",
+        preferred_language: "ENGLISH",
         notes: "",
         address: { line1: "", line2: "", city: "", state: "", pincode: "" },
       });
@@ -280,24 +297,27 @@ const Customers = () => {
                   <div className="font-bold text-gray-800 text-base">
                     {customer.full_name}
                   </div>
+                  <p className="text-sm text-gray-600">
+                    Phone: {customer.whatsapp_number}
+                  </p>
+                  {customer.email && (
+                    <p className="text-sm text-gray-600">
+                      Email: {customer.email}
+                    </p>
+                  )}
                   <div className="text-sm text-gray-600">
-                    <p>Type: {customer.customer_type || "RETAIL"}</p>
-                    <p>GST: {customer.gst_number || "N/A"}</p>
+                    {customer.gst_number && <p>GST: {customer.gst_number}</p>}
                   </div>
                 </div>
               </div>
               <div className="text-gray-600">
                 <div className="text-sm">
-                  <p>Phone: {customer.whatsapp_number}</p>
-                  <p>Email: {customer.email || "N/A"}</p>
-                  <p>
-                    Address:{" "}
-                    {customer.address?.line1
-                      ? `${customer.address.line1}, ${
-                          customer.address?.city || ""
-                        }`
-                      : "N/A"}
-                  </p>
+                  {(customer.address?.line1 || customer.address?.city) && (
+                    <p>
+                      Address: {customer.address.line1}
+                      {customer.address?.city && `, ${customer.address.city}`}
+                    </p>
+                  )}
                   {customer.date_of_birth && (
                     <p>
                       DOB:{" "}
@@ -428,121 +448,249 @@ const Customers = () => {
                   onSubmit={handleAddCustomer}
                   className="space-y-4"
                 >
-                  <Input
-                    label="Full Name"
-                    name="full_name"
-                    value={formData.full_name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <Input
-                    label="WhatsApp Number"
-                    name="whatsapp_number"
-                    value={formData.whatsapp_number}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <Input
-                    label="Alternate Phone"
-                    name="alternate_phone"
-                    value={formData.alternate_phone}
-                    onChange={handleInputChange}
-                  />
-                  <Input
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                  />
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <Input
-                      label="Address Line 1"
-                      name="address.line1"
-                      value={formData.address.line1}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <Input
-                      label="Address Line 2"
-                      name="address.line2"
-                      value={formData.address.line2}
-                      onChange={handleInputChange}
-                    />
-                    <Input
-                      label="City"
-                      name="address.city"
-                      value={formData.address.city}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <Input
-                      label="State"
-                      name="address.state"
-                      value={formData.address.state}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <Input
-                      label="Pincode"
-                      name="address.pincode"
-                      value={formData.address.pincode}
-                      onChange={handleInputChange}
-                      required
-                    />
+                  {/* Basic Information */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/60 border-b border-gray-100">
+                      <User className="w-3.5 h-3.5 text-indigo-400" />
+                      <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                        Basic Information
+                      </h4>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          Full Name{" "}
+                          <span className="text-red-400 ml-0.5">*</span>
+                        </label>
+                        <input
+                          name="full_name"
+                          value={formData.full_name}
+                          onChange={handleInputChange}
+                          placeholder="e.g. Ramesh Kumar"
+                          className={inputCls}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <Phone className="w-3.5 h-3.5 text-gray-400" />
+                          WhatsApp Number{" "}
+                          <span className="text-red-400 ml-0.5">*</span>
+                        </label>
+                        <input
+                          name="whatsapp_number"
+                          value={formData.whatsapp_number}
+                          onChange={handleInputChange}
+                          placeholder="+91 9876543210"
+                          className={inputCls}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <Phone className="w-3.5 h-3.5 text-gray-400" />
+                          Alternate Phone
+                        </label>
+                        <input
+                          name="alternate_phone"
+                          value={formData.alternate_phone}
+                          onChange={handleInputChange}
+                          placeholder="+91 9876543210"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <Mail className="w-3.5 h-3.5 text-gray-400" />
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          placeholder="customer@example.com"
+                          className={inputCls}
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <Input
-                      label="GST Number"
-                      name="gst_number"
-                      value={formData.gst_number}
-                      onChange={handleInputChange}
-                    />
-                    <Input
-                      label="Date of Birth"
-                      name="date_of_birth"
-                      type="date"
-                      value={formData.date_of_birth}
-                      onChange={handleInputChange}
-                    />
-                    <Input
-                      label="Anniversary Date"
-                      name="anniversary_date"
-                      type="date"
-                      value={formData.anniversary_date}
-                      onChange={handleInputChange}
-                    />
+                  {/* Address */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/60 border-b border-gray-100">
+                      <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                      <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                        Address
+                      </h4>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">
+                          Address Line 1 <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          name="address.line1"
+                          value={formData.address.line1}
+                          onChange={handleInputChange}
+                          placeholder="Building, Street, Area"
+                          className={inputCls}
+                          required
+                        />
+                      </div>
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">
+                          Address Line 2
+                        </label>
+                        <input
+                          name="address.line2"
+                          value={formData.address.line2}
+                          onChange={handleInputChange}
+                          placeholder="Landmark, Near"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">
+                          City <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          name="address.city"
+                          value={formData.address.city}
+                          onChange={handleInputChange}
+                          placeholder="Mumbai"
+                          className={inputCls}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">
+                          State <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          name="address.state"
+                          value={formData.address.state}
+                          onChange={handleInputChange}
+                          placeholder="Maharashtra"
+                          className={inputCls}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">
+                          Pincode <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          name="address.pincode"
+                          value={formData.address.pincode}
+                          onChange={handleInputChange}
+                          placeholder="400001"
+                          className={inputCls}
+                          required
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Customer Type
-                    </label>
-                    <select
-                      name="customer_type"
-                      value={formData.customer_type}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    >
-                      <option value="RETAIL">Retail</option>
-                      <option value="BUSINESS">Business</option>
-                      <option value="DEALER">Dealer</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Notes
-                    </label>
-                    <textarea
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleInputChange}
-                      rows={3}
-                      className="w-full rounded-md border-gray-300 p-2"
-                    />
+                  {/* Profile & Preferences */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/60 border-b border-gray-100">
+                      <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                      <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                        Profile & Preferences
+                      </h4>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                          Customer Type
+                        </label>
+                        <select
+                          name="customer_type"
+                          value={formData.customer_type}
+                          onChange={handleInputChange}
+                          className={selectCls}
+                        >
+                          <option value="RETAIL">Retail</option>
+                          <option value="BUSINESS">Business</option>
+                          <option value="DEALER">Dealer</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <Globe className="w-3.5 h-3.5 text-gray-400" />
+                          Preferred Language
+                        </label>
+                        <select
+                          name="preferred_language"
+                          value={formData.preferred_language}
+                          onChange={handleInputChange}
+                          className={selectCls}
+                        >
+                          <option value="ENGLISH">English</option>
+                          <option value="HINDI">Hindi</option>
+                          <option value="TAMIL">Tamil</option>
+                          <option value="TELUGU">Telugu</option>
+                          <option value="KANNADA">Kannada</option>
+                          <option value="MALAYALAM">Malayalam</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <Hash className="w-3.5 h-3.5 text-gray-400" />
+                          GST Number
+                        </label>
+                        <input
+                          name="gst_number"
+                          value={formData.gst_number}
+                          onChange={handleInputChange}
+                          placeholder="22AAAAA0000A1Z5"
+                          className={`${inputCls} uppercase`}
+                          maxLength={15}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                          Date of Birth
+                        </label>
+                        <input
+                          type="date"
+                          name="date_of_birth"
+                          value={formData.date_of_birth}
+                          onChange={handleInputChange}
+                          className={inputCls}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                          Anniversary Date
+                        </label>
+                        <input
+                          type="date"
+                          name="anniversary_date"
+                          value={formData.anniversary_date}
+                          onChange={handleInputChange}
+                          className={inputCls}
+                        />
+                      </div>
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <MessageSquare className="w-3.5 h-3.5 text-gray-400" />
+                          Notes
+                        </label>
+                        <textarea
+                          name="notes"
+                          value={formData.notes}
+                          onChange={handleInputChange}
+                          rows={3}
+                          placeholder="Any additional notes about the customer..."
+                          className={`${inputCls} resize-none`}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </form>
               </DialogBody>

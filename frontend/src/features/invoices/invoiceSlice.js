@@ -9,6 +9,8 @@ const initialState = {
       alternate_phone: "",
       email: "",
       date_of_birth: "",
+      anniversary_date: "",
+      preferred_language: "ENGLISH",
       gst_number: "",
       customer_type: "RETAIL",
       notes: "",

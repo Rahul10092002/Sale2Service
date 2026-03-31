@@ -15,6 +15,7 @@ import { Button, Input, SelectField } from "../ui/index.js";
 import { INVOICE_CONSTANTS } from "../../utils/constants.js";
 import { getToken } from "../../utils/token.js";
 import SerialScanner from "./SerialScanner.jsx";
+import ProductNameAutocomplete from "./ProductNameAutocomplete.jsx";
 
 const API_BASE_URL =
   import.meta.env.VITE_ENVIRONMENT === "production"
@@ -201,13 +202,41 @@ const ProductCard = React.memo(function ProductCard({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Product Name *
             </label>
-            <Input
-              type="text"
+            <ProductNameAutocomplete
               value={item.product_name || ""}
-              onChange={(e) =>
-                updateItem(item.id, { product_name: e.target.value })
-              }
-              placeholder="Product name"
+              onChange={(text) => updateItem(item.id, { product_name: text })}
+              onSelect={(suggestion) => {
+                // Clear stale rawNumber display for any numeric field that
+                // might be auto-filled so the new Redux value renders immediately.
+                clearRaw("selling_price");
+                clearRaw("warranty_duration_months");
+                updateItemImmediate(item.id, {
+                  product_name: suggestion.product_name,
+                  ...(suggestion.product_category && {
+                    product_category: suggestion.product_category,
+                  }),
+                  ...(suggestion.company && { company: suggestion.company }),
+                  ...(suggestion.model_number && {
+                    model_number: suggestion.model_number,
+                  }),
+                  ...(suggestion.selling_price > 0 && {
+                    selling_price: suggestion.selling_price,
+                  }),
+                  ...(suggestion.capacity_rating && {
+                    capacity_rating: suggestion.capacity_rating,
+                  }),
+                  ...(suggestion.voltage && { voltage: suggestion.voltage }),
+                  ...(suggestion.warranty_type && {
+                    warranty_type: suggestion.warranty_type,
+                  }),
+                  ...(suggestion.warranty_duration_months > 0 && {
+                    warranty_duration_months:
+                      suggestion.warranty_duration_months,
+                  }),
+                });
+                // Update invoice totals if selling_price was auto-filled
+                if (suggestion.selling_price > 0) recalculateInvoice();
+              }}
               error={errors[`item.${item.id}.product_name`]}
             />
           </div>

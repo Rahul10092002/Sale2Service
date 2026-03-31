@@ -256,9 +256,11 @@ const InvoiceList = () => {
                     ? "No invoices match your search criteria."
                     : "Get started by creating your first invoice."}
                 </p>
-                <Link to={`${ROUTES.INVOICES}/new`}>
-                  <Button>Create First Invoice</Button>
-                </Link>
+                <div className="flex items-center justify-center">
+                  <Link to={`${ROUTES.INVOICES}/new`}>
+                    <Button>Create First Invoice</Button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="">
@@ -387,9 +389,10 @@ const InvoiceList = () => {
                         </button>
                       </div>
 
-                      {/* ── Desktop Row ── */} 
-                      <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 items-center p-4 cursor-pointer"
-                      onClick={() => handleViewInvoice(invoice._id)}
+                      {/* ── Desktop Row ── */}
+                      <div
+                        className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 items-center p-4 cursor-pointer"
+                        onClick={() => handleViewInvoice(invoice._id)}
                       >
                         <div className="text-gray-600">
                           {(currentPage - 1) * 10 + index + 1}

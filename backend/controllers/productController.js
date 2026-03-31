@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import InvoiceItem from "../models/InvoiceItem.js";
+import ProductMaster from "../models/ProductMaster.js";
 import ServicePlan from "../models/ServicePlan.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
 import Invoice from "../models/Invoice.js";
@@ -430,6 +432,136 @@ export default class ProductController {
       res
         .status(500)
         .json({ success: false, message: "Failed to delete product" });
+    }
+  }
+
+  // Autocomplete product names from InvoiceItem history + ProductMaster
+  async autocomplete(req, res) {
+    const { q = "", limit = "10" } = req.query;
+    const shopId = req.user.shopId;
+
+    if (!q.trim()) {
+      return res.json({ success: true, data: { suggestions: [] } });
+    }
+
+    const lim = Math.min(parseInt(limit) || 10, 20);
+    const escapedQ = q.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escapedQ, "i");
+    const shopObjId = new mongoose.Types.ObjectId(shopId);
+
+    try {
+      const [fromItems, fromMaster] = await Promise.all([
+        InvoiceItem.aggregate([
+          {
+            $match: {
+              shop_id: shopObjId,
+              product_name: { $regex: escapedQ, $options: "i" },
+              deleted_at: null,
+            },
+          },
+          { $sort: { createdAt: -1 } },
+          {
+            $group: {
+              _id: { $toLower: "$product_name" },
+              product_name: { $first: "$product_name" },
+              product_category: { $first: "$product_category" },
+              company: { $first: "$company" },
+              model_number: { $first: "$model_number" },
+              selling_price: { $first: "$selling_price" },
+              capacity_rating: { $first: "$capacity_rating" },
+              voltage: { $first: "$voltage" },
+              warranty_type: { $first: "$warranty_type" },
+              warranty_duration_months: { $first: "$warranty_duration_months" },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { count: -1 } },
+          { $limit: lim },
+        ]),
+        ProductMaster.find({ shop_id: shopObjId, product_name: regex })
+          .select(
+            "product_name product_category company model_number selling_price capacity_rating voltage warranty_type warranty_duration_months",
+          )
+          .limit(lim)
+          .lean(),
+      ]);
+
+      const seen = new Set(fromItems.map((s) => s.product_name.toLowerCase()));
+      const masterNew = fromMaster
+        .filter((m) => !seen.has(m.product_name.toLowerCase()))
+        .map((m) => ({ ...m, count: 0, source: "master" }));
+
+      const suggestions = [
+        ...fromItems.map((s) => ({ ...s, source: "history" })),
+        ...masterNew,
+      ].slice(0, lim);
+
+      return res.json({ success: true, data: { suggestions } });
+    } catch (error) {
+      console.error("Autocomplete error:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Autocomplete failed" });
+    }
+  }
+
+  // Upsert a product master entry (creates if new, updates if exists)
+  async saveMaster(req, res) {
+    const { user } = req;
+    const {
+      product_name,
+      product_category,
+      company,
+      model_number,
+      selling_price,
+      capacity_rating,
+      voltage,
+      warranty_type,
+      warranty_duration_months,
+    } = req.body;
+
+    if (!product_name?.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "product_name is required" });
+    }
+
+    const shopId = user.shopId;
+    if (!mongoose.Types.ObjectId.isValid(shopId)) {
+      return res.json({ success: true });
+    }
+    const shopObjId = new mongoose.Types.ObjectId(shopId);
+
+    try {
+      const setFields = {
+        product_name: product_name.trim(),
+        shop_id: shopObjId,
+        auto_saved: true,
+      };
+      if (product_category) setFields.product_category = product_category;
+      if (company) setFields.company = company;
+      if (model_number) setFields.model_number = model_number;
+      if (selling_price != null && selling_price > 0)
+        setFields.selling_price = selling_price;
+      if (capacity_rating) setFields.capacity_rating = capacity_rating;
+      if (voltage) setFields.voltage = voltage;
+      if (warranty_type) setFields.warranty_type = warranty_type;
+      if (warranty_duration_months != null && warranty_duration_months > 0)
+        setFields.warranty_duration_months = warranty_duration_months;
+
+      await ProductMaster.findOneAndUpdate(
+        { product_name: product_name.trim(), shop_id: shopObjId },
+        { $set: setFields },
+        { upsert: true, new: true },
+      );
+
+      return res.json({ success: true });
+    } catch (error) {
+      if (error.code === 11000) return res.json({ success: true });
+      console.error("Save master error:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to save product master" });
     }
   }
 }

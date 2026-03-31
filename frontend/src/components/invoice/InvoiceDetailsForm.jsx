@@ -104,7 +104,7 @@ const InvoiceDetailsForm = () => {
                 INVOICE_CONSTANTS.PAYMENT_STATUSES.PARTIAL) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Due Date
+                  Due Date *
                 </label>
                 <Input
                   type="date"
@@ -112,6 +112,7 @@ const InvoiceDetailsForm = () => {
                   onChange={(e) =>
                     updateInvoiceData({ due_date: e.target.value })
                   }
+                  error={errors["invoice.due_date"]}
                 />
               </div>
             )}
@@ -119,7 +120,7 @@ const InvoiceDetailsForm = () => {
               INVOICE_CONSTANTS.PAYMENT_STATUSES.PARTIAL && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount Paid
+                  Amount Paid *
                 </label>
                 <Input
                   type="number"
@@ -137,6 +138,7 @@ const InvoiceDetailsForm = () => {
                     });
                   }}
                   onBlur={() => setRawAmountPaid(null)}
+                  error={errors["invoice.amount_paid"]}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Remaining: {formatCurrency(invoice.amount_due)}

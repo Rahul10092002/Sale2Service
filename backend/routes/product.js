@@ -13,6 +13,16 @@ productRouter.post("/", authorize("OWNER", "ADMIN", "STAFF"), (req, res) =>
 productRouter.get("/", authorize("OWNER", "ADMIN", "STAFF"), (req, res) =>
   productController.getProducts(req, res),
 );
+productRouter.get(
+  "/autocomplete",
+  authorize("OWNER", "ADMIN", "STAFF"),
+  (req, res) => productController.autocomplete(req, res),
+);
+productRouter.post(
+  "/master-save",
+  authorize("OWNER", "ADMIN", "STAFF"),
+  (req, res) => productController.saveMaster(req, res),
+);
 productRouter.get("/:id", authorize("OWNER", "ADMIN", "STAFF"), (req, res) =>
   productController.getProductById(req, res),
 );

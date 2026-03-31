@@ -190,7 +190,7 @@ const CustomerInformationForm = () => {
                   updateCustomerData({ customer_type: e.target.value })
                 }
                 options={Object.entries(INVOICE_CONSTANTS.CUSTOMER_TYPES).map(
-                  ([key, value]) => ({
+                  ([, value]) => ({
                     value: value,
                     label: value,
                   }),
@@ -361,6 +361,25 @@ const CustomerInformationForm = () => {
                     }
                     placeholder="22AAAAA0000A1Z5"
                     maxLength={15}
+                  />
+                </div>
+
+                <div>
+                  <SelectField
+                    id="preferred-language"
+                    label="Preferred Language"
+                    value={customer.preferred_language || "ENGLISH"}
+                    onChange={(e) =>
+                      updateCustomerData({ preferred_language: e.target.value })
+                    }
+                    options={[
+                      { value: "ENGLISH", label: "English" },
+                      { value: "HINDI", label: "Hindi" },
+                      { value: "TAMIL", label: "Tamil" },
+                      { value: "TELUGU", label: "Telugu" },
+                      { value: "KANNADA", label: "Kannada" },
+                      { value: "MALAYALAM", label: "Malayalam" },
+                    ]}
                   />
                 </div>
 

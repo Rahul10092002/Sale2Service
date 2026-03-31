@@ -4,13 +4,10 @@ import { useAuth } from "../../hooks/useAuth.js";
 
 const TopNav = ({
   onToggleSidebar,
-  onToggleCollapse,
-  isCollapsed,
   title = "Dashboard",
 }) => {
   const { user, role, logout } = useAuth();
   const [open, setOpen] = useState(false);
-  console.log("TopNav render - user:", user, "role:", role);
   return (
     <div className="h-16 w-full bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">

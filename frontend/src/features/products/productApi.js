@@ -55,6 +55,24 @@ export const productApi = baseApi.injectEndpoints({
         "TopProducts",
       ],
     }),
+
+    productAutocomplete: builder.query({
+      query: ({ q, limit = 10 }) => ({
+        url: "/products/autocomplete",
+        params: { q, limit },
+      }),
+      // Never cache autocomplete results — always fresh
+      keepUnusedDataFor: 0,
+      transformResponse: (response) => response.data,
+    }),
+
+    saveMasterProduct: builder.mutation({
+      query: (payload) => ({
+        url: "/products/master-save",
+        method: "POST",
+        body: payload,
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -67,4 +85,6 @@ export const {
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  useLazyProductAutocompleteQuery,
+  useSaveMasterProductMutation,
 } = productApi;

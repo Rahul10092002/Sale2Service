@@ -2,11 +2,12 @@ import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Save, X } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
-import { ROUTES } from "../../utils/constants.js";
+import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 import {
   useInvoiceForm,
   useInvoiceActions,
 } from "../../features/invoices/hooks.js";
+import { useSaveMasterProductMutation } from "../../features/products/productApi.js";
 import CustomerInformationForm from "../../components/invoice/CustomerInformationForm.jsx";
 import InvoiceDetailsForm from "../../components/invoice/InvoiceDetailsForm.jsx";
 import InvoiceItemsForm from "../../components/invoice/InvoiceItemsForm.jsx";
@@ -26,6 +27,7 @@ const InvoiceGenerationPage = () => {
   } = useInvoiceForm();
 
   const { createInvoice } = useInvoiceActions();
+  const [saveMaster] = useSaveMasterProductMutation();
   const [submitResult, setSubmitResult] = useState(null);
   const [rawDiscount, setRawDiscount] = useState(null);
 
@@ -70,11 +72,29 @@ const InvoiceGenerationPage = () => {
       newErrors["invoice.invoice_date"] = "Invoice date is required";
     }
 
+    // Payment status validation
+    const { UNPAID, PARTIAL, PAID } = INVOICE_CONSTANTS.PAYMENT_STATUSES || {};
+    if (invoice.payment_status === UNPAID || invoice.payment_status === "UNPAID") {
+      if (!invoice.due_date) {
+        newErrors["invoice.due_date"] = "Due date is required for unpaid invoices";
+      }
+    }
+    if (invoice.payment_status === PARTIAL || invoice.payment_status === "PARTIAL") {
+      if (!invoice.due_date) {
+        newErrors["invoice.due_date"] = "Due date is required for partial payments";
+      }
+      if (!invoice.amount_paid || invoice.amount_paid <= 0) {
+        newErrors["invoice.amount_paid"] = "Amount paid must be greater than 0 for partial payments";
+      } else if (invoice.amount_paid >= invoice.total_amount) {
+        newErrors["invoice.amount_paid"] = "Amount paid must be less than total amount for partial payments";
+      }
+    }
+
     // Products validation
     if (invoice_items.length === 0) {
       newErrors["general"] = "At least one product is required";
     } else {
-      invoice_items.forEach((item, index) => {
+      invoice_items.forEach((item) => {
         if (!item.serial_number?.trim()) {
           newErrors[`item.${item.id}.serial_number`] =
             "Serial number is required";
@@ -144,6 +164,24 @@ const InvoiceGenerationPage = () => {
       const result = await createInvoice(payload).unwrap();
       setSubmitResult({ success: true, data: result });
 
+      // Save all submitted items to ProductMaster with their final values.
+      // Fire-and-forget: don't block success flow on these background saves.
+      currentInvoice.invoice_items.forEach((item) => {
+        if (item.product_name?.trim()) {
+          saveMaster({
+            product_name: item.product_name.trim(),
+            product_category: item.product_category,
+            company: item.company,
+            model_number: item.model_number,
+            selling_price: item.selling_price,
+            capacity_rating: item.capacity_rating,
+            voltage: item.voltage,
+            warranty_type: item.warranty_type,
+            warranty_duration_months: item.warranty_duration_months,
+          }).catch(() => {}); // silent fail — non-critical
+        }
+      });
+
       // Clear the form state in Redux so customer/product details are removed
       reset();
     } catch (error) {
@@ -156,7 +194,14 @@ const InvoiceGenerationPage = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [currentInvoice, validateAllSections, createInvoice, setSubmitting]);
+  }, [
+    currentInvoice,
+    validateAllSections,
+    createInvoice,
+    setSubmitting,
+    reset,
+    saveMaster,
+  ]);
 
   // Show success message if invoice was created
   if (submitResult?.success) {

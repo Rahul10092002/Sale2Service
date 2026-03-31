@@ -13,47 +13,92 @@ const SerialScanner = ({ onScan, onClose }) => {
   const [error, setError] = useState(null);
   const [scanning, setScanning] = useState(false);
   const scannerRef = useRef(null);
+  // Guard so stop() + clear() are never called twice concurrently.
+  const isStoppingRef = useRef(false);
   const rawId = useId();
   const readerId = useMemo(
     () => `serial-scanner-${rawId.replace(/:/g, "")}`,
     [rawId],
   );
 
+  /**
+   * Fully stop the scanner and release the camera stream.
+   * Safe to call multiple times — only executes once.
+   */
+  const stopCamera = async () => {
+    if (isStoppingRef.current) return;
+    isStoppingRef.current = true;
+
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+
+    try {
+      // getState(): 1=NOT_STARTED, 2=SCANNING, 3=PAUSED
+      const state = scanner.getState?.();
+      if (state === 2 || state === 3) {
+        await scanner.stop();
+      }
+    } catch {
+      // ignore stop errors
+    }
+
+    try {
+      // clear() destroys the DOM element and releases the MediaStream so the
+      // camera indicator light turns off.
+      scanner.clear();
+    } catch {
+      // ignore clear errors
+    }
+
+    // Belt-and-suspenders: stop every video track that may still be live.
+    try {
+      const videoEl = document.getElementById(readerId)?.querySelector("video");
+      videoEl?.srcObject?.getTracks()?.forEach((track) => track.stop());
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
-    let html5Qrcode = null;
-    let stopped = false;
+    let unmounted = false;
 
     const start = async () => {
+      // Reset stop-guard so a fresh start is always allowed (handles React
+      // StrictMode's mount → cleanup → remount cycle in development).
+      isStoppingRef.current = false;
+
+      // Wipe any leftover DOM nodes html5-qrcode injected in a previous run
+      // (StrictMode re-mount, HMR, etc.) so we never get two stacked videos.
+      const container = document.getElementById(readerId);
+      if (container) container.innerHTML = "";
+
       try {
-        html5Qrcode = new Html5Qrcode(readerId);
+        const html5Qrcode = new Html5Qrcode(readerId);
         scannerRef.current = html5Qrcode;
-        setScanning(true);
-        setError(null);
 
         await html5Qrcode.start(
           { facingMode: "environment" },
           {
             fps: 10,
             qrbox: { width: 260, height: 140 },
-            // Support 1-D barcodes (EAN, Code128, etc.) as well as QR
-            formatsToSupport: undefined, // undefined = all supported formats
           },
           (decodedText) => {
-            if (stopped) return;
+            if (unmounted) return;
             onScan(decodedText.trim());
           },
           () => {
-            // per-frame errors are expected; suppress them
+            // per-frame decode errors are expected; suppress them
           },
         );
+
+        if (!unmounted) setScanning(true);
       } catch (err) {
-        if (!stopped) {
+        if (!unmounted) {
           setError(
             err?.message?.includes("Permission")
               ? "Camera permission denied. Please allow camera access and try again."
               : "Could not start camera. Make sure no other app is using it.",
           );
-          setScanning(false);
         }
       }
     };
@@ -61,26 +106,16 @@ const SerialScanner = ({ onScan, onClose }) => {
     start();
 
     return () => {
-      stopped = true;
-      if (
-        html5Qrcode &&
-        (html5Qrcode.isScanning || html5Qrcode.getState?.() === 2)
-      ) {
-        html5Qrcode.stop().catch(() => {});
-      }
+      unmounted = true;
+      // Cleanup runs when parent removes the component (e.g. after handleClose
+      // already called stopCamera). stopCamera's guard prevents a double-stop.
+      stopCamera();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleClose = () => {
-    const scanner = scannerRef.current;
-    if (scanner) {
-      scanner
-        .stop()
-        .catch(() => {})
-        .finally(onClose);
-    } else {
-      onClose();
-    }
+  const handleClose = async () => {
+    await stopCamera();
+    onClose();
   };
 
   return (

@@ -1,3 +1,4 @@
+import axios from "axios";
 import InvoiceItem from "../models/InvoiceItem.js";
 import ServicePlan from "../models/ServicePlan.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
@@ -403,6 +404,80 @@ export default class ProductController {
         .status(500)
         .json({ success: false, message: "Failed to update product" });
     }
+  }
+
+  /**
+   * GET /products/barcode-lookup?code=XXXX
+   *
+   * 1. Search own DB by serial_number (barcode often = serial for local brands)
+   * 2. Fall back to upcitemdb free API (UPC / EAN / ISBN)
+   * Returns { found, source, data } – never throws a 5xx to the client.
+   */
+  async lookupBarcode(req, res) {
+    const { code } = req.query;
+    if (!code || !code.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "code query param is required" });
+    }
+
+    const cleanCode = code.trim();
+
+    // 1. Check own DB
+    try {
+      const product = await InvoiceItem.findOne({
+        serial_number: cleanCode.toUpperCase(),
+        shop_id: req.user.shopId,
+        deleted_at: null,
+      }).select("product_name company model_number product_category");
+
+      if (product) {
+        return res.json({
+          success: true,
+          found: true,
+          source: "db",
+          data: {
+            product_name: product.product_name,
+            company: product.company,
+            model_number: product.model_number,
+            product_category: product.product_category,
+          },
+        });
+      }
+    } catch {
+      // DB error — fall through to external API
+    }
+
+    // 2. Try upcitemdb (free tier, no API key required, 100 req/day)
+    try {
+      const { data } = await axios.get(
+        `https://api.upcitemdb.com/prod/trial/lookup`,
+        {
+          params: { upc: cleanCode },
+          timeout: 5000,
+        },
+      );
+
+      if (data?.items?.length > 0) {
+        const item = data.items[0];
+        return res.json({
+          success: true,
+          found: true,
+          source: "api",
+          data: {
+            product_name: item.title || "",
+            company: item.brand || "",
+            model_number: item.model || "",
+            description: item.description || "",
+            image_url: item.images?.[0] || null,
+          },
+        });
+      }
+    } catch {
+      // External API unavailable or rate-limited — just return not-found
+    }
+
+    return res.json({ success: true, found: false });
   }
 
   // Soft delete product

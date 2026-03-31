@@ -55,6 +55,15 @@ export const productApi = baseApi.injectEndpoints({
         "TopProducts",
       ],
     }),
+
+    // Barcode lookup: check own DB then fall back to upcitemdb public API.
+    // Use the lazy variant so it only fires on demand.
+    lookupBarcode: builder.query({
+      query: (code) => ({ url: "/products/barcode-lookup", params: { code } }),
+      // Never cache barcodes — each lookup should be fresh
+      keepUnusedDataFor: 0,
+      transformResponse: (response) => response,
+    }),
   }),
   overrideExisting: false,
 });
@@ -67,4 +76,5 @@ export const {
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  useLazyLookupBarcodeQuery,
 } = productApi;

@@ -14,7 +14,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isLoginLoading, loginError, isAuthenticated } = useAuth();
-
+  const [showPassword, setshowPassword] = useState(false)
   // Redirect to dashboard if already authenticated
   const from = location.state?.from?.pathname || ROUTES.DASHBOARD;
 
@@ -170,7 +170,7 @@ const Login = () => {
 
             {/* Password */}
             <Input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               label="Password"
               placeholder="Enter your password"
@@ -180,6 +180,18 @@ const Login = () => {
               required
               autoComplete="current-password"
             />
+            <div className="flex items-center">
+              <input
+                id="show-password"
+                type="checkbox"
+                checked={showPassword}
+                onChange={() => setshowPassword((prev) => !prev)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="show-password" className="ml-2 block text-sm text-gray-900">
+                Show Password
+              </label>
+            </div>
 
             {/* Submit button */}
             <Button

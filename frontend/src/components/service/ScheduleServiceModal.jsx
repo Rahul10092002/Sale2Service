@@ -250,7 +250,7 @@ export const ScheduleServiceModal = ({
             value={formData.service_charge}
             onChange={(e) => handleChange("service_charge", e.target.value)}
             min="0"
-            step="0.01"
+            step="1"
             placeholder="0.00"
           />
           <p className="text-sm text-gray-600 mt-1">

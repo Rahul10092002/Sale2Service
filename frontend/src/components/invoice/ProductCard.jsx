@@ -306,7 +306,7 @@ const ProductCard = React.memo(function ProductCard({
               onBlur={() => clearRaw("selling_price")}
               placeholder="0.00"
               min="0"
-              step="0.01"
+              step="1"
               error={errors[`item.${item.id}.selling_price`]}
             />
           </div>
@@ -703,7 +703,7 @@ const ProductCard = React.memo(function ProductCard({
                     onBlur={() => clearRaw("sp_service_charge")}
                     placeholder="0.00"
                     min="0"
-                    step="0.01"
+                    step="1"
                   />
                 </div>
 
@@ -914,7 +914,7 @@ const ProductCard = React.memo(function ProductCard({
                   onBlur={() => clearRaw("cost_price")}
                   placeholder="0.00"
                   min="0"
-                  step="0.01"
+                  step="1"
                 />
               </div>
 

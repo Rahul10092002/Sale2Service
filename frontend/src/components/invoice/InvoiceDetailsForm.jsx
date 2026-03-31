@@ -125,7 +125,7 @@ const InvoiceDetailsForm = () => {
                 <Input
                   type="number"
                   min="0"
-                  step="0.01"
+                  step="1"
                   value={
                     rawAmountPaid !== null
                       ? rawAmountPaid

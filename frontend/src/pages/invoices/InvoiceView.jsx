@@ -831,7 +831,7 @@ const InvoiceView = () => {
                   <input
                     type="number"
                     min="0.01"
-                    step="0.01"
+                    step="1"
                     max={invoiceObj.amount_due || invoiceObj.total_amount}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}

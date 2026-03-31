@@ -74,19 +74,29 @@ const InvoiceGenerationPage = () => {
 
     // Payment status validation
     const { UNPAID, PARTIAL, PAID } = INVOICE_CONSTANTS.PAYMENT_STATUSES || {};
-    if (invoice.payment_status === UNPAID || invoice.payment_status === "UNPAID") {
+    if (
+      invoice.payment_status === UNPAID ||
+      invoice.payment_status === "UNPAID"
+    ) {
       if (!invoice.due_date) {
-        newErrors["invoice.due_date"] = "Due date is required for unpaid invoices";
+        newErrors["invoice.due_date"] =
+          "Due date is required for unpaid invoices";
       }
     }
-    if (invoice.payment_status === PARTIAL || invoice.payment_status === "PARTIAL") {
+    if (
+      invoice.payment_status === PARTIAL ||
+      invoice.payment_status === "PARTIAL"
+    ) {
       if (!invoice.due_date) {
-        newErrors["invoice.due_date"] = "Due date is required for partial payments";
+        newErrors["invoice.due_date"] =
+          "Due date is required for partial payments";
       }
       if (!invoice.amount_paid || invoice.amount_paid <= 0) {
-        newErrors["invoice.amount_paid"] = "Amount paid must be greater than 0 for partial payments";
+        newErrors["invoice.amount_paid"] =
+          "Amount paid must be greater than 0 for partial payments";
       } else if (invoice.amount_paid >= invoice.total_amount) {
-        newErrors["invoice.amount_paid"] = "Amount paid must be less than total amount for partial payments";
+        newErrors["invoice.amount_paid"] =
+          "Amount paid must be less than total amount for partial payments";
       }
     }
 

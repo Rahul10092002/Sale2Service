@@ -532,10 +532,12 @@ const InvoiceView = () => {
                     {invoiceObj._id && (
                       <div className="bg-gray-50 rounded-lg p-3">
                         <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Invoice ID
+                          Due Date
                         </label>
-                        <p className="text-sm font-medium text-gray-900 font-mono">
-                          {invoiceObj._id}
+                        <p className="text-sm font-medium text-gray-900 ">
+                          {new Date(invoiceObj.due_date).toLocaleDateString(
+                            "en-IN",
+                          )}
                         </p>
                       </div>
                     )}
@@ -561,7 +563,9 @@ const InvoiceView = () => {
                             <th className="text-left py-3 px-4 font-medium text-gray-700">
                               Serial Number
                             </th>
-
+                            <th className="text-left py-3 px-4 font-medium text-gray-700">
+                              Warranty
+                            </th>
                             <th className="text-right py-3 px-4 font-medium text-gray-700">
                               Price
                             </th>
@@ -581,7 +585,49 @@ const InvoiceView = () => {
                               <td className="py-3 px-4 text-gray-600">
                                 {item.serial_number}
                               </td>
+                              <td className="py-3 px-4 text-gray-600">
+                                {(() => {
+                                  const endDate = new Date(
+                                    item.warranty_end_date,
+                                  );
+                                  const today = new Date();
 
+                                  const diffTime = endDate - today;
+                                  const diffDays = Math.ceil(
+                                    diffTime / (1000 * 60 * 60 * 24),
+                                  );
+
+                                  const isExpired = diffDays < 0;
+
+                                  return (
+                                    <div className="flex flex-col">
+                                      {/* Duration */}
+                                      <span className="text-sm font-medium text-gray-800">
+                                        {item.warranty_duration_months} Month
+                                      </span>
+
+                                      {/* End Date */}
+                                      <span className="text-xs text-gray-500">
+                                        Ends:{" "}
+                                        {endDate.toLocaleDateString("en-IN")}
+                                      </span>
+
+                                      {/* Status */}
+                                      <span
+                                        className={`text-xs font-medium ${
+                                          isExpired
+                                            ? "text-red-500"
+                                            : "text-green-600"
+                                        }`}
+                                      >
+                                        {isExpired
+                                          ? `Expired ${Math.abs(diffDays)} days ago`
+                                          : `${diffDays} days left`}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
+                              </td>
                               <td className="py-3 px-4 text-right text-gray-900">
                                 {formatCurrency(
                                   item.selling_price || item.price || 0,

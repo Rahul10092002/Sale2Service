@@ -140,7 +140,23 @@ const Products = () => {
       maximumFractionDigits: 2,
     }).format(amount || 0);
   };
+const getWarrantyInfo = (product) => {
+  if (!product.warranty_end_date) return null;
 
+  const start = new Date(product.warranty_start_date);
+  const end = new Date(product.warranty_end_date);
+  const today = new Date();
+
+  const diffDays = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
+
+  return {
+    start,
+    end,
+    diffDays,
+    isExpired: diffDays < 0,
+    isExpiringSoon: diffDays >= 0 && diffDays <= 5,
+  };
+};
   return (
     <>
       <div className="min-h-screen bg-gray-50 py-6">
@@ -401,11 +417,76 @@ const Products = () => {
                             Warranty
                           </p>
                           <p className="text-xs font-medium text-gray-700">
-                            {product.warranty_end_date
-                              ? new Date(
-                                  product.warranty_end_date,
-                                ).toLocaleDateString("en-IN")
-                              : "N/A"}
+                            {(() => {
+                              const w = getWarrantyInfo(product);
+                              if (!w)
+                                return (
+                                  <p className="text-xs text-gray-400">
+                                    No Warranty
+                                  </p>
+                                );
+
+                              return (
+                                <div className="flex flex-col gap-1">
+                                  {/* Duration + Type */}
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-semibold text-gray-800">
+                                      {product.warranty_duration_months}M
+                                    </span>
+
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                                      {product.warranty_type}
+                                    </span>
+
+                                    {/* Status badge */}
+                                    <span
+                                      className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                        w.isExpired
+                                          ? "bg-red-100 text-red-600"
+                                          : w.isExpiringSoon
+                                            ? "bg-yellow-100 text-yellow-600"
+                                            : "bg-green-100 text-green-600"
+                                      }`}
+                                    >
+                                      {w.isExpired
+                                        ? "Expired"
+                                        : w.isExpiringSoon
+                                          ? "Expiring Soon"
+                                          : "Active"}
+                                    </span>
+                                  </div>
+
+                                  {/* Dates */}
+                                  <div className="text-[11px] text-gray-500">
+                                    {w.start.toLocaleDateString("en-IN")} →{" "}
+                                    {w.end.toLocaleDateString("en-IN")}
+                                  </div>
+
+                                  {/* Remaining */}
+                                  <div
+                                    className={`text-[11px] font-medium ${
+                                      w.isExpired
+                                        ? "text-red-500"
+                                        : "text-green-600"
+                                    }`}
+                                  >
+                                    {w.isExpired
+                                      ? `Expired ${Math.abs(w.diffDays)} days ago`
+                                      : `${w.diffDays} days left`}
+                                  </div>
+
+                                  {/* Pro warranty */}
+                                  {product.pro_warranty_end_date && (
+                                    <div className="text-[10px] text-indigo-600">
+                                      Pro till{" "}
+                                      {new Date(
+                                        product.pro_warranty_end_date,
+                                      ).toLocaleDateString("en-IN")}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </p>
                         </div>
                       </div>
@@ -520,14 +601,68 @@ const Products = () => {
                       <div className="text-gray-600">
                         <div className="text-sm">
                           <p>Price: {formatCurrency(product.selling_price)}</p>
-                          <p>
-                            Warranty:{" "}
-                            {product.warranty_end_date
-                              ? new Date(
-                                  product.warranty_end_date,
-                                ).toLocaleDateString()
-                              : "N/A"}
-                          </p>
+                          {(() => {
+                            const w = getWarrantyInfo(product);
+                            if (!w) return <p>No Warranty</p>;
+
+                            return (
+                              <div className="mt-1">
+                                {/* Top Row */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-semibold text-gray-800">
+                                    {product.warranty_duration_months}M
+                                  </span>
+
+                                 
+
+                                  <span
+                                    className={`text-[10px] px-2 py-0.5 rounded ${
+                                      w.isExpired
+                                        ? "bg-red-100 text-red-600"
+                                        : w.isExpiringSoon
+                                          ? "bg-yellow-100 text-yellow-600"
+                                          : "bg-green-100 text-green-600"
+                                    }`}
+                                  >
+                                    {w.isExpired
+                                      ? "Expired"
+                                      : w.isExpiringSoon
+                                        ? "Soon"
+                                        : "Active"}
+                                  </span>
+                                </div>
+
+                                {/* Dates */}
+                                <div className="text-xs text-gray-500">
+                                  {w.start.toLocaleDateString("en-IN")} →{" "}
+                                  {w.end.toLocaleDateString("en-IN")}
+                                </div>
+
+                                {/* Remaining */}
+                                <div
+                                  className={`text-xs font-medium ${
+                                    w.isExpired
+                                      ? "text-red-500"
+                                      : "text-green-600"
+                                  }`}
+                                >
+                                  {w.isExpired
+                                    ? `${Math.abs(w.diffDays)}d ago`
+                                    : `${w.diffDays}d left`}
+                                </div>
+
+                                {/* Pro warranty */}
+                                {product.pro_warranty_end_date && (
+                                  <div className="text-[10px] text-indigo-600">
+                                    Pro:{" "}
+                                    {new Date(
+                                      product.pro_warranty_end_date,
+                                    ).toLocaleDateString("en-IN")}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           <div className="flex items-center gap-2 mt-1">
                             <ServiceBadge
                               itemId={product._id}

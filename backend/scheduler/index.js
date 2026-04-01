@@ -39,14 +39,9 @@ export default class SchedulerService {
       return;
     }
 
-    // Run every hour to check for all types of reminders
-    cron.schedule("0 * * * *", async () => {
-      console.log("[SchedulerService] Running hourly reminder check...");
-      await this.processAllReminders();
-    });
-
     // Run daily at 6 AM IST for birthday and anniversary wishes
-    cron.schedule("0 6 * * *", async () => {
+    // 12:30 AM UTC = 6:00 AM IST (UTC+5:30)
+    cron.schedule("30 0 * * *", async () => {
       console.log(
         "[SchedulerService] Running daily wishes (birthday/anniversary)...",
       );
@@ -54,19 +49,22 @@ export default class SchedulerService {
     });
 
     // Run daily at 7 AM IST for service schedules
-    cron.schedule("0 7 * * *", async () => {
+    // 1:30 AM UTC = 7:00 AM IST (UTC+5:30)
+    cron.schedule("30 1 * * *", async () => {
       console.log("[SchedulerService] Running daily service reminders...");
       await this.serviceScheduler.processServiceReminders();
     });
 
     // Run daily at 8 AM IST for warranty reminders
-    cron.schedule("0 8 * * *", async () => {
+    // 2:30 AM UTC = 8:00 AM IST (UTC+5:30)
+    cron.schedule("30 2 * * *", async () => {
       console.log("[SchedulerService] Running daily warranty reminders...");
       await this.warrantyScheduler.processWarrantyReminders();
     });
 
     // Run daily at 9 AM IST for payment reminders
-    cron.schedule("0 9 * * *", async () => {
+    // 3:30 AM UTC = 9:00 AM IST (UTC+5:30)
+    cron.schedule("30 3 * * *", async () => {
       console.log("[SchedulerService] Running daily payment reminders...");
       await this.paymentScheduler.processPaymentReminders();
     });
@@ -74,11 +72,10 @@ export default class SchedulerService {
     this.isRunning = true;
     console.log("[SchedulerService] Reminder scheduler started successfully");
     console.log("[SchedulerService] Schedule:");
-    console.log("  - Hourly: All reminders check");
-    console.log("  - 6 AM: Birthday and anniversary wishes");
-    console.log("  - 7 AM: Service reminders");
-    console.log("  - 8 AM: Warranty reminders");
-    console.log("  - 9 AM: Payment reminders");
+    console.log("  - 6 AM IST: Birthday and anniversary wishes");
+    console.log("  - 7 AM IST: Service reminders");
+    console.log("  - 8 AM IST: Warranty reminders");
+    console.log("  - 9 AM IST: Payment reminders");
   }
 
   /**
@@ -91,7 +88,7 @@ export default class SchedulerService {
 
   /**
    * Process all types of reminders
-   * This is called by the hourly cron job and can be used for manual testing
+   * This can be used for manual testing
    */
   async processAllReminders() {
     try {

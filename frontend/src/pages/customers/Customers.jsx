@@ -250,6 +250,7 @@ const Customers = () => {
                     <div className="bg-gray-50 rounded-lg px-3 py-2">
                       <p className="text-xs text-gray-400 mb-0.5">Birthday</p>
                       <p className="text-xs font-medium text-gray-700">
+                        {/* dd//mm//yyyy formart */}
                         {new Date(customer.date_of_birth).toLocaleDateString(
                           "en-IN",
                         )}
@@ -321,13 +322,17 @@ const Customers = () => {
                   {customer.date_of_birth && (
                     <p>
                       DOB:{" "}
-                      {new Date(customer.date_of_birth).toLocaleDateString()}
+                      {new Date(customer.date_of_birth).toLocaleDateString(
+                        "en-IN",
+                      )}
                     </p>
                   )}
                   {customer.anniversary_date && (
                     <p>
                       Anniversary:{" "}
-                      {new Date(customer.anniversary_date).toLocaleDateString()}
+                      {new Date(customer.anniversary_date).toLocaleDateString(
+                        "en-IN",
+                      )}
                     </p>
                   )}
                 </div>

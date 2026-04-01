@@ -19,6 +19,29 @@ export default class WishesReminderScheduler extends BaseScheduler {
   }
 
   /**
+   * Preload shops for a set of customers to avoid N+1 queries
+   * @param {Array} customers
+   * @returns {Object} shopMap by shop_id
+   */
+  async getShopMapForCustomers(customers) {
+    const shopIds = [
+      ...new Set(
+        customers
+          .map((customer) => customer.shop_id)
+          .filter((shopId) => shopId != null),
+      ),
+    ];
+
+    if (shopIds.length === 0) return {};
+
+    const shops = await Shop.find({ _id: { $in: shopIds } });
+    return shops.reduce((map, shop) => {
+      map[String(shop._id)] = shop;
+      return map;
+    }, {});
+  }
+
+  /**
    * Process all wishes reminders
    */
   async processWishesReminders() {
@@ -45,13 +68,28 @@ export default class WishesReminderScheduler extends BaseScheduler {
       const { month: todayMonth, date: todayDate } = getISTTodayParts();
 
       // Find customers whose birthday is today
-      const birthdayCustomers = await Customer.find({
-        date_of_birth: {
-          $exists: true,
-          $ne: null,
+      const today = getISTTodayParts();
+
+      const birthdayCustomers = await Customer.aggregate([
+        {
+          $match: {
+            date_of_birth: { $ne: null },
+            deleted_at: null,
+          },
         },
-        deleted_at: null,
-      });
+        {
+          $addFields: {
+            month: { $month: "$date_of_birth" },
+            day: { $dayOfMonth: "$date_of_birth" },
+          },
+        },
+        {
+          $match: {
+            month: today.month,
+            day: today.date,
+          },
+        },
+      ]);
 
       // Filter by month and date in IST (ignoring year and time)
       const todayBirthdays = birthdayCustomers.filter((customer) => {
@@ -63,9 +101,12 @@ export default class WishesReminderScheduler extends BaseScheduler {
         `Found ${todayBirthdays.length} customers with birthdays today`,
       );
 
-      for (const customer of todayBirthdays) {
-        await this.sendBirthdayWish(customer);
-      }
+      const shopMap = await this.getShopMapForCustomers(todayBirthdays);
+      await Promise.all(
+        todayBirthdays.map((customer) =>
+          this.sendBirthdayWish(customer, shopMap[String(customer.shop_id)]),
+        ),
+      );
     } catch (error) {
       this.logError("processBirthdayWishes", error);
     }
@@ -98,9 +139,12 @@ export default class WishesReminderScheduler extends BaseScheduler {
         `Found ${todayAnniversaries.length} customers with anniversaries today`,
       );
 
-      for (const customer of todayAnniversaries) {
-        await this.sendAnniversaryWish(customer);
-      }
+      const shopMap = await this.getShopMapForCustomers(todayAnniversaries);
+      await Promise.all(
+        todayAnniversaries.map((customer) =>
+          this.sendAnniversaryWish(customer, shopMap[String(customer.shop_id)]),
+        ),
+      );
     } catch (error) {
       this.logError("processAnniversaryWishes", error);
     }
@@ -110,7 +154,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
    * Send birthday wish to customer
    * @param {Object} customer - Customer object
    */
-  async sendBirthdayWish(customer) {
+  async sendBirthdayWish(customer, cachedShop = null) {
     try {
       const templateName = "birthday_wish";
 
@@ -139,8 +183,10 @@ export default class WishesReminderScheduler extends BaseScheduler {
         return;
       }
 
-      // Fetch shop name from customer's shop_id
-      const shop = await Shop.findById(customer.shop_id);
+      // Fetch shop name from preloaded map or fallback to DB lookup
+      const shop =
+        cachedShop ||
+        (customer.shop_id ? await Shop.findById(customer.shop_id) : null);
 
       // Prepare template variables for birthday_wish
       // {{1}}: Customer name, {{2}}: Shop name
@@ -197,7 +243,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
    * Send anniversary wish to customer
    * @param {Object} customer - Customer object
    */
-  async sendAnniversaryWish(customer) {
+  async sendAnniversaryWish(customer, cachedShop = null) {
     try {
       const templateName = "anniversary_wish";
 
@@ -226,8 +272,10 @@ export default class WishesReminderScheduler extends BaseScheduler {
         return;
       }
 
-      // Fetch shop name from customer's shop_id
-      const shop = await Shop.findById(customer.shop_id);
+      // Fetch shop name from preloaded map or fallback to DB lookup
+      const shop =
+        cachedShop ||
+        (customer.shop_id ? await Shop.findById(customer.shop_id) : null);
 
       // Prepare template variables for anniversary_wish
       // {{1}}: Customer name, {{2}}: Shop name

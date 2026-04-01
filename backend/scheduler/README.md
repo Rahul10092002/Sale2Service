@@ -53,7 +53,7 @@ backend/
 
 - **Expiry Warning**: 30, 15, 3 days before warranty expires
 - **Expired Notice**: 1 day after warranty expires
-- **Templates**: `warranty_expiry_v1`, `warranty_expired_v1`
+- **Templates**: `warranty_expiring`, `warranty_expired`
 
 ### 3. Payment Reminders
 

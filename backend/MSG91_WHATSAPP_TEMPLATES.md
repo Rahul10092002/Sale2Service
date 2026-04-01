@@ -91,7 +91,7 @@ MSG91 components mapping: use `body_1`..`body_4` in the same order as variables.
 
 ---
 
-## warranty_expiry_v1
+## warranty_expiring
 
 - Category: WARRANTY
 - Variables: `customer_name`, `product_name`, `serial_number`, `warranty_end_date`, `shop_name`
@@ -100,7 +100,7 @@ Template text and MSG91 mapping: use `body_1`..`body_5`.
 
 ---
 
-## warranty_expired_v1
+## warranty_expired
 
 - Category: WARRANTY
 - Variables: `customer_name`, `product_name`, `serial_number`, `shop_name`
@@ -248,17 +248,26 @@ This document lists the WhatsApp message templates used by the project and MSG91
 
 ---
 
-**Template: warranty_expiry_v1**
+**Template: warranty_expiring**
 
 - Purpose: Inform customer warranty will expire soon
 - Placeholders: {{1}} customer_name, {{2}} product_name, {{3}} warranty_end_date
 - Example body:
 
-  Hi {{1}}, warranty for your {{2}} ends on {{3}}. Contact us for extended warranty offers.
+नमस्ते {{1}} जी,
+
+आपकी {{2}} की वारंटी {{3}} दिनों में समाप्त होने वाली है।
+
+कृपया समय रहते आवश्यक जांच/सेवा करवा लें, ताकि आपका उत्पाद सही तरीके से कार्य करता रहे।
+
+किसी भी सहायता के लिए संपर्क करें: {{4}}
+
+धन्यवाद 🙏  
+{{5}}
 
 ---
 
-**Template: warranty_expired_v1**
+**Template: warranty_expired**
 
 - Purpose: Inform customer warranty has expired
 - Placeholders: {{1}} customer_name, {{2}} product_name, {{3}} expiry_date

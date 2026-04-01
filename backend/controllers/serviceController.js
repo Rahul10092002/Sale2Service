@@ -211,15 +211,7 @@ export default class ServiceController {
 
       const serviceSchedule = schedule[0];
 
-      if (
-        serviceSchedule.status !== "PENDING" &&
-        serviceSchedule.status !== "MISSED"
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Only pending or missed services can be rescheduled",
-        });
-      }
+    
 
       // Update schedule
       const updateData = {

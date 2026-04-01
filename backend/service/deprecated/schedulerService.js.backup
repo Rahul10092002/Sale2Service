@@ -388,8 +388,8 @@ export default class SchedulerService {
       // Check if reminder already sent
       const templateName =
         eventType === "WARRANTY_EXPIRY"
-          ? "warranty_expiry_v1"
-          : "warranty_expired_v1";
+          ? "warranty_expiring"
+          : "warranty_expired";
       const existingLog = await ReminderLog.findOne({
         entity_id: invoiceItem.invoice_item_id,
         entity_type: "PRODUCT",

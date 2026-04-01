@@ -119,7 +119,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       }
 
       const customer = invoiceItem.invoice_id.customer_id;
-      const templateName = "warranty_expiry_v1";
+      const templateName = "warranty_expiring";
 
       // Check if reminder already sent
       const alreadySent = await this.isReminderAlreadySent(
@@ -149,9 +149,12 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
         return;
       }
 
-      // Prepare template variables for warranty_expiry_v1
-      // Based on MSG91_WHATSAPP_TEMPLATES.md: customer_name, product_name, serial_number, shop_name
-      const variables = await this.getWarrantyTemplateVariables(invoiceItem);
+      // Prepare template variables for warranty_expiring
+      // Based on Hindi template: customer_name, product_name, days_remaining, contact_info, shop_name
+      const variables = await this.getWarrantyTemplateVariables(
+        invoiceItem,
+        daysUntilExpiry,
+      );
 
       // Create reminder log
       const reminderLog = await this.createReminderLog({
@@ -215,7 +218,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       }
 
       const customer = invoiceItem.invoice_id.customer_id;
-      const templateName = "warranty_expired_v1";
+      const templateName = "warranty_expired";
 
       // Check if reminder already sent
       const alreadySent = await this.isReminderAlreadySent(
@@ -245,8 +248,8 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
         return;
       }
 
-      // Prepare template variables for warranty_expired_v1
-      // Based on MSG91_WHATSAPP_TEMPLATES.md: customer_name, product_name, serial_number, shop_name
+      // Prepare template variables for warranty_expired
+      // Based on Hindi template: customer_name, product_name, contact_info, shop_name
       const variables = await this.getWarrantyTemplateVariables(invoiceItem);
 
       // Create reminder log
@@ -293,17 +296,32 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
   /**
    * Get template variables for warranty reminders
    * @param {Object} invoiceItem - Invoice item object
+   * @param {number} daysUntilExpiry - Days until expiry (only for expiring reminders)
    * @returns {Object} - Template variables
    */
-  async getWarrantyTemplateVariables(invoiceItem) {
+  async getWarrantyTemplateVariables(invoiceItem, daysUntilExpiry = null) {
     const customer = invoiceItem.invoice_id.customer_id;
+    const shop = invoiceItem.invoice_id.shop_id;
+    const shopName = shop?.shop_name || process.env.SHOP_NAME || "Our Shop";
+    const contactInfo = shop?.phone || process.env.SHOP_CONTACT || "Contact us";
 
-    // Variables: customer_name, product_name, serial_number, shop_name
-    return {
-      1: customer.full_name || "Customer",
-      2: invoiceItem.product_name || "Product",
-      3: invoiceItem.serial_number || "N/A",
-      4: process.env.SHOP_NAME || "Our Shop",
-    };
+    if (daysUntilExpiry !== null) {
+      // For warranty_expiring template: customer_name, product_name, days_remaining, contact_info, shop_name
+      return {
+        1: customer.full_name || "Customer",
+        2: invoiceItem.product_name || "Product",
+        3: daysUntilExpiry.toString(),
+        4: contactInfo,
+        5: shopName,
+      };
+    } else {
+      // For warranty_expired template: customer_name, product_name, contact_info, shop_name
+      return {
+        1: customer.full_name || "Customer",
+        2: invoiceItem.product_name || "Product",
+        3: contactInfo,
+        4: shopName,
+      };
+    }
   }
 }

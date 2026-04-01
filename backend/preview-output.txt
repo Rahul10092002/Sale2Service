@@ -1,0 +1,35 @@
+﻿[dotenv@17.2.3] injecting env (15) from .env -- tip: ΓÜÖ∩╕Å  load multiple .env files with { path: ['.env.local', '.env'] }
+Connecting to MongoDB at mongodb+srv://rahul:rahul10092002@cluster0.alfq874.mongodb.net/?appName=Cluster0
+Connected to MongoDB
+
+====== Tomorrow Reminder Preview ======
+Tomorrow IST window: 2026-04-01T18:30:00.000Z ΓåÆ 2026-04-02T18:30:00.000Z
+Tomorrow IST month/day: 4/2
+
+Wishes (tomorrow):
+  birthday: 2
+    - [Birthday] Rahul Patidar (69bd0699c9296ef1e735b372)
+    - [Birthday] bablu (69cc01e8d1568fc2bb6e014a)
+  anniversary: 1
+    - [Anniversary] Rahul Patidar (69bd0699c9296ef1e735b372)
+
+Service reminders (tomorrow run preview):
+  2-day service (tomorrow 1-day prior): 0
+  4-day service (tomorrow 3-day prior): 2
+    - Service schedule 69a656dd901ee2995f4021ca: customer=unknown, product=unknown, planned=2026-04-05T00:00:00.000Z
+    - Service schedule 69a7b5f32eb864d8336d52b3: customer=unknown, product=unknown, planned=2026-04-05T00:00:00.000Z
+
+Warranty reminders (tomorrow run preview):
+  30-day reminder (matching 31 days from today): 1
+    - Livguard 12w (item=69ccce52c30b24d91f74f1f8) customer=bablu warranty_end=2026-05-02T00:00:00.000Z
+  15-day reminder (matching 16 days from today): 0
+  3-day reminder (matching 4 days from today): 0
+
+Payment reminders (tomorrow run preview):
+  3-day overdue reminder (matching invoices from 4 days ago): 0
+  7-day overdue reminder (matching invoices from 8 days ago): 0
+  15-day overdue reminder (matching invoices from 16 days ago): 0
+
+====== Completed tomorrow reminder preview ======
+
+Disconnected from MongoDB

@@ -20,7 +20,10 @@ export default class PaymentReminderScheduler extends BaseScheduler {
     try {
       this.logInfo("Processing payment reminders...");
 
-      await this.processPendingPayments();
+      await Promise.all([
+        this.processDueDateReminders(),
+        this.processOverdueReminders(),
+      ]);
 
       this.logInfo("Payment reminders processing completed");
     } catch (error) {
@@ -29,27 +32,26 @@ export default class PaymentReminderScheduler extends BaseScheduler {
   }
 
   /**
-   * Process pending payment reminders (3, 7, 15 days after invoice date)
+   * Process pending payment reminders at 3, 7, 15 days before due date
    */
-  async processPendingPayments() {
+  async processDueDateReminders() {
     try {
-      const reminderDays = [3, 7, 15]; // Days after invoice date
+      const reminderDays = [3, 7, 15];
 
       for (const days of reminderDays) {
-        // Create date range for invoices created X days ago
-        const invoiceDateRange = createDateRange(-days);
+        const dueDateRange = createDateRange(days);
 
         const pendingInvoices = await Invoice.find({
-          invoice_date: {
-            $gte: invoiceDateRange.start,
-            $lt: invoiceDateRange.end,
+          due_date: {
+            $gte: dueDateRange.start,
+            $lt: dueDateRange.end,
           },
           payment_status: { $in: ["UNPAID", "PARTIAL"] },
           deleted_at: null,
         }).populate("customer_id");
 
         this.logInfo(
-          `Found ${pendingInvoices.length} pending invoices from ${days} days ago`,
+          `Found ${pendingInvoices.length} invoices due in ${days} days`,
         );
 
         for (const invoice of pendingInvoices) {
@@ -57,7 +59,30 @@ export default class PaymentReminderScheduler extends BaseScheduler {
         }
       }
     } catch (error) {
-      this.logError("processPendingPayments", error);
+      this.logError("processDueDateReminders", error);
+    }
+  }
+
+  /**
+   * Process overdue payment reminders (past due date)
+   */
+  async processOverdueReminders() {
+    try {
+      const todayRange = createDateRange(0);
+
+      const overdueInvoices = await Invoice.find({
+        due_date: { $lt: todayRange.start },
+        payment_status: { $in: ["UNPAID", "PARTIAL"] },
+        deleted_at: null,
+      }).populate("customer_id");
+
+      this.logInfo(`Found ${overdueInvoices.length} overdue invoices`);
+
+      for (const invoice of overdueInvoices) {
+        await this.sendPaymentReminder(invoice, 0);
+      }
+    } catch (error) {
+      this.logError("processOverdueReminders", error);
     }
   }
 
@@ -111,13 +136,18 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       // Prepare template variables for payment reminder
       const variables = this.getPaymentTemplateVariables(invoice);
 
+      const statusText =
+        daysAfterInvoice > 0
+          ? `${daysAfterInvoice} days before due`
+          : "overdue";
+
       // Create reminder log
       const reminderLog = await this.createReminderLog({
         entityId: invoice.invoice_id,
         entityType: "INVOICE",
         recipientNumber: phoneValidation.formattedNumber,
         recipientName: customer.full_name,
-        messageContent: `Payment reminder for invoice ${invoice.invoice_number} (${daysAfterInvoice} days overdue)`,
+        messageContent: `Payment reminder for invoice ${invoice.invoice_number} (${statusText})`,
         templateName: templateName,
       });
 

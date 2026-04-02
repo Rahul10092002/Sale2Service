@@ -63,8 +63,8 @@ export default class SchedulerService {
     });
 
     // Run daily at 9 AM IST for payment reminders
-    // 3:30 AM UTC = 9:00 AM IST (UTC+5:30)
-    cron.schedule("30 3 * * *", async () => {
+    // 3:30 AM UTC = 9:30 AM IST (UTC+5:30)
+    cron.schedule("45 3 * * *", async () => {
       console.log("[SchedulerService] Running daily payment reminders...");
       await this.paymentScheduler.processPaymentReminders();
     });

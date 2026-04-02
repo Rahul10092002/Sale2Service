@@ -333,13 +333,23 @@ export default class WishesReminderScheduler extends BaseScheduler {
     try {
       this.logInfo("Processing festival wishes...");
 
-      const { year, month, date } = getISTTodayParts();
+      const now = new Date();
 
-      // Create IST start & end of day
-      const startOfDay = new Date(Date.UTC(year, month - 1, date, 0, 0, 0));
-      const endOfDay = new Date(Date.UTC(year, month - 1, date, 23, 59, 59));
+      // IST offset
+      const istOffset = 5.5 * 60 * 60 * 1000;
 
-      // Find today's scheduled festivals
+      // Convert current time to IST
+      const istNow = new Date(now.getTime() + istOffset);
+
+      // Get IST date parts
+      const year = istNow.getFullYear();
+      const month = istNow.getMonth();
+      const date = istNow.getDate();
+
+      // Convert IST day start/end BACK to UTC
+      const startOfDay = new Date(Date.UTC(year, month, date, -5, -30, 0));
+      const endOfDay = new Date(Date.UTC(year, month, date, 18, 29, 59));
+
       const festivals = await FestivalSchedule.find({
         schedule_date: {
           $gte: startOfDay,
@@ -349,9 +359,9 @@ export default class WishesReminderScheduler extends BaseScheduler {
 
       this.logInfo(`Found ${festivals.length} festival schedules for today`);
 
-      for (const festival of festivals) {
-        await this.processFestivalForShop(festival);
-      }
+    await Promise.all(
+      festivals.map((festival) => this.processFestivalForShop(festival)),
+    );
     } catch (error) {
       this.logError("processFestivalWishes", error);
     }
@@ -418,7 +428,6 @@ export default class WishesReminderScheduler extends BaseScheduler {
       // {{2}} Festival Name
       // {{3}} Shop Name
       const variables = {
-       
         1: festival.festival_name,
         2: getShopName(shop),
       };

@@ -2,385 +2,233 @@ import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import ServiceSchedule from "../../models/ServiceSchedule.js";
 import Shop from "../../models/Shop.js";
-import {
-  createDateRange,
-  formatDateForMessage,
-  getShopName,
-} from "../core/utils.js";
+import { formatDateForMessage, getShopName } from "../core/utils.js";
 
-/**
- * Service-specific reminder scheduler
- * Handles upcoming and missed service reminders
- */
 export default class ServiceReminderScheduler extends BaseScheduler {
   constructor() {
     super();
     this.messageSender = new MessageSender();
+    this.BATCH_SIZE = 50;
   }
 
-  /**
-   * Process all service reminders
-   * @param {boolean} forceResend - Skip dedup check (for testing)
-   */
   async processServiceReminders(forceResend = false) {
     try {
-      this.logInfo("Processing service reminders...");
+      this.logInfo("🚀 Service Scheduler Started");
 
-      await Promise.all([
-        this.processUpcomingServices(forceResend),
-        this.processMissedServices(forceResend),
-      ]);
+      const now = new Date();
 
-      this.logInfo("Service reminders processing completed");
+      const services = await ServiceSchedule.find({
+        next_reminder_at: { $lte: now },
+        deleted_at: null,
+        status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+      })
+        .limit(this.BATCH_SIZE)
+        .lean();
+
+      this.logInfo(`Found ${services.length} services to process`);
+
+      for (const service of services) {
+        await this.processSingleService(service, forceResend);
+      }
+
+      this.logInfo("✅ Service Scheduler Completed");
     } catch (error) {
       this.logError("processServiceReminders", error);
     }
   }
 
-  /**
-   * Process upcoming service reminders (3 days and 1 day before)
-   * @param {boolean} forceResend - Skip dedup check (for testing)
-   */
-  async processUpcomingServices(forceResend = false) {
+  async processSingleService(service, forceResend) {
     try {
-      // Check 3 days ahead
-      const threeDaysRange = createDateRange(3);
-      const oneDayRange = createDateRange(1);
+      // 🔒 Dedup check
+      const alreadySent =
+        !forceResend &&
+        (await this.isReminderAlreadySent(
+          service._id,
+          "SERVICE",
+          service.reminder_stage,
+          24,
+        ));
 
-      const upcomingServices = await ServiceSchedule.find({
-        $or: [
-          {
-            scheduled_date: {
-              $gte: threeDaysRange.start,
-              $lt: threeDaysRange.end,
-            },
-          },
-          {
-            scheduled_date: {
-              $gte: oneDayRange.start,
-              $lt: oneDayRange.end,
-            },
-          },
-        ],
-        status: "PENDING",
-        deleted_at: null,
-      }).populate({
+      if (alreadySent) {
+        this.logInfo(`⏩ Skipping already sent: ${service._id}`);
+        return;
+      }
+
+      // 📦 Fetch minimal required data (avoid deep populate)
+      const populated = await ServiceSchedule.findById(service._id).populate({
         path: "service_plan_id",
         populate: {
           path: "invoice_item_id",
           populate: {
             path: "invoice_id",
-            populate: {
-              path: "customer_id",
-            },
+            populate: { path: "customer_id" },
           },
         },
       });
 
-      this.logInfo(`Found ${upcomingServices.length} upcoming services`);
-
-      for (const service of upcomingServices) {
-        await this.sendUpcomingServiceReminder(service, forceResend);
-      }
-    } catch (error) {
-      this.logError("processUpcomingServices", error);
-    }
-  }
-
-  /**
-   * Process missed service reminders (past due date)
-   * @param {boolean} forceResend - Skip dedup check (for testing)
-   */
-  async processMissedServices(forceResend = false) {
-    try {
-      // Use IST midnight so services scheduled for "today IST" are not flagged as missed
-      const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-      const nowIST = Date.now() + IST_OFFSET_MS;
-      const istMidnightMs = nowIST - (nowIST % (24 * 60 * 60 * 1000));
-      const todayISTStart = new Date(istMidnightMs - IST_OFFSET_MS);
-
-      const missedServices = await ServiceSchedule.find({
-        scheduled_date: { $lt: todayISTStart },
-        status: "PENDING",
-        deleted_at: null,
-      }).populate({
-        path: "service_plan_id",
-        populate: {
-          path: "invoice_item_id",
-          populate: {
-            path: "invoice_id",
-            populate: {
-              path: "customer_id",
-            },
-          },
-        },
-      });
-
-      this.logInfo(`Found ${missedServices.length} missed services`);
-
-      for (const service of missedServices) {
-        await this.sendMissedServiceReminder(service, forceResend);
-      }
-    } catch (error) {
-      this.logError("processMissedServices", error);
-    }
-  }
-
-  /**
-   * Send upcoming service reminder
-   * @param {Object} serviceSchedule - Service schedule object
-   * @param {boolean} forceResend - Skip dedup check (for testing)
-   */
-  async sendUpcomingServiceReminder(serviceSchedule, forceResend = false) {
-    try {
-      // Validate service schedule structure
       if (
-        !serviceSchedule.service_plan_id?.invoice_item_id?.invoice_id
-          ?.customer_id
+        !populated?.service_plan_id?.invoice_item_id?.invoice_id?.customer_id
       ) {
-        const missingLink = !serviceSchedule.service_plan_id
-          ? "service_plan_id"
-          : !serviceSchedule.service_plan_id.invoice_item_id
-            ? "invoice_item_id"
-            : !serviceSchedule.service_plan_id.invoice_item_id.invoice_id
-              ? "invoice_id"
-              : "customer_id";
-        this.logInfo(
-          `Cancelling orphaned service schedule (${missingLink} missing): ${serviceSchedule.service_schedule_id}`,
-        );
-        await ServiceSchedule.findByIdAndUpdate(serviceSchedule._id, {
-          status: "CANCELLED",
-          notes: `Auto-cancelled: ${missingLink} reference no longer exists`,
-        });
+        await this.cancelOrphaned(service._id);
         return;
       }
 
-      const invoiceItem = serviceSchedule.service_plan_id.invoice_item_id;
+      const invoiceItem = populated.service_plan_id.invoice_item_id;
       const customer = invoiceItem.invoice_id.customer_id;
 
-      // Check if reminder already sent
-      const alreadySent =
-        !forceResend &&
-        (await this.isReminderAlreadySent(
-          serviceSchedule.service_schedule_id,
-          "SERVICE",
-          "service_reminder",
-          24, // allow re-send after 24 hours (1 day)
-        ));
-
-      if (alreadySent) {
-        this.logInfo(
-          `Service reminder already sent for schedule ${serviceSchedule.service_schedule_id}`,
-        );
-        return;
-      }
-
-      // Validate phone number
+      // 📞 Phone validation
       const phoneValidation = this.validateCustomerPhoneNumber(customer);
       if (!phoneValidation.isValid) {
-        this.logError(
-          "sendUpcomingServiceReminder",
-          new Error(phoneValidation.error),
-          {
-            customer: customer.full_name,
-            serviceId: serviceSchedule.service_schedule_id,
-          },
-        );
-        return;
+        return this.handleFailure(service, "Invalid phone");
       }
 
-      // Get shop information
       const shop = await Shop.findById(invoiceItem.invoice_id.shop_id);
       if (!shop || shop.deleted_at) {
-        this.logError(
-          "sendUpcomingServiceReminder",
-          new Error("Shop not found"),
-          {
-            shopId: invoiceItem.invoice_id.shop_id,
-          },
-        );
-        return;
+        return this.handleFailure(service, "Shop not found");
       }
 
-      // Prepare template variables for service_reminder
-      // {{1}}: Customer name, {{2}}: Product name, {{3}}: Service date, {{4}}: Shop name
-      const serviceDate = formatDateForMessage(serviceSchedule.scheduled_date);
-      const variables = {
-        1: customer.full_name,
-        2: invoiceItem.product_name,
-        3: serviceDate,
-        4: getShopName(shop),
-      };
-
-      // Build message content for logging
-      const messageContent = `नमस्ते ${variables[1]},\n\nआपकी ${variables[2]} की सर्विस की अगली तिथि ${variables[3]} को निर्धारित है।\n\nकृपया समय पर सर्विस करवा लें ताकि बेहतर प्रदर्शन बना रहे।\n\nअधिक जानकारी के लिए संपर्क करें: ${variables[4]}\nधन्यवाद 🙏`;
-
-      // Create reminder log
-      const reminderLog = await this.createReminderLog({
-        entityId: serviceSchedule.service_schedule_id,
-        entityType: "SERVICE",
-        recipientNumber: phoneValidation.formattedNumber,
-        recipientName: customer.full_name,
-        messageContent: messageContent,
-        templateName: "service_reminder",
-      });
-
-      // Send WhatsApp message
-      const result = await this.messageSender.sendTemplateMessage({
-        to: phoneValidation.formattedNumber,
-        templateName: "service_reminder",
-        variables: variables,
-        reminderLogId: reminderLog._id,
-        metadata: {
-          campaignName: "service_reminder",
-          shopId: shop._id,
-          customerName: customer.full_name,
-          messageType: "service_reminder",
-        },
-      });
+      // 📩 Send message
+      const result = await this.sendMessage(
+        service,
+        customer,
+        invoiceItem,
+        shop,
+        phoneValidation.formattedNumber,
+      );
 
       if (result.success) {
-        this.logInfo(`Service reminder sent successfully`, {
-          customer: customer.full_name,
-          product: invoiceItem.product_name,
-          serviceDate,
-        });
+        await this.handleSuccess(service);
       } else {
-        this.logError("sendUpcomingServiceReminder", new Error(result.error), {
-          customer: customer.full_name,
-          serviceId: serviceSchedule.service_schedule_id,
-        });
+        await this.handleFailure(service, result.error);
       }
     } catch (error) {
-      this.logError("sendUpcomingServiceReminder", error, {
-        serviceId: serviceSchedule.service_schedule_id,
-      });
+      this.logError("processSingleService", error);
+      await this.handleFailure(service, error.message);
     }
   }
 
-  /**
-   * Send missed service reminder
-   * @param {Object} serviceSchedule - Service schedule object
-   * @param {boolean} forceResend - Skip dedup check (for testing)
-   */
-  async sendMissedServiceReminder(serviceSchedule, forceResend = false) {
-    try {
-      // Validate service schedule structure
-      if (
-        !serviceSchedule.service_plan_id?.invoice_item_id?.invoice_id
-          ?.customer_id
-      ) {
-        const missingLink = !serviceSchedule.service_plan_id
-          ? "service_plan_id"
-          : !serviceSchedule.service_plan_id.invoice_item_id
-            ? "invoice_item_id"
-            : !serviceSchedule.service_plan_id.invoice_item_id.invoice_id
-              ? "invoice_id"
-              : "customer_id";
-        this.logInfo(
-          `Cancelling orphaned service schedule (${missingLink} missing): ${serviceSchedule.service_schedule_id}`,
-        );
-        await ServiceSchedule.findByIdAndUpdate(serviceSchedule._id, {
-          status: "CANCELLED",
-          notes: `Auto-cancelled: ${missingLink} reference no longer exists`,
-        });
-        return;
-      }
+  async sendMessage(service, customer, invoiceItem, shop, phone) {
+    const serviceDate = formatDateForMessage(service.scheduled_date);
 
-      const invoiceItem = serviceSchedule.service_plan_id.invoice_item_id;
-      const customer = invoiceItem.invoice_id.customer_id;
+    let templateName;
+    let variables;
 
-      // Check if reminder already sent
-      const alreadySent =
-        !forceResend &&
-        (await this.isReminderAlreadySent(
-          serviceSchedule.service_schedule_id,
-          "SERVICE",
-          "service_missed_v1",
-          24, // allow re-send after 24 hours (1 day)
-        ));
+    switch (service.reminder_stage) {
+      case "UPCOMING_3D":
+      case "UPCOMING_1D":
+      case "TODAY":
+        templateName = "service_reminder";
+        variables = {
+          1: customer.full_name,
+          2: invoiceItem.product_name,
+          3: serviceDate,
+          4: getShopName(shop),
+        };
+        break;
 
-      if (alreadySent) {
-        this.logInfo(
-          `Missed service reminder already sent for schedule ${serviceSchedule.service_schedule_id}`,
-        );
-        return;
-      }
+      case "MISSED":
+      case "FOLLOWUP":
+        templateName = "service_missed_v1";
+        variables = {
+          1: customer.full_name,
+          2: invoiceItem.product_name,
+          3: getShopName(shop),
+        };
+        break;
 
-      // Validate phone number
-      const phoneValidation = this.validateCustomerPhoneNumber(customer);
-      if (!phoneValidation.isValid) {
-        this.logError(
-          "sendMissedServiceReminder",
-          new Error(phoneValidation.error),
-          {
-            customer: customer.full_name,
-            serviceId: serviceSchedule.service_schedule_id,
-          },
-        );
-        return;
-      }
-
-      // Get shop information
-      const shop = await Shop.findById(invoiceItem.invoice_id.shop_id);
-      if (!shop || shop.deleted_at) {
-        this.logError(
-          "sendMissedServiceReminder",
-          new Error("Shop not found"),
-          {
-            shopId: invoiceItem.invoice_id.shop_id,
-          },
-        );
-        return;
-      }
-
-      // Prepare template variables for service_missed_v1
-      // {{1}}: Customer name, {{2}}: Product name, {{3}}: Shop name
-      const variables = {
-        1: customer.full_name,
-        2: invoiceItem.product_name,
-        3: getShopName(shop),
-      };
-
-      // Create reminder log
-      const reminderLog = await this.createReminderLog({
-        entityId: serviceSchedule.service_schedule_id,
-        entityType: "SERVICE",
-        recipientNumber: phoneValidation.formattedNumber,
-        recipientName: customer.full_name,
-        messageContent: `Missed service reminder for ${invoiceItem.product_name}`,
-        templateName: "service_missed_v1",
-      });
-
-      // Send WhatsApp message
-      const result = await this.messageSender.sendTemplateMessage({
-        to: phoneValidation.formattedNumber,
-        templateName: "service_missed_v1",
-        variables: variables,
-        reminderLogId: reminderLog._id,
-        metadata: {
-          campaignName: "service_missed",
-          shopId: shop._id,
-          customerName: customer.full_name,
-          messageType: "service_missed",
-        },
-      });
-
-      if (result.success) {
-        this.logInfo(`Missed service reminder sent successfully`, {
-          customer: customer.full_name,
-          product: invoiceItem.product_name,
-        });
-      } else {
-        this.logError("sendMissedServiceReminder", new Error(result.error), {
-          customer: customer.full_name,
-          serviceId: serviceSchedule.service_schedule_id,
-        });
-      }
-    } catch (error) {
-      this.logError("sendMissedServiceReminder", error, {
-        serviceId: serviceSchedule.service_schedule_id,
-      });
+      default:
+        throw new Error("Unknown reminder stage");
     }
+
+    return await this.messageSender.sendTemplateMessage({
+      to: phone,
+      templateName,
+      variables,
+      metadata: {
+        serviceId: service._id,
+        stage: service.reminder_stage,
+        shopId: shop._id,
+      },
+    });
+  }
+
+  async handleSuccess(service) {
+    const update = {
+      last_reminder_sent_at: new Date(),
+      retry_count: 0,
+    };
+
+    // 🔄 Move to next stage
+    switch (service.reminder_stage) {
+      case "UPCOMING_3D":
+        update.reminder_stage = "UPCOMING_1D";
+        update.next_reminder_at = this.subtractDays(service.scheduled_date, 1);
+        break;
+
+      case "UPCOMING_1D":
+        update.reminder_stage = "TODAY";
+        update.next_reminder_at = service.scheduled_date;
+        break;
+
+      case "TODAY":
+        update.reminder_stage = "MISSED";
+        update.status = "MISSED";
+        update.next_reminder_at = this.addDays(new Date(), 1);
+        break;
+
+      case "MISSED":
+        update.reminder_stage = "FOLLOWUP";
+        update.next_reminder_at = this.addDays(new Date(), 2);
+        break;
+
+      case "FOLLOWUP":
+        update.next_reminder_at = null; // stop
+        break;
+    }
+
+    await ServiceSchedule.findByIdAndUpdate(service._id, update);
+
+    this.logInfo(`✅ Success for ${service._id}`);
+  }
+
+  async handleFailure(service, error) {
+    this.logError("handleFailure", new Error(error));
+
+    if (service.retry_count >= service.max_retries) {
+      await ServiceSchedule.findByIdAndUpdate(service._id, {
+        next_reminder_at: null,
+        failure_reason: error,
+      });
+      return;
+    }
+
+    await ServiceSchedule.findByIdAndUpdate(service._id, {
+      retry_count: service.retry_count + 1,
+      next_reminder_at: this.addMinutes(new Date(), 30),
+    });
+  }
+
+  async cancelOrphaned(serviceId) {
+    await ServiceSchedule.findByIdAndUpdate(serviceId, {
+      status: "CANCELLED",
+      next_reminder_at: null,
+    });
+  }
+
+  // 🛠 Helpers
+  subtractDays(date, days) {
+    const d = new Date(date);
+    d.setDate(d.getDate() - days);
+    return d;
+  }
+
+  addDays(date, days) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+
+  addMinutes(date, mins) {
+    return new Date(date.getTime() + mins * 60000);
   }
 }

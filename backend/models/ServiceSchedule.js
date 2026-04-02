@@ -86,6 +86,14 @@ const serviceScheduleSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    next_reminder_at: Date,
+    reminder_stage: {
+      type: String,
+      enum: ["UPCOMING_3D", "UPCOMING_1D", "TODAY", "MISSED", "FOLLOWUP"],
+    },
+    last_reminder_sent_at: Date,
+    retry_count: { type: Number, default: 0 },
+    max_retries: { type: Number, default: 3 },
   },
   {
     timestamps: true,

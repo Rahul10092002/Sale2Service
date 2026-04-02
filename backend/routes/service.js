@@ -7,7 +7,6 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Removed unused routes: /dashboard, /schedules, /visits
 
 // Get services organized by product
 router.get(

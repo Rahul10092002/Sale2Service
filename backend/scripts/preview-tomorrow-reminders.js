@@ -23,11 +23,292 @@ const tomorrowRange = createDateRange(1);
 
 const getTomorrowISTParts = () => getISTDateParts(tomorrowRange.start);
 
+const printSection = (title) => {
+  console.log(`\n==============================`);
+  console.log(`   ${title}`);
+  console.log(`==============================`);
+};
+
 const getSummary = async () => {
-  console.log("\n====== Tomorrow Reminder Preview ======");
-  console.log(
-    `Tomorrow IST window: ${tomorrowRange.start.toISOString()} → ${tomorrowRange.end.toISOString()}`,
+  printSection("TODAY RUN");
+
+  // Get today's IST parts for wishes
+  const todayISTParts = getISTTodayParts();
+  console.log(`Today IST month/day: ${todayISTParts.month}/${todayISTParts.date}`);
+
+  const todayRange = createDateRange(0);
+  const thirtyDaysRange = createDateRange(30);
+
+  // 🎂 Today's Wishes (Birthday + Anniversary)
+  const birthdayCustomersToday = await Customer.aggregate([
+    { $match: { date_of_birth: { $ne: null }, deleted_at: null } },
+    {
+      $addFields: {
+        month: { $month: "$date_of_birth" },
+        day: { $dayOfMonth: "$date_of_birth" },
+      },
+    },
+    { $match: { month: todayISTParts.month, day: todayISTParts.date } },
+  ]);
+
+  const anniversaryCustomersToday = await Customer.aggregate([
+    {
+      $match: {
+        anniversary_date: { $exists: true, $ne: null },
+        deleted_at: null,
+      },
+    },
+    {
+      $addFields: {
+        month: { $month: "$anniversary_date" },
+        day: { $dayOfMonth: "$anniversary_date" },
+      },
+    },
+    { $match: { month: todayISTParts.month, day: todayISTParts.date } },
+  ]);
+
+  console.log(`\n🎂 Today's Wishes:`);
+  console.log(`  birthday: ${birthdayCustomersToday.length}`);
+  birthdayCustomersToday.forEach((c) =>
+    console.log(`    - [Birthday] ${c.full_name} (${c.customer_id})`),
   );
+  console.log(`  anniversary: ${anniversaryCustomersToday.length}`);
+  anniversaryCustomersToday.forEach((c) =>
+    console.log(`    - [Anniversary] ${c.full_name} (${c.customer_id})`),
+  );
+
+  // 🛠 Today's Service reminders (stage-based logic)
+  const todayEnd = createDateRange(0).end; // today's end
+
+  console.log(`\n🛠 Today's Service reminders (stage-based):`);
+
+  const servicesToday = await ServiceSchedule.aggregate([
+    {
+      $match: {
+        next_reminder_at: { $lte: todayEnd },
+        status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+        deleted_at: null,
+      },
+    },
+    {
+      $lookup: {
+        from: "serviceplans",
+        localField: "service_plan_id",
+        foreignField: "_id",
+        as: "servicePlan",
+      },
+    },
+    {
+      $unwind: {
+        path: "$servicePlan",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "invoiceitems",
+        localField: "servicePlan.invoice_item_id",
+        foreignField: "_id",
+        as: "invoiceItem",
+      },
+    },
+    {
+      $unwind: {
+        path: "$invoiceItem",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "invoices",
+        localField: "invoiceItem.invoice_id",
+        foreignField: "_id",
+        as: "invoice",
+      },
+    },
+    {
+      $unwind: {
+        path: "$invoice",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "invoice.customer_id",
+        foreignField: "_id",
+        as: "customer",
+      },
+    },
+    {
+      $unwind: {
+        path: "$customer",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+  ]);
+
+  // Group by reminder stage
+  const groupedByStageToday = {};
+  servicesToday.forEach((s) => {
+    const stage = s.reminder_stage || "UNKNOWN";
+    if (!groupedByStageToday[stage]) groupedByStageToday[stage] = [];
+    groupedByStageToday[stage].push(s);
+  });
+
+  console.log(`  Total services to process: ${servicesToday.length}`);
+  
+  Object.entries(groupedByStageToday).forEach(([stage, services]) => {
+    console.log(`  Stage [${stage}]: ${services.length}`);
+    services.forEach((s) => {
+      const customer = s.customer;
+      const invoiceItem = s.invoiceItem;
+      const linkStatus = s.servicePlan ? "linked" : "orphaned";
+      const retryInfo = s.retry_count ? ` (retry ${s.retry_count}/${s.max_retries || 3})` : "";
+      console.log(
+        `    - ${s.service_schedule_id} [${linkStatus}${retryInfo}]: customer=${customer?.full_name || "unknown"}, product=${invoiceItem?.product_name || "unknown"}, scheduled=${s.scheduled_date.toISOString()}, next_reminder=${s.next_reminder_at?.toISOString() || "none"}`,
+      );
+      if (s.failure_reason) {
+        console.log(`      ⚠️  Last failure: ${s.failure_reason}`);
+      }
+    });
+  });
+
+  // 💰 Today's Payment reminders
+  console.log(`\n💰 Today's Payment reminders:`);
+
+  // Today's due invoices
+  const todaysDueInvoices = await Invoice.aggregate([
+    {
+      $match: {
+        due_date: { $gte: todayRange.start, $lt: todayRange.end },
+        payment_status: { $in: ["UNPAID", "PARTIAL"] },
+        deleted_at: null,
+      },
+    },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customer_id",
+        foreignField: "_id",
+        as: "customer",
+      },
+    },
+    {
+      $unwind: {
+        path: "$customer",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $sort: { due_date: 1 },
+    },
+  ]);
+
+  console.log(`  Due today: ${todaysDueInvoices.length}`);
+  todaysDueInvoices.forEach((inv) => {
+    const customer = inv.customer;
+    console.log(
+      `    - Invoice ${inv.invoice_number} customer=${customer?.full_name || "unknown"} amount_due=₹${inv.amount_due?.toFixed(2)} status=${inv.payment_status}`,
+    );
+  });
+
+  // Overdue payment reminders (due_date in past)
+  const overdueInvoicesToday = await Invoice.aggregate([
+    {
+      $match: {
+        due_date: { $lt: todayRange.start },
+        payment_status: { $in: ["UNPAID", "PARTIAL"] },
+        deleted_at: null,
+      },
+    },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customer_id",
+        foreignField: "_id",
+        as: "customer",
+      },
+    },
+    {
+      $unwind: {
+        path: "$customer",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $sort: { due_date: 1 },
+    },
+  ]);
+
+  console.log(`  Overdue: ${overdueInvoicesToday.length}`);
+  overdueInvoicesToday.forEach((inv) => {
+    const customer = inv.customer;
+    const daysSinceDue = inv.due_date
+      ? Math.ceil(
+          (Date.now() - new Date(inv.due_date).getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
+      : "unknown";
+    console.log(
+      `    - Invoice ${inv.invoice_number} customer=${customer?.full_name || "unknown"} due=${inv.due_date?.toISOString()} (${daysSinceDue} days overdue) amount_due=₹${inv.amount_due?.toFixed(2)} status=${inv.payment_status}`,
+    );
+  });
+
+  // 🛡 Today's Warranty reminders
+  const warrantyDays = [30, 15, 3];
+  console.log(`\n🛡 Today's Warranty reminders:`);
+  for (const days of warrantyDays) {
+    const todayRangeWarranty = createDateRange(days);
+
+    const items = await InvoiceItem.aggregate([
+      {
+        $match: {
+          warranty_end_date: { $gte: todayRangeWarranty.start, $lt: todayRangeWarranty.end },
+          deleted_at: null,
+        },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoice_id",
+          foreignField: "_id",
+          as: "invoice",
+        },
+      },
+      {
+        $unwind: {
+          path: "$invoice",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "invoice.customer_id",
+          foreignField: "_id",
+          as: "customer",
+        },
+      },
+      {
+        $unwind: {
+          path: "$customer",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]);
+
+    console.log(`  Today - ${days}-day reminder: ${items.length}`);
+    items.forEach((i) => {
+      const customer = i.customer;
+      console.log(
+        `    - ${i.product_name} (item=${i.invoice_item_id}) customer=${customer?.full_name || "n/a"} warranty_end=${i.warranty_end_date?.toISOString()}`,
+      );
+    });
+  }
+
+  printSection("TOMORROW RUN");
+ 
 
   // 1. Wishes (Birthday + Anniversary) for tomorrow
   const ot = getTomorrowISTParts();
@@ -60,7 +341,7 @@ const getSummary = async () => {
     { $match: { month: ot.month, day: ot.date } },
   ]);
 
-  console.log(`\nWishes (tomorrow):`);
+  console.log("\n🎂 Wishes (tomorrow):");
   console.log(`  birthday: ${birthdayCustomers.length}`);
   birthdayCustomers.forEach((c) =>
     console.log(`    - [Birthday] ${c.full_name} (${c.customer_id})`),
@@ -70,62 +351,118 @@ const getSummary = async () => {
     console.log(`    - [Anniversary] ${c.full_name} (${c.customer_id})`),
   );
 
-  // 2. Service reminders that would be triggered in tomorrow run
-  // Tomorrow's run will check services at 1 day and 3 days from tomorrow → 2 and 4 days from today
-  const serviceRanges = [
-    {
-      label: "2-day service (tomorrow 1-day prior)",
-      range: createDateRange(2),
-    },
-    {
-      label: "4-day service (tomorrow 3-day prior)",
-      range: createDateRange(4),
-    },
-  ];
+  // 🛠 Services (tomorrow)
+const tomorrowEnd = createDateRange(1).end; 
 
-  console.log(`\nService reminders (tomorrow run preview):`);
-  for (const item of serviceRanges) {
-    // Use aggregation with $lookup to safely handle null service_plan_id references
-    const services = await ServiceSchedule.aggregate([
+  console.log(`\n🛠 Service reminders (tomorrow run preview - stage-based):`);
+  const servicesToProcess = await ServiceSchedule.aggregate([
+    {
+      $match: {
+        next_reminder_at: { $lte: tomorrowEnd },
+        status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+        deleted_at: null,
+      },
+    },
+    {
+      $lookup: {
+        from: "serviceplans",
+        localField: "service_plan_id",
+        foreignField: "_id",
+        as: "servicePlan",
+      },
+    },
+    {
+      $unwind: {
+        path: "$servicePlan",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "invoiceitems",
+        localField: "servicePlan.invoice_item_id",
+        foreignField: "_id",
+        as: "invoiceItem",
+      },
+    },
+    {
+      $unwind: {
+        path: "$invoiceItem",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "invoices",
+        localField: "invoiceItem.invoice_id",
+        foreignField: "_id",
+        as: "invoice",
+      },
+    },
+    {
+      $unwind: {
+        path: "$invoice",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "invoice.customer_id",
+        foreignField: "_id",
+        as: "customer",
+      },
+    },
+    {
+      $unwind: {
+        path: "$customer",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+  ]);
+
+  // Group by reminder stage
+  const groupedByStage = {};
+  servicesToProcess.forEach((s) => {
+    const stage = s.reminder_stage || "UNKNOWN";
+    if (!groupedByStage[stage]) groupedByStage[stage] = [];
+    groupedByStage[stage].push(s);
+  });
+
+  console.log(`  Total services to process: ${servicesToProcess.length}`);
+  
+  Object.entries(groupedByStage).forEach(([stage, services]) => {
+    console.log(`  Stage [${stage}]: ${services.length}`);
+    services.forEach((s) => {
+      const customer = s.customer;
+      const invoiceItem = s.invoiceItem;
+      const linkStatus = s.servicePlan ? "linked" : "orphaned";
+      const retryInfo = s.retry_count ? ` (retry ${s.retry_count}/${s.max_retries || 3})` : "";
+      console.log(
+        `    - ${s.service_schedule_id} [${linkStatus}${retryInfo}]: customer=${customer?.full_name || "unknown"}, product=${invoiceItem?.product_name || "unknown"}, scheduled=${s.scheduled_date.toISOString()}, next_reminder=${s.next_reminder_at?.toISOString() || "none"}`,
+      );
+      if (s.failure_reason) {
+        console.log(`      ⚠️  Last failure: ${s.failure_reason}`);
+      }
+    });
+  });
+
+  // 🛡 Tomorrow's Warranty reminders
+  console.log(`\n🛡 Tomorrow's Warranty reminders:`);
+  for (const days of warrantyDays) {
+    const tomorrowRangeForDays = createDateRange(days + 1);
+
+    const items = await InvoiceItem.aggregate([
       {
         $match: {
-          scheduled_date: { $gte: item.range.start, $lt: item.range.end },
-          status: "PENDING",
+          warranty_end_date: { $gte: tomorrowRangeForDays.start, $lt: tomorrowRangeForDays.end },
           deleted_at: null,
         },
       },
       {
         $lookup: {
-          from: "serviceplans",
-          localField: "service_plan_id",
-          foreignField: "_id",
-          as: "servicePlan",
-        },
-      },
-      {
-        $unwind: {
-          path: "$servicePlan",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "invoiceitems",
-          localField: "servicePlan.invoice_item_id",
-          foreignField: "_id",
-          as: "invoiceItem",
-        },
-      },
-      {
-        $unwind: {
-          path: "$invoiceItem",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
           from: "invoices",
-          localField: "invoiceItem.invoice_id",
+          localField: "invoice_id",
           foreignField: "_id",
           as: "invoice",
         },
@@ -152,87 +489,25 @@ const getSummary = async () => {
       },
     ]);
 
-    console.log(`  ${item.label}: ${services.length}`);
-    services.forEach((s) => {
-      const customer = s.customer;
-      const invoiceItem = s.invoiceItem;
-      const status = s.servicePlan ? "linked" : "orphaned";
+    console.log(`  Tomorrow - ${days}-day reminder: ${items.length}`);
+    items.forEach((i) => {
+      const customer = i.customer;
       console.log(
-        `    - Service schedule ${s.service_schedule_id} [${status}]: customer=${customer?.full_name || "unknown"}, product=${invoiceItem?.product_name || "unknown"}, planned=${s.scheduled_date.toISOString()}`,
+        `    - ${i.product_name} (item=${i.invoice_item_id}) customer=${customer?.full_name || "n/a"} warranty_end=${i.warranty_end_date?.toISOString()}`,
       );
     });
   }
 
-  // 3. Warranty reminders for today and tomorrow preview
-  const warrantyDays = [30, 15, 3];
-  console.log(`\nWarranty reminders (today+tomorrow run preview):`);
-  for (const days of warrantyDays) {
-    const todayRange = createDateRange(days); // what you get in today's run
-    const tomorrowRangeForDays = createDateRange(days + 1); // what tomorrow's run will get
+  // 💰 Payment reminders: show due tomorrow and overdue invoices
+  console.log(`\n💰 Tomorrow's Payment reminders:`);
 
-    const findByRange = async (title, range) => {
-      const items = await InvoiceItem.aggregate([
-        {
-          $match: {
-            warranty_end_date: { $gte: range.start, $lt: range.end },
-            deleted_at: null,
-          },
-        },
-        {
-          $lookup: {
-            from: "invoices",
-            localField: "invoice_id",
-            foreignField: "_id",
-            as: "invoice",
-          },
-        },
-        {
-          $unwind: {
-            path: "$invoice",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $lookup: {
-            from: "customers",
-            localField: "invoice.customer_id",
-            foreignField: "_id",
-            as: "customer",
-          },
-        },
-        {
-          $unwind: {
-            path: "$customer",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-      ]);
+  const tomorrowRangePayment = createDateRange(1);
 
-      console.log(`  ${title} - ${days}-day reminder: ${items.length}`);
-      items.forEach((i) => {
-        const customer = i.customer;
-        console.log(
-          `    - ${i.product_name} (item=${i.invoice_item_id}) customer=${customer?.full_name || "n/a"} warranty_end=${i.warranty_end_date?.toISOString()}`,
-        );
-      });
-    };
-
-    await findByRange("today run (current day)", todayRange);
-    await findByRange("tomorrow run", tomorrowRangeForDays);
-  }
-
-  // 4. Payment reminders: show all upcoming (within 30 days) and overdue invoices
-  console.log(`\nPayment reminders (tomorrow run preview):`);
-
-  // Get today and 30 days from today
-  const todayRange = createDateRange(0);
-  const thirtyDaysRange = createDateRange(30);
-
-  // Upcoming payment due reminders (due_date in future)
-  const upcomingInvoices = await Invoice.aggregate([
+  // Due tomorrow
+  const dueTomorrowInvoices = await Invoice.aggregate([
     {
       $match: {
-        due_date: { $gte: todayRange.start, $lt: thirtyDaysRange.end },
+        due_date: { $gte: tomorrowRangePayment.start, $lt: tomorrowRangePayment.end },
         payment_status: { $in: ["UNPAID", "PARTIAL"] },
         deleted_at: null,
       },
@@ -256,24 +531,16 @@ const getSummary = async () => {
     },
   ]);
 
-  console.log(
-    `  Upcoming payment reminders (next 30 days): ${upcomingInvoices.length}`,
-  );
-  upcomingInvoices.forEach((inv) => {
+  console.log(`  Due tomorrow: ${dueTomorrowInvoices.length}`);
+  dueTomorrowInvoices.forEach((inv) => {
     const customer = inv.customer;
-    const daysUntilDue = inv.due_date
-      ? Math.ceil(
-          (new Date(inv.due_date).getTime() - Date.now()) /
-            (1000 * 60 * 60 * 24),
-        )
-      : "unknown";
     console.log(
-      `    - Invoice ${inv.invoice_number} customer=${customer?.full_name || "unknown"} due=${inv.due_date?.toISOString()} (${daysUntilDue} days) amount_due=₹${inv.amount_due?.toFixed(2)} status=${inv.payment_status}`,
+      `    - Invoice ${inv.invoice_number} customer=${customer?.full_name || "unknown"} amount_due=₹${inv.amount_due?.toFixed(2)} status=${inv.payment_status}`,
     );
   });
 
   // Overdue payment reminders (due_date in past)
-  const overdueInvoices = await Invoice.aggregate([
+  const overdueInvoicesTomorrow = await Invoice.aggregate([
     {
       $match: {
         due_date: { $lt: todayRange.start },
@@ -300,8 +567,8 @@ const getSummary = async () => {
     },
   ]);
 
-  console.log(`  Overdue payment reminders: ${overdueInvoices.length}`);
-  overdueInvoices.forEach((inv) => {
+  console.log(`  Overdue: ${overdueInvoicesTomorrow.length}`);
+  overdueInvoicesTomorrow.forEach((inv) => {
     const customer = inv.customer;
     const daysSinceDue = inv.due_date
       ? Math.ceil(
@@ -314,7 +581,36 @@ const getSummary = async () => {
     );
   });
 
-  console.log("\n====== Completed tomorrow reminder preview ======\n");
+  console.log("\n====== Completed today + tomorrow reminder preview ======\n");
+
+  // 🚀 FIX 1: AUTO-CANCEL ORPHANED SERVICE SCHEDULES
+  console.log("🔧 Running orphaned service schedule cleanup...");
+
+  const orphaned = await ServiceSchedule.find({
+    status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+    deleted_at: null,
+  }).populate({
+    path: "service_plan_id",
+    populate: {
+      path: "invoice_item_id",
+      populate: {
+        path: "invoice_id",
+        populate: { path: "customer_id" },
+      },
+    },
+  });
+
+  let deletedCount = 0;
+  for (const s of orphaned) {
+    if (!s?.service_plan_id?.invoice_item_id?.invoice_id?.customer_id) {
+      await ServiceSchedule.findByIdAndDelete(s._id);
+
+      console.log("Deleted orphaned:", s._id);
+      deletedCount++;
+    }
+  }
+
+  console.log(`✅ Cleanup complete: ${deletedCount} orphaned records deleted`);
 };
 
 const run = async () => {

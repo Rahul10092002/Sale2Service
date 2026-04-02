@@ -132,5 +132,18 @@ export const createDateRange = (daysOffset) => {
  */
 export const getShopName = (shop) => {
   if (!shop) return "Our Shop";
-  return shop.shop_name_hi || shop.shop_name || "Our Shop";
+  const nameHi = (shop.shop_name_hi || "").trim();
+  const nameEn = (shop.shop_name || "").trim();
+  return nameHi || nameEn || "Our Shop";
+};
+
+/**
+ * Get normalized shop contact phone number for reminders
+ * @param {Object} shop - Shop object
+ * @returns {string|null} - Formatted phone or null
+ */
+export const getShopContactInfo = (shop) => {
+  if (!shop || !shop.phone) return null;
+  const formatted = formatPhoneNumber(shop.phone);
+  return formatted || null;
 };

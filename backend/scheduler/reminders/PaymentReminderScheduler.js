@@ -2,7 +2,8 @@ import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import Invoice from "../../models/Invoice.js";
 import { createDateRange, formatDateForMessage } from "../core/utils.js";
-
+import Shop from "../../models/Shop.js";
+import { getShopName } from "../core/utils.js";
 /**
  * Payment-specific reminder scheduler
  * Handles pending payment reminders at different intervals
@@ -11,6 +12,29 @@ export default class PaymentReminderScheduler extends BaseScheduler {
   constructor() {
     super();
     this.messageSender = new MessageSender();
+  }
+
+  /**
+   * Preload shops for a set of invoices to avoid N+1 queries
+   * @param {Array} invoices
+   * @returns {Object} shopMap by shop_id
+   */
+  async getShopMapForInvoices(invoices) {
+    const shopIds = [
+      ...new Set(
+        invoices
+          .map((invoice) => invoice.shop_id)
+          .filter((shopId) => shopId != null),
+      ),
+    ];
+
+    if (shopIds.length === 0) return {};
+
+    const shops = await Shop.find({ _id: { $in: shopIds } });
+    return shops.reduce((map, shop) => {
+      map[String(shop._id)] = shop;
+      return map;
+    }, {});
   }
 
   /**
@@ -39,28 +63,15 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       const reminderDays = [0, 3, 7, 15];
 
       for (const days of reminderDays) {
-        let dateFilter;
+        const dueDateRange = createDateRange(days);
 
-        if (days === 0) {
-          const todayRange = createDateRange(0);
-
-          dateFilter = {
-            $gte: todayRange.start,
-            $lt: todayRange.end,
-          };
-        } else {
-          const range = createDateRange(days);
-          dateFilter = {
-            $gte: range.start,
-            $lt: range.end,
-          };
-        }
+        const dateFilter = {
+          $gte: dueDateRange.start,
+          $lt: dueDateRange.end,
+        };
 
         const pendingInvoices = await Invoice.find({
-          due_date: {
-            $gte: dueDateRange.start,
-            $lt: dueDateRange.end,
-          },
+          due_date: dateFilter,
           payment_status: { $in: ["UNPAID", "PARTIAL"] },
           deleted_at: null,
         }).populate("customer_id");
@@ -69,9 +80,12 @@ export default class PaymentReminderScheduler extends BaseScheduler {
           `Found ${pendingInvoices.length} invoices due in ${days} days`,
         );
 
-        for (const invoice of pendingInvoices) {
-          await this.sendPaymentReminder(invoice, days);
-        }
+        const shopMap = await this.getShopMapForInvoices(pendingInvoices);
+        await Promise.all(
+          pendingInvoices.map((invoice) =>
+            this.sendPaymentReminder(invoice, days, shopMap[String(invoice.shop_id)]),
+          ),
+        );
       }
     } catch (error) {
       this.logError("processDueDateReminders", error);
@@ -93,7 +107,8 @@ export default class PaymentReminderScheduler extends BaseScheduler {
 
       this.logInfo(`Found ${overdueInvoices.length} overdue invoices`);
 
-      for (const invoice of overdueInvoices) {
+      // Filter invoices for alternate day logic
+      const invoicesToProcess = overdueInvoices.filter((invoice) => {
         const dueDate = new Date(invoice.due_date);
         const today = new Date(todayRange.start);
 
@@ -105,11 +120,17 @@ export default class PaymentReminderScheduler extends BaseScheduler {
           this.logInfo(
             `Skipping invoice ${invoice.invoice_number} (not alternate day)`,
           );
-          continue;
+          return false;
         }
+        return true;
+      });
 
-        await this.sendPaymentReminder(invoice, 0);
-      }
+      const shopMap = await this.getShopMapForInvoices(invoicesToProcess);
+      await Promise.all(
+        invoicesToProcess.map((invoice) =>
+          this.sendPaymentReminder(invoice, 0, shopMap[String(invoice.shop_id)]),
+        ),
+      );
     } catch (error) {
       this.logError("processOverdueReminders", error);
     }
@@ -119,8 +140,9 @@ export default class PaymentReminderScheduler extends BaseScheduler {
    * Send payment reminder
    * @param {Object} invoice - Invoice object
    * @param {number} daysAfterInvoice - Days after invoice date
+   * @param {Object} cachedShop - Preloaded shop object
    */
-  async sendPaymentReminder(invoice, daysAfterInvoice) {
+  async sendPaymentReminder(invoice, daysAfterInvoice, cachedShop = null) {
     try {
       // Validate invoice structure
       if (!invoice.customer_id) {
@@ -163,17 +185,17 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       }
 
       // Prepare template variables for payment reminder
-      const variables = this.getPaymentTemplateVariables(invoice);
+      const variables = await this.getPaymentTemplateVariables(invoice, cachedShop);
 
-     let statusText;
+      let statusText;
 
-     if (daysAfterInvoice === 0) {
-       statusText = "due today";
-     } else if (daysAfterInvoice > 0) {
-       statusText = `${daysAfterInvoice} days before due`;
-     } else {
-       statusText = "overdue";
-     }
+      if (daysAfterInvoice === 0) {
+        statusText = "due today";
+      } else if (daysAfterInvoice > 0) {
+        statusText = `${daysAfterInvoice} days before due`;
+      } else {
+        statusText = "overdue";
+      }
       // Create reminder log
       const reminderLog = await this.createReminderLog({
         entityId: invoice.invoice_id,
@@ -232,11 +254,12 @@ export default class PaymentReminderScheduler extends BaseScheduler {
   /**
    * Get template variables for payment reminders
    * @param {Object} invoice - Invoice object
+   * @param {Object} cachedShop - Preloaded shop object
    * @returns {Object} - Template variables
    */
-  getPaymentTemplateVariables(invoice) {
-    // Template payment_reminders has 4 params:
-    // {{1}}: Amount, {{2}}: Invoice number, {{3}}: Due date, {{4}}: Shop name
+  async getPaymentTemplateVariables(invoice, cachedShop = null) {
+    const shop = cachedShop || (invoice.shop_id ? await Shop.findById(invoice.shop_id) : null);
+
     return {
       1:
         typeof invoice.total_amount === "number"
@@ -244,7 +267,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
           : String(invoice.total_amount || "0"),
       2: invoice.invoice_number || "N/A",
       3: formatDateForMessage(invoice.due_date),
-      4: process.env.SHOP_NAME || "Our Shop",
+      4: getShopName(shop),
     };
   }
 

@@ -1,8 +1,12 @@
 import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import InvoiceItem from "../../models/InvoiceItem.js";
-import { createDateRange } from "../core/utils.js";
-
+import Shop from "../../models/Shop.js";
+import {
+  createDateRange,
+  getShopName,
+  getShopContactInfo,
+} from "../core/utils.js";
 /**
  * Warranty-specific reminder scheduler
  * Handles warranty expiry and expired reminders
@@ -11,6 +15,29 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
   constructor() {
     super();
     this.messageSender = new MessageSender();
+  }
+
+  /**
+   * Preload shops for a set of invoice items to avoid N+1 queries
+   * @param {Array} invoiceItems
+   * @returns {Object} shopMap by shop_id
+   */
+  async getShopMapForInvoiceItems(invoiceItems) {
+    const shopIds = [
+      ...new Set(
+        invoiceItems
+          .map((item) => item.invoice_id.shop_id)
+          .filter((shopId) => shopId != null),
+      ),
+    ];
+
+    if (shopIds.length === 0) return {};
+
+    const shops = await Shop.find({ _id: { $in: shopIds } });
+    return shops.reduce((map, shop) => {
+      map[String(shop._id)] = shop;
+      return map;
+    }, {});
   }
 
   /**
@@ -58,9 +85,12 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
           `Found ${expiringWarranties.length} warranties expiring in ${days} days`,
         );
 
-        for (const item of expiringWarranties) {
-          await this.sendWarrantyExpiryReminder(item, days);
-        }
+        const shopMap = await this.getShopMapForInvoiceItems(expiringWarranties);
+        await Promise.all(
+          expiringWarranties.map((item) =>
+            this.sendWarrantyExpiryReminder(item, days, shopMap[String(item.invoice_id.shop_id)]),
+          ),
+        );
       }
     } catch (error) {
       this.logError("processWarrantyExpiry", error);
@@ -91,9 +121,12 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
         `Found ${expiredWarranties.length} recently expired warranties`,
       );
 
-      for (const item of expiredWarranties) {
-        await this.sendWarrantyExpiredReminder(item);
-      }
+      const shopMap = await this.getShopMapForInvoiceItems(expiredWarranties);
+      await Promise.all(
+        expiredWarranties.map((item) =>
+          this.sendWarrantyExpiredReminder(item, shopMap[String(item.invoice_id.shop_id)]),
+        ),
+      );
     } catch (error) {
       this.logError("processExpiredWarranties", error);
     }
@@ -103,8 +136,9 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
    * Send warranty expiry reminder
    * @param {Object} invoiceItem - Invoice item object
    * @param {number} daysUntilExpiry - Days until warranty expires
+   * @param {Object} cachedShop - Preloaded shop object
    */
-  async sendWarrantyExpiryReminder(invoiceItem, daysUntilExpiry) {
+  async sendWarrantyExpiryReminder(invoiceItem, daysUntilExpiry, cachedShop = null) {
     try {
       // Validate invoice item structure
       if (!invoiceItem.invoice_id?.customer_id) {
@@ -154,6 +188,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       const variables = await this.getWarrantyTemplateVariables(
         invoiceItem,
         daysUntilExpiry,
+        cachedShop,
       );
 
       // Create reminder log
@@ -202,8 +237,9 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
   /**
    * Send warranty expired reminder
    * @param {Object} invoiceItem - Invoice item object
+   * @param {Object} cachedShop - Preloaded shop object
    */
-  async sendWarrantyExpiredReminder(invoiceItem) {
+  async sendWarrantyExpiredReminder(invoiceItem, cachedShop = null) {
     try {
       // Validate invoice item structure
       if (!invoiceItem.invoice_id?.customer_id) {
@@ -250,7 +286,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
 
       // Prepare template variables for warranty_expired
       // Based on Hindi template: customer_name, product_name, contact_info, shop_name
-      const variables = await this.getWarrantyTemplateVariables(invoiceItem);
+      const variables = await this.getWarrantyTemplateVariables(invoiceItem, null, cachedShop);
 
       // Create reminder log
       const reminderLog = await this.createReminderLog({
@@ -297,13 +333,19 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
    * Get template variables for warranty reminders
    * @param {Object} invoiceItem - Invoice item object
    * @param {number} daysUntilExpiry - Days until expiry (only for expiring reminders)
+   * @param {Object} cachedShop - Preloaded shop object
    * @returns {Object} - Template variables
    */
-  async getWarrantyTemplateVariables(invoiceItem, daysUntilExpiry = null) {
+  async getWarrantyTemplateVariables(invoiceItem, daysUntilExpiry = null, cachedShop = null) {
     const customer = invoiceItem.invoice_id.customer_id;
-    const shop = invoiceItem.invoice_id.shop_id;
-    const shopName = shop?.shop_name || process.env.SHOP_NAME || "Our Shop";
-    const contactInfo = shop?.phone || process.env.SHOP_CONTACT || "Contact us";
+    const shop =
+      cachedShop ||
+      (invoiceItem.invoice_id.shop_id ? await Shop.findById(invoiceItem.invoice_id.shop_id) : null);
+    const shopName = getShopName(shop);
+    const contactInfo =
+      getShopContactInfo(shop) ||
+      process.env.SHOP_CONTACT ||
+      "Contact us";
 
     if (daysUntilExpiry !== null) {
       // For warranty_expiring template: customer_name, product_name, days_remaining, contact_info, shop_name

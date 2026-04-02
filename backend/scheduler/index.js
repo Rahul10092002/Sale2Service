@@ -50,7 +50,7 @@ export default class SchedulerService {
 
     // Run daily at 7 AM IST for service schedules
     // 1:30 AM UTC = 7:00 AM IST (UTC+5:30)
-    cron.schedule("30 8 * * *", async () => {
+    cron.schedule("30 1 * * *", async () => {
       console.log("[SchedulerService] Running daily service reminders...");
       await this.serviceScheduler.processServiceReminders();
     });

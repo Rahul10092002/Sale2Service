@@ -31,6 +31,7 @@ const PrivateRoute = ({ children, allowedRoles = [], title }) => {
       [ROUTES.USERS]: "Users",
       [ROUTES.LOGS]: "Logs",
       [ROUTES.SETTINGS]: "Settings",
+      [ROUTES.FESTIVAL_SCHEDULE]: "Festival Schedule",
     };
 
     // Check for exact matches first

@@ -24,6 +24,7 @@ export const ROUTES = {
   WARRANTY: "/warranty",
   SERVICES: "/services",
   LOGS: "/logs",
+  FESTIVAL_SCHEDULE: "/festival-schedule",
   SETTINGS: "/settings",
 };
 

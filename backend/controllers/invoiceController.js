@@ -669,7 +669,9 @@ export default class InvoiceController {
         _id: id,
         shop_id: user.shopId,
         deleted_at: null,
-      }).populate("customer_id");
+      })
+        .populate("customer_id")
+        .populate("invoice_items");
 
       if (!invoice) {
         return res
@@ -711,26 +713,59 @@ export default class InvoiceController {
         });
       }
 
-      // Template variables matching payment_reminders template (4 params):
-      // {{1}}: Amount due, {{2}}: Invoice number, {{3}}: Due date, {{4}}: Shop name
-      const vars = {
-        1:
-          typeof invoice.amount_due === "number"
-            ? invoice.amount_due.toFixed(2)
-            : String(invoice.amount_due || "0"),
-        2: invoice.invoice_number || "N/A",
-        3: formatDateForMessage(invoice.due_date),
-        4: shop.shop_name_hi || shop.shop_name || "",
-      };
+      // Template variables matching payment_reminders template (6 params):
+      // {{1}}: Pending amount, {{2}}: Invoice number, {{3}}: Due date,
+      // {{4}}: Product serial number, {{5}}: Shop contact info, {{6}}: Shop name
+      const serialNumber = invoice.invoice_items?.[0]?.serial_number || "N/A";
+      const shopContact = shop.phone || "";
+
+      // Determine if invoice is overdue (past due date)
+      const isOverdue =
+        invoice.due_date && new Date() > new Date(invoice.due_date);
+      const templateName = isOverdue ? "payment_missed" : "payment_reminders";
+
+      let vars;
+      if (templateName === "payment_missed") {
+        // payment_missed template variables:
+        // {{1}}: Pending amount, {{2}}: Due date (missed date),
+        // {{3}}: Invoice number, {{4}}: Product serial number,
+        // {{5}}: Shop contact info, {{6}}: Shop name
+        vars = {
+          1:
+            typeof invoice.amount_due === "number"
+              ? invoice.amount_due.toFixed(2)
+              : String(invoice.amount_due || "0"),
+          2: formatDateForMessage(invoice.due_date),
+          3: invoice.invoice_number || "N/A",
+          4: serialNumber,
+          5: shopContact,
+          6: shop.shop_name_hi || shop.shop_name || "",
+        };
+      } else {
+        // payment_reminders template variables:
+        // {{1}}: Pending amount, {{2}}: Invoice number, {{3}}: Due date,
+        // {{4}}: Product serial number, {{5}}: Shop contact info, {{6}}: Shop name
+        vars = {
+          1:
+            typeof invoice.amount_due === "number"
+              ? invoice.amount_due.toFixed(2)
+              : String(invoice.amount_due || "0"),
+          2: invoice.invoice_number || "N/A",
+          3: serialNumber,
+          4: formatDateForMessage(invoice.due_date),
+          5: shopContact,
+          6: shop.shop_name_hi || shop.shop_name || "",
+        };
+      }
 
       const msgConfig = {
-        templateName: "payment_reminders",
+        templateName: templateName,
         to: phoneNumber,
         components: vars,
-        campaignName: "payment_reminders",
+        campaignName: templateName,
         hospitalId: shop._id,
         userName: customer.full_name || "",
-        messageType: "payment_reminders",
+        messageType: templateName,
       };
 
       const sendResp = await sendWhatsappMessageViaMSG91(msgConfig);
@@ -1002,7 +1037,10 @@ export default class InvoiceController {
         .populate("customer_id", "full_name whatsapp_number customer_type")
         .populate("created_by", "name email")
         // populate invoice items (virtual) so frontend can show item counts
-        .populate({ path: "invoice_items", select: "product_name quantity" })
+        .populate({
+          path: "invoice_items",
+          select: "product_name quantity serial_number",
+        })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit));

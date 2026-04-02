@@ -51,6 +51,12 @@ const navItems = [
     path: ROUTES.LOGS,
   },
   {
+    key: "Schedules",
+    label: "Schedules",
+    icon: <Wrench className="w-5 h-5" />,
+    path: ROUTES.FESTIVAL_SCHEDULE,
+  },
+  {
     key: "settings",
     label: "Settings",
     icon: <Settings className="w-5 h-5" />,

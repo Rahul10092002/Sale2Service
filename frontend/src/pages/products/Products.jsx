@@ -356,11 +356,11 @@ const getWarrantyInfo = (product) => {
             ) : (
               <div className="">
                 {/* Desktop Header */}
-                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 text-gray-500 text-sm font-semibold bg-gray-200 p-4 rounded-t-lg">
-                  <div>S No.</div>
-                  <div>Product Details</div>
-                  <div>Info & Service</div>
-                  <div>Customer & Invoice</div>
+                <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-4 text-gray-500 text-sm font-semibold bg-gray-200 p-4 rounded-t-lg">
+                  <div>#</div>
+                  <div>Product</div>
+                  <div>Warranty & Service</div>
+                  <div>Customer & Billing</div>
                   <div>Actions</div>
                 </div>
 
@@ -573,7 +573,7 @@ const getWarrantyInfo = (product) => {
                     </div>
 
                     {/* ── Desktop Row ── */}
-                    <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 items-start p-4">
+                    <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-4 items-start p-4">
                       <div className="text-gray-600 pt-1">
                         {(page - 1) * pagination.limit + index + 1}
                       </div>
@@ -587,148 +587,96 @@ const getWarrantyInfo = (product) => {
                           </div>
                         </div>
                         <div>
-                          <div className="font-bold text-gray-800 text-base capitalize">
+                          <div className="font-semibold text-gray-900">
                             {product.product_name}
                           </div>
-                          <div className="text-sm text-gray-600">
-                            <p>Serial: {product.serial_number}</p>
-                            <p>
-                              {product.company} · {product.model_number}
-                            </p>
+
+                          <div className="text-xs text-gray-500">
+                            S/N:{" "}
+                            <span className="font-medium">
+                              {product.serial_number}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-gray-400">
+                            {product.company} · {product.model_number}
                           </div>
                         </div>
                       </div>
-                      <div className="text-gray-600">
-                        <div className="text-sm">
-                          <p>Price: {formatCurrency(product.selling_price)}</p>
-                          {(() => {
-                            const w = getWarrantyInfo(product);
-                            if (!w) return <p>No Warranty</p>;
+                      <div className="text-sm text-gray-600">
+                        {/* Price */}
+                        <p className="font-medium">₹{product.selling_price}</p>
 
-                            return (
-                              <div className="mt-1">
-                                {/* Top Row */}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-semibold text-gray-800">
-                                    {product.warranty_duration_months}M
-                                  </span>
+                        {/* Warranty */}
+                        {(() => {
+                          const w = getWarrantyInfo(product);
+                          if (!w) return <p className="text-xs">No Warranty</p>;
 
-                                 
-
-                                  <span
-                                    className={`text-[10px] px-2 py-0.5 rounded ${
-                                      w.isExpired
-                                        ? "bg-red-100 text-red-600"
-                                        : w.isExpiringSoon
-                                          ? "bg-yellow-100 text-yellow-600"
-                                          : "bg-green-100 text-green-600"
-                                    }`}
-                                  >
-                                    {w.isExpired
-                                      ? "Expired"
-                                      : w.isExpiringSoon
-                                        ? "Soon"
-                                        : "Active"}
-                                  </span>
-                                </div>
-
-                                {/* Dates */}
-                                <div className="text-xs text-gray-500">
-                                  {w.start.toLocaleDateString("en-IN")} →{" "}
-                                  {w.end.toLocaleDateString("en-IN")}
-                                </div>
-
-                                {/* Remaining */}
-                                <div
-                                  className={`text-xs font-medium ${
+                          return (
+                            <div className="mt-1 text-xs">
+                              <p>
+                                {product.warranty_duration_months}M ·
+                                <span
+                                  className={`ml-1 font-medium ${
                                     w.isExpired
                                       ? "text-red-500"
                                       : "text-green-600"
                                   }`}
                                 >
                                   {w.isExpired
-                                    ? `${Math.abs(w.diffDays)}d ago`
+                                    ? "Expired"
                                     : `${w.diffDays}d left`}
-                                </div>
+                                </span>
+                              </p>
+                            </div>
+                          );
+                        })()}
 
-                                {/* Pro warranty */}
-                                {product.pro_warranty_end_date && (
-                                  <div className="text-[10px] text-indigo-600">
-                                    Pro:{" "}
-                                    {new Date(
-                                      product.pro_warranty_end_date,
-                                    ).toLocaleDateString("en-IN")}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                          <div className="flex items-center gap-2 mt-1">
-                            <ServiceBadge
-                              itemId={product._id}
-                              invoiceId={product.invoice_id}
-                              product={product}
-                              hasService={product.hasServicePlan}
-                              nextServiceDate={product.nextServiceDate}
-                            />
-                            {product.hasServicePlan && (
-                              <button
-                                onClick={() => setShowServiceTable(product)}
-                                className="p-1 rounded-md hover:bg-blue-100"
-                                title="View Service Table"
-                              >
-                                <Table className="w-3 h-3 text-blue-600" />
-                              </button>
-                            )}
-                          </div>
+                        {/* Service */}
+                        <div className="mt-1">
+                          <ServiceBadge
+                            itemId={product._id}
+                            invoiceId={product.invoice_id}
+                            product={product}
+                            hasService={product.hasServicePlan}
+                            nextServiceDate={product.nextServiceDate}
+                          />
+
+                          {product.hasServicePlan && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Next:{" "}
+                              {new Date(
+                                product.nextServiceDate,
+                              ).toLocaleDateString("en-IN")}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <div className="text-sm text-gray-600">
-                        {product.customer ? (
-                          <div>
-                            <div className="flex items-center gap-1 font-medium text-gray-800">
-                              <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                              <span className="truncate">
-                                {product.customer.full_name}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-500 mt-0.5">
-                              <Phone className="w-3 h-3 shrink-0" />
-                              <span>{product.customer.whatsapp_number}</span>
-                            </div>
-                            {product.invoice && (
-                              <div className="mt-1">
-                                <div className="flex items-center gap-1">
-                                  <FileText className="w-3 h-3 text-indigo-400 shrink-0" />
-                                  <span className="font-mono text-xs text-indigo-700">
-                                    {product.invoice.invoice_number}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-gray-400 mt-0.5">
-                                  {new Date(
-                                    product.invoice.invoice_date,
-                                  ).toLocaleDateString("en-IN")}
-                                  {" · "}
-                                  <span
-                                    className={`font-medium ${
-                                      product.invoice.payment_status === "PAID"
-                                        ? "text-green-600"
-                                        : product.invoice.payment_status ===
-                                            "PARTIAL"
-                                          ? "text-yellow-600"
-                                          : "text-red-500"
-                                    }`}
-                                  >
-                                    {product.invoice.payment_status}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-xs">
-                            No customer data
-                          </span>
+                      <div className="text-sm">
+                        <p className="font-medium">
+                          {product.customer?.full_name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {product.customer?.whatsapp_number}
+                        </p>
+
+                        {product.invoice && (
+                          <>
+                            <p className="text-xs font-mono text-indigo-600 mt-1">
+                              {product.invoice.invoice_number}
+                            </p>
+
+                            <p
+                              className={`text-xs font-medium ${
+                                product.invoice.payment_status === "PAID"
+                                  ? "text-green-600"
+                                  : "text-red-500"
+                              }`}
+                            >
+                              {product.invoice.payment_status} · ₹
+                              {product.invoice.amount_due}
+                            </p>
+                          </>
                         )}
                       </div>
                       <div>

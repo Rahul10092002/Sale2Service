@@ -105,7 +105,7 @@ const InvoiceList = () => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     }).format(amount || 0);
   };
   const getPaymentStatusColor = (status) => {
@@ -306,6 +306,11 @@ const InvoiceList = () => {
                             <p className="font-bold text-gray-900 leading-tight truncate">
                               {customerName}
                             </p>
+                            {invoice.customer_id?.whatsapp_number && (
+                              <span className="text-xs font-mono text-gray-600 mt-0.5">
+                                {invoice.customer_id.whatsapp_number}
+                              </span>
+                            )}
                             <p className="text-xs font-mono text-indigo-600 mt-0.5">
                               {invoice.invoice_number}
                             </p>
@@ -329,7 +334,9 @@ const InvoiceList = () => {
                                     key={i}
                                     className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full"
                                   >
-                                    {item.product_name} ×{item.quantity}
+                                    {item.product_name}
+                                    {`(${item?.serial_number})`} ×
+                                    {item.quantity}
                                   </span>
                                 ))}
                               {invoice.invoice_items.length > 3 && (
@@ -342,7 +349,7 @@ const InvoiceList = () => {
                         )}
 
                         {/* Amount + Date chips */}
-                        <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div className="grid grid-cols-3 gap-2 mb-3">
                           <div className="bg-gray-50 rounded-lg px-3 py-2">
                             <p className="text-xs text-gray-400 mb-0.5">
                               Total Amount
@@ -359,25 +366,14 @@ const InvoiceList = () => {
                               {formatDate(invoice.invoice_date)}
                             </p>
                           </div>
-                        </div>
-
-                        {/* Payment mode + discount row */}
-                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          {invoice.payment_mode && (
-                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                              {invoice.payment_mode}
-                            </span>
-                          )}
-                          {invoice.discount > 0 && (
-                            <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">
-                              Discount: {formatCurrency(invoice.discount)}
-                            </span>
-                          )}
-                          {invoice.customer_id?.whatsapp_number && (
-                            <span className="text-xs text-gray-400">
-                              {invoice.customer_id.whatsapp_number}
-                            </span>
-                          )}
+                          <div className="bg-gray-50 rounded-lg px-3 py-2">
+                            <p className="text-xs text-gray-400 mb-0.5">
+                              Due Date
+                            </p>
+                            <p className="text-xs font-medium text-gray-700">
+                              {formatDate(invoice.due_date)}
+                            </p>
+                          </div>
                         </div>
 
                         <button
@@ -439,6 +435,7 @@ const InvoiceList = () => {
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
                                     <span className="truncate text-gray-700">
                                       {item.product_name}
+                                      {`(${item?.serial_number})`}
                                     </span>
                                     <span className="text-gray-400 shrink-0">
                                       ×{item.quantity}
@@ -461,7 +458,6 @@ const InvoiceList = () => {
                         {/* Payment Details column */}
                         <div className="text-gray-600">
                           <div className="text-sm">
-                            <p>Payment Mode: {invoice.payment_mode || ""}</p>
                             <p>
                               Total Amount:{" "}
                               {formatCurrency(invoice.total_amount)}
@@ -474,9 +470,10 @@ const InvoiceList = () => {
                                 {invoice.payment_status || "UNPAID"}
                               </span>
                             </p>
-                            {invoice.discount > 0 && (
-                              <p className="text-green-600">
-                                Discount: {formatCurrency(invoice.discount)}
+                            {invoice.due_date && (
+                              <p className={`text-red-600 text-sm ${new Date(invoice.due_date) < new Date() ? "font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? "text-red-600" : "text-gray-600"}`}>
+                                Due Date:{" "}
+                                {new Date(invoice.due_date).toLocaleDateString("en-IN") || "N/A"}
                               </p>
                             )}
                           </div>

@@ -29,6 +29,7 @@ import Settings from "../pages/settings/Settings.jsx";
 
 // Dynamic import for Logs component using React.lazy()
 import { lazy, Suspense } from "react";
+import FestivalSchedule from "../pages/festival/Festival.jsx";
 
 // Lazy load the Logs component to avoid build issues
 const LogsPage = lazy(() => import("../pages/logs/Logs.jsx"));
@@ -202,6 +203,14 @@ const AppRoutes = () => {
         element={
           <PrivateRoute>
             <LogsPageWrapper />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path={ROUTES.FESTIVAL_SCHEDULE}
+        element={
+          <PrivateRoute>
+            <FestivalSchedule />
           </PrivateRoute>
         }
       />

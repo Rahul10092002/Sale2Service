@@ -1,6 +1,7 @@
 import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import Invoice from "../../models/Invoice.js";
+import InvoiceItem from "../../models/InvoiceItem.js";
 import { createDateRange, formatDateForMessage } from "../core/utils.js";
 import Shop from "../../models/Shop.js";
 import { getShopName } from "../core/utils.js";
@@ -83,7 +84,11 @@ export default class PaymentReminderScheduler extends BaseScheduler {
         const shopMap = await this.getShopMapForInvoices(pendingInvoices);
         await Promise.all(
           pendingInvoices.map((invoice) =>
-            this.sendPaymentReminder(invoice, days, shopMap[String(invoice.shop_id)]),
+            this.sendPaymentReminder(
+              invoice,
+              days,
+              shopMap[String(invoice.shop_id)],
+            ),
           ),
         );
       }
@@ -128,7 +133,12 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       const shopMap = await this.getShopMapForInvoices(invoicesToProcess);
       await Promise.all(
         invoicesToProcess.map((invoice) =>
-          this.sendPaymentReminder(invoice, 0, shopMap[String(invoice.shop_id)]),
+          this.sendPaymentReminder(
+            invoice,
+            -1, // overdue marker
+            shopMap[String(invoice.shop_id)],
+            "payment_missed",
+          ),
         ),
       );
     } catch (error) {
@@ -142,7 +152,12 @@ export default class PaymentReminderScheduler extends BaseScheduler {
    * @param {number} daysAfterInvoice - Days after invoice date
    * @param {Object} cachedShop - Preloaded shop object
    */
-  async sendPaymentReminder(invoice, daysAfterInvoice, cachedShop = null) {
+  async sendPaymentReminder(
+    invoice,
+    daysAfterInvoice,
+    cachedShop = null,
+    templateName = null,
+  ) {
     try {
       // Validate invoice structure
       if (!invoice.customer_id) {
@@ -157,7 +172,8 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       }
 
       const customer = invoice.customer_id;
-      const templateName = this.getPaymentTemplateByDays(daysAfterInvoice);
+      const resolvedTemplateName =
+        templateName || this.getPaymentTemplateByDays(daysAfterInvoice);
 
       // Check if reminder already sent
       const alreadySent = await this.isReminderAlreadySent(
@@ -185,7 +201,11 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       }
 
       // Prepare template variables for payment reminder
-      const variables = await this.getPaymentTemplateVariables(invoice, cachedShop);
+      const variables = await this.getPaymentTemplateVariables(
+        invoice,
+        cachedShop,
+        resolvedTemplateName,
+      );
 
       let statusText;
 
@@ -209,13 +229,13 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       // Send WhatsApp message
       const result = await this.messageSender.sendTemplateMessage({
         to: phoneValidation.formattedNumber,
-        templateName: templateName,
+        templateName: resolvedTemplateName,
         variables: variables,
         reminderLogId: reminderLog._id,
         metadata: {
-          campaignName: "payment_reminders",
+          campaignName: resolvedTemplateName,
           customerName: customer.full_name,
-          messageType: "payment_reminders",
+          messageType: resolvedTemplateName,
         },
       });
 
@@ -257,17 +277,51 @@ export default class PaymentReminderScheduler extends BaseScheduler {
    * @param {Object} cachedShop - Preloaded shop object
    * @returns {Object} - Template variables
    */
-  async getPaymentTemplateVariables(invoice, cachedShop = null) {
-    const shop = cachedShop || (invoice.shop_id ? await Shop.findById(invoice.shop_id) : null);
+  async getPaymentTemplateVariables(
+    invoice,
+    cachedShop = null,
+    templateName = "payment_reminders",
+  ) {
+    const shop =
+      cachedShop ||
+      (invoice.shop_id ? await Shop.findById(invoice.shop_id) : null);
+
+    if (!invoice) {
+      throw new Error("Invoice is required for payment template variables");
+    }
+
+    const invoiceItems = await InvoiceItem.find({
+      invoice_id: invoice._id,
+      deleted_at: null,
+    }).select("serial_number");
+
+    const serialNumber = invoiceItems?.[0]?.serial_number || "N/A";
+    const shopContact = shop?.phone ? shop.phone : "";
+
+    if (templateName === "payment_missed") {
+      return {
+        1:
+          typeof invoice.amount_due === "number"
+            ? invoice.amount_due.toFixed(2)
+            : String(invoice.amount_due || "0"),
+        2: formatDateForMessage(invoice.due_date),
+        3: invoice.invoice_number || "N/A",
+        4: serialNumber,
+        5: shopContact,
+        6: shop?.shop_name_hi || shop?.shop_name || "",
+      };
+    }
 
     return {
       1:
-        typeof invoice.total_amount === "number"
-          ? invoice.total_amount.toFixed(2)
-          : String(invoice.total_amount || "0"),
+        typeof invoice.amount_due === "number"
+          ? invoice.amount_due.toFixed(2)
+          : String(invoice.amount_due || "0"),
       2: invoice.invoice_number || "N/A",
-      3: formatDateForMessage(invoice.due_date),
-      4: getShopName(shop),
+      3: serialNumber,
+      4: formatDateForMessage(invoice.due_date),
+      5: shopContact,
+      6: shop?.shop_name_hi || shop?.shop_name || "",
     };
   }
 

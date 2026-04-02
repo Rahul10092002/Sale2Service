@@ -8,6 +8,7 @@ import ServicePlan from "../models/ServicePlan.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
 import InvoiceItem from "../models/InvoiceItem.js";
 import Invoice from "../models/Invoice.js";
+import FestivalSchedule from "../models/FestivalSchedule.js";
 import {
   createDateRange,
   getISTDateParts,
@@ -34,7 +35,9 @@ const getSummary = async () => {
 
   // Get today's IST parts for wishes
   const todayISTParts = getISTTodayParts();
-  console.log(`Today IST month/day: ${todayISTParts.month}/${todayISTParts.date}`);
+  console.log(
+    `Today IST month/day: ${todayISTParts.month}/${todayISTParts.date}`,
+  );
 
   const todayRange = createDateRange(0);
   const thirtyDaysRange = createDateRange(30);
@@ -67,6 +70,37 @@ const getSummary = async () => {
     { $match: { month: todayISTParts.month, day: todayISTParts.date } },
   ]);
 
+  // 🎉 Today's Festival Wishes
+  console.log(`\n🎉 Today's Festival Wishes:`);
+
+  const now = new Date();
+
+  const year = now.getUTCFullYear(); // ✅ FIX
+  const month = todayISTParts.month;
+  const date = todayISTParts.date;
+
+ 
+ 
+ 
+
+ const todaysFestivals = await FestivalSchedule.find({
+   schedule_date: {
+     $gte: todayRange.start,
+     $lt: todayRange.end,
+   },
+ });
+  console.log(`  festivals: ${todaysFestivals.length}`);
+
+  for (const fest of todaysFestivals) {
+    const customerCount = await Customer.countDocuments({
+      shop_id: fest.shop_id,
+      deleted_at: null,
+    });
+
+    console.log(
+      `    - ${fest.festival_name} | shop=${fest.shop_id} | customers=${customerCount}`,
+    );
+  }
   console.log(`\n🎂 Today's Wishes:`);
   console.log(`  birthday: ${birthdayCustomersToday.length}`);
   birthdayCustomersToday.forEach((c) =>
@@ -157,14 +191,16 @@ const getSummary = async () => {
   });
 
   console.log(`  Total services to process: ${servicesToday.length}`);
-  
+
   Object.entries(groupedByStageToday).forEach(([stage, services]) => {
     console.log(`  Stage [${stage}]: ${services.length}`);
     services.forEach((s) => {
       const customer = s.customer;
       const invoiceItem = s.invoiceItem;
       const linkStatus = s.servicePlan ? "linked" : "orphaned";
-      const retryInfo = s.retry_count ? ` (retry ${s.retry_count}/${s.max_retries || 3})` : "";
+      const retryInfo = s.retry_count
+        ? ` (retry ${s.retry_count}/${s.max_retries || 3})`
+        : "";
       console.log(
         `    - ${s.service_schedule_id} [${linkStatus}${retryInfo}]: customer=${customer?.full_name || "unknown"}, product=${invoiceItem?.product_name || "unknown"}, scheduled=${s.scheduled_date.toISOString()}, next_reminder=${s.next_reminder_at?.toISOString() || "none"}`,
       );
@@ -264,7 +300,10 @@ const getSummary = async () => {
     const items = await InvoiceItem.aggregate([
       {
         $match: {
-          warranty_end_date: { $gte: todayRangeWarranty.start, $lt: todayRangeWarranty.end },
+          warranty_end_date: {
+            $gte: todayRangeWarranty.start,
+            $lt: todayRangeWarranty.end,
+          },
           deleted_at: null,
         },
       },
@@ -308,7 +347,6 @@ const getSummary = async () => {
   }
 
   printSection("TOMORROW RUN");
- 
 
   // 1. Wishes (Birthday + Anniversary) for tomorrow
   const ot = getTomorrowISTParts();
@@ -340,7 +378,32 @@ const getSummary = async () => {
     },
     { $match: { month: ot.month, day: ot.date } },
   ]);
+ 
 
+
+
+
+  const tomorrowRange = createDateRange(1);
+
+  const tomorrowFestivals = await FestivalSchedule.find({
+    schedule_date: {
+      $gte: tomorrowRange.start,
+      $lt: tomorrowRange.end,
+    },
+  });
+
+  console.log(`  festivals: ${tomorrowFestivals.length}`);
+
+  for (const fest of tomorrowFestivals) {
+    const customerCount = await Customer.countDocuments({
+      shop_id: fest.shop_id,
+      deleted_at: null,
+    });
+
+    console.log(
+      `    - ${fest.festival_name} | shop=${fest.shop_id} | customers=${customerCount}`,
+    );
+  }
   console.log("\n🎂 Wishes (tomorrow):");
   console.log(`  birthday: ${birthdayCustomers.length}`);
   birthdayCustomers.forEach((c) =>
@@ -352,7 +415,7 @@ const getSummary = async () => {
   );
 
   // 🛠 Services (tomorrow)
-const tomorrowEnd = createDateRange(1).end; 
+  const tomorrowEnd = createDateRange(1).end;
 
   console.log(`\n🛠 Service reminders (tomorrow run preview - stage-based):`);
   const servicesToProcess = await ServiceSchedule.aggregate([
@@ -430,14 +493,16 @@ const tomorrowEnd = createDateRange(1).end;
   });
 
   console.log(`  Total services to process: ${servicesToProcess.length}`);
-  
+
   Object.entries(groupedByStage).forEach(([stage, services]) => {
     console.log(`  Stage [${stage}]: ${services.length}`);
     services.forEach((s) => {
       const customer = s.customer;
       const invoiceItem = s.invoiceItem;
       const linkStatus = s.servicePlan ? "linked" : "orphaned";
-      const retryInfo = s.retry_count ? ` (retry ${s.retry_count}/${s.max_retries || 3})` : "";
+      const retryInfo = s.retry_count
+        ? ` (retry ${s.retry_count}/${s.max_retries || 3})`
+        : "";
       console.log(
         `    - ${s.service_schedule_id} [${linkStatus}${retryInfo}]: customer=${customer?.full_name || "unknown"}, product=${invoiceItem?.product_name || "unknown"}, scheduled=${s.scheduled_date.toISOString()}, next_reminder=${s.next_reminder_at?.toISOString() || "none"}`,
       );
@@ -455,7 +520,10 @@ const tomorrowEnd = createDateRange(1).end;
     const items = await InvoiceItem.aggregate([
       {
         $match: {
-          warranty_end_date: { $gte: tomorrowRangeForDays.start, $lt: tomorrowRangeForDays.end },
+          warranty_end_date: {
+            $gte: tomorrowRangeForDays.start,
+            $lt: tomorrowRangeForDays.end,
+          },
           deleted_at: null,
         },
       },
@@ -507,7 +575,10 @@ const tomorrowEnd = createDateRange(1).end;
   const dueTomorrowInvoices = await Invoice.aggregate([
     {
       $match: {
-        due_date: { $gte: tomorrowRangePayment.start, $lt: tomorrowRangePayment.end },
+        due_date: {
+          $gte: tomorrowRangePayment.start,
+          $lt: tomorrowRangePayment.end,
+        },
         payment_status: { $in: ["UNPAID", "PARTIAL"] },
         deleted_at: null,
       },
@@ -611,7 +682,7 @@ const tomorrowEnd = createDateRange(1).end;
   }
 
   console.log(`✅ Cleanup complete: ${deletedCount} orphaned records deleted`);
-};
+};;;;
 
 const run = async () => {
   try {

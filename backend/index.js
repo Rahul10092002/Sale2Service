@@ -14,6 +14,7 @@ import dashboardRouter from "./routes/dashboard.js";
 import fileUploadRouter from "./routes/fileUpload.js";
 import logsRouter from "./routes/logs.js";
 import SchedulerService from "./scheduler/index.js";
+import { festivalScheduleRouter } from "./routes/festivalSchedule.js";
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use("/v1/services", serviceRouter);
 app.use("/v1/dashboard", dashboardRouter);
 app.use("/v1/files", fileUploadRouter);
 app.use("/v1/logs", logsRouter);
+app.use("/v1/festival-schedule", festivalScheduleRouter);
 // Dev-only debug endpoints
 app.use("/v1/debug", debugRouter);
 

@@ -1,6 +1,7 @@
 import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import Customer from "../../models/Customer.js";
+import FestivalSchedule from "../../models/FestivalSchedule.js";
 import Shop from "../../models/Shop.js";
 import {
   getISTTodayParts,
@@ -51,6 +52,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
       await Promise.all([
         this.processBirthdayWishes(),
         this.processAnniversaryWishes(),
+        this.processFestivalWishes(),
       ]);
 
       this.logInfo("Wishes reminders processing completed");
@@ -252,7 +254,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         customer.customer_id,
         "CUSTOMER",
         templateName,
-        24, // Only check last 24 hours for wishes
+        24,
       );
 
       if (alreadySent) {
@@ -323,6 +325,145 @@ export default class WishesReminderScheduler extends BaseScheduler {
       }
     } catch (error) {
       this.logError("sendAnniversaryWish", error, {
+        customerId: customer.customer_id,
+      });
+    }
+  }
+  async processFestivalWishes() {
+    try {
+      this.logInfo("Processing festival wishes...");
+
+      const { year, month, date } = getISTTodayParts();
+
+      // Create IST start & end of day
+      const startOfDay = new Date(Date.UTC(year, month - 1, date, 0, 0, 0));
+      const endOfDay = new Date(Date.UTC(year, month - 1, date, 23, 59, 59));
+
+      // Find today's scheduled festivals
+      const festivals = await FestivalSchedule.find({
+        schedule_date: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      });
+
+      this.logInfo(`Found ${festivals.length} festival schedules for today`);
+
+      for (const festival of festivals) {
+        await this.processFestivalForShop(festival);
+      }
+    } catch (error) {
+      this.logError("processFestivalWishes", error);
+    }
+  }
+  async processFestivalForShop(festival) {
+    try {
+      const customers = await Customer.find({
+        shop_id: festival.shop_id,
+        deleted_at: null,
+      });
+
+      if (!customers.length) {
+        this.logInfo(`No customers found for shop ${festival.shop_id}`);
+        return;
+      }
+
+      const shop = await Shop.findById(festival.shop_id);
+
+      await Promise.all(
+        customers.map((customer) =>
+          this.sendFestivalWish(customer, shop, festival),
+        ),
+      );
+    } catch (error) {
+      this.logError("processFestivalForShop", error, {
+        festivalId: festival._id,
+      });
+    }
+  }
+  async sendFestivalWish(customer, cachedShop = null, festival) {
+    try {
+      const templateName = "festival_wish";
+
+      // Prevent duplicate sending
+      const alreadySent = await this.isReminderAlreadySent(
+        customer.customer_id,
+        "CUSTOMER",
+        `${templateName}_${festival._id}`, // unique per festival
+        24,
+      );
+
+      if (alreadySent) {
+        this.logInfo(
+          `Festival wish already sent to ${customer.full_name} for ${festival.festival_name}`,
+        );
+        return;
+      }
+
+      // Validate phone
+      const phoneValidation = this.validateCustomerPhoneNumber(customer);
+      if (!phoneValidation.isValid) {
+        this.logError("sendFestivalWish", new Error(phoneValidation.error), {
+          customer: customer.full_name,
+        });
+        return;
+      }
+
+      const shop =
+        cachedShop ||
+        (customer.shop_id ? await Shop.findById(customer.shop_id) : null);
+
+      // Template variables
+      // {{1}} Customer Name
+      // {{2}} Festival Name
+      // {{3}} Shop Name
+      const variables = {
+       
+        1: festival.festival_name,
+        2: getShopName(shop),
+      };
+
+      const messageContent = `नमस्ते  😊
+
+आपको ${variables[1]} की हार्दिक शुभकामनाएँ 🎉
+
+ईश्वर से प्रार्थना है कि यह पर्व आपके जीवन में सुख, समृद्धि और खुशियाँ लेकर आए।
+
+सादर,
+${variables[2]} की ओर से`;
+
+      // Create log
+      const reminderLog = await this.createReminderLog({
+        entityId: customer.customer_id,
+        entityType: "CUSTOMER",
+        recipientNumber: phoneValidation.formattedNumber,
+        recipientName: customer.full_name,
+        messageContent,
+        templateName: `${templateName}_${festival._id}`, // IMPORTANT
+      });
+
+      // Send message
+      const result = await this.messageSender.sendTemplateMessage({
+        to: phoneValidation.formattedNumber,
+        templateName: templateName,
+        variables,
+        reminderLogId: reminderLog._id,
+        metadata: {
+          campaignName: "festival_wish",
+          festivalName: festival.festival_name,
+          messageType: "festival_wish",
+        },
+      });
+
+      if (result.success) {
+        this.logInfo(
+          `Festival wish sent: ${festival.festival_name} → ${customer.full_name}`,
+        );
+      } else {
+        this.logError("sendFestivalWish", new Error(result.error));
+      }
+    } catch (error) {
+      this.logError("sendFestivalWish", error, {
         customerId: customer.customer_id,
       });
     }

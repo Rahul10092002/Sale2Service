@@ -47,30 +47,32 @@ const initialState = {
 
 const calculateInvoiceTotals = (state) => {
   const items = state.currentInvoice.invoice_items;
-  // Treat item.selling_price as GST-inclusive amount.
-  // GST will be calculated as a percentage of the selling price (inclusive),
-  // and subtotal will be the amount before GST: subtotal = inclusiveTotal - gst
+
   const inclusiveTotal = items.reduce(
     (sum, item) =>
       sum + parseFloat(item.selling_price || 0) * parseInt(item.quantity || 1),
     0,
   );
 
-  const taxRate = 0.18; // 18% GST
-  const tax = inclusiveTotal * taxRate;
-  const subtotal = inclusiveTotal - tax;
+  const taxRate = 0.18;
+
+  // ✅ Correct GST calculation
+  const subtotal = inclusiveTotal / (1 + taxRate);
+  const tax = inclusiveTotal - subtotal;
+
   const discount = state.currentInvoice.invoice.discount || 0;
   const taxableAmount = subtotal - discount;
+  
   const total = taxableAmount + tax;
 
-  // Determine amount_due after considering any amount already paid
   const amountPaid =
     parseFloat(state.currentInvoice.invoice.amount_paid || 0) || 0;
+
   const amountDue = Math.max(0, total - amountPaid);
 
-  state.currentInvoice.invoice.subtotal = subtotal;
-  state.currentInvoice.invoice.tax = tax;
-  state.currentInvoice.invoice.total_amount = total;
+  state.currentInvoice.invoice.subtotal = Number(subtotal.toFixed(2));
+  state.currentInvoice.invoice.tax = Number(tax.toFixed(2));
+  state.currentInvoice.invoice.total_amount = Number(total.toFixed(2));
   state.currentInvoice.invoice.amount_paid = amountPaid;
   state.currentInvoice.invoice.amount_due = amountDue;
 };

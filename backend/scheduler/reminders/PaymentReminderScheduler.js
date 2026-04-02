@@ -36,10 +36,25 @@ export default class PaymentReminderScheduler extends BaseScheduler {
    */
   async processDueDateReminders() {
     try {
-      const reminderDays = [3, 7, 15];
+      const reminderDays = [0, 3, 7, 15];
 
       for (const days of reminderDays) {
-        const dueDateRange = createDateRange(days);
+        let dateFilter;
+
+        if (days === 0) {
+          const todayRange = createDateRange(0);
+
+          dateFilter = {
+            $gte: todayRange.start,
+            $lt: todayRange.end,
+          };
+        } else {
+          const range = createDateRange(days);
+          dateFilter = {
+            $gte: range.start,
+            $lt: range.end,
+          };
+        }
 
         const pendingInvoices = await Invoice.find({
           due_date: {
@@ -79,6 +94,20 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       this.logInfo(`Found ${overdueInvoices.length} overdue invoices`);
 
       for (const invoice of overdueInvoices) {
+        const dueDate = new Date(invoice.due_date);
+        const today = new Date(todayRange.start);
+
+        const diffTime = today - dueDate;
+        const daysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        // ✅ Alternate day logic
+        if (daysOverdue % 2 !== 0) {
+          this.logInfo(
+            `Skipping invoice ${invoice.invoice_number} (not alternate day)`,
+          );
+          continue;
+        }
+
         await this.sendPaymentReminder(invoice, 0);
       }
     } catch (error) {
@@ -136,11 +165,15 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       // Prepare template variables for payment reminder
       const variables = this.getPaymentTemplateVariables(invoice);
 
-      const statusText =
-        daysAfterInvoice > 0
-          ? `${daysAfterInvoice} days before due`
-          : "overdue";
+     let statusText;
 
+     if (daysAfterInvoice === 0) {
+       statusText = "due today";
+     } else if (daysAfterInvoice > 0) {
+       statusText = `${daysAfterInvoice} days before due`;
+     } else {
+       statusText = "overdue";
+     }
       // Create reminder log
       const reminderLog = await this.createReminderLog({
         entityId: invoice.invoice_id,

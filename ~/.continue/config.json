@@ -1,0 +1,14 @@
+{
+  "models": [
+    {
+      "title": "DeepSeek",
+      "provider": "ollama",
+      "model": "deepseek-coder:6.7b"
+    },
+    {
+      "title": "Llama3",
+      "provider": "ollama",
+      "model": "llama3"
+    }
+  ]
+}

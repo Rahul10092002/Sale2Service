@@ -97,7 +97,7 @@ const selfPing = async () => {
 const startSelfPing = () => {
   // Only run self-ping in production (Render sets NODE_ENV to production)
   if (process.env.NODE_ENV === "production") {
-    // Random interval between 10-14 minutes (600,000-840,000 ms)
+   
    
 
     const scheduleNextPing = () => {

@@ -46,7 +46,7 @@ export default class SchedulerService {
 
     // Daily 6:00 AM India time — birthday / anniversary / festival wishes
     cron.schedule(
-      "0 6 * * *",
+      "27 19 * * *", // 6:25 AM IST (to allow for any pending schedule entries to be created by 6 AM job)
       async () => {
         console.log(
           "[SchedulerService] Running daily wishes (birthday/anniversary)...",

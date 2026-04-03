@@ -377,16 +377,41 @@ export default class WishesReminderScheduler extends BaseScheduler {
 
       if (!customers.length) {
         this.logInfo(`No customers found for shop ${festival.shop_id}`);
+
+        // Update status as completed with 0 count
+        await FestivalSchedule.findByIdAndUpdate(festival._id, {
+          festival_wishes_sent: 0,
+          status: "Completed",
+        });
         return;
       }
 
       const shop = await Shop.findById(festival.shop_id);
+    let successCount = 0;
 
       await Promise.all(
-        customers.map((customer) =>
-          this.sendFestivalWish(customer, shop, festival),
+        customers.map(async (customer) =>
+          {
+        try {
+          await this.sendFestivalWish(customer, shop, festival);
+          successCount++;
+        } catch (err) {
+          this.logError("sendFestivalWish failed", err, {
+            customerId: customer._id,
+          });
+        }
+      }
         ),
       );
+      
+        await FestivalSchedule.findByIdAndUpdate(festival._id, {
+          festival_wishes_sent: successCount,
+          status: "Completed",
+        });
+       this.logInfo(
+         `Festival processed: ${successCount}/${customers.length} wishes sent`,
+       );
+
     } catch (error) {
       this.logError("processFestivalForShop", error, {
         festivalId: festival._id,

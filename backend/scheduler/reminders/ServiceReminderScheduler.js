@@ -81,6 +81,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
           service.reminder_stage,
           24,
           invoiceItem.invoice_id.shop_id,
+          phoneValidation.formattedNumber,
         ));
 
       if (alreadySent) {

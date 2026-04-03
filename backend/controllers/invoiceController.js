@@ -9,6 +9,21 @@ import ServiceSchedule from "../models/ServiceSchedule.js";
 import { sendWhatsappMessageViaMSG91 } from "../config/msg91.js";
 import { InvoicePDFService } from "../services/invoicePDFService.js";
 import cloudinaryUpload from "../services/cloudinaryUpload.js";
+import InvoiceCounter from "../models/InvoiceCounter.js";
+
+const getNextInvoiceSequence = async (shopId, datePart, session) => {
+  const counter = await InvoiceCounter.findOneAndUpdate(
+    { shop_id: shopId, date: datePart },
+    { $inc: { sequence: 1 } },
+    {
+      new: true,
+      upsert: true,
+      session,
+    },
+  );
+
+  return counter.sequence;
+};
 
 // Temporary in-memory store for PDF buffers used during WhatsApp delivery.
 // Meta/MSG91 fetches the URL we provide; serving from our own backend avoids
@@ -124,45 +139,20 @@ export default class InvoiceController {
       // Step 3: Generate invoice number if not provided
       let invoiceNumber = invoice.invoice_number;
       if (!invoiceNumber) {
-        // Generate unique invoice number using epoch timestamp + random suffix
-        // This eliminates race conditions and ensures absolute uniqueness
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-        const timestamp = currentDate.getTime(); // Epoch timestamp
+        const now = new Date();
+        const year = String(now.getFullYear()).slice(-2);
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const datePart = `${year}${month}${day}`; // e.g. "240403"
 
-        // Generate 3-character random suffix for additional uniqueness
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        let randomSuffix = "";
-        for (let i = 0; i < 3; i++) {
-          randomSuffix += chars.charAt(
-            Math.floor(Math.random() * chars.length),
-          );
-        }
+        const sequence = await getNextInvoiceSequence(
+          user.shopId,
+          datePart,
+          session,
+        );
 
-        // Format: INV-2026-1710936547123-A1K (Year-Timestamp-RandomSuffix)
-        invoiceNumber = `INV-${currentYear}-${timestamp}-${randomSuffix}`;
-
-        // Backup check: If by extremely rare chance this exists, try again with new suffix
-        let attempts = 0;
-        while (attempts < 3) {
-          const existingInvoice = await Invoice.findOne({
-            invoice_number: invoiceNumber,
-            shop_id: user.shopId,
-            deleted_at: null,
-          }).session(session);
-
-          if (!existingInvoice) break;
-
-          // Generate new random suffix
-          randomSuffix = "";
-          for (let i = 0; i < 3; i++) {
-            randomSuffix += chars.charAt(
-              Math.floor(Math.random() * chars.length),
-            );
-          }
-          invoiceNumber = `INV-${currentYear}-${timestamp}-${randomSuffix}`;
-          attempts++;
-        }
+        const paddedSeq = String(sequence).padStart(3, "0");
+        invoiceNumber = `INV-${datePart}-${paddedSeq}`;
       }
 
       // Step 4: Calculate totals

@@ -160,29 +160,28 @@ export default class WishesReminderScheduler extends BaseScheduler {
     try {
       const templateName = "birthday_wish";
 
-      // Check if wish already sent today (24-hour window)
-      const alreadySent = await this.isReminderAlreadySent(
-        customer.customer_id,
-        "CUSTOMER",
-        templateName,
-        24, // Only check last 24 hours for wishes
-        customer.shop_id,
-      );
-
-      if (alreadySent) {
-        this.logInfo(
-          `Birthday wish already sent to customer ${customer.full_name}`,
-        );
-        return;
-      }
-
-      // Validate phone number
       const phoneValidation = this.validateCustomerPhoneNumber(customer);
       if (!phoneValidation.isValid) {
         this.logError("sendBirthdayWish", new Error(phoneValidation.error), {
           customer: customer.full_name,
           customerId: customer.customer_id,
         });
+        return;
+      }
+
+      const alreadySent = await this.isReminderAlreadySent(
+        customer.customer_id,
+        "CUSTOMER",
+        templateName,
+        24, // Only check last 24 hours for wishes
+        customer.shop_id,
+        phoneValidation.formattedNumber,
+      );
+
+      if (alreadySent) {
+        this.logInfo(
+          `Birthday wish already sent to customer ${customer.full_name}`,
+        );
         return;
       }
 
@@ -251,29 +250,28 @@ export default class WishesReminderScheduler extends BaseScheduler {
     try {
       const templateName = "anniversary_wish";
 
-      // Check if wish already sent today (24-hour window)
-      const alreadySent = await this.isReminderAlreadySent(
-        customer.customer_id,
-        "CUSTOMER",
-        templateName,
-        24,
-        customer.shop_id,
-      );
-
-      if (alreadySent) {
-        this.logInfo(
-          `Anniversary wish already sent to customer ${customer.full_name}`,
-        );
-        return;
-      }
-
-      // Validate phone number
       const phoneValidation = this.validateCustomerPhoneNumber(customer);
       if (!phoneValidation.isValid) {
         this.logError("sendAnniversaryWish", new Error(phoneValidation.error), {
           customer: customer.full_name,
           customerId: customer.customer_id,
         });
+        return;
+      }
+
+      const alreadySent = await this.isReminderAlreadySent(
+        customer.customer_id,
+        "CUSTOMER",
+        templateName,
+        24,
+        customer.shop_id,
+        phoneValidation.formattedNumber,
+      );
+
+      if (alreadySent) {
+        this.logInfo(
+          `Anniversary wish already sent to customer ${customer.full_name}`,
+        );
         return;
       }
 
@@ -399,28 +397,27 @@ export default class WishesReminderScheduler extends BaseScheduler {
     try {
       const templateName = "festival_wish";
 
-      // Prevent duplicate sending
+      const phoneValidation = this.validateCustomerPhoneNumber(customer);
+      if (!phoneValidation.isValid) {
+        this.logError("sendFestivalWish", new Error(phoneValidation.error), {
+          customer: customer.full_name,
+        });
+        return;
+      }
+
       const alreadySent = await this.isReminderAlreadySent(
         customer.customer_id,
         "CUSTOMER",
         `${templateName}_${festival._id}`, // unique per festival
         24,
         festival.shop_id,
+        phoneValidation.formattedNumber,
       );
 
       if (alreadySent) {
         this.logInfo(
           `Festival wish already sent to ${customer.full_name} for ${festival.festival_name}`,
         );
-        return;
-      }
-
-      // Validate phone
-      const phoneValidation = this.validateCustomerPhoneNumber(customer);
-      if (!phoneValidation.isValid) {
-        this.logError("sendFestivalWish", new Error(phoneValidation.error), {
-          customer: customer.full_name,
-        });
         return;
       }
 

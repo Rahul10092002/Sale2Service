@@ -175,29 +175,28 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       const resolvedTemplateName =
         templateName || this.getPaymentTemplateByDays(daysAfterInvoice);
 
-      // Check if reminder already sent
-      const alreadySent = await this.isReminderAlreadySent(
-        invoice.invoice_id,
-        "INVOICE",
-        resolvedTemplateName,
-        72, // allow re-send after 72 hours (3 days)
-        invoice.shop_id,
-      );
-
-      if (alreadySent) {
-        this.logInfo(
-          `Payment reminder already sent for invoice ${invoice.invoice_number}`,
-        );
-        return;
-      }
-
-      // Validate phone number
       const phoneValidation = this.validateCustomerPhoneNumber(customer);
       if (!phoneValidation.isValid) {
         this.logError("sendPaymentReminder", new Error(phoneValidation.error), {
           customer: customer.full_name,
           invoiceId: invoice.invoice_id,
         });
+        return;
+      }
+
+      const alreadySent = await this.isReminderAlreadySent(
+        invoice.invoice_id,
+        "INVOICE",
+        resolvedTemplateName,
+        72, // allow re-send after 72 hours (3 days)
+        invoice.shop_id,
+        phoneValidation.formattedNumber,
+      );
+
+      if (alreadySent) {
+        this.logInfo(
+          `Payment reminder already sent for invoice ${invoice.invoice_number}`,
+        );
         return;
       }
 

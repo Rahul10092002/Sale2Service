@@ -155,23 +155,6 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       const customer = invoiceItem.invoice_id.customer_id;
       const templateName = "warranty_expiring";
 
-      // Check if reminder already sent
-      const alreadySent = await this.isReminderAlreadySent(
-        invoiceItem.invoice_item_id,
-        "PRODUCT",
-        templateName,
-        24,
-        invoiceItem.invoice_id.shop_id,
-      );
-
-      if (alreadySent) {
-        this.logInfo(
-          `Warranty expiry reminder already sent for item ${invoiceItem.invoice_item_id}`,
-        );
-        return;
-      }
-
-      // Validate phone number
       const phoneValidation = this.validateCustomerPhoneNumber(customer);
       if (!phoneValidation.isValid) {
         this.logError(
@@ -181,6 +164,22 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
             customer: customer.full_name,
             itemId: invoiceItem.invoice_item_id,
           },
+        );
+        return;
+      }
+
+      const alreadySent = await this.isReminderAlreadySent(
+        invoiceItem.invoice_item_id,
+        "PRODUCT",
+        templateName,
+        24,
+        invoiceItem.invoice_id.shop_id,
+        phoneValidation.formattedNumber,
+      );
+
+      if (alreadySent) {
+        this.logInfo(
+          `Warranty expiry reminder already sent for item ${invoiceItem.invoice_item_id}`,
         );
         return;
       }
@@ -259,23 +258,6 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       const customer = invoiceItem.invoice_id.customer_id;
       const templateName = "warranty_expired";
 
-      // Check if reminder already sent
-      const alreadySent = await this.isReminderAlreadySent(
-        invoiceItem.invoice_item_id,
-        "PRODUCT",
-        templateName,
-        24,
-        invoiceItem.invoice_id.shop_id,
-      );
-
-      if (alreadySent) {
-        this.logInfo(
-          `Warranty expired reminder already sent for item ${invoiceItem.invoice_item_id}`,
-        );
-        return;
-      }
-
-      // Validate phone number
       const phoneValidation = this.validateCustomerPhoneNumber(customer);
       if (!phoneValidation.isValid) {
         this.logError(
@@ -285,6 +267,22 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
             customer: customer.full_name,
             itemId: invoiceItem.invoice_item_id,
           },
+        );
+        return;
+      }
+
+      const alreadySent = await this.isReminderAlreadySent(
+        invoiceItem.invoice_item_id,
+        "PRODUCT",
+        templateName,
+        24,
+        invoiceItem.invoice_id.shop_id,
+        phoneValidation.formattedNumber,
+      );
+
+      if (alreadySent) {
+        this.logInfo(
+          `Warranty expired reminder already sent for item ${invoiceItem.invoice_item_id}`,
         );
         return;
       }

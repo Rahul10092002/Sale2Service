@@ -534,7 +534,8 @@ const InvoiceView = () => {
                         </p>
                       </div>
                     )}
-                    {new Date(invoiceObj.due_date) < new Date() &&
+                    {invoiceObj.due_date &&
+                      new Date(invoiceObj.due_date) < new Date() &&
                       invoiceObj.amount_due > 0 && (
                         <div className="bg-red-100 text-red-700 p-2 rounded text-sm font-medium">
                           ⚠️ Payment Overdue
@@ -546,9 +547,11 @@ const InvoiceView = () => {
                           Due Date
                         </label>
                         <p className="text-sm font-medium text-gray-900 ">
-                          {new Date(invoiceObj.due_date).toLocaleDateString(
-                            "en-IN",
-                          )}
+                          {invoiceObj.due_date
+                            ? new Date(invoiceObj.due_date).toLocaleDateString(
+                                "en-IN",
+                              )
+                            : "-"}
                         </p>
                       </div>
                     )}

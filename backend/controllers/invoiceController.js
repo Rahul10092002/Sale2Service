@@ -179,8 +179,23 @@ export default class InvoiceController {
       const totalAmount = Math.max(0, inclusiveTotal - discount);
 
       // Consider any amount_paid submitted
-      const amountPaid = Number(invoice.amount_paid || 0) || 0;
-      const amountDue = Math.max(0, totalAmount - amountPaid);
+      let amountPaid = Number(invoice.amount_paid || 0) || 0;
+      let amountDue = Math.max(0, totalAmount - amountPaid);
+
+      // If client marks invoice as PAID, enforce "paid" semantics:
+      // amount_due must be 0 and due_date must be null.
+      const incomingPaymentStatus = invoice.payment_status || "UNPAID";
+      if (incomingPaymentStatus === "PAID") {
+        amountPaid = totalAmount;
+        amountDue = 0;
+      }
+
+      // Derive payment status from amounts to avoid inconsistent states
+      // (e.g. payment_status=PAID but amount_paid=0).
+      const derivedPaymentStatus =
+        amountDue === 0 ? "PAID" : amountPaid > 0 ? "PARTIAL" : "UNPAID";
+      const dueDateToStore =
+        derivedPaymentStatus === "PAID" ? null : invoice.due_date || null;
 
       // Step 5: Create invoice
       const newInvoice = new Invoice({
@@ -188,7 +203,7 @@ export default class InvoiceController {
         customer_id: customerId,
         shop_id: user.shopId,
         invoice_date: invoice.invoice_date || new Date(),
-        payment_status: invoice.payment_status || "UNPAID",
+        payment_status: derivedPaymentStatus,
         payment_mode: invoice.payment_mode || "CASH",
         subtotal,
         discount,
@@ -196,7 +211,7 @@ export default class InvoiceController {
         total_amount: totalAmount,
         amount_paid: amountPaid,
         amount_due: amountDue,
-        due_date: invoice.due_date || null,
+        due_date: dueDateToStore,
         created_by: user.userId,
         notes: invoice.notes,
       });

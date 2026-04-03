@@ -150,15 +150,20 @@ const InvoiceGenerationPage = () => {
     setSubmitResult(null);
 
     try {
+      const isPaid = currentInvoice.invoice.payment_status === "PAID";
       const payload = {
         customer: currentInvoice.customer,
         invoice: {
           ...currentInvoice.invoice,
-          // Ensure amount_paid is 0 for UNPAID invoices
-          amount_paid:
-            currentInvoice.invoice.payment_status === "PARTIAL"
-              ? currentInvoice.invoice.amount_paid
-              : 0,
+          // Ensure correct amounts are sent for each payment status.
+          // For PAID, we send full amount so backend sets amount_due=0 and due_date=null.
+          amount_paid: isPaid
+            ? Number(currentInvoice.invoice.total_amount || 0)
+            : currentInvoice.invoice.payment_status === "PARTIAL"
+            ? Number(currentInvoice.invoice.amount_paid || 0)
+            : 0,
+          // PAID invoices should not have due date
+          due_date: isPaid ? null : currentInvoice.invoice.due_date,
           // Remove computed fields
           subtotal: undefined,
           tax: undefined,

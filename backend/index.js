@@ -30,6 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get("/", (req, res) => {
+  console.log(`[${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}] Health check endpoint hit`);
   res.json({
     success: true,
     message: "Warranty & Sales Management System API",

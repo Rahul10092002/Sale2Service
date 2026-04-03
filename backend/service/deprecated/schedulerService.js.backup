@@ -338,6 +338,7 @@ export default class SchedulerService {
       const reminderLog = new ReminderLog({
         entity_id: serviceSchedule.service_schedule_id,
         entity_type: "SERVICE",
+        
         recipient_number: formattedNumber,
         recipient_name: customer.full_name,
         message_content: messageContent,

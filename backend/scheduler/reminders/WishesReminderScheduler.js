@@ -166,6 +166,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         "CUSTOMER",
         templateName,
         24, // Only check last 24 hours for wishes
+        customer.shop_id,
       );
 
       if (alreadySent) {
@@ -204,6 +205,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
       const reminderLog = await this.createReminderLog({
         entityId: customer.customer_id,
         entityType: "CUSTOMER",
+        shopId: customer.shop_id,
         recipientNumber: phoneValidation.formattedNumber,
         recipientName: customer.full_name,
         messageContent: messageContent,
@@ -255,6 +257,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         "CUSTOMER",
         templateName,
         24,
+        customer.shop_id,
       );
 
       if (alreadySent) {
@@ -293,6 +296,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
       const reminderLog = await this.createReminderLog({
         entityId: customer.customer_id,
         entityType: "CUSTOMER",
+        shopId: customer.shop_id,
         recipientNumber: phoneValidation.formattedNumber,
         recipientName: customer.full_name,
         messageContent: messageContent,
@@ -401,6 +405,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         "CUSTOMER",
         `${templateName}_${festival._id}`, // unique per festival
         24,
+        festival.shop_id,
       );
 
       if (alreadySent) {
@@ -445,6 +450,7 @@ ${variables[2]} की ओर से`;
       const reminderLog = await this.createReminderLog({
         entityId: customer.customer_id,
         entityType: "CUSTOMER",
+        shopId: festival.shop_id,
         recipientNumber: phoneValidation.formattedNumber,
         recipientName: customer.full_name,
         messageContent,

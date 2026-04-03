@@ -160,6 +160,8 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
         invoiceItem.invoice_item_id,
         "PRODUCT",
         templateName,
+        24,
+        invoiceItem.invoice_id.shop_id,
       );
 
       if (alreadySent) {
@@ -195,6 +197,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       const reminderLog = await this.createReminderLog({
         entityId: invoiceItem.invoice_item_id,
         entityType: "PRODUCT",
+        shopId: invoiceItem.invoice_id.shop_id,
         recipientNumber: phoneValidation.formattedNumber,
         recipientName: customer.full_name,
         messageContent: `Warranty expiry reminder for ${invoiceItem.product_name} (${daysUntilExpiry} days remaining)`,
@@ -261,6 +264,8 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
         invoiceItem.invoice_item_id,
         "PRODUCT",
         templateName,
+        24,
+        invoiceItem.invoice_id.shop_id,
       );
 
       if (alreadySent) {
@@ -292,6 +297,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       const reminderLog = await this.createReminderLog({
         entityId: invoiceItem.invoice_item_id,
         entityType: "PRODUCT",
+        shopId: invoiceItem.invoice_id.shop_id,
         recipientNumber: phoneValidation.formattedNumber,
         recipientName: customer.full_name,
         messageContent: `Warranty expired reminder for ${invoiceItem.product_name}`,

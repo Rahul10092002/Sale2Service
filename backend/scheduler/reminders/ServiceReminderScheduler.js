@@ -39,21 +39,6 @@ export default class ServiceReminderScheduler extends BaseScheduler {
 
   async processSingleService(service, forceResend) {
     try {
-      // 🔒 Dedup check
-      const alreadySent =
-        !forceResend &&
-        (await this.isReminderAlreadySent(
-          service._id,
-          "SERVICE",
-          service.reminder_stage,
-          24,
-        ));
-
-      if (alreadySent) {
-        this.logInfo(`⏩ Skipping already sent: ${service._id}`);
-        return;
-      }
-
       // 📦 Fetch minimal required data (avoid deep populate)
       const populated = await ServiceSchedule.findById(service._id).populate({
         path: "service_plan_id",
@@ -85,6 +70,22 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       const shop = await Shop.findById(invoiceItem.invoice_id.shop_id);
       if (!shop || shop.deleted_at) {
         return this.handleFailure(service, "Shop not found");
+      }
+
+      // 🔒 Dedup check (needs shop_id on log; requires populated invoice)
+      const alreadySent =
+        !forceResend &&
+        (await this.isReminderAlreadySent(
+          service._id,
+          "SERVICE",
+          service.reminder_stage,
+          24,
+          invoiceItem.invoice_id.shop_id,
+        ));
+
+      if (alreadySent) {
+        this.logInfo(`⏩ Skipping already sent: ${service._id}`);
+        return;
       }
 
       // 📩 Send message
@@ -140,10 +141,21 @@ export default class ServiceReminderScheduler extends BaseScheduler {
         throw new Error("Unknown reminder stage");
     }
 
+    const reminderLog = await this.createReminderLog({
+      entityId: String(service._id),
+      entityType: "SERVICE",
+      shopId: invoiceItem.invoice_id.shop_id,
+      recipientNumber: phone,
+      recipientName: customer.full_name,
+      messageContent: `Service reminder (${service.reminder_stage}) for ${invoiceItem.product_name}`,
+      templateName: service.reminder_stage,
+    });
+
     return await this.messageSender.sendTemplateMessage({
       to: phone,
       templateName,
       variables,
+      reminderLogId: reminderLog._id,
       metadata: {
         serviceId: service._id,
         stage: service.reminder_stage,

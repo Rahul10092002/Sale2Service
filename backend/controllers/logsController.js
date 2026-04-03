@@ -4,54 +4,233 @@ import ReminderLog from "../models/ReminderLog.js";
 /**
  * Get reminder logs with pagination and filtering
  */
+import mongoose from "mongoose";
+
+/** Resolve shop from denormalized log.shop_id or linked invoice / service / product */
+function buildReminderLogShopScopeStages(shopId) {
+  if (shopId == null || shopId === "") return [];
+  const shopOid = new mongoose.Types.ObjectId(shopId);
+  return [
+    {
+      $addFields: {
+        entityObjectId: {
+          $cond: {
+            if: {
+              $and: [
+                { $ne: ["$entity_id", null] },
+                { $ne: ["$entity_id", ""] },
+              ],
+            },
+            then: { $toObjectId: "$entity_id" },
+            else: null,
+          },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "invoices",
+        localField: "entityObjectId",
+        foreignField: "_id",
+        as: "invoice",
+      },
+    },
+    {
+      $lookup: {
+        from: "serviceschedules",
+        localField: "entityObjectId",
+        foreignField: "_id",
+        as: "service",
+      },
+    },
+    {
+      $lookup: {
+        from: "products",
+        localField: "entityObjectId",
+        foreignField: "_id",
+        as: "product",
+      },
+    },
+    {
+      $addFields: {
+        resolved_shop_id: {
+          $ifNull: [
+            "$shop_id",
+            {
+              $ifNull: [
+                { $arrayElemAt: ["$invoice.shop_id", 0] },
+                {
+                  $ifNull: [
+                    { $arrayElemAt: ["$service.shop_id", 0] },
+                    { $arrayElemAt: ["$product.shop_id", 0] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $match: {
+        resolved_shop_id: shopOid,
+      },
+    },
+  ];
+}
+
 export const getReminderLogs = async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 20,
+      limit = 10,
       entity_type,
       message_status,
       start_date,
       end_date,
       recipient_number,
+      
     } = req.query;
 
-    const skip = (page - 1) * limit;
-    const query = { deleted_at: null };
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    const { user } = req;
+    const shop_id = user?.shop_id;  
+    const match = {
+      deleted_at: null,
+    };
 
-    // Apply filters
-    if (entity_type) query.entity_type = entity_type;
-    if (message_status) query.message_status = message_status;
+    if (entity_type) match.entity_type = entity_type;
+    if (message_status) match.message_status = message_status;
+
     if (recipient_number) {
-      query.recipient_number = { $regex: recipient_number, $options: "i" };
+      match.recipient_number = {
+        $regex: recipient_number,
+        $options: "i",
+      };
     }
 
-    // Date range filter
     if (start_date || end_date) {
-      query.createdAt = {};
-      if (start_date) query.createdAt.$gte = new Date(start_date);
-      if (end_date) query.createdAt.$lte = new Date(end_date);
+      match.createdAt = {};
+      if (start_date) match.createdAt.$gte = new Date(start_date);
+      if (end_date) match.createdAt.$lte = new Date(end_date);
     }
 
-    const [logs, total] = await Promise.all([
-      ReminderLog.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .populate("reminder_rule_id", "rule_name rule_type")
-        .lean(),
-      ReminderLog.countDocuments(query),
-    ]);
+    const pipeline = [
+      { $match: match },
+
+      // 🔹 Convert entity_id → ObjectId
+      {
+        $addFields: {
+          entityObjectId: {
+            $toObjectId: "$entity_id",
+          },
+        },
+      },
+
+      // 🔹 Lookup INVOICE
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "entityObjectId",
+          foreignField: "_id",
+          as: "invoice",
+        },
+      },
+
+      // 🔹 Lookup SERVICE
+      {
+        $lookup: {
+          from: "serviceschedules",
+          localField: "entityObjectId",
+          foreignField: "_id",
+          as: "service",
+        },
+      },
+
+      // 🔹 Lookup PRODUCT (if needed)
+      {
+        $lookup: {
+          from: "products",
+          localField: "entityObjectId",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+
+      // Prefer denormalized shop_id on the log; else resolve from linked entity
+      {
+        $addFields: {
+          resolved_shop_id: {
+            $ifNull: [
+              "$shop_id",
+              {
+                $ifNull: [
+                  { $arrayElemAt: ["$invoice.shop_id", 0] },
+                  {
+                    $ifNull: [
+                      { $arrayElemAt: ["$service.shop_id", 0] },
+                      { $arrayElemAt: ["$product.shop_id", 0] },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+
+      ...(shop_id
+        ? [
+            {
+              $match: {
+                resolved_shop_id: new mongoose.Types.ObjectId(shop_id),
+              },
+            },
+          ]
+        : []),
+
+      // 🔹 Lookup reminder rule
+      {
+        $lookup: {
+          from: "reminderrules",
+          localField: "reminder_rule_id",
+          foreignField: "_id",
+          as: "reminder_rule",
+        },
+      },
+      {
+        $unwind: {
+          path: "$reminder_rule",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      { $sort: { createdAt: -1 } },
+
+      {
+        $facet: {
+          logs: [{ $skip: skip }, { $limit: limitNum }],
+          totalCount: [{ $count: "total" }],
+        },
+      },
+    ];
+
+    const result = await ReminderLog.aggregate(pipeline);
+
+    const logs = result[0]?.logs || [];
+    const total = result[0]?.totalCount[0]?.total || 0;
 
     res.json({
       success: true,
       data: {
         logs,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: limitNum,
           total,
-          pages: Math.ceil(total / limit),
+          pages: Math.ceil(total / limitNum),
         },
       },
     });
@@ -64,13 +243,13 @@ export const getReminderLogs = async (req, res) => {
     });
   }
 };
-
 /**
  * Get reminder logs statistics
  */
 export const getReminderStats = async (req, res) => {
   try {
     const { start_date, end_date, entity_type } = req.query;
+    const shopId = req.user?.shop_id;
 
     const matchStage = { deleted_at: null };
 
@@ -86,8 +265,11 @@ export const getReminderStats = async (req, res) => {
       matchStage.entity_type = entity_type;
     }
 
+    const shopScopeStages = buildReminderLogShopScopeStages(shopId);
+
     const stats = await ReminderLog.aggregate([
       { $match: matchStage },
+      ...shopScopeStages,
       {
         $group: {
           _id: null,
@@ -117,6 +299,7 @@ export const getReminderStats = async (req, res) => {
     // Get stats by entity type
     const entityStats = await ReminderLog.aggregate([
       { $match: matchStage },
+      ...shopScopeStages,
       {
         $group: {
           _id: "$entity_type",
@@ -142,13 +325,14 @@ export const getReminderStats = async (req, res) => {
     const last7Days = new Date();
     last7Days.setDate(last7Days.getDate() - 7);
 
+    const dailyMatch = {
+      deleted_at: null,
+      createdAt: { $gte: last7Days },
+    };
+
     const dailyStats = await ReminderLog.aggregate([
-      {
-        $match: {
-          deleted_at: null,
-          createdAt: { $gte: last7Days },
-        },
-      },
+      { $match: dailyMatch },
+      ...shopScopeStages,
       {
         $group: {
           _id: {
@@ -265,15 +449,56 @@ export const getMessageLogs = async (req, res) => {
 export const getRecentActivity = async (req, res) => {
   try {
     const { limit = 10 } = req.query;
+    const shopId = req.user?.shop_id;
+    const limitNum = parseInt(limit, 10);
 
-    const recentActivity = await ReminderLog.find({ deleted_at: null })
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .populate("reminder_rule_id", "rule_name rule_type")
-      .select(
-        "entity_type recipient_name message_status sent_at createdAt reminder_rule_id entity_id",
-      )
-      .lean();
+    const pipeline = [
+      { $match: { deleted_at: null } },
+      ...buildReminderLogShopScopeStages(shopId),
+      { $sort: { createdAt: -1 } },
+      { $limit: limitNum },
+      {
+        $lookup: {
+          from: "reminderrules",
+          localField: "reminder_rule_id",
+          foreignField: "_id",
+          as: "_ruleDoc",
+        },
+      },
+      {
+        $unwind: {
+          path: "$_ruleDoc",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          reminder_rule_id: {
+            $cond: {
+              if: "$_ruleDoc._id",
+              then: {
+                _id: "$_ruleDoc._id",
+                rule_name: "$_ruleDoc.rule_name",
+                rule_type: "$_ruleDoc.rule_type",
+              },
+              else: null,
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          invoice: 0,
+          service: 0,
+          product: 0,
+          entityObjectId: 0,
+          resolved_shop_id: 0,
+          _ruleDoc: 0,
+        },
+      },
+    ];
+
+    const recentActivity = await ReminderLog.aggregate(pipeline);
 
     res.json({
       success: true,

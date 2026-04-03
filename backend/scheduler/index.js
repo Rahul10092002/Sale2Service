@@ -39,35 +39,52 @@ export default class SchedulerService {
       return;
     }
 
-    // Run daily at 6 AM IST for birthday and anniversary wishes
-    // 12:30 AM UTC = 6:00 AM IST (UTC+5:30)
-    cron.schedule("30 0 * * *", async () => {
-      console.log(
-        "[SchedulerService] Running daily wishes (birthday/anniversary)...",
-      );
-      await this.wishesScheduler.processWishesReminders();
-    });
+    // Cron expression time is interpreted using `timezone` (not the OS clock).
+    // Previously expressions like "30 0 * * *" were documented as UTC→IST;
+    // on a dev PC in IST, node-cron ran that at 00:30 local → ~12:30 AM IST.
+    const ist = { timezone: "Asia/Kolkata" };
 
-    // Run daily at 7 AM IST for service schedules
-    // 1:30 AM UTC = 7:00 AM IST (UTC+5:30)
-    cron.schedule("30 1 * * *", async () => {
-      console.log("[SchedulerService] Running daily service reminders...");
-      await this.serviceScheduler.processServiceReminders();
-    });
+    // Daily 6:00 AM India time — birthday / anniversary / festival wishes
+    cron.schedule(
+      "5 11 * * *", // 11:05 AM IST
+      async () => {
+        console.log(
+          "[SchedulerService] Running daily wishes (birthday/anniversary)...",
+        );
+        await this.wishesScheduler.processWishesReminders();
+      },
+      ist,
+    );
 
-    // Run daily at 8 AM IST for warranty reminders
-    // 2:30 AM UTC = 8:00 AM IST (UTC+5:30)
-    cron.schedule("30 2 * * *", async () => {
-      console.log("[SchedulerService] Running daily warranty reminders...");
-      await this.warrantyScheduler.processWarrantyReminders();
-    });
+    // Daily 7:00 AM IST — service schedules
+    cron.schedule(
+      "0 7 * * *",
+      async () => {
+        console.log("[SchedulerService] Running daily service reminders...");
+        await this.serviceScheduler.processServiceReminders();
+      },
+      ist,
+    );
 
-    // Run daily at 9 AM IST for payment reminders
-    // 3:30 AM UTC = 9 AM IST (UTC+5:30)
-    cron.schedule("30 3 * * *", async () => {
-      console.log("[SchedulerService] Running daily payment reminders...");
-      await this.paymentScheduler.processPaymentReminders();
-    });
+    // Daily 8:00 AM IST — warranty reminders
+    cron.schedule(
+      "0 8 * * *",
+      async () => {
+        console.log("[SchedulerService] Running daily warranty reminders...");
+        await this.warrantyScheduler.processWarrantyReminders();
+      },
+      ist,
+    );
+
+    // Daily 9:00 AM IST — payment reminders
+    cron.schedule(
+      "0 9 * * *",
+      async () => {
+        console.log("[SchedulerService] Running daily payment reminders...");
+        await this.paymentScheduler.processPaymentReminders();
+      },
+      ist,
+    );
 
     this.isRunning = true;
     console.log("[SchedulerService] Reminder scheduler started successfully");

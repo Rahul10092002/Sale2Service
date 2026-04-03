@@ -21,6 +21,10 @@ const reminderLogSchema = new mongoose.Schema(
       enum: ["INVOICE", "PRODUCT", "SERVICE", "CUSTOMER"],
       required: true,
     },
+    shop_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Shop",
+    },
     recipient_number: {
       type: String,
       required: true,
@@ -80,6 +84,7 @@ const reminderLogSchema = new mongoose.Schema(
 
 // Indexes
 reminderLogSchema.index({ reminder_rule_id: 1, deleted_at: 1 });
+reminderLogSchema.index({ shop_id: 1, deleted_at: 1 });
 reminderLogSchema.index({ entity_id: 1, entity_type: 1, deleted_at: 1 });
 reminderLogSchema.index({ message_status: 1, deleted_at: 1 });
 reminderLogSchema.index({ sent_at: 1, deleted_at: 1 });

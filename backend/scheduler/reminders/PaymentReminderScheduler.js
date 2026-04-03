@@ -179,8 +179,9 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       const alreadySent = await this.isReminderAlreadySent(
         invoice.invoice_id,
         "INVOICE",
-        templateName,
+        resolvedTemplateName,
         72, // allow re-send after 72 hours (3 days)
+        invoice.shop_id,
       );
 
       if (alreadySent) {
@@ -219,11 +220,12 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       // Create reminder log
       const reminderLog = await this.createReminderLog({
         entityId: invoice.invoice_id,
+        shopId: invoice.shop_id,
         entityType: "INVOICE",
         recipientNumber: phoneValidation.formattedNumber,
         recipientName: customer.full_name,
         messageContent: `Payment reminder for invoice ${invoice.invoice_number} (${statusText})`,
-        templateName: templateName,
+        templateName: resolvedTemplateName,
       });
 
       // Send WhatsApp message

@@ -23,16 +23,22 @@ export default class BaseScheduler {
     entityType,
     templateName,
     hoursBuffer = 24,
+    shopId = null,
   ) {
-    const existingLog = await ReminderLog.findOne({
-      entity_id: entityId,
+    const query = {
+      entity_id: String(entityId),
       entity_type: entityType,
       template_name: templateName,
       message_status: { $in: ["SENT", "DELIVERED"] },
       createdAt: {
         $gte: new Date(Date.now() - hoursBuffer * 60 * 60 * 1000),
       },
-    });
+    };
+    if (shopId != null && shopId !== undefined) {
+      query.shop_id = shopId;
+    }
+
+    const existingLog = await ReminderLog.findOne(query);
 
     return !!existingLog;
   }
@@ -74,6 +80,7 @@ export default class BaseScheduler {
     const reminderLog = new ReminderLog({
       entity_id: logData.entityId,
       entity_type: logData.entityType,
+      shop_id: logData.shopId,
       recipient_number: logData.recipientNumber,
       recipient_name: logData.recipientName,
       message_content: logData.messageContent || "",

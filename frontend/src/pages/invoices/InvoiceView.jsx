@@ -300,6 +300,11 @@ const InvoiceView = () => {
       </>
     );
   }
+  const getPaymentStatus = () => {
+    if (invoiceObj.amount_due === 0) return "PAID";
+    if (invoiceObj.amount_paid > 0) return "PARTIAL";
+    return "UNPAID";
+  };
   return (
     <>
       <div className="min-h-screen bg-white p-4">
@@ -351,12 +356,12 @@ const InvoiceView = () => {
                       <div className="flex items-center space-x-4 mt-2">
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            invoiceObj.payment_status === "PAID"
+                            getPaymentStatus() === "PAID"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {invoiceObj.payment_status || "UNPAID"}
+                          {getPaymentStatus()}
                         </span>
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-green-800">
                           ₹{invoiceObj.total_amount || "0"}
@@ -493,7 +498,7 @@ const InvoiceView = () => {
                     Payment Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div
+                   { <div
                       className={`rounded-lg p-3 border ${
                         invoiceObj.payment_status === "PAID"
                           ? "bg-green-50 border-green-200"
@@ -511,14 +516,14 @@ const InvoiceView = () => {
                       </label>
                       <p
                         className={`text-sm font-medium ${
-                          invoiceObj.payment_status === "PAID"
+                          getPaymentStatus() === "PAID"
                             ? "text-green-800"
                             : "text-red-800"
                         }`}
                       >
-                        {invoiceObj.payment_status || "UNPAID"}
+                        {getPaymentStatus()}
                       </p>
-                    </div>
+                    </div>}
                     {invoiceObj.warranty_months > 0 && (
                       <div className="bg-gray-50 rounded-lg p-3">
                         <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -529,6 +534,12 @@ const InvoiceView = () => {
                         </p>
                       </div>
                     )}
+                    {new Date(invoiceObj.due_date) < new Date() &&
+                      invoiceObj.amount_due > 0 && (
+                        <div className="bg-red-100 text-red-700 p-2 rounded text-sm font-medium">
+                          ⚠️ Payment Overdue
+                        </div>
+                      )}
                     {invoiceObj._id && (
                       <div className="bg-gray-50 rounded-lg p-3">
                         <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -648,28 +659,48 @@ const InvoiceView = () => {
                 {/* Invoice Summary */}
                 <div className="p-6 border-t border-gray-200 bg-gray-50">
                   <div className="max-w-sm ml-auto space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Subtotal:</span>
-                      <span className="text-gray-900">
-                        {formatCurrency(
-                          (invoiceObj.total_amount || 0) +
-                            (invoiceObj.discount || 0),
-                        )}
-                      </span>
+                    {/* Subtotal */}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subtotal</span>
+                      <span>{formatCurrency(invoiceObj.subtotal)}</span>
                     </div>
+
+                    {/* Tax */}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">
+                        Tax (
+                        {(
+                          (invoiceObj.tax / invoiceObj.subtotal) * 100 || 0
+                        ).toFixed(0)}
+                        %)
+                      </span>
+                      <span>{formatCurrency(invoiceObj.tax)}</span>
+                    </div>
+
+                    {/* Discount */}
                     {invoiceObj.discount > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Discount:</span>
-                        <span className="text-red-600">
-                          -{formatCurrency(invoiceObj.discount)}
-                        </span>
+                      <div className="flex justify-between text-red-600">
+                        <span>Discount</span>
+                        <span>-{formatCurrency(invoiceObj.discount)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between items-center text-lg font-semibold border-t border-gray-200 pt-2">
-                      <span className="text-gray-900">Total:</span>
-                      <span className="text-gray-900">
-                        {formatCurrency(invoiceObj.total_amount)}
-                      </span>
+
+                    {/* Total */}
+                    <div className="flex justify-between font-semibold border-t pt-2">
+                      <span>Total</span>
+                      <span>{formatCurrency(invoiceObj.total_amount)}</span>
+                    </div>
+
+                    {/* Paid */}
+                    <div className="flex justify-between text-green-600">
+                      <span>Amount Paid</span>
+                      <span>{formatCurrency(invoiceObj.amount_paid)}</span>
+                    </div>
+
+                    {/* Due */}
+                    <div className="flex justify-between text-red-600 font-semibold">
+                      <span>Amount Due</span>
+                      <span>{formatCurrency(invoiceObj.amount_due)}</span>
                     </div>
                   </div>
                 </div>

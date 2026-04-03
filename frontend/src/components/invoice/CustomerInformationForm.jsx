@@ -106,23 +106,9 @@ const CustomerInformationForm = () => {
 
         <div className="p-6 space-y-6">
           {/* Mandatory Fields */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name *
-              </label>
-              <Input
-                type="text"
-                value={customer.full_name}
-                onChange={(e) =>
-                  updateCustomerData({ full_name: e.target.value })
-                }
-                placeholder="Enter customer full name"
-                error={errors["customer.full_name"]}
-              />
-            </div>
 
-            <div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="col-span-1 relative"> 
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 WhatsApp Number *
               </label>
@@ -181,21 +167,18 @@ const CustomerInformationForm = () => {
               </div>
             </div>
 
-            <div>
-              <SelectField
-                id="customer-type"
-                label="Customer Type"
-                value={customer.customer_type}
+            <div className="col-span-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name *
+              </label>
+              <Input
+                type="text"
+                value={customer.full_name}
                 onChange={(e) =>
-                  updateCustomerData({ customer_type: e.target.value })
+                  updateCustomerData({ full_name: e.target.value })
                 }
-                options={Object.entries(INVOICE_CONSTANTS.CUSTOMER_TYPES).map(
-                  ([, value]) => ({
-                    value: value,
-                    label: value,
-                  }),
-                )}
-                required
+                placeholder="Enter customer full name"
+                error={errors["customer.full_name"]}
               />
             </div>
           </div>

@@ -93,6 +93,7 @@ export const getISTTodayParts = () => {
   return {
     month: nowIST.getUTCMonth() + 1,
     date: nowIST.getUTCDate(),
+    year: nowIST.getUTCFullYear(),
   };
 };
 
@@ -103,13 +104,19 @@ export const getISTTodayParts = () => {
  * @param {Date|string} storedDate - Date from database
  * @returns {{ month: number, date: number }} - 1-based month and day-of-month in IST
  */
-export const getISTDateParts = (storedDate) => {
-  const dateIST = new Date(new Date(storedDate).getTime() + IST_OFFSET_MS);
+export function getISTDateParts(date) {
+  const ist = new Date(
+    new Date(date).toLocaleString("en-US", {
+      timeZone: "Asia/Kolkata",
+    }),
+  );
+
   return {
-    month: dateIST.getUTCMonth() + 1,
-    date: dateIST.getUTCDate(),
+    date: ist.getDate(),
+    month: ist.getMonth() + 1,
+    year: ist.getFullYear(), // 🔥 ADD THIS
   };
-};
+}
 
 /**
  * Create date ranges for reminder checking (IST-aware).

@@ -335,35 +335,22 @@ export default class WishesReminderScheduler extends BaseScheduler {
     try {
       this.logInfo("Processing festival wishes...");
 
-      const now = new Date();
-
-      // IST offset
-      const istOffset = 5.5 * 60 * 60 * 1000;
-
-      // Convert current time to IST
-      const istNow = new Date(now.getTime() + istOffset);
-
-      // Get IST date parts
-      const year = istNow.getFullYear();
-      const month = istNow.getMonth();
-      const date = istNow.getDate();
-
-      // Convert IST day start/end BACK to UTC
-      const startOfDay = new Date(Date.UTC(year, month, date, -5, -30, 0));
-      const endOfDay = new Date(Date.UTC(year, month, date, 18, 29, 59));
-
+      const today = getISTTodayParts();
       const festivals = await FestivalSchedule.find({
-        schedule_date: {
-          $gte: startOfDay,
-          $lte: endOfDay,
-        },
+        status: "Pending",
       });
+      const todayFestivals = festivals.filter((festival) => {
+        const { date, month, year } = getISTDateParts(festival.schedule_date);
 
+        return (
+          date === today.date && month === today.month && year === today.year // 🔥 IMPORTANT
+        );
+      });
       this.logInfo(`Found ${festivals.length} festival schedules for today`);
 
-    await Promise.all(
-      festivals.map((festival) => this.processFestivalForShop(festival)),
-    );
+      await Promise.all(
+        todayFestivals.map((festival) => this.processFestivalForShop(festival)),
+      );
     } catch (error) {
       this.logError("processFestivalWishes", error);
     }
@@ -387,31 +374,28 @@ export default class WishesReminderScheduler extends BaseScheduler {
       }
 
       const shop = await Shop.findById(festival.shop_id);
-    let successCount = 0;
+      let successCount = 0;
 
       await Promise.all(
-        customers.map(async (customer) =>
-          {
-        try {
-          await this.sendFestivalWish(customer, shop, festival);
-          successCount++;
-        } catch (err) {
-          this.logError("sendFestivalWish failed", err, {
-            customerId: customer._id,
-          });
-        }
-      }
-        ),
+        customers.map(async (customer) => {
+          try {
+            await this.sendFestivalWish(customer, shop, festival);
+            successCount++;
+          } catch (err) {
+            this.logError("sendFestivalWish failed", err, {
+              customerId: customer._id,
+            });
+          }
+        }),
       );
-      
-        await FestivalSchedule.findByIdAndUpdate(festival._id, {
-          festival_wishes_sent: successCount,
-          status: "Completed",
-        });
-       this.logInfo(
-         `Festival processed: ${successCount}/${customers.length} wishes sent`,
-       );
 
+      await FestivalSchedule.findByIdAndUpdate(festival._id, {
+        festival_wishes_sent: successCount,
+        status: "Completed",
+      });
+      this.logInfo(
+        `Festival processed: ${successCount}/${customers.length} wishes sent`,
+      );
     } catch (error) {
       this.logError("processFestivalForShop", error, {
         festivalId: festival._id,

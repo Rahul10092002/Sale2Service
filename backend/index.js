@@ -98,11 +98,10 @@ const startSelfPing = () => {
   // Only run self-ping in production (Render sets NODE_ENV to production)
   if (process.env.NODE_ENV === "production") {
     // Random interval between 10-14 minutes (600,000-840,000 ms)
-    const getRandomInterval = () =>
-      Math.floor(Math.random() * (840000 - 600000) + 600000);
+   
 
     const scheduleNextPing = () => {
-      const interval = getRandomInterval();
+      const interval = 5 * 60 * 1000;
       console.log(
         `⏰ Next self-ping scheduled in ${Math.round(interval / 60000)} minutes`,
       );

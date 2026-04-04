@@ -337,12 +337,23 @@ const getSummary = async () => {
       },
     ]);
 
-    console.log(`  Today - ${days}-day reminder: ${items.length}`);
+   const label =
+     days === 30
+       ? "30-DAY REMINDER"
+       : days === 15
+         ? "15-DAY REMINDER"
+         : days === 3
+           ? "3-DAY REMINDER"
+           : `${days}-DAY`;
+
+   console.log(`  Today - ${label}: ${items.length}`);
     items.forEach((i) => {
       const customer = i.customer;
-      console.log(
-        `    - ${i.product_name} (item=${i.invoice_item_id}) customer=${customer?.full_name || "n/a"} warranty_end=${i.warranty_end_date?.toISOString()}`,
-      );
+     console.log(
+       `    - [${label}] ${i.product_name} (item=${i.invoice_item_id}) 
+       customer=${customer?.full_name || "n/a"} 
+       warranty_end=${i.warranty_end_date?.toISOString()}`,
+     );
     });
   }
 
@@ -557,12 +568,23 @@ const getSummary = async () => {
       },
     ]);
 
-    console.log(`  Tomorrow - ${days}-day reminder: ${items.length}`);
+  const label =
+    days === 30
+      ? "30-DAY REMINDER"
+      : days === 15
+        ? "15-DAY REMINDER"
+        : days === 3
+          ? "3-DAY REMINDER"
+          : `${days}-DAY`;
+
+  console.log(`  Tomorrow - ${label}: ${items.length}`);
     items.forEach((i) => {
       const customer = i.customer;
-      console.log(
-        `    - ${i.product_name} (item=${i.invoice_item_id}) customer=${customer?.full_name || "n/a"} warranty_end=${i.warranty_end_date?.toISOString()}`,
-      );
+   console.log(
+     `    - [${label}] ${i.product_name} (item=${i.invoice_item_id}) 
+       customer=${customer?.full_name || "n/a"} 
+       warranty_end=${i.warranty_end_date?.toISOString()}`,
+   );
     });
   }
 

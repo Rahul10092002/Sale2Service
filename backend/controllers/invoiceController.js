@@ -947,123 +947,286 @@ export default class InvoiceController {
         limit = 10,
         search,
         search_in,
-        status,
         payment_status,
+        payment_mode,
         date_from,
         date_to,
+        due_date_from,
+        due_date_to,
+        customer_id,
+        min_amount,
+        max_amount,
+        overdue,
+        quick_filter,
       } = req.query;
-
-      const query = {
-        shop_id: user.shopId,
-        deleted_at: null,
-      };
-
-      // Add filters
-      if (payment_status) {
-        query.payment_status = payment_status;
-      }
-
-      // Add date range filtering
-      if (date_from || date_to) {
-        query.invoice_date = {};
-        if (date_from) {
-          query.invoice_date.$gte = new Date(date_from);
-        }
-        if (date_to) {
-          // Add one day to include the end date
-          const endDate = new Date(date_to);
-          endDate.setDate(endDate.getDate() + 1);
-          query.invoice_date.$lt = endDate;
-        }
-      }
-
-      // Allow filtering by customer_id
-      if (req.query.customer_id) {
-        query.customer_id = req.query.customer_id;
-      }
 
       const skip = (page - 1) * parseInt(limit);
 
-      // Add search if provided
-      if (search) {
-        if (search_in === "invoice_number") {
-          query.invoice_number = { $regex: search, $options: "i" };
-        } else if (search_in === "customer_name") {
-          const customers = await Customer.find({
-            shop_id: user.shopId,
-            deleted_at: null,
-            full_name: { $regex: search, $options: "i" },
-          }).select("_id");
-          const customerIds = customers.map((c) => c._id);
-          query.customer_id = { $in: customerIds };
-        } else if (search_in === "whatsapp_number") {
-          const customers = await Customer.find({
-            shop_id: user.shopId,
-            deleted_at: null,
-            whatsapp_number: { $regex: search, $options: "i" },
-          }).select("_id");
-          const customerIds = customers.map((c) => c._id);
-          query.customer_id = { $in: customerIds };
-        } else if (search_in === "product_name") {
-          // Search in invoice items for product names
-          const invoiceItems = await InvoiceItem.find({
-            product_name: { $regex: search, $options: "i" },
-          }).select("invoice_id");
-          const invoiceIds = invoiceItems.map((item) => item.invoice_id);
-          query._id = { $in: invoiceIds };
-        } else {
-          // Default: search in all fields
-          const customers = await Customer.find({
-            shop_id: user.shopId,
-            deleted_at: null,
-            $or: [
-              { full_name: { $regex: search, $options: "i" } },
-              { whatsapp_number: { $regex: search, $options: "i" } },
-            ],
-          }).select("_id");
+      // ---------------- BASE MATCH ----------------
+      const match = {
+        shop_id: new mongoose.Types.ObjectId(user.shopId),
+        deleted_at: null,
+      };
 
-          const customerIds = customers.map((c) => c._id);
+      if (payment_status) match.payment_status = payment_status;
+      if (payment_mode) match.payment_mode = payment_mode;
 
-          // Also search in product names
-          const invoiceItems = await InvoiceItem.find({
-            product_name: { $regex: search, $options: "i" },
-          }).select("invoice_id");
-          const invoiceIds = invoiceItems.map((item) => item.invoice_id);
+      if (customer_id) {
+        match.customer_id = new mongoose.Types.ObjectId(customer_id);
+      }
 
-          query.$or = [
-            { customer_id: { $in: customerIds } },
-            { invoice_number: { $regex: search, $options: "i" } },
-            { _id: { $in: invoiceIds } },
-          ];
+      // invoice_date filter
+      if (date_from || date_to) {
+        match.invoice_date = {};
+        if (date_from) match.invoice_date.$gte = new Date(date_from);
+
+        if (date_to) {
+          const end = new Date(date_to);
+          end.setDate(end.getDate() + 1);
+          match.invoice_date.$lt = end;
         }
       }
 
-      const invoicesQuery = Invoice.find(query)
-        .populate("customer_id", "full_name whatsapp_number customer_type")
-        .populate("created_by", "name email")
-        // populate invoice items (virtual) so frontend can show item counts
-        .populate({
-          path: "invoice_items",
-          select: "product_name quantity serial_number",
-        })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
+      // due_date filter
+      if (due_date_from || due_date_to) {
+        match.due_date = {};
 
-      const [invoiceList, totalCount] = await Promise.all([
-        invoicesQuery,
-        Invoice.countDocuments(query),
-      ]);
+        if (due_date_from) {
+          match.due_date.$gte = new Date(due_date_from);
+        }
+
+        if (due_date_to) {
+          const end = new Date(due_date_to);
+          end.setDate(end.getDate() + 1);
+          match.due_date.$lt = end;
+        }
+      }
+
+      // amount filter
+      if (min_amount || max_amount) {
+        match.total_amount = {};
+        if (min_amount) match.total_amount.$gte = Number(min_amount);
+        if (max_amount) match.total_amount.$lte = Number(max_amount);
+      }
+
+      // overdue filter
+      if (overdue === "true") {
+        match.due_date = { $lt: new Date() };
+        match.payment_status = { $ne: "PAID" };
+      }
+
+      // quick filter (today)
+      if (quick_filter === "today") {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        match.invoice_date = { $gte: start, $lte: end };
+      }
+
+      // ---------------- PIPELINE ----------------
+      const pipeline = [
+        { $match: match },
+
+        // CUSTOMER
+        {
+          $lookup: {
+            from: "customers",
+            localField: "customer_id",
+            foreignField: "_id",
+            as: "customer_id",
+          },
+        },
+        { $unwind: { path: "$customer_id", preserveNullAndEmptyArrays: true } },
+
+        // CREATED BY
+        {
+          $lookup: {
+            from: "users",
+            localField: "created_by",
+            foreignField: "_id",
+            as: "created_by",
+          },
+        },
+        { $unwind: { path: "$created_by", preserveNullAndEmptyArrays: true } },
+
+        // ITEMS
+        {
+          $lookup: {
+            from: "invoiceitems",
+            localField: "_id",
+            foreignField: "invoice_id",
+            as: "invoice_items",
+          },
+        },
+      ];
+
+      // ---------------- SEARCH ----------------
+      if (search) {
+        const regex = new RegExp(search, "i");
+
+        const searchNumber = Number(search);
+        const isNumber = !isNaN(searchNumber);
+
+        const searchDate = new Date(search);
+        const isValidDate = !isNaN(searchDate.getTime());
+
+        let searchMatch = {};
+
+        if (search_in === "invoice_number") {
+          searchMatch = { invoice_number: regex };
+        } else if (search_in === "customer_name") {
+          searchMatch = { "customer_id.full_name": regex };
+        } else if (search_in === "whatsapp_number") {
+          searchMatch = { "customer_id.whatsapp_number": regex };
+        } else if (search_in === "product_name") {
+          searchMatch = { "invoice_items.product_name": regex };
+        } else if (search_in === "due_date" && isValidDate) {
+          const next = new Date(searchDate);
+          next.setDate(next.getDate() + 1);
+
+          searchMatch = {
+            due_date: { $gte: searchDate, $lt: next },
+          };
+        } else if (search_in === "invoice_date" && isValidDate) {
+          const next = new Date(searchDate);
+          next.setDate(next.getDate() + 1);
+
+          searchMatch = {
+            invoice_date: { $gte: searchDate, $lt: next },
+          };
+        } else if (search_in === "amount" && isNumber) {
+          searchMatch = {
+            $or: [
+              { total_amount: searchNumber },
+              { amount_paid: searchNumber },
+              { amount_due: searchNumber },
+              { subtotal: searchNumber },
+            ],
+          };
+        } else {
+          const orConditions = [
+            { invoice_number: regex },
+            { payment_status: regex },
+            { payment_mode: regex },
+            { notes: regex },
+
+            { "customer_id.full_name": regex },
+            { "customer_id.whatsapp_number": regex },
+
+            { "invoice_items.product_name": regex },
+            { "invoice_items.serial_number": regex },
+          ];
+
+          if (isNumber) {
+            orConditions.push(
+              { total_amount: searchNumber },
+              { amount_paid: searchNumber },
+              { amount_due: searchNumber },
+              { subtotal: searchNumber },
+            );
+          }
+
+          if (isValidDate) {
+            const next = new Date(searchDate);
+            next.setDate(next.getDate() + 1);
+
+            orConditions.push(
+              { invoice_date: { $gte: searchDate, $lt: next } },
+              { due_date: { $gte: searchDate, $lt: next } },
+            );
+          }
+
+          searchMatch = { $or: orConditions };
+        }
+
+        if (Object.keys(searchMatch).length > 0) {
+          pipeline.push({ $match: searchMatch });
+        }
+      }
+
+      // ---------------- FACET ----------------
+      pipeline.push({
+        $facet: {
+          invoices: [
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: parseInt(limit) },
+
+            {
+              $project: {
+                _id: 1,
+                invoice_number: 1,
+                shop_id: 1,
+                invoice_date: 1,
+                payment_status: 1,
+                payment_mode: 1,
+                subtotal: 1,
+                discount: 1,
+                tax: 1,
+                amount_paid: 1,
+                amount_due: 1,
+                due_date: 1,
+                total_amount: 1,
+                extra_documents: 1,
+                deleted_at: 1,
+                invoice_id: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                invoice_pdf: 1,
+                pdf_public_id: 1,
+                isActive: 1,
+
+                customer_id: {
+                  _id: "$customer_id._id",
+                  full_name: "$customer_id.full_name",
+                  whatsapp_number: "$customer_id.whatsapp_number",
+                  customer_type: "$customer_id.customer_type",
+                },
+
+                created_by: {
+                  _id: "$created_by._id",
+                  name: "$created_by.name",
+                  email: "$created_by.email",
+                },
+
+                invoice_items: {
+                  $map: {
+                    input: "$invoice_items",
+                    as: "item",
+                    in: {
+                      _id: "$$item._id",
+                      invoice_id: "$$item.invoice_id",
+                      product_name: "$$item.product_name",
+                      quantity: "$$item.quantity",
+                      serial_number: "$$item.serial_number",
+                    },
+                  },
+                },
+              },
+            },
+          ],
+
+          totalCount: [{ $count: "count" }],
+        },
+      });
+
+      const result = await Invoice.aggregate(pipeline);
+
+      const invoices = result[0].invoices;
+      const total = result[0].totalCount[0]?.count || 0;
 
       res.json({
         success: true,
         data: {
-          invoices: invoiceList,
+          invoices,
           pagination: {
             page: parseInt(page),
             limit: parseInt(limit),
-            total: totalCount,
-            pages: Math.ceil(totalCount / parseInt(limit)),
+            total,
+            pages: Math.ceil(total / parseInt(limit)),
           },
         },
       });
@@ -1076,7 +1239,6 @@ export default class InvoiceController {
       });
     }
   }
-
   /**
    * Get single invoice by ID
    */

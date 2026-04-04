@@ -15,18 +15,34 @@ import { Button, Input, SelectField } from "../../components/ui/index.js";
 import { useGetInvoicesQuery } from "../../features/invoices/invoiceApi.js";
 import { ROUTES } from "../../utils/constants.js";
 import Layout from "../../components/layout/Layout.jsx";
-
+const Chip = ({ label, onRemove }) => {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
+      {label}
+      <button onClick={onRemove} className="text-blue-500 hover:text-red-500">
+        ✕
+      </button>
+    </div>
+  );
+};
 const InvoiceList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchIn, setSearchIn] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState({
-    payment_status: "",
-    date_from: "",
-    date_to: "",
-  });
+ const [filters, setFilters] = useState({
+   payment_status: "",
+   payment_mode: "",
+   date_from: "",
+   date_to: "",
+   due_date_from: "",
+   due_date_to: "",
+   min_amount: "",
+   max_amount: "",
+   overdue: "",
+   quick_filter: "",
+ });
   const filterRef = useRef(null);
 
   const {
@@ -136,21 +152,65 @@ const InvoiceList = () => {
                   <Filter className="h-5 w-5 text-blue-600" />
                 </button>
                 {showFilters && (
-                  <div className="absolute top-12 left-0 bg-white border border-gray-200 rounded-md shadow-lg p-4 z-10 w-80">
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
-                          Payment Status:
-                        </label>
+                  <div className="absolute top-12 left-0 bg-white border border-gray-200 rounded-xl shadow-xl p-5 z-10 w-[340px] space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h3 className="text-sm font-semibold text-gray-800">
+                        Filters
+                      </h3>
+                      <button
+                        onClick={() =>
+                          setFilters({
+                            payment_status: "",
+                            payment_mode: "",
+                            date_from: "",
+                            date_to: "",
+                            due_date_from: "",
+                            due_date_to: "",
+                            min_amount: "",
+                            max_amount: "",
+                            overdue: "",
+                            quick_filter: "",
+                          })
+                        }
+                        className="text-xs text-red-500 hover:text-red-600"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+
+                    {/* Search In */}
+                    <div>
+                      <label className="text-xs text-gray-500">Search In</label>
+                      <select
+                        value={searchIn}
+                        onChange={(e) => setSearchIn(e.target.value)}
+                        className="w-full mt-1 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      >
+                        <option value="">All Fields</option>
+                        <option value="invoice_number">Invoice #</option>
+                        <option value="customer_name">Customer</option>
+                        <option value="whatsapp_number">Phone</option>
+                        <option value="product_name">Product</option>
+                        <option value="due_date">Due Date</option>
+                        <option value="invoice_date">Invoice Date</option>
+                        <option value="amount">Amount</option>
+                      </select>
+                    </div>
+
+                    {/* Payment Filters */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-500">Status</label>
                         <select
                           value={filters.payment_status}
                           onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
+                            setFilters((p) => ({
+                              ...p,
                               payment_status: e.target.value,
                             }))
                           }
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 px-3 py-2 text-sm border rounded-lg"
                         >
                           <option value="">All</option>
                           <option value="PAID">Paid</option>
@@ -159,57 +219,150 @@ const InvoiceList = () => {
                         </select>
                       </div>
 
-                      <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
-                          Search In:
-                        </label>
+                      <div>
+                        <label className="text-xs text-gray-500">Mode</label>
                         <select
-                          value={searchIn}
-                          onChange={(e) => setSearchIn(e.target.value)}
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          value={filters.payment_mode}
+                          onChange={(e) =>
+                            setFilters((p) => ({
+                              ...p,
+                              payment_mode: e.target.value,
+                            }))
+                          }
+                          className="w-full mt-1 px-3 py-2 text-sm border rounded-lg"
                         >
-                          <option value="">All Fields</option>
-                          <option value="invoice_number">Invoice #</option>
-                          <option value="customer_name">Customer</option>
-                          <option value="whatsapp_number">Phone</option>
-                          <option value="product_name">Product</option>
+                          <option value="">All</option>
+                          <option value="CASH">Cash</option>
+                          <option value="UPI">UPI</option>
+                          <option value="CARD">Card</option>
+                          <option value="BANK_TRANSFER">Bank</option>
+                          <option value="CREDIT">Credit</option>
                         </select>
                       </div>
+                    </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="flex flex-col">
-                          <label className="text-sm text-gray-600 font-medium mb-1">
-                            Date From:
-                          </label>
-                          <input
-                            type="date"
-                            value={filters.date_from}
-                            onChange={(e) =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                date_from: e.target.value,
-                              }))
-                            }
-                            className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
-                          />
-                        </div>
-                        <div className="flex flex-col">
-                          <label className="text-sm text-gray-600 font-medium mb-1">
-                            Date To:
-                          </label>
-                          <input
-                            type="date"
-                            value={filters.date_to}
-                            onChange={(e) =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                date_to: e.target.value,
-                              }))
-                            }
-                            className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
-                          />
-                        </div>
+                    {/* Invoice Date */}
+                    <div>
+                      <label className="text-xs text-gray-500">
+                        Invoice Date
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <input
+                          type="date"
+                          value={filters.date_from}
+                          onChange={(e) =>
+                            setFilters((p) => ({
+                              ...p,
+                              date_from: e.target.value,
+                            }))
+                          }
+                          className="px-2 py-2 text-sm border rounded-lg"
+                        />
+                        <input
+                          type="date"
+                          value={filters.date_to}
+                          onChange={(e) =>
+                            setFilters((p) => ({
+                              ...p,
+                              date_to: e.target.value,
+                            }))
+                          }
+                          className="px-2 py-2 text-sm border rounded-lg"
+                        />
                       </div>
+                    </div>
+
+                    {/* Due Date */}
+                    <div>
+                      <label className="text-xs text-gray-500">Due Date</label>
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <input
+                          type="date"
+                          value={filters.due_date_from}
+                          onChange={(e) =>
+                            setFilters((p) => ({
+                              ...p,
+                              due_date_from: e.target.value,
+                            }))
+                          }
+                          className="px-2 py-2 text-sm border rounded-lg"
+                        />
+                        <input
+                          type="date"
+                          value={filters.due_date_to}
+                          onChange={(e) =>
+                            setFilters((p) => ({
+                              ...p,
+                              due_date_to: e.target.value,
+                            }))
+                          }
+                          className="px-2 py-2 text-sm border rounded-lg"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Amount */}
+                    <div>
+                      <label className="text-xs text-gray-500">
+                        Amount Range
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <input
+                          type="number"
+                          placeholder="Min"
+                          value={filters.min_amount}
+                          onChange={(e) =>
+                            setFilters((p) => ({
+                              ...p,
+                              min_amount: e.target.value,
+                            }))
+                          }
+                          className="px-2 py-2 text-sm border rounded-lg"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Max"
+                          value={filters.max_amount}
+                          onChange={(e) =>
+                            setFilters((p) => ({
+                              ...p,
+                              max_amount: e.target.value,
+                            }))
+                          }
+                          className="px-2 py-2 text-sm border rounded-lg"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Quick + Overdue */}
+                    <div className="flex items-center justify-between">
+                      <select
+                        value={filters.quick_filter}
+                        onChange={(e) =>
+                          setFilters((p) => ({
+                            ...p,
+                            quick_filter: e.target.value,
+                          }))
+                        }
+                        className="px-3 py-2 text-sm border rounded-lg"
+                      >
+                        <option value="">Quick</option>
+                        <option value="today">Today</option>
+                      </select>
+
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={filters.overdue === "true"}
+                          onChange={(e) =>
+                            setFilters((p) => ({
+                              ...p,
+                              overdue: e.target.checked ? "true" : "",
+                            }))
+                          }
+                        />
+                        Overdue
+                      </label>
                     </div>
                   </div>
                 )}
@@ -233,7 +386,73 @@ const InvoiceList = () => {
               </button>
             </Link>
           </div>
+          {/* Active Filter Chips */}
+          <div className="flex flex-wrap gap-2 mb-4 px-1">
+            {filters.payment_status && (
+              <Chip
+                label={`Status: ${filters.payment_status}`}
+                onRemove={() =>
+                  setFilters((p) => ({ ...p, payment_status: "" }))
+                }
+              />
+            )}
 
+            {filters.payment_mode && (
+              <Chip
+                label={`Mode: ${filters.payment_mode}`}
+                onRemove={() => setFilters((p) => ({ ...p, payment_mode: "" }))}
+              />
+            )}
+
+            {(filters.date_from || filters.date_to) && (
+              <Chip
+                label={`Invoice: ${filters.date_from || "?"} → ${filters.date_to || "?"}`}
+                onRemove={() =>
+                  setFilters((p) => ({ ...p, date_from: "", date_to: "" }))
+                }
+              />
+            )}
+
+            {(filters.due_date_from || filters.due_date_to) && (
+              <Chip
+                label={`Due: ${filters.due_date_from || "?"} → ${filters.due_date_to || "?"}`}
+                onRemove={() =>
+                  setFilters((p) => ({
+                    ...p,
+                    due_date_from: "",
+                    due_date_to: "",
+                  }))
+                }
+              />
+            )}
+
+            {(filters.min_amount || filters.max_amount) && (
+              <Chip
+                label={`₹${filters.min_amount || 0} - ₹${filters.max_amount || "∞"}`}
+                onRemove={() =>
+                  setFilters((p) => ({
+                    ...p,
+                    min_amount: "",
+                    max_amount: "",
+                  }))
+                }
+              />
+            )}
+
+            {filters.quick_filter && (
+              <Chip
+                label={`Quick: ${filters.quick_filter}`}
+                onRemove={() => setFilters((p) => ({ ...p, quick_filter: "" }))}
+              />
+            )}
+
+            {filters.overdue === "true" && (
+              <Chip
+                label="Overdue"
+                onRemove={() => setFilters((p) => ({ ...p, overdue: "" }))}
+              />
+            )}
+          </div>
           {/* Invoice List */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             {error ? (
@@ -471,9 +690,13 @@ const InvoiceList = () => {
                               </span>
                             </p>
                             {invoice.due_date && (
-                              <p className={`text-red-600 text-sm ${new Date(invoice.due_date) < new Date() ? "font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? "text-red-600" : "text-gray-600"}`}>
+                              <p
+                                className={`text-red-600 text-sm ${new Date(invoice.due_date) < new Date() ? "font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? "text-red-600" : "text-gray-600"}`}
+                              >
                                 Due Date:{" "}
-                                {new Date(invoice.due_date).toLocaleDateString("en-IN") || "N/A"}
+                                {new Date(invoice.due_date).toLocaleDateString(
+                                  "en-IN",
+                                ) || "N/A"}
                               </p>
                             )}
                           </div>

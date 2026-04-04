@@ -340,12 +340,13 @@ export const getTopProducts = async (shopId, limit = 5) => {
  * Get recent activity
  */
 export const getRecentActivity = async (shopId, limit = 10) => {
+  console.log("Fetching recent activity for shop:", shopId);
   const recentInvoices = await Invoice.find({ shop_id: shopId })
     .sort({ createdAt: -1 })
     .limit(limit)
     .populate("customer_id", "full_name")
     .select("invoice_number total_amount payment_status createdAt");
-
+  
   return recentInvoices.map((invoice) => ({
     type: "invoice",
     id: invoice._id,

@@ -449,7 +449,7 @@ export const getMessageLogs = async (req, res) => {
 export const getRecentActivity = async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    const shopId = req.user?.shop_id;
+    const shopId = req.user?.shopId;
     const limitNum = parseInt(limit, 10);
 
     const pipeline = [

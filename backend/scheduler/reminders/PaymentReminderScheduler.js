@@ -246,6 +246,8 @@ export default class PaymentReminderScheduler extends BaseScheduler {
           invoiceNumber: invoice.invoice_number,
           daysAfterInvoice,
           amount: invoice.total_amount,
+          type: resolvedTemplateName,
+          dueDate: invoice.due_date,
         });
       } else {
         this.logError("sendPaymentReminder", new Error(result.error), {

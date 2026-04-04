@@ -89,18 +89,18 @@ export const getReminderLogs = async (req, res) => {
       start_date,
       end_date,
       recipient_number,
-      
     } = req.query;
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
     const { user } = req;
-    const shop_id = user?.shop_id;  
+    const shop_id = user?.shopId;
     const match = {
       deleted_at: null,
     };
 
+    // if(shop_id) match.shop_id = shop_id;
     if (entity_type) match.entity_type = entity_type;
     if (message_status) match.message_status = message_status;
 
@@ -249,7 +249,7 @@ export const getReminderLogs = async (req, res) => {
 export const getReminderStats = async (req, res) => {
   try {
     const { start_date, end_date, entity_type } = req.query;
-    const shopId = req.user?.shop_id;
+    const shopId = req.user?.shopId;
 
     const matchStage = { deleted_at: null };
 

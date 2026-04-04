@@ -19,7 +19,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
-
+const SHOP_ID = new mongoose.Types.ObjectId("696f000487f0258e94f1ee1b");
 const tomorrowRange = createDateRange(1);
 
 const getTomorrowISTParts = () => getISTDateParts(tomorrowRange.start);
@@ -44,7 +44,13 @@ const getSummary = async () => {
 
   // 🎂 Today's Wishes (Birthday + Anniversary)
   const birthdayCustomersToday = await Customer.aggregate([
-    { $match: { date_of_birth: { $ne: null }, deleted_at: null } },
+    {
+      $match: {
+        date_of_birth: { $ne: null },
+        deleted_at: null,
+        shop_id: SHOP_ID,
+      },
+    },
     {
       $addFields: {
         month: { $month: "$date_of_birth" },
@@ -59,6 +65,7 @@ const getSummary = async () => {
       $match: {
         anniversary_date: { $exists: true, $ne: null },
         deleted_at: null,
+        shop_id: SHOP_ID,
       },
     },
     {
@@ -79,16 +86,12 @@ const getSummary = async () => {
   const month = todayISTParts.month;
   const date = todayISTParts.date;
 
- 
- 
- 
-
- const todaysFestivals = await FestivalSchedule.find({
-   schedule_date: {
-     $gte: todayRange.start,
-     $lt: todayRange.end,
-   },
- });
+  const todaysFestivals = await FestivalSchedule.find({
+    schedule_date: {
+      $gte: todayRange.start,
+      $lt: todayRange.end,
+    },
+  });
   console.log(`  festivals: ${todaysFestivals.length}`);
 
   for (const fest of todaysFestivals) {
@@ -120,8 +123,9 @@ const getSummary = async () => {
     {
       $match: {
         next_reminder_at: { $lte: todayEnd },
-        status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+        status: { $nin: ["COMPLETED", "CANCELLED"] },
         deleted_at: null,
+        shop_id: SHOP_ID,
       },
     },
     {
@@ -220,6 +224,7 @@ const getSummary = async () => {
         due_date: { $gte: todayRange.start, $lt: todayRange.end },
         payment_status: { $in: ["UNPAID", "PARTIAL"] },
         deleted_at: null,
+        shop_id: SHOP_ID,
       },
     },
     {
@@ -256,6 +261,7 @@ const getSummary = async () => {
         due_date: { $lt: todayRange.start },
         payment_status: { $in: ["UNPAID", "PARTIAL"] },
         deleted_at: null,
+        shop_id: SHOP_ID,
       },
     },
     {
@@ -305,6 +311,7 @@ const getSummary = async () => {
             $lt: todayRangeWarranty.end,
           },
           deleted_at: null,
+          shop_id: SHOP_ID,
         },
       },
       {
@@ -337,23 +344,23 @@ const getSummary = async () => {
       },
     ]);
 
-   const label =
-     days === 30
-       ? "30-DAY REMINDER"
-       : days === 15
-         ? "15-DAY REMINDER"
-         : days === 3
-           ? "3-DAY REMINDER"
-           : `${days}-DAY`;
+    const label =
+      days === 30
+        ? "30-DAY REMINDER"
+        : days === 15
+          ? "15-DAY REMINDER"
+          : days === 3
+            ? "3-DAY REMINDER"
+            : `${days}-DAY`;
 
-   console.log(`  Today - ${label}: ${items.length}`);
+    console.log(`  Today - ${label}: ${items.length}`);
     items.forEach((i) => {
       const customer = i.customer;
-     console.log(
-       `    - [${label}] ${i.product_name} (item=${i.invoice_item_id}) 
+      console.log(
+        `    - [${label}] ${i.product_name} (item=${i.invoice_item_id}) 
        customer=${customer?.full_name || "n/a"} 
        warranty_end=${i.warranty_end_date?.toISOString()}`,
-     );
+      );
     });
   }
 
@@ -364,7 +371,13 @@ const getSummary = async () => {
   console.log(`Tomorrow IST month/day: ${ot.month}/${ot.date}`);
 
   const birthdayCustomers = await Customer.aggregate([
-    { $match: { date_of_birth: { $ne: null }, deleted_at: null } },
+    {
+      $match: {
+        date_of_birth: { $ne: null },
+        deleted_at: null,
+        shop_id: SHOP_ID,
+      },
+    },
     {
       $addFields: {
         month: { $month: "$date_of_birth" },
@@ -379,6 +392,7 @@ const getSummary = async () => {
       $match: {
         anniversary_date: { $exists: true, $ne: null },
         deleted_at: null,
+        shop_id: SHOP_ID,
       },
     },
     {
@@ -389,10 +403,6 @@ const getSummary = async () => {
     },
     { $match: { month: ot.month, day: ot.date } },
   ]);
- 
-
-
-
 
   const tomorrowRange = createDateRange(1);
 
@@ -433,7 +443,7 @@ const getSummary = async () => {
     {
       $match: {
         next_reminder_at: { $lte: tomorrowEnd },
-        status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+       status: { $nin: ["COMPLETED", "CANCELLED"] },
         deleted_at: null,
       },
     },
@@ -493,6 +503,11 @@ const getSummary = async () => {
         preserveNullAndEmptyArrays: true,
       },
     },
+    {
+      $match: {
+        "invoice.shop_id": SHOP_ID,
+      },
+    },
   ]);
 
   // Group by reminder stage
@@ -536,6 +551,7 @@ const getSummary = async () => {
             $lt: tomorrowRangeForDays.end,
           },
           deleted_at: null,
+          shop_id: SHOP_ID,
         },
       },
       {
@@ -568,23 +584,23 @@ const getSummary = async () => {
       },
     ]);
 
-  const label =
-    days === 30
-      ? "30-DAY REMINDER"
-      : days === 15
-        ? "15-DAY REMINDER"
-        : days === 3
-          ? "3-DAY REMINDER"
-          : `${days}-DAY`;
+    const label =
+      days === 30
+        ? "30-DAY REMINDER"
+        : days === 15
+          ? "15-DAY REMINDER"
+          : days === 3
+            ? "3-DAY REMINDER"
+            : `${days}-DAY`;
 
-  console.log(`  Tomorrow - ${label}: ${items.length}`);
+    console.log(`  Tomorrow - ${label}: ${items.length}`);
     items.forEach((i) => {
       const customer = i.customer;
-   console.log(
-     `    - [${label}] ${i.product_name} (item=${i.invoice_item_id}) 
+      console.log(
+        `    - [${label}] ${i.product_name} (item=${i.invoice_item_id}) 
        customer=${customer?.full_name || "n/a"} 
        warranty_end=${i.warranty_end_date?.toISOString()}`,
-   );
+      );
     });
   }
 
@@ -603,6 +619,7 @@ const getSummary = async () => {
         },
         payment_status: { $in: ["UNPAID", "PARTIAL"] },
         deleted_at: null,
+        shop_id: SHOP_ID,
       },
     },
     {
@@ -639,6 +656,7 @@ const getSummary = async () => {
         due_date: { $lt: todayRange.start },
         payment_status: { $in: ["UNPAID", "PARTIAL"] },
         deleted_at: null,
+        shop_id: SHOP_ID,
       },
     },
     {
@@ -704,7 +722,7 @@ const getSummary = async () => {
   }
 
   console.log(`✅ Cleanup complete: ${deletedCount} orphaned records deleted`);
-};;;;
+};
 
 const run = async () => {
   try {

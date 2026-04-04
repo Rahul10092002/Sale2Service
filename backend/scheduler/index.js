@@ -189,6 +189,7 @@ export default class SchedulerService {
       environment: {
         msg91Configured: !!process.env.MSG91_API_ENDPOINT,
         shopName: process.env.SHOP_NAME || "Not set",
+        
       },
     };
   }

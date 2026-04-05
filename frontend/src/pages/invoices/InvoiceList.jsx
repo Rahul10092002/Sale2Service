@@ -551,11 +551,13 @@ const InvoiceList = () => {
                                 .map((item, i) => (
                                   <span
                                     key={i}
-                                    className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full"
+                                    className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full"
                                   >
                                     {item.product_name}
-                                    {`(${item?.serial_number})`} ×
-                                    {item.quantity}
+                                    <span className="inline-block max-w-[80px] truncate">
+                                      ({item?.serial_number})
+                                    </span>
+                                    ×{item.quantity}
                                   </span>
                                 ))}
                               {invoice.invoice_items.length > 3 && (
@@ -649,13 +651,23 @@ const InvoiceList = () => {
                                 .map((item, i) => (
                                   <div
                                     key={i}
-                                    className="flex items-center gap-1.5"
+                                    className="flex items-center gap-1.5 min-w-0"
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
-                                    <span className="truncate text-gray-700">
+
+                                    {/* Product name full visible */}
+                                    <span className="text-gray-700 shrink-0">
                                       {item.product_name}
-                                      {`(${item?.serial_number})`}
                                     </span>
+
+                                    {/* Only serial truncated */}
+                                    <span
+                                      className="truncate max-w-[80px] text-gray-700"
+                                      title={item?.serial_number}
+                                    >
+                                      ({item?.serial_number})
+                                    </span>
+
                                     <span className="text-gray-400 shrink-0">
                                       ×{item.quantity}
                                     </span>

@@ -5,8 +5,8 @@ const TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTZmMDAwNDg3ZjAyNThlOTRmMWVlMWQiLCJzaG9wSWQiOiI2OTZmMDAwNDg3ZjAyNThlOTRmMWVlMWIiLCJyb2xlIjoiT1dORVIiLCJpYXQiOjE3NzUyMjcwNDYsImV4cCI6MTc3NTgzMTg0Nn0.bLw0CO7YAIBtn18lmq2QVrRGosAstXry6MnvAE59fTw";
 // 🔹 BASE CUSTOMER
 const BASE_CUSTOMER = {
-  full_name: "Rahul Patidar",
-  whatsapp_number: "8085035032",
+  full_name: "Bablu Patidar",
+  whatsapp_number: "9893705221",
   alternate_phone: "8080808080",
   email: "rahulpatidar1009@gmail.com",
   date_of_birth: "2026-04-03",

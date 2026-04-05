@@ -38,7 +38,10 @@ app.get("/", (req, res) => {
     version: "1.0.0",
   });
 });
-
+app.get("/health", (req, res) => {
+  console.log("🏓 External ping hit", new Date().toISOString());
+  res.status(200).send("OK");
+});
 // API Routes
 app.use("/v1/auth", authRouter);
 app.use("/v1/shop", shopRouter);
@@ -76,55 +79,8 @@ app.use((err, req, res, next) => {
 
 const mainPort = process.env.PORT || 5000;
 
-// Self-ping function to keep Render service alive
-const selfPing = async () => {
-  try {
-    const baseUrl =
-      process.env.RENDER_EXTERNAL_URL || `http://localhost:${mainPort}`;
-    const response = await fetch(`${baseUrl}/`);
 
-    if (response.ok) {
-      console.log(
-        `🏓 Self-ping successful at ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`,
-      );
-    } else {
-      console.warn(`⚠️ Self-ping returned status: ${response.status}`);
-    }
-  } catch (error) {
-    console.error("❌ Self-ping failed:", error.message);
-  }
-};
 
-// Start self-ping scheduler for Render
-const startSelfPing = () => {
-  // Only run self-ping in production (Render sets NODE_ENV to production)
-  if (process.env.NODE_ENV === "production") {
-   
-   
-
-    const scheduleNextPing = () => {
-      const interval = 5 * 60 * 1000;
-      console.log(
-        `⏰ Next self-ping scheduled in ${Math.round(interval / 60000)} minutes`,
-      );
-
-      setTimeout(() => {
-        selfPing();
-        scheduleNextPing(); // Schedule the next ping
-      }, interval);
-    };
-
-    // Start the first ping after 5 minutes to let the service fully start
-    setTimeout(() => {
-      selfPing();
-      scheduleNextPing();
-    }, 300000); // 5 minutes
-
-    console.log("🏓 Self-ping scheduler started for Render deployment");
-  } else {
-    console.log("🔧 Self-ping disabled (not in production environment)");
-  }
-};
 
 // Initialize scheduler and templates on startup
 const initializeServices = async () => {
@@ -133,8 +89,6 @@ const initializeServices = async () => {
     const scheduler = new SchedulerService();
     scheduler.startScheduler();
 
-    // Start self-ping for Render
-    startSelfPing();
 
     console.log("✅ Services initialized successfully");
   } catch (error) {

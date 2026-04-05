@@ -44,9 +44,9 @@ export default class SchedulerService {
     // on a dev PC in IST, node-cron ran that at 00:30 local → ~12:30 AM IST.
     const ist = { timezone: "Asia/Kolkata" };
 
-    // Daily 6:00 AM India time — birthday / anniversary / festival wishes
+    // Daily 6:30 AM India time — birthday / anniversary / festival wishes
     cron.schedule(
-      "0 6 * * *", 
+      "30 6 * * *", 
       async () => {
         console.log(
           "[SchedulerService] Running daily wishes (birthday/anniversary)...",
@@ -56,9 +56,9 @@ export default class SchedulerService {
       ist,
     );
 
-    // Daily 7:00 AM IST — service schedules
+    // Daily 7:30 AM IST — service schedules
     cron.schedule(
-      "0 7 * * *",
+      "30 7 * * *",
       async () => {
         console.log("[SchedulerService] Running daily service reminders...");
         await this.serviceScheduler.processServiceReminders();
@@ -66,9 +66,9 @@ export default class SchedulerService {
       ist,
     );
 
-    // Daily 8:00 AM IST — warranty reminders
+    // Daily 8:30 AM IST — warranty reminders
     cron.schedule(
-      "0 8 * * *",
+      "30 8 * * *",
       async () => {
         console.log("[SchedulerService] Running daily warranty reminders...");
         await this.warrantyScheduler.processWarrantyReminders();
@@ -76,9 +76,9 @@ export default class SchedulerService {
       ist,
     );
 
-    // Daily 9:00 AM IST — payment reminders
+    // Daily 9:30 AM IST — payment reminders
     cron.schedule(
-      "0 9 * * *",
+      "30 9 * * *",
       async () => {
         console.log("[SchedulerService] Running daily payment reminders...");
         await this.paymentScheduler.processPaymentReminders();

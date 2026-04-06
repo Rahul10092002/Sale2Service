@@ -19,7 +19,7 @@ jobs:
           do
             echo "Attempt $i..."
             
-            status=$(curl -o /dev/null -s -w "%{http_code}" -m 60 https://sale2service.onrender.com/health)
+            status=$(curl -o /dev/null -s -w "%{http_code}" -m 60 https://sale2service.onrender.com)
             
             if [ "$status" -eq 200 ]; then
               echo "✅ Server is awake!"

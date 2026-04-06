@@ -20,8 +20,7 @@ dotenv.config();
 
 const app = express();
 
-// Connect to MongoDB
-MongoDb();
+
 
 // Middleware
 app.use(cors());
@@ -85,10 +84,12 @@ const mainPort = process.env.PORT || 5000;
 // Initialize scheduler and templates on startup
 const initializeServices = async () => {
   try {
+    // Connect DB AFTER server starts
+    await MongoDb();
+
     // Start reminder scheduler
     const scheduler = new SchedulerService();
     scheduler.startScheduler();
-
 
     console.log("✅ Services initialized successfully");
   } catch (error) {

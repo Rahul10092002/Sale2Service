@@ -425,10 +425,10 @@ const ProductView = () => {
                         Serial #{product.serial_number || "N/A"}
                       </p>
                       <p className="text-purple-100">
-                        Invoice #{product.invoice.invoice_number}
+                        Invoice #{product?.invoice?.invoice_number}
                       </p>
                       <p className="text-purple-100">
-                        Invoice Date: {formatDate(product.invoice.invoice_date)}
+                        Invoice Date: {formatDate(product?.invoice?.invoice_date)}
                       </p>
 
                       <div className="flex items-center space-x-4 mt-2">

@@ -9,6 +9,7 @@ import {
   logout as logoutAction,
 } from "./authSlice.js";
 import {
+  authApi,
   useLoginMutation,
   useSignupMutation,
   useGetCurrentUserQuery,
@@ -100,6 +101,8 @@ export const useAuth = () => {
     } finally {
       // Always clear local state regardless of server response
       dispatch(logoutAction());
+      // Clear all API cached responses to load fresh data on next login
+      dispatch(authApi.util.resetApiState());
     }
   };
 

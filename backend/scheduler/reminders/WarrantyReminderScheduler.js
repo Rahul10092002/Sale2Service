@@ -349,7 +349,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       (invoiceItem.invoice_id.shop_id ? await Shop.findById(invoiceItem.invoice_id.shop_id) : null);
     const shopName = getShopName(shop);
     const contactInfo =
-      shop?.phone ||
+      getShopContactInfo(shop) ||
       "";
 
     if (daysUntilExpiry !== null) {

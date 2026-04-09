@@ -2,7 +2,7 @@ import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import ServiceSchedule from "../../models/ServiceSchedule.js";
 import Shop from "../../models/Shop.js";
-import { formatDateForMessage, getShopName } from "../core/utils.js";
+import { formatDateForMessage, getShopName, getShopContactInfo } from "../core/utils.js";
 
 export default class ServiceReminderScheduler extends BaseScheduler {
   constructor() {
@@ -111,7 +111,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
 
   async sendMessage(service, customer, invoiceItem, shop, phone) {
     const serviceDate = formatDateForMessage(service.scheduled_date);
-    const shopContact = shop?.phone || "";
+    const shopContact = getShopContactInfo(shop) || "";
 
     let templateName;
     let variables;

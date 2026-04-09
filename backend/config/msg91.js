@@ -75,11 +75,15 @@ export const sendWhatsappMessageViaMSG91 = async ({
 
     // Add buttons dynamically if provided
     if (buttons && Array.isArray(buttons)) {
-      buttons.forEach((btnValue, index) => {
+      buttons.forEach((btn, index) => {
+        const isObj = typeof btn === "object" && btn !== null;
+        const btnSubtype = isObj && btn.subtype ? btn.subtype : "url";
+        const btnValue = isObj ? (btn.value || "") : (btn || "");
+
         componentPayload[`button_${index + 1}`] = {
-          subtype: "url",
+          subtype: btnSubtype,
           type: "text",
-          value: btnValue || "",
+          value: btnValue,
         };
       });
     }

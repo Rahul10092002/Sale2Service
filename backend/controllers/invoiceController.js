@@ -778,7 +778,7 @@ export default class InvoiceController {
       // {{1}}: Pending amount, {{2}}: Invoice number, {{3}}: Due date,
       // {{4}}: Product serial number, {{5}}: Shop contact info, {{6}}: Shop name
       const serialNumber = invoice.invoice_items?.[0]?.serial_number || "N/A";
-      const shopContact = shop.phone || "";
+      const shopContact = formatPhoneNumber(shop?.phone) || "";
 
       // Determine if invoice is overdue (past due date)
       const isOverdue =
@@ -819,11 +819,13 @@ export default class InvoiceController {
         };
       }
 
+      const buttonSubtype = templateName === "payment_missed" ? "url" : "quick_reply";
+
       const msgConfig = {
         templateName: templateName,
         to: phoneNumber,
         components: vars,
-        buttons: [shopContact],
+        buttons: [{ subtype: buttonSubtype, value: shopContact }],
         campaignName: templateName,
         hospitalId: shop._id,
         userName: customer.full_name || "",

@@ -4,7 +4,7 @@ import Invoice from "../../models/Invoice.js";
 import InvoiceItem from "../../models/InvoiceItem.js";
 import { createDateRange, formatDateForMessage } from "../core/utils.js";
 import Shop from "../../models/Shop.js";
-import { getShopName } from "../core/utils.js";
+import { getShopName, getShopContactInfo } from "../core/utils.js";
 /**
  * Payment-specific reminder scheduler
  * Handles pending payment reminders at different intervals
@@ -300,7 +300,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
     }).select("serial_number");
 
     const serialNumber = invoiceItems?.[0]?.serial_number || "N/A";
-    const shopContact = shop?.phone || "";
+    const shopContact = getShopContactInfo(shop) || "";
 
     if (templateName === "payment_missed") {
       return {
@@ -315,7 +315,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
           5: shopContact,
           6: shop?.shop_name_hi || shop?.shop_name || "",
         },
-        buttons: [shopContact],
+        buttons: [{ subtype: "url", value: shopContact }],
       };
     }
 
@@ -331,7 +331,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
         5: shopContact,
         6: shop?.shop_name_hi || shop?.shop_name || "",
       },
-      buttons: [shopContact],
+      buttons: [{ subtype: "quick_reply", value: shopContact }],
     };
   }
 

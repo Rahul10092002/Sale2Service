@@ -111,6 +111,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
 
   async sendMessage(service, customer, invoiceItem, shop, phone) {
     const serviceDate = formatDateForMessage(service.scheduled_date);
+    const shopContact = shop?.phone || "";
 
     let templateName;
     let variables;
@@ -156,6 +157,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       to: phone,
       templateName,
       variables,
+      buttons: [shopContact],
       reminderLogId: reminderLog._id,
       metadata: {
         serviceId: service._id,

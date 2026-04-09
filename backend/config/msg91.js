@@ -12,6 +12,7 @@ export const sendWhatsappMessageViaMSG91 = async ({
   campaignName = null,
   userName = null,
   messageType = null,
+  buttons = [],
 }) => {
   // helper: safe decrypt (no-op for plaintext, placeholder for real decryption)
   const safeDecrypt = (val) => {
@@ -71,6 +72,17 @@ export const sendWhatsappMessageViaMSG91 = async ({
         value: value || "",
       };
     });
+
+    // Add buttons dynamically if provided
+    if (buttons && Array.isArray(buttons)) {
+      buttons.forEach((btnValue, index) => {
+        componentPayload[`button_${index + 1}`] = {
+          subtype: "url",
+          type: "text",
+          value: btnValue || "",
+        };
+      });
+    }
 
     if (media && media.url) {
       componentPayload["header_1"] = {

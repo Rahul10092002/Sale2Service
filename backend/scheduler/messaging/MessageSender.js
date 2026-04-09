@@ -20,6 +20,7 @@ export default class MessageSender {
     to,
     templateName,
     variables = {},
+    buttons = [],
     reminderLogId = null,
     metadata = {},
   }) {
@@ -34,6 +35,7 @@ export default class MessageSender {
         templateName,
         to,
         components: componentArray,
+        buttons: buttons,
         campaignName: metadata.campaignName || templateName,
         hospitalId: metadata.shopId || null,
         userName: metadata.customerName || "",

@@ -57,6 +57,23 @@ app.use("/v1/festival-schedule", festivalScheduleRouter);
 // Dev-only debug endpoints
 app.use("/v1/debug", debugRouter);
 
+app.get("/v1/whatsapp", (req, res) => {
+  const { number, message } = req.query;
+
+  if (!number) {
+    return res.status(400).send("Number is required");
+  }
+
+  const encodedMessage = message
+    ? encodeURIComponent(message)
+    : "";
+
+  const url = message
+    ? `https://wa.me/${number}?text=${encodedMessage}`
+    : `https://wa.me/${number}`;
+
+  return res.redirect(url);
+});
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({

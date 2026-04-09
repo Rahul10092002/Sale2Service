@@ -186,7 +186,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
 
       // Prepare template variables for warranty_expiring
       // Based on Hindi template: customer_name, product_name, days_remaining, contact_info, shop_name
-      const variables = await this.getWarrantyTemplateVariables(
+      const { variables, buttons } = await this.getWarrantyTemplateVariables(
         invoiceItem,
         daysUntilExpiry,
         cachedShop,
@@ -208,6 +208,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
         to: phoneValidation.formattedNumber,
         templateName: templateName,
         variables: variables,
+        buttons: buttons,
         reminderLogId: reminderLog._id,
         metadata: {
           campaignName: "warranty_expiry",
@@ -289,7 +290,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
 
       // Prepare template variables for warranty_expired
       // Based on Hindi template: customer_name, product_name, contact_info, shop_name
-      const variables = await this.getWarrantyTemplateVariables(invoiceItem, null, cachedShop);
+      const { variables, buttons } = await this.getWarrantyTemplateVariables(invoiceItem, null, cachedShop);
 
       // Create reminder log
       const reminderLog = await this.createReminderLog({
@@ -307,6 +308,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
         to: phoneValidation.formattedNumber,
         templateName: templateName,
         variables: variables,
+        buttons: buttons,
         reminderLogId: reminderLog._id,
         metadata: {
           campaignName: "warranty_expired",
@@ -353,19 +355,25 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
     if (daysUntilExpiry !== null) {
       // For warranty_expiring template: customer_name, product_name, days_remaining, contact_info, shop_name
       return {
-        1: customer.full_name || "Customer",
-        2: invoiceItem.product_name || "Product",
-        3: daysUntilExpiry.toString(),
-        4: contactInfo,
-        5: shopName,
+        variables: {
+          1: customer.full_name || "Customer",
+          2: invoiceItem.product_name || "Product",
+          3: daysUntilExpiry.toString(),
+          4: contactInfo,
+          5: shopName,
+        },
+        buttons: [contactInfo],
       };
     } else {
       // For warranty_expired template: customer_name, product_name, contact_info, shop_name
       return {
-        1: customer.full_name || "Customer",
-        2: invoiceItem.product_name || "Product",
-        3: contactInfo,
-        4: shopName,
+        variables: {
+          1: customer.full_name || "Customer",
+          2: invoiceItem.product_name || "Product",
+          3: contactInfo,
+          4: shopName,
+        },
+        buttons: [contactInfo],
       };
     }
   }

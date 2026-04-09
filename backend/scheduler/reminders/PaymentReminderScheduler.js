@@ -201,7 +201,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       }
 
       // Prepare template variables for payment reminder
-      const variables = await this.getPaymentTemplateVariables(
+      const { variables, buttons } = await this.getPaymentTemplateVariables(
         invoice,
         cachedShop,
         resolvedTemplateName,
@@ -232,6 +232,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
         to: phoneValidation.formattedNumber,
         templateName: resolvedTemplateName,
         variables: variables,
+        buttons: buttons,
         reminderLogId: reminderLog._id,
         metadata: {
           campaignName: resolvedTemplateName,
@@ -303,28 +304,34 @@ export default class PaymentReminderScheduler extends BaseScheduler {
 
     if (templateName === "payment_missed") {
       return {
-        1:
-          typeof invoice.amount_due === "number"
-            ? invoice.amount_due.toFixed(2)
-            : String(invoice.amount_due || "0"),
-        2: formatDateForMessage(invoice.due_date),
-        3: invoice.invoice_number || "N/A",
-        4: serialNumber,
-        5: shopContact,
-        6: shop?.shop_name_hi || shop?.shop_name || "",
+        variables: {
+          1:
+            typeof invoice.amount_due === "number"
+              ? invoice.amount_due.toFixed(2)
+              : String(invoice.amount_due || "0"),
+          2: formatDateForMessage(invoice.due_date),
+          3: invoice.invoice_number || "N/A",
+          4: serialNumber,
+          5: shopContact,
+          6: shop?.shop_name_hi || shop?.shop_name || "",
+        },
+        buttons: [shopContact],
       };
     }
 
     return {
-      1:
-        typeof invoice.amount_due === "number"
-          ? invoice.amount_due.toFixed(2)
-          : String(invoice.amount_due || "0"),
-      2: invoice.invoice_number || "N/A",
-      3: serialNumber,
-      4: formatDateForMessage(invoice.due_date),
-      5: shopContact,
-      6: shop?.shop_name_hi || shop?.shop_name || "",
+      variables: {
+        1:
+          typeof invoice.amount_due === "number"
+            ? invoice.amount_due.toFixed(2)
+            : String(invoice.amount_due || "0"),
+        2: invoice.invoice_number || "N/A",
+        3: serialNumber,
+        4: formatDateForMessage(invoice.due_date),
+        5: shopContact,
+        6: shop?.shop_name_hi || shop?.shop_name || "",
+      },
+      buttons: [shopContact],
     };
   }
 

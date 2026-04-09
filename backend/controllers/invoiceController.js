@@ -403,23 +403,59 @@ export default class InvoiceController {
             await import("../scheduler/core/utils.js");
 
           const customerNumber = newInvoice.customer_id?.whatsapp_number;
+          const customerName = newInvoice.customer_id?.full_name || "";
           const formattedNumber = formatPhoneNumber(customerNumber);
           if (!formattedNumber || !isValidWhatsAppNumber(formattedNumber))
             return;
 
-          const vars = {
-            1: invoiceNumber,
-            2: new Date(newInvoice.invoice_date).toLocaleDateString(),
-            3:
-              typeof totalAmount === "number"
-                ? totalAmount.toFixed(2)
-                : String(totalAmount),
-            4: newInvoice.due_date
-              ? new Date(newInvoice.due_date).toLocaleDateString()
-              : "",
-            5: shop.shop_name_hi || shop.shop_name || "",
-          };
+          // const vars = {
+          //   1: invoiceNumber,
+          //   2: new Date(newInvoice.invoice_date).toLocaleDateString(),
+          //   3:
+          //     typeof totalAmount === "number"
+          //       ? totalAmount.toFixed(2)
+          //       : String(totalAmount),
+          //   4: newInvoice.due_date
+          //     ? new Date(newInvoice.due_date).toLocaleDateString()
+          //     : "",
+          //   5: shop.shop_name_hi || shop.shop_name || "",
+          // };
 
+         const vars = {
+           1: customerName || "",
+
+           2: invoiceNumber,
+
+           3: new Date(newInvoice.invoice_date).toLocaleDateString("hi-IN"),
+
+           4:
+             typeof newInvoice.total_amount === "number"
+               ? newInvoice.total_amount.toFixed(2)
+               : String(newInvoice.total_amount),
+
+           5:
+             typeof newInvoice.amount_paid === "number"
+               ? newInvoice.amount_paid.toFixed(2)
+               : "0",
+
+           6:
+             typeof newInvoice.amount_due === "number"
+               ? newInvoice.amount_due.toFixed(2)
+               : (
+                   (newInvoice.total_amount || 0) -
+                   (newInvoice.amount_paid || 0)
+                 ).toFixed(2),
+
+           7: {
+             PAID: "Paid",
+             PARTIAL: "Partial",
+             UNPAID: "Unpaid",
+           }[newInvoice.payment_status] || "Pending",
+
+           8: shop.contact_number || shop.mobile || shop.phone || "",
+
+           9: shop.shop_name_hi || shop.shop_name || "",
+         };
           const msgConfig = {
             templateName: "invoice_created",
             to: formattedNumber,
@@ -609,20 +645,40 @@ export default class InvoiceController {
       const backendUrl = (process.env.BACKEND_URL || "").replace(/\/$/, "");
       const pdfUrl = `${backendUrl}/v1/invoices/public-pdf/${token}`;
 
-      // Prepare template variables
       const vars = {
-        1: invoice.invoice_number,
-        2: new Date(invoice.invoice_date).toLocaleDateString(),
-        3:
+        1: customer?.full_name || "",
+
+        2: invoice.invoice_number,
+
+        3: new Date(invoice.invoice_date).toLocaleDateString(),
+
+        4:
           typeof invoice.total_amount === "number"
             ? invoice.total_amount.toFixed(2)
             : String(invoice.total_amount),
-        4: invoice.due_date
-          ? new Date(invoice.due_date).toLocaleDateString()
-          : "",
-        5: shop.shop_name_hi || shop.shop_name || "",
-      };
 
+        5:
+          typeof invoice.paid_amount === "number"
+            ? invoice.amount_paid.toFixed(2)
+            : "0",
+
+        6:
+          typeof invoice.due_amount === "number"
+            ? invoice.amount_due.toFixed(2)
+            : (
+                (invoice.total_amount || 0) - (invoice.paid_amount || 0)
+              ).toFixed(2),
+
+        7: {
+             PAID: "Paid",
+             PARTIAL: "Partial",
+             UNPAID: "Unpaid",
+           }[invoice.payment_status] || "Pending",
+
+        8: shop.phone || shop.mobile || "",
+
+        9: shop.shop_name_hi || shop.shop_name || "",
+      };
       // invoice_created template always requires header_1 document
       const msgConfig = {
         templateName: "invoice_created",
@@ -767,6 +823,7 @@ export default class InvoiceController {
         templateName: templateName,
         to: phoneNumber,
         components: vars,
+        buttons: [shopContact],
         campaignName: templateName,
         hospitalId: shop._id,
         userName: customer.full_name || "",

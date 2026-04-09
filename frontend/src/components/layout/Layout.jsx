@@ -101,7 +101,7 @@ const Layout = ({ children, title }) => {
       </div>
 
       {/* Right: top nav (sticky) + main area (scrollable) */}
-      <div className="flex-1 flex flex-col h-screen">
+      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-x-hidden">
         <div className="sticky top-0 z-20 bg-transparent">
           <TopNav
             onToggleSidebar={onToggleSidebar}

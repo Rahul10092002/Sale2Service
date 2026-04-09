@@ -46,15 +46,15 @@ const MetricCard = ({
 
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-6 ${onClick ? "cursor-pointer hover:-translate-y-1" : ""} ${className}`}
+      className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-all duration-200 ${onClick ? "cursor-pointer hover:-translate-y-1" : ""} ${className}`}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-2 min-w-0">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-600 mb-1 truncate">
             {title}
           </p>
-          <p className="text-2xl font-bold text-gray-900 mb-1">{value}</p>
+          <p className="text-2xl font-bold text-gray-900 mb-1 truncate">{value}</p>
           {subtitle && (
             <p className="text-sm text-gray-500 truncate">{subtitle}</p>
           )}

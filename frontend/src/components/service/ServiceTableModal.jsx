@@ -276,7 +276,7 @@ export const ServiceTableModal = ({
         <Modal
           open={isOpen}
           onClose={onClose}
-          maxWidth="6xl"
+          maxWidth="4xl"
           className="z-[50]"
         >
           <DialogHeader
@@ -317,221 +317,370 @@ export const ServiceTableModal = ({
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Service Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Description
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Service Charge
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Amount Collected
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Completion Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Notes
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {serviceData.schedules.map((schedule) => (
-                      <tr key={schedule._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {formatDate(schedule.scheduled_date)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                              schedule.status,
-                            )}`}
-                          >
-                            {getStatusIcon(schedule.status)}
-                            <span className="ml-1 capitalize">
-                              {schedule.status}
+              <div className="w-full">
+                {/* Desktop Table (lg and above) */}
+                <div className="hidden lg:block">
+                  <table className="w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Service Date
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Status
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Details
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {serviceData.schedules.map((schedule) => (
+                        <tr key={schedule._id} className="hover:bg-gray-50">
+                          {/* Column 1 */}
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                            {formatDate(schedule.scheduled_date)}
+                          </td>
+
+                          {/* Column 2 */}
+                          <td className="px-4 py-4">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                                schedule.status,
+                              )}`}
+                            >
+                              {getStatusIcon(schedule.status)}
+                              <span className="ml-1 capitalize">
+                                {schedule.status}
+                              </span>
                             </span>
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
+                          </td>
+
+                          {/* Column 3 (Merged Details) */}
+                          <td className="px-4 py-4 text-sm text-gray-700 space-y-1">
+                            <div>
+                              <strong>Description:</strong>{" "}
+                              {schedule.service_description ||
+                                serviceData.plan?.service_description}
+                            </div>
+
+                            <div>
+                              <strong>Charge:</strong>{" "}
+                              {schedule.service_charge
+                                ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
+                                : serviceData.plan?.service_charge
+                                  ? `₹${serviceData.plan.service_charge.toLocaleString("en-IN")}`
+                                  : "Free"}
+                            </div>
+
+                            <div>
+                              <strong>Collected:</strong>{" "}
+                              {schedule.amount_collected
+                                ? `₹${schedule.amount_collected.toLocaleString("en-IN")}`
+                                : "₹0"}{" "}
+                              ({schedule.payment_status || "PENDING"})
+                            </div>
+
+                            <div>
+                              <strong>Completed:</strong>{" "}
+                              {schedule.completed_at
+                                ? formatDate(schedule.completed_at)
+                                : "-"}
+                            </div>
+
+                            <div>
+                              <strong>Notes:</strong> {schedule.notes || "-"}
+                            </div>
+                          </td>
+
+                          {/* Actions (UNCHANGED) */}
+                          <td className="px-4 py-4 text-right text-sm font-medium flex-col gap-2 item-center">
+                            {schedule.status === "scheduled" && (
+                              <div className="flex flex-col justify-end space-y-2">
+                                <button
+                                  onClick={() => {
+                                    const scheduleData = schedule;
+                                    const serviceCharge =
+                                      scheduleData.service_charge ||
+                                      serviceData.plan?.service_charge ||
+                                      0;
+                                    setAmountCollected(serviceCharge);
+                                    setPaymentMethod(
+                                      serviceCharge === 0 ? "NONE" : "CASH",
+                                    );
+                                    setTechnicianName("");
+                                    setCompletionNotes("MAINTENANCE");
+                                    setIssueReported(
+                                      "Regular maintenance service",
+                                    );
+                                    setWorkDone(
+                                      "Service completed successfully",
+                                    );
+                                    setShowCompleteModal(schedule._id);
+                                  }}
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
+                                >
+                                  {markingComplete ? (
+                                    <LoadingSpinner size="xs" />
+                                  ) : (
+                                    <CheckCircle2 size={12} className="mr-1" />
+                                  )}
+                                  Complete
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    setShowRescheduleModal(schedule._id)
+                                  }
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                                >
+                                  {rescheduling ? (
+                                    <LoadingSpinner size="xs" />
+                                  ) : (
+                                    <RotateCcw size={12} className="mr-1" />
+                                  )}
+                                  Reschedule
+                                </button>
+
+                                <button
+                                  onClick={() => cancelService(schedule._id)}
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
+                                >
+                                  {cancelling ? (
+                                    <LoadingSpinner size="xs" />
+                                  ) : (
+                                    <XCircle size={12} className="mr-1" />
+                                  )}
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
+
+                            {schedule.status === "overdue" && (
+                              <div className="flex flex-col justify-end space-y-2">
+                                <button
+                                  onClick={() => {
+                                    const scheduleData = schedule;
+                                    const serviceCharge =
+                                      scheduleData.service_charge ||
+                                      serviceData.plan?.service_charge ||
+                                      0;
+                                    setAmountCollected(serviceCharge);
+                                    setPaymentMethod(
+                                      serviceCharge === 0 ? "NONE" : "CASH",
+                                    );
+                                    setTechnicianName("");
+                                    setCompletionNotes("MAINTENANCE");
+                                    setIssueReported(
+                                      "Regular maintenance service",
+                                    );
+                                    setWorkDone(
+                                      "Service completed successfully",
+                                    );
+                                    setShowCompleteModal(schedule._id);
+                                  }}
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
+                                >
+                                  {markingComplete ? (
+                                    <LoadingSpinner size="xs" />
+                                  ) : (
+                                    <CheckCircle2 size={12} className="mr-1" />
+                                  )}
+                                  Complete
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    setShowRescheduleModal(schedule._id)
+                                  }
+                                  disabled={actionLoading}
+                                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                                >
+                                  {rescheduling ? (
+                                    <LoadingSpinner size="xs" />
+                                  ) : (
+                                    <RotateCcw size={12} className="mr-1" />
+                                  )}
+                                  Reschedule
+                                </button>
+                              </div>
+                            )}
+
+                            {(schedule.status === "completed" ||
+                              schedule.status === "cancelled") && (
+                              <span className="text-gray-400 text-xs italic">
+                                No actions available
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="lg:hidden space-y-4">
+                  {serviceData.schedules.map((schedule) => (
+                    <div
+                      key={schedule._id}
+                      className="bg-white p-4 rounded-lg shadow border"
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="font-medium text-gray-900">
+                          {formatDate(schedule.scheduled_date)}
+                        </div>
+
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                            schedule.status,
+                          )}`}
+                        >
+                          {schedule.status}
+                        </span>
+                      </div>
+
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div>
                           {schedule.service_description ||
                             serviceData.plan?.service_description}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {schedule.service_charge
-                            ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
-                            : serviceData.plan?.service_charge
-                              ? `₹${serviceData.plan.service_charge.toLocaleString("en-IN")}`
-                              : "Free"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              schedule.payment_status === "PAID"
-                                ? "bg-green-100 text-green-800"
-                                : schedule.payment_status === "PARTIAL"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : schedule.payment_status === "FREE"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {schedule.amount_collected
-                              ? `₹${schedule.amount_collected.toLocaleString("en-IN")}`
-                              : "₹0"}
-                            <span className="ml-1">
-                              ({schedule.payment_status || "PENDING"})
-                            </span>
+                        </div>
+
+                        <div>
+                          ₹
+                          {(
+                            schedule.service_charge ||
+                            serviceData.plan?.service_charge ||
+                            0
+                          ).toLocaleString("en-IN")}
+                        </div>
+
+                        <div>
+                          ₹
+                          {(schedule.amount_collected || 0).toLocaleString(
+                            "en-IN",
+                          )}{" "}
+                          ({schedule.payment_status || "PENDING"})
+                        </div>
+                      </div>
+
+                      {/* Actions SAME */}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {schedule.status === "scheduled" && (
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => {
+                                const scheduleData = schedule;
+                                const serviceCharge =
+                                  scheduleData.service_charge ||
+                                  serviceData.plan?.service_charge ||
+                                  0;
+                                setAmountCollected(serviceCharge);
+                                setPaymentMethod(
+                                  serviceCharge === 0 ? "NONE" : "CASH",
+                                );
+                                setTechnicianName("");
+                                setCompletionNotes("MAINTENANCE");
+                                setIssueReported("Regular maintenance service");
+                                setWorkDone("Service completed successfully");
+                                setShowCompleteModal(schedule._id);
+                              }}
+                              disabled={actionLoading}
+                              className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
+                            >
+                              {markingComplete ? (
+                                <LoadingSpinner size="xs" />
+                              ) : (
+                                <CheckCircle2 size={12} className="mr-1" />
+                              )}
+                              Complete
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                setShowRescheduleModal(schedule._id)
+                              }
+                              disabled={actionLoading}
+                              className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                            >
+                              {rescheduling ? (
+                                <LoadingSpinner size="xs" />
+                              ) : (
+                                <RotateCcw size={12} className="mr-1" />
+                              )}
+                              Reschedule
+                            </button>
+
+                            <button
+                              onClick={() => cancelService(schedule._id)}
+                              disabled={actionLoading}
+                              className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
+                            >
+                              {cancelling ? (
+                                <LoadingSpinner size="xs" />
+                              ) : (
+                                <XCircle size={12} className="mr-1" />
+                              )}
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+
+                        {schedule.status === "overdue" && (
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => {
+                                const scheduleData = schedule;
+                                const serviceCharge =
+                                  scheduleData.service_charge ||
+                                  serviceData.plan?.service_charge ||
+                                  0;
+                                setAmountCollected(serviceCharge);
+                                setPaymentMethod(
+                                  serviceCharge === 0 ? "NONE" : "CASH",
+                                );
+                                setTechnicianName("");
+                                setCompletionNotes("MAINTENANCE");
+                                setIssueReported("Regular maintenance service");
+                                setWorkDone("Service completed successfully");
+                                setShowCompleteModal(schedule._id);
+                              }}
+                              disabled={actionLoading}
+                              className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
+                            >
+                              Complete
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                setShowRescheduleModal(schedule._id)
+                              }
+                              disabled={actionLoading}
+                              className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                            >
+                              Reschedule
+                            </button>
+                          </div>
+                        )}
+
+                        {(schedule.status === "completed" ||
+                          schedule.status === "cancelled") && (
+                          <span className="text-gray-400 text-xs italic">
+                            No actions available
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {schedule.completed_at
-                            ? formatDate(schedule.completed_at)
-                            : "-"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {schedule.notes || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          {schedule.status === "scheduled" && (
-                            <div className="flex justify-end space-x-2">
-                              <button
-                                onClick={() => {
-                                  console.log(
-                                    "Table Complete button clicked for schedule:",
-                                    schedule._id,
-                                  );
-                                  // Initialize and open completion modal
-                                  const scheduleData = schedule;
-                                  const serviceCharge =
-                                    scheduleData.service_charge ||
-                                    serviceData.plan?.service_charge ||
-                                    0;
-                                  setAmountCollected(serviceCharge);
-                                  setPaymentMethod(
-                                    serviceCharge === 0 ? "NONE" : "CASH",
-                                  );
-                                  setTechnicianName("");
-                                  setCompletionNotes("MAINTENANCE");
-                                  setIssueReported(
-                                    "Regular maintenance service",
-                                  );
-                                  setWorkDone("Service completed successfully");
-                                  setShowCompleteModal(schedule._id);
-                                }}
-                                disabled={actionLoading}
-                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                {markingComplete ? (
-                                  <LoadingSpinner size="xs" />
-                                ) : (
-                                  <CheckCircle2 size={12} className="mr-1" />
-                                )}
-                                Complete
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setShowRescheduleModal(schedule._id)
-                                }
-                                disabled={actionLoading}
-                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                {rescheduling ? (
-                                  <LoadingSpinner size="xs" />
-                                ) : (
-                                  <RotateCcw size={12} className="mr-1" />
-                                )}
-                                Reschedule
-                              </button>
-                              <button
-                                onClick={() => cancelService(schedule._id)}
-                                disabled={actionLoading}
-                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                {cancelling ? (
-                                  <LoadingSpinner size="xs" />
-                                ) : (
-                                  <XCircle size={12} className="mr-1" />
-                                )}
-                                Cancel
-                              </button>
-                            </div>
-                          )}
-                          {schedule.status === "overdue" && (
-                            <div className="flex justify-end space-x-2">
-                              <button
-                                onClick={() => {
-                                  console.log(
-                                    "Overdue Complete button clicked for schedule:",
-                                    schedule._id,
-                                  );
-                                  // Initialize and open completion modal
-                                  const scheduleData = schedule;
-                                  const serviceCharge =
-                                    scheduleData.service_charge ||
-                                    serviceData.plan?.service_charge ||
-                                    0;
-                                  setAmountCollected(serviceCharge);
-                                  setPaymentMethod(
-                                    serviceCharge === 0 ? "NONE" : "CASH",
-                                  );
-                                  setTechnicianName("");
-                                  setCompletionNotes("MAINTENANCE");
-                                  setIssueReported(
-                                    "Regular maintenance service",
-                                  );
-                                  setWorkDone("Service completed successfully");
-                                  setShowCompleteModal(schedule._id);
-                                }}
-                                disabled={actionLoading}
-                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                {markingComplete ? (
-                                  <LoadingSpinner size="xs" />
-                                ) : (
-                                  <CheckCircle2 size={12} className="mr-1" />
-                                )}
-                                Complete
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setShowRescheduleModal(schedule._id)
-                                }
-                                disabled={actionLoading}
-                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                {rescheduling ? (
-                                  <LoadingSpinner size="xs" />
-                                ) : (
-                                  <RotateCcw size={12} className="mr-1" />
-                                )}
-                                Reschedule
-                              </button>
-                            </div>
-                          )}
-                          {(schedule.status === "completed" ||
-                            schedule.status === "cancelled") && (
-                            <span className="text-gray-400 text-xs italic">
-                              No actions available
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </DialogBody>

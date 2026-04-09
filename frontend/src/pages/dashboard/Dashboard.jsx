@@ -5,10 +5,6 @@ import FAB from "../../components/ui/FAB.jsx";
 import ShortcutGrid from "../../components/ui/ShortcutGrid.jsx";
 import MetricCard from "../../components/ui/MetricCard.jsx";
 import {
-  RevenueTrendChart,
-  InvoiceStatusChart,
-  TopProductsChart,
-  PaymentMethodsChart,
   RecentActivity,
   AlertsPanel,
   PeriodSelector,
@@ -88,43 +84,58 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-transparent py-6 overflow-x-hidden">
-        <div className="px-4 sm:px-6 lg:px-8 min-w-0">
+      <div className="min-h-screen bg-gray-50 py-6 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Welcome Section with Shortcuts */}
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 mb-6">
-            <div className="px-6 py-4">
-              <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between mb-6">
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent mb-2">
-                    {getWelcomeMessage()}
-                  </h1>
-                  <p className="text-sm sm:text-base text-gray-600">
-                    Manage Sales & Warranty in One Place
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 flex-wrap shrink-0">
-                  <div className="min-w-0">
-                    <PeriodSelector value={period} onChange={setPeriod} />
-                  </div>
-                  <button
-                    onClick={handleRefresh}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors duration-200 p-3"
-                    title="Refresh"
-                  >
-                    <RefreshCw
-                      className={`w-5 h-5 ${summaryLoading ? "animate-spin" : ""}`}
-                    />
-                  </button>
-                </div>
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 
+  p-4 sm:p-6 hover:shadow-md transition-all duration-200 mb-6">
 
-             
-            </div>
-          </div>
+  {/* Top Section */}
+  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
 
+    {/* Left Content */}
+    <div className="flex-1 min-w-0">
+      <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold 
+        bg-gradient-to-r from-blue-600 to-green-600 
+        bg-clip-text text-transparent mb-1 sm:mb-2 leading-tight">
+        {getWelcomeMessage()}
+      </h1>
+
+      <p className="text-xs sm:text-sm lg:text-base text-gray-600">
+        Manage Sales & Warranty in One Place
+      </p>
+    </div>
+
+    {/* Right Controls */}
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+
+      {/* Period Selector */}
+      <div className="w-full sm:flex-1 lg:w-auto">
+        <div className="w-full overflow-x-auto no-scrollbar">
+          <PeriodSelector value={period} onChange={setPeriod} />
+        </div>
+      </div>
+
+      {/* Refresh Button */}
+      <button
+        onClick={handleRefresh}
+        className="w-full sm:w-auto flex items-center justify-center 
+          bg-gray-100 hover:bg-gray-200 text-gray-700 
+          font-medium px-4 py-2 rounded-lg 
+          transition-colors duration-200"
+        title="Refresh"
+      >
+        <RefreshCw
+          className={`w-5 h-5 ${summaryLoading ? "animate-spin" : ""}`}
+        />
+      </button>
+    </div>
+
+  </div>
+</div>
           {/* Loading State */}
           {isLoading && (
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-all duration-200">
               <div className="px-6 py-4 text-center py-12">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
                   <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
@@ -139,13 +150,13 @@ const Dashboard = () => {
 
           {/* Dashboard Content */}
           {!isLoading && summary && (
-            <div className="space-y-6 overflow-hidden">
+            <div className="space-y-6 w-full max-w-full overflow-x-hidden [&>*]:min-w-0">
               {/* Key Metrics Row */}
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">
                   Key Metrics
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
                   <MetricCard
                     title="Total Revenue"
                     // round off to nearest 10 for cleaner display, can adjust as needed
@@ -172,9 +183,7 @@ const Dashboard = () => {
                     color="green"
                     onClick={() => (window.location.href = "/customers")}
                   />
-                </div>
-                <div className="min-w-0">
-                  <MetricCard
+                   <MetricCard
                     title="Service Visits"
                     value={summary.services?.total || 0}
                     subtitle={`${summary.services?.completed || 0} completed, ${summary.services?.scheduled || 0} scheduled`}
@@ -183,31 +192,28 @@ const Dashboard = () => {
                     onClick={() => (window.location.href = "/services")}
                   />
                 </div>
+                 
               </div>
 
               {/* Service Plans, Warranties & Alerts */}
               <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
                 {summary.servicePlans && (
-                  <div className="min-w-0">
-                    <MetricCard
-                      title="Active Service Plans"
-                      value={summary.servicePlans?.active || 0}
-                      subtitle={`${summary.servicePlans?.expiring || 0} expiring soon`}
-                      icon={Package}
-                      color="blue"
-                    />
-                  </div>
+                  <MetricCard
+                    title="Active Service Plans"
+                    value={summary.servicePlans?.active || 0}
+                    subtitle={`${summary.servicePlans?.expiring || 0} expiring soon`}
+                    icon={Package}
+                    color="blue"
+                  />
                 )}
                 {warrantyStats && (
-                  <div className="min-w-0">
-                    <MetricCard
-                      title="Active Warranties"
-                      value={warrantyStats.total || 0}
-                      subtitle={`${warrantyStats.expiringThisWeek || 0} expiring this week`}
-                      icon={Shield}
-                      color="purple"
-                    />
-                  </div>
+                  <MetricCard
+                    title="Active Warranties"
+                    value={warrantyStats.total || 0}
+                    subtitle={`${warrantyStats.expiringThisWeek || 0} expiring this week`}
+                    icon={Shield}
+                    color="purple"
+                  />
                 )}
                 <div className="sm:col-span-2 2xl:col-span-1 min-w-0">
                   <AlertsPanel alerts={summary.alerts} />

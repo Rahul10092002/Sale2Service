@@ -683,9 +683,19 @@ const getWarrantyInfo = (product) => {
                         <button
                           className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
                           onClick={() => handleViewProduct(product._id)}
+                          title="View Details"
                         >
                           View Details
                         </button>
+                        {product.hasServicePlan && (
+                          <button
+                            onClick={() => setShowServiceTable(product)}
+                            className="mt-2 bg-green-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-600 transition-colors"
+                            title="View Service Table"
+                          >
+                            <span className="text-xs">View Services</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

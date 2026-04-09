@@ -347,9 +347,8 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       (invoiceItem.invoice_id.shop_id ? await Shop.findById(invoiceItem.invoice_id.shop_id) : null);
     const shopName = getShopName(shop);
     const contactInfo =
-      getShopContactInfo(shop) ||
-      process.env.SHOP_CONTACT ||
-      "Contact us";
+      shop?.phone ||
+      "";
 
     if (daysUntilExpiry !== null) {
       // For warranty_expiring template: customer_name, product_name, days_remaining, contact_info, shop_name

@@ -78,7 +78,7 @@ const authSlice = createSlice({
       state.shopId = null;
       state.role = null;
       state.isAuthenticated = false;
-
+      
       // Remove all data from localStorage
       clearAuthData();
     },

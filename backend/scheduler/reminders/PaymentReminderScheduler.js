@@ -299,7 +299,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
     }).select("serial_number");
 
     const serialNumber = invoiceItems?.[0]?.serial_number || "N/A";
-    const shopContact = shop?.phone ? shop.phone : "";
+    const shopContact = shop?.phone || "";
 
     if (templateName === "payment_missed") {
       return {

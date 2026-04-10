@@ -333,6 +333,9 @@
                 <td class="text-center"><%= item.sno %></td>
                 <td>
                     <%= item.productName %>
+                    <% if (item.batteryLine) { %>
+                        <br><small style="color: #555; font-size: 10px;"><%= item.batteryLine %></small>
+                    <% } %>
                     <% if (item.hasServicePlan) { %>
                         <br><small style="color: #27ae60; font-weight: bold;">✓ Service Plan Included</small>
                     <% } %>

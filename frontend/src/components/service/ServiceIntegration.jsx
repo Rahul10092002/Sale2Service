@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Clock, Wrench, Calendar, Plus } from "lucide-react";
 import Button from "../ui/Button.jsx";
 import { ServiceHistoryModal } from "./ServiceHistoryModal.jsx";
@@ -36,7 +36,7 @@ export const ServiceIntegration = ({
         {/* Service Status */}
         <div className="flex items-center space-x-1">
           <Wrench size={iconSizes[size]} className="text-blue-600" />
-          <span className="text-gray-600">Service</span>
+          <span className="text-ink-secondary dark:text-slate-400">Service</span>
         </div>
 
         {/* Action Buttons */}
@@ -105,7 +105,7 @@ export const ServiceBadge = ({
   const [showHistory, setShowHistory] = useState(false);
 
   const getBadgeColor = () => {
-    if (!hasService) return "bg-gray-100 text-gray-600";
+    if (!hasService) return "bg-gray-100 text-ink-secondary dark:text-slate-400";
 
     if (nextServiceDate) {
       const days = Math.ceil(

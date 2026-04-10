@@ -24,6 +24,13 @@ import {
 } from "./invoiceApi.js";
 import { useCallback } from "react";
 
+/** UI/backend fields when line item product_category is BATTERY */
+export const INVOICE_ITEM_BATTERY_FIELDS = [
+  "battery_type",
+  "vehicle_name",
+  "vehicle_number_plate",
+];
+
 export const useInvoiceForm = () => {
   const dispatch = useDispatch();
   const currentInvoice = useSelector(selectCurrentInvoice);

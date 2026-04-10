@@ -65,11 +65,11 @@ const Users = () => {
 
   const getRoleBadge = (role) => {
     const colors = {
-      OWNER: "bg-purple-100 text-purple-800",
-      ADMIN: "bg-blue-100 text-blue-800",
-      STAFF: "bg-green-100 text-green-800",
+      OWNER: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+      ADMIN: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+      STAFF: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
     };
-    return colors[role] || "bg-gray-100 text-gray-800";
+    return colors[role] || "bg-gray-100 dark:bg-dark-subtle text-gray-800 dark:text-slate-300";
   };
 
   if (isLoading) {
@@ -107,9 +107,9 @@ const Users = () => {
         </div>
 
         {/* Users Grid */}
-        <div className="bg-white rounded-lg shadow-sm space-y-2">
+        <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-100 dark:border-dark-border space-y-2">
           {/* Header */}
-          <div className="hidden md:grid md:grid-cols-[60px_2fr_1fr_120px] gap-4 p-4 bg-gray-50 rounded-lg text-sm font-medium text-gray-500">
+          <div className="hidden md:grid md:grid-cols-[60px_2fr_1fr_120px] gap-4 p-4 bg-gray-50 dark:bg-dark-input rounded-lg text-sm font-medium text-ink-muted dark:text-slate-400">
             <div>S.No</div>
             <div>USER DETAILS</div>
             <div>ROLE & DATE</div>
@@ -119,8 +119,8 @@ const Users = () => {
           {/* User Rows */}
           {users.length === 0 ? (
             <div className="text-center py-8">
-              <div className="text-gray-500 text-lg">No users found</div>
-              <div className="text-gray-400 text-sm mt-2">
+              <div className="text-ink-secondary dark:text-slate-400 text-lg">No users found</div>
+              <div className="text-ink-muted dark:text-slate-500 text-sm mt-2">
                 Add your first user to get started
               </div>
             </div>
@@ -128,25 +128,27 @@ const Users = () => {
             users.map((user, index) => (
               <div
                 key={user.id}
-                className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                className={index % 2 === 0
+                  ? "bg-white dark:bg-dark-card"
+                  : "bg-gray-50 dark:bg-dark-subtle"}
               >
                 {/* ── Mobile Card ── */}
-                <div className="md:hidden p-4 border-b border-gray-100">
+                <div className="md:hidden p-4 border-b border-gray-100 dark:border-dark-border">
                   {/* Header: icon + name + role badge */}
                   <div className="flex items-start gap-3 mb-3">
                     <div
                       className="shrink-0 cursor-pointer"
                       onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
                     >
-                      <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <UsersIcon className="w-6 h-6 text-blue-600" />
+                      <div className="w-11 h-11 bg-blue-100 dark:bg-blue-950/40 rounded-xl flex items-center justify-center">
+                        <UsersIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 leading-tight truncate">
+                      <p className="font-bold text-ink-base dark:text-slate-100 leading-tight truncate">
                         {user.name}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">
+                      <p className="text-xs text-ink-muted dark:text-slate-500 mt-0.5 truncate">
                         {user.email}
                       </p>
                     </div>
@@ -159,15 +161,15 @@ const Users = () => {
 
                   {/* Phone + Joined chips */}
                   <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-gray-400 mb-0.5">Phone</p>
-                      <p className="text-sm font-medium text-gray-800 truncate">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                      <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">Phone</p>
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-200 truncate">
                         {user.phone || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-gray-400 mb-0.5">Joined</p>
-                      <p className="text-xs font-medium text-gray-700">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                      <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">Joined</p>
+                      <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
                         {new Date(user.created_at).toLocaleDateString("en-IN")}
                       </p>
                     </div>
@@ -175,7 +177,7 @@ const Users = () => {
 
                   {/* Action button */}
                   <button
-                    className="w-full bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
+                    className="w-full bg-blue-500 dark:bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 dark:hover:bg-blue-500 transition-colors"
                     onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
                   >
                     View Details
@@ -184,41 +186,41 @@ const Users = () => {
 
                 {/* ── Desktop Row ── */}
                 <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4">
-                  <div className="text-gray-600">{index + 1}</div>
+                  <div className="text-ink-secondary dark:text-slate-400">{index + 1}</div>
                   <div className="flex gap-3 items-center">
                     <div
                       className="cursor-pointer"
                       onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
                     >
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <UsersIcon className="w-6 h-6 text-blue-600" />
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-950/40 rounded-full flex items-center justify-center">
+                        <UsersIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                       </div>
                     </div>
                     <div>
-                      <div className="font-bold text-gray-800 text-base">
+                      <div className="font-bold text-ink-base dark:text-slate-100 text-base">
                         {user.name}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-ink-secondary dark:text-slate-400">
                         <p>Email: {user.email}</p>
                         <p>Phone: {user.phone}</p>
                       </div>
                     </div>
                   </div>
-                  <div className="text-gray-600">
+                  <div className="text-ink-secondary dark:text-slate-400">
                     <div className="text-sm">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mb-2 ${getRoleBadge(user.role)}`}
                       >
                         {user.role}
                       </span>
-                      <p className="text-gray-500">
+                      <p className="text-ink-muted dark:text-slate-500">
                         Created:{" "}
                         {new Date(user.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   <button
-                    className="text-indigo-600 hover:text-indigo-900 p-2 hover:bg-indigo-50 rounded"
+                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 p-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors"
                     title="View Details"
                     onClick={() => navigate(`${ROUTES.USERS}/${user.id}`)}
                   >
@@ -273,14 +275,14 @@ const Users = () => {
               />
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                   Role
                 </label>
                 <select
                   name="role"
                   value={formData.role}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-md bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/20"
                   required
                 >
                   <option value="STAFF">Staff</option>

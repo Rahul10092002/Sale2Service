@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import {
   Plus,
   Search,
@@ -88,7 +88,7 @@ const InvoiceList = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
@@ -138,10 +138,10 @@ const InvoiceList = () => {
   };
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Modern Filters & Search */}
-          <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-6 gap-4">
+          <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-6 gap-4">
             <div className="flex items-center space-x-4">
               {/* Modern Filter Icon with Dropdown */}
               <div className="relative" ref={filterRef}>
@@ -152,7 +152,7 @@ const InvoiceList = () => {
                   <Filter className="h-5 w-5 text-blue-600" />
                 </button>
                 {showFilters && (
-                  <div className="absolute top-12 left-0 bg-white border border-gray-200 rounded-xl shadow-xl p-5 z-10 w-[340px] space-y-4">
+                  <div className="absolute top-12 left-0 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-xl p-5 z-10 w-[340px] space-y-4">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b pb-2">
                       <h3 className="text-sm font-semibold text-gray-800">
@@ -181,11 +181,11 @@ const InvoiceList = () => {
 
                     {/* Search In */}
                     <div>
-                      <label className="text-xs text-gray-500">Search In</label>
+                      <label className="text-xs text-ink-muted dark:text-slate-500">Search In</label>
                       <select
                         value={searchIn}
                         onChange={(e) => setSearchIn(e.target.value)}
-                        className="w-full mt-1 px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
                       >
                         <option value="">All Fields</option>
                         <option value="invoice_number">Invoice #</option>
@@ -201,7 +201,7 @@ const InvoiceList = () => {
                     {/* Payment Filters */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-gray-500">Status</label>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">Status</label>
                         <select
                           value={filters.payment_status}
                           onChange={(e) =>
@@ -210,7 +210,7 @@ const InvoiceList = () => {
                               payment_status: e.target.value,
                             }))
                           }
-                          className="w-full mt-1 px-3 py-2 text-sm border rounded-lg"
+                          className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           <option value="">All</option>
                           <option value="PAID">Paid</option>
@@ -220,7 +220,7 @@ const InvoiceList = () => {
                       </div>
 
                       <div>
-                        <label className="text-xs text-gray-500">Mode</label>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">Mode</label>
                         <select
                           value={filters.payment_mode}
                           onChange={(e) =>
@@ -229,7 +229,7 @@ const InvoiceList = () => {
                               payment_mode: e.target.value,
                             }))
                           }
-                          className="w-full mt-1 px-3 py-2 text-sm border rounded-lg"
+                          className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           <option value="">All</option>
                           <option value="CASH">Cash</option>
@@ -243,7 +243,7 @@ const InvoiceList = () => {
 
                     {/* Invoice Date */}
                     <div>
-                      <label className="text-xs text-gray-500">
+                      <label className="text-xs text-ink-muted dark:text-slate-500">
                         Invoice Date
                       </label>
                       <div className="grid grid-cols-2 gap-2 mt-1">
@@ -256,7 +256,7 @@ const InvoiceList = () => {
                               date_from: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border rounded-lg"
+                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                         <input
                           type="date"
@@ -267,14 +267,14 @@ const InvoiceList = () => {
                               date_to: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border rounded-lg"
+                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
                     </div>
 
                     {/* Due Date */}
                     <div>
-                      <label className="text-xs text-gray-500">Due Date</label>
+                      <label className="text-xs text-ink-muted dark:text-slate-500">Due Date</label>
                       <div className="grid grid-cols-2 gap-2 mt-1">
                         <input
                           type="date"
@@ -285,7 +285,7 @@ const InvoiceList = () => {
                               due_date_from: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border rounded-lg"
+                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                         <input
                           type="date"
@@ -296,14 +296,14 @@ const InvoiceList = () => {
                               due_date_to: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border rounded-lg"
+                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
                     </div>
 
                     {/* Amount */}
                     <div>
-                      <label className="text-xs text-gray-500">
+                      <label className="text-xs text-ink-muted dark:text-slate-500">
                         Amount Range
                       </label>
                       <div className="grid grid-cols-2 gap-2 mt-1">
@@ -317,7 +317,7 @@ const InvoiceList = () => {
                               min_amount: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border rounded-lg"
+                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                         <input
                           type="number"
@@ -329,7 +329,7 @@ const InvoiceList = () => {
                               max_amount: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border rounded-lg"
+                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
                     </div>
@@ -344,7 +344,7 @@ const InvoiceList = () => {
                             quick_filter: e.target.value,
                           }))
                         }
-                        className="px-3 py-2 text-sm border rounded-lg"
+                        className="px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                       >
                         <option value="">Quick</option>
                         <option value="today">Today</option>
@@ -369,11 +369,11 @@ const InvoiceList = () => {
               </div>
 
               {/* Modern Search Bar */}
-              <div className="flex items-center space-x-3 border border-gray-300 bg-white rounded-full px-4 py-2 max-w-xs shadow-sm">
-                <Search className="h-5 w-5 text-gray-500" />
+              <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-2 max-w-xs shadow-sm">
+                <Search className="h-5 w-5 text-gray-500 dark:text-slate-400" />
                 <input
                   placeholder="Search invoices..."
-                  className="bg-transparent focus:outline-none text-gray-600 placeholder-gray-400 w-full text-sm"
+                  className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -454,7 +454,7 @@ const InvoiceList = () => {
             )}
           </div>
           {/* Invoice List */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
             {error ? (
               <div className="p-6 text-center">
                 <div className="text-red-600">
@@ -467,10 +467,10 @@ const InvoiceList = () => {
             ) : !invoices?.length ? (
               <div className="p-12 text-center">
                 <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
                   No invoices found
                 </h3>
-                <p className="text-gray-500 mb-6">
+                <p className="text-ink-secondary dark:text-slate-400 mb-6">
                   {searchTerm || filters.payment_status
                     ? "No invoices match your search criteria."
                     : "Get started by creating your first invoice."}
@@ -484,7 +484,7 @@ const InvoiceList = () => {
             ) : (
               <div className="">
                 {/* Desktop Header */}
-                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 text-gray-500 text-sm font-semibold bg-gray-200 p-4 rounded-t-lg">
+                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 text-gray-500 dark:text-slate-400 text-sm font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
                   <div>S No.</div>
                   <div>Invoice Details</div>
                   <div>Items</div>
@@ -507,10 +507,10 @@ const InvoiceList = () => {
                   return (
                     <div
                       key={invoice._id}
-                      className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                      className={index % 2 === 0 ? "bg-white dark:bg-dark-card" : "bg-gray-50 dark:bg-dark-subtle"}
                     >
                       {/* ── Mobile Card ── */}
-                      <div className="md:hidden p-4 border-b border-gray-100">
+                      <div className="md:hidden p-4 border-b border-gray-100 dark:border-dark-border">
                         {/* Header: icon + invoice number + status pill */}
                         <div className="flex items-start gap-3 mb-3">
                           <div
@@ -522,7 +522,7 @@ const InvoiceList = () => {
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-gray-900 leading-tight truncate">
+                            <p className="font-bold text-ink-base dark:text-slate-100 leading-tight truncate">
                               {customerName}
                             </p>
                             {invoice.customer_id?.whatsapp_number && (
@@ -571,27 +571,27 @@ const InvoiceList = () => {
 
                         {/* Amount + Date chips */}
                         <div className="grid grid-cols-3 gap-2 mb-3">
-                          <div className="bg-gray-50 rounded-lg px-3 py-2">
-                            <p className="text-xs text-gray-400 mb-0.5">
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                            <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
                               Total Amount
                             </p>
                             <p className="text-sm font-semibold text-gray-800">
                               {formatCurrency(invoice.total_amount)}
                             </p>
                           </div>
-                          <div className="bg-gray-50 rounded-lg px-3 py-2">
-                            <p className="text-xs text-gray-400 mb-0.5">
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                            <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
                               Invoice Date
                             </p>
-                            <p className="text-xs font-medium text-gray-700">
+                            <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
                               {formatDate(invoice.invoice_date)}
                             </p>
                           </div>
-                          <div className="bg-gray-50 rounded-lg px-3 py-2">
-                            <p className="text-xs text-gray-400 mb-0.5">
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                            <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
                               Due Date
                             </p>
-                            <p className="text-xs font-medium text-gray-700">
+                            <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
                               {formatDate(invoice.due_date)}
                             </p>
                           </div>
@@ -611,7 +611,7 @@ const InvoiceList = () => {
                         className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 items-center p-4 cursor-pointer"
                         onClick={() => handleViewInvoice(invoice._id)}
                       >
-                        <div className="text-gray-600">
+                        <div className="text-ink-secondary dark:text-slate-400">
                           {(currentPage - 1) * 10 + index + 1}
                         </div>
                         <div className="flex gap-3 items-center">
@@ -624,10 +624,10 @@ const InvoiceList = () => {
                             </div>
                           </div>
                           <div>
-                            <div className="font-bold text-gray-800 text-base">
+                            <div className="font-bold text-ink-base dark:text-slate-100 text-base">
                               {customerName}
                             </div>
-                            <div className="text-sm text-gray-600">
+                            <div className="text-sm text-ink-secondary dark:text-slate-400">
                               <p>
                                 Mobile No.:{" "}
                                 {invoice.customer_id?.whatsapp_number || "N/A"}
@@ -643,7 +643,7 @@ const InvoiceList = () => {
                           </div>
                         </div>
                         {/* Items column */}
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-ink-secondary dark:text-slate-400">
                           {invoice.invoice_items?.length > 0 ? (
                             <div className="space-y-1">
                               {invoice.invoice_items
@@ -687,7 +687,7 @@ const InvoiceList = () => {
                           )}
                         </div>
                         {/* Payment Details column */}
-                        <div className="text-gray-600">
+                        <div className="text-ink-secondary dark:text-slate-400">
                           <div className="text-sm">
                             <p>
                               Total Amount:{" "}
@@ -729,10 +729,10 @@ const InvoiceList = () => {
 
                 {invoices.length === 0 && (
                   <div className="text-center py-8">
-                    <div className="text-gray-500 text-lg">
+                    <div className="text-ink-secondary dark:text-slate-400 text-lg">
                       No invoices found
                     </div>
-                    <div className="text-gray-400 text-sm mt-2">
+                    <div className="text-ink-muted dark:text-slate-500 text-sm mt-2">
                       Create your first invoice to get started
                     </div>
                   </div>
@@ -742,9 +742,9 @@ const InvoiceList = () => {
 
             {/* Pagination */}
             {pagination.pages > 1 && (
-              <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-ink-muted dark:text-slate-500">
                     Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                     {Math.min(
                       pagination.page * pagination.limit,
@@ -827,7 +827,7 @@ const InvoiceList = () => {
 
             {/* Simple pagination info when only 1 page */}
             {pagination.pages <= 1 && (
-              <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
                 <div className="text-sm text-gray-500 text-center">
                   Showing {pagination.total || 0} of {pagination.total || 0}{" "}
                   invoices

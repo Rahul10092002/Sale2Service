@@ -24,24 +24,24 @@ import {
 
 const FieldGroup = ({ icon: Icon, label, required, children }) => (
   <div className="space-y-1.5">
-    <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-      {Icon && <Icon className="w-3.5 h-3.5 text-gray-400" />}
+    <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
+      {Icon && <Icon className="w-3.5 h-3.5 text-ink-muted dark:text-slate-500" />}
       {label}
-      {required && <span className="text-red-400">*</span>}
+      {required && <span className="text-danger">*</span>}
     </label>
     {children}
   </div>
 );
 
 const inputCls =
-  "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400 hover:border-gray-300";
+  "w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary dark:focus:border-primary-dark transition-all hover:border-gray-300 dark:hover:border-slate-500";
 
 const SectionCard = ({ title, description, children }) => (
-  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-    <div className="px-6 py-4 border-b border-gray-50 bg-gray-50/60">
-      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+  <div className="bg-white dark:bg-dark-card rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm overflow-hidden">
+    <div className="px-6 py-4 border-b border-gray-100 dark:border-dark-border bg-gray-50/60 dark:bg-dark-input">
+      <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100">{title}</h3>
       {description && (
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <p className="text-xs text-ink-muted dark:text-slate-500 mt-0.5">{description}</p>
       )}
     </div>
     <div className="p-6">{children}</div>
@@ -175,8 +175,8 @@ const Settings = () => {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Shop Settings</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-xl font-bold text-ink-base dark:text-slate-100">Shop Settings</h1>
+          <p className="text-sm text-ink-muted dark:text-slate-500 mt-0.5">
             Manage your shop profile and preferences
           </p>
         </div>

@@ -238,12 +238,32 @@ export default class InvoiceController {
           );
         }
 
+        const isBattery =
+          item.product_category === "BATTERY" &&
+          item.battery_type &&
+          ["INVERTER_BATTERY", "VEHICLE_BATTERY"].includes(item.battery_type);
+        const batteryPayload = isBattery
+          ? {
+              battery_type: item.battery_type,
+              vehicle_name:
+                item.battery_type === "VEHICLE_BATTERY"
+                  ? (item.vehicle_name || "").trim() || undefined
+                  : undefined,
+              vehicle_number_plate:
+                item.battery_type === "VEHICLE_BATTERY"
+                  ? (item.vehicle_number_plate || "").trim().toUpperCase() ||
+                    undefined
+                  : undefined,
+            }
+          : {};
+
         const invoiceItem = new InvoiceItem({
           invoice_id: newInvoice._id,
           shop_id: user.shopId,
           serial_number: item.serial_number.toUpperCase(),
           product_name: item.product_name,
           product_category: item.product_category,
+          ...batteryPayload,
           company: item.company,
           model_number: item.model_number,
           selling_price: item.selling_price,
@@ -1688,6 +1708,25 @@ export default class InvoiceController {
           );
         }
 
+        const isBattery =
+          item.product_category === "BATTERY" &&
+          item.battery_type &&
+          ["INVERTER_BATTERY", "VEHICLE_BATTERY"].includes(item.battery_type);
+        const batteryPayload = isBattery
+          ? {
+              battery_type: item.battery_type,
+              vehicle_name:
+                item.battery_type === "VEHICLE_BATTERY"
+                  ? (item.vehicle_name || "").trim() || undefined
+                  : undefined,
+              vehicle_number_plate:
+                item.battery_type === "VEHICLE_BATTERY"
+                  ? (item.vehicle_number_plate || "").trim().toUpperCase() ||
+                    undefined
+                  : undefined,
+            }
+          : {};
+
         const invoiceItem = new InvoiceItem({
           invoice_id: id,
           shop_id: user.shopId,
@@ -1696,6 +1735,7 @@ export default class InvoiceController {
             : undefined,
           product_name: item.product_name || "Unknown Product",
           product_category: item.product_category || "OTHER",
+          ...batteryPayload,
           company: item.company || "UNKNOWN",
           model_number: item.model_number || "N/A",
           selling_price: item.selling_price || parseFloat(item.price) || 0,

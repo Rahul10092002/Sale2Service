@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../features/ui/uiSlice.js";
 import {
@@ -245,20 +245,20 @@ export const ServiceHistoryModal = ({
       >
         <div className="space-y-6">
           {/* Product Information */}
-          <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="bg-gray-50 dark:bg-dark-subtle p-4 rounded-lg">
             <h3 className="font-medium text-gray-900 mb-2">
               Product Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">Product:</span>
+                <span className="text-ink-secondary dark:text-slate-400">Product:</span>
                 <span className="ml-2 font-medium">
                   {product?.product_name}
                 </span>
               </div>
               {product?.serial_number && (
                 <div>
-                  <span className="text-gray-600">Serial:</span>
+                  <span className="text-ink-secondary dark:text-slate-400">Serial:</span>
                   <span className="ml-2 font-medium">
                     {product.serial_number}
                   </span>
@@ -266,13 +266,13 @@ export const ServiceHistoryModal = ({
               )}
               {product?.company && (
                 <div>
-                  <span className="text-gray-600">Brand:</span>
+                  <span className="text-ink-secondary dark:text-slate-400">Brand:</span>
                   <span className="ml-2 font-medium">{product.company}</span>
                 </div>
               )}
               {product?.model_number && (
                 <div>
-                  <span className="text-gray-600">Model:</span>
+                  <span className="text-ink-secondary dark:text-slate-400">Model:</span>
                   <span className="ml-2 font-medium">
                     {product.model_number}
                   </span>
@@ -285,7 +285,7 @@ export const ServiceHistoryModal = ({
           {loading && (
             <div className="flex items-center justify-center py-8">
               <LoadingSpinner />
-              <span className="ml-2 text-gray-600">
+              <span className="ml-2 text-ink-secondary dark:text-slate-400">
                 Loading service data...
               </span>
             </div>
@@ -312,7 +312,7 @@ export const ServiceHistoryModal = ({
                   <h3 className="mt-4 text-lg font-medium text-gray-900">
                     No Service Plan
                   </h3>
-                  <p className="mt-2 text-gray-600">
+                  <p className="mt-2 text-ink-secondary dark:text-slate-400">
                     This product doesn't have a service plan configured.
                   </p>
                   <Button
@@ -427,7 +427,7 @@ export const ServiceHistoryModal = ({
                                     </div>
 
                                     <div className="mt-1 space-y-1">
-                                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                      <div className="flex items-center space-x-2 text-sm text-ink-secondary dark:text-slate-400">
                                         <Calendar size={14} />
                                         <span>
                                           Scheduled:{" "}
@@ -463,7 +463,7 @@ export const ServiceHistoryModal = ({
 
                                       {schedule.service_charge &&
                                         Number(schedule.service_charge) > 0 && (
-                                          <div className="text-sm text-gray-600">
+                                          <div className="text-sm text-ink-secondary dark:text-slate-400">
                                             Charge: ₹
                                             {Number(
                                               schedule.service_charge,
@@ -537,7 +537,7 @@ export const ServiceHistoryModal = ({
 
                               {/* Service Notes */}
                               {schedule.service_description && (
-                                <div className="mt-3 p-2 bg-gray-50 rounded text-sm text-gray-600">
+                                <div className="mt-3 p-2 bg-gray-50 rounded text-sm text-ink-secondary dark:text-slate-400">
                                   <div className="flex items-start space-x-2">
                                     <FileText
                                       size={14}
@@ -554,7 +554,7 @@ export const ServiceHistoryModal = ({
                     ) : (
                       <div className="text-center py-6 bg-gray-50 rounded-lg">
                         <Calendar className="mx-auto text-gray-400" size={32} />
-                        <p className="mt-2 text-gray-600">
+                        <p className="mt-2 text-ink-secondary dark:text-slate-400">
                           No service schedules generated yet.
                         </p>
                       </div>
@@ -607,13 +607,13 @@ export const ServiceHistoryModal = ({
           />
           <DialogBody>
             <div className="space-y-4">
-              <p className="text-gray-600">
+              <p className="text-ink-secondary dark:text-slate-400">
                 Are you sure you want to mark this service as completed? This
                 will record the service as done.
               </p>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                   Completion Notes (Optional)
                 </label>
                 <textarea
@@ -670,13 +670,13 @@ export const ServiceHistoryModal = ({
           />
           <DialogBody>
             <div className="space-y-4">
-              <p className="text-gray-600">
+              <p className="text-ink-secondary dark:text-slate-400">
                 Select a new date for this service. The old schedule will be
                 updated with the new date.
               </p>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                   New Service Date *
                 </label>
                 <input

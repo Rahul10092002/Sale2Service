@@ -1,42 +1,37 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef } from 'react';
+import clsx from 'clsx';
 
 /**
- * Reusable Input component with Tailwind styling
- * @param {Object} props - Component props
- * @param {string} props.type - Input type
- * @param {string} props.placeholder - Placeholder text
- * @param {string} props.value - Input value
- * @param {function} props.onChange - Change handler
- * @param {string} props.error - Error message
- * @param {string} props.label - Label text
- * @param {boolean} props.required - Whether field is required
- * @param {boolean} props.disabled - Whether input is disabled
- * @param {string} props.className - Additional CSS classes
+ * WarrantyDesk Input — Tailwind v4 design system
+ *
+ * Supports: label, error, disabled, required, forwardRef
+ * All styling via design token classes (no inline styles).
  */
 const Input = forwardRef(
   (
     {
-      type = "text",
-      placeholder = "",
-      value = "",
+      type = 'text',
+      placeholder = '',
+      value,
       onChange,
-      error = "",
-      label = "",
+      error = '',
+      label = '',
       required = false,
       disabled = false,
-      className = "",
+      className = '',
       ...props
     },
     ref,
   ) => {
     return (
-      <div className={`mb-4 ${className}`}>
+      <div className={clsx('mb-4', className)}>
         {label && (
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-1.5">
             {label}
-            {required && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className="text-danger ml-1">*</span>}
           </label>
         )}
+
         <input
           ref={ref}
           type={type}
@@ -45,23 +40,23 @@ const Input = forwardRef(
           onChange={onChange}
           disabled={disabled}
           required={required}
-          className={
-            `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${className}` +
-            (error
-              ? "border-red-500 focus:ring-red-500 focus:border-red-500"
-              : "border-gray-300 focus:ring-blue-500 focus:border-blue-500") +
-            (disabled ? " bg-gray-100 cursor-not-allowed" : " bg-white") +
-            " placeholder-gray-400"
-          }
+          className={clsx(
+            'w-full px-3.5 py-2.5 rounded text-base font-sans',
+            'border border-gray-200 dark:border-dark-border',
+            'bg-white dark:bg-dark-input',
+            'text-ink-base dark:text-slate-100',
+            'placeholder:text-ink-muted dark:placeholder:text-slate-500',
+            'focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20',
+            'dark:focus:ring-primary-dark/20 transition-all duration-200',
+            error && 'border-danger focus:border-danger focus:ring-danger/20',
+            disabled && 'bg-surface-subtle dark:bg-dark-subtle opacity-70 cursor-not-allowed',
+          )}
           {...props}
         />
+
         {error && (
-          <p className="mt-2 text-sm text-red-600 flex items-center">
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+          <p className="mt-1.5 text-sm text-danger flex items-center gap-1">
+            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
                 d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -76,6 +71,7 @@ const Input = forwardRef(
   },
 );
 
-Input.displayName = "Input";
+Input.displayName = 'Input';
 
+export { Input };
 export default Input;

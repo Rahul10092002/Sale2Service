@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { X, ScanLine } from "lucide-react";
 
@@ -161,7 +161,7 @@ const SerialScanner = ({ onScan, onClose }) => {
           <button
             type="button"
             onClick={handleClose}
-            className="p-1 rounded-md hover:bg-gray-100 transition-colors"
+            className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors"
             aria-label="Close scanner"
           >
             <X className="w-5 h-5 text-gray-500" />

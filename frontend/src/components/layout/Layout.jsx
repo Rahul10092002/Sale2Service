@@ -77,7 +77,7 @@ const Layout = ({ children, title }) => {
   };
 
   return (
-    <div className="h-screen flex bg-gray-50 text-gray-900 transition-colors duration-300">
+    <div className="h-screen flex bg-gray-50 dark:bg-dark-bg text-ink-base dark:text-slate-100 transition-colors duration-200">
       {/* Left: fixed full-height sidebar (desktop) */}
       <div
         className={`hidden lg:block ${collapsed ? "w-20" : "w-64"} h-screen sticky top-0 overflow-auto transition-all duration-200  no-scrollbar`}
@@ -117,9 +117,9 @@ const Layout = ({ children, title }) => {
         <main
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className={`flex-1 overflow-auto transition-all duration-300 ease-in-out bg-gray-50 text-gray-900`}
+          className={`flex-1 overflow-auto transition-all duration-200 ease-in-out bg-gray-50 dark:bg-dark-bg text-ink-base dark:text-slate-100`}
         >
-          <div className="max-w-7xl mx-auto bg-gray-50">{children}</div>
+          <div className="max-w-7xl mx-auto bg-gray-50 dark:bg-dark-bg">{children}</div>
         </main>
       </div>
     </div>

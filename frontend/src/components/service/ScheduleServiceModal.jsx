@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Plus, Calendar, Wrench, AlertCircle } from "lucide-react";
 import { Dialog as Modal, DialogHeader, DialogBody } from "../ui/Modal.jsx";
 import Button from "../ui/Button.jsx";
@@ -135,18 +135,18 @@ export const ScheduleServiceModal = ({
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Product Information */}
-        <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="bg-gray-50 dark:bg-dark-subtle p-4 rounded-lg">
           <h3 className="font-medium text-gray-900 mb-2">
             Product Information
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Product:</span>
+              <span className="text-ink-secondary dark:text-slate-400">Product:</span>
               <span className="ml-2 font-medium">{product?.product_name}</span>
             </div>
             {product?.serial_number && (
               <div>
-                <span className="text-gray-600">Serial:</span>
+                <span className="text-ink-secondary dark:text-slate-400">Serial:</span>
                 <span className="ml-2 font-medium">
                   {product.serial_number}
                 </span>
@@ -154,13 +154,13 @@ export const ScheduleServiceModal = ({
             )}
             {product?.company && (
               <div>
-                <span className="text-gray-600">Brand:</span>
+                <span className="text-ink-secondary dark:text-slate-400">Brand:</span>
                 <span className="ml-2 font-medium">{product.company}</span>
               </div>
             )}
             {product?.model_number && (
               <div>
-                <span className="text-gray-600">Model:</span>
+                <span className="text-ink-secondary dark:text-slate-400">Model:</span>
                 <span className="ml-2 font-medium">{product.model_number}</span>
               </div>
             )}
@@ -228,7 +228,7 @@ export const ScheduleServiceModal = ({
 
         {/* Service Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
             Service Description
           </label>
           <textarea

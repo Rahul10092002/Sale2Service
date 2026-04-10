@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+﻿import React, { useCallback } from "react";
 import {
   Plus,
   Trash2,
@@ -48,14 +48,14 @@ const InvoiceItemsForm = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
               <Package className="w-5 h-5 text-indigo-600" />
               Invoice Items
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-ink-muted dark:text-slate-500 mt-1">
               Add products with serial number tracking and warranty details
             </p>
           </div>
@@ -73,10 +73,10 @@ const InvoiceItemsForm = () => {
           {invoice_items.length === 0 ? (
             <div className="text-center py-8 sm:py-12 border-2 border-dashed border-gray-300 rounded-lg">
               <Package className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">
                 No Products Added
               </h3>
-              <p className="text-sm sm:text-base text-gray-500 mb-4 px-4">
+              <p className="text-sm sm:text-base text-gray-500  mb-4 px-4">
                 Start by adding your first product to the invoice
               </p>
               <Button
@@ -105,7 +105,7 @@ const InvoiceItemsForm = () => {
                 />
               ))}
 
-              <div className="pt-3 sm:pt-4 border-t border-gray-200">
+              <div className="pt-3 sm:pt-4 border-t border-gray-200 dark:border-dark-border">
                 <Button
                   type="button"
                   variant="outline"

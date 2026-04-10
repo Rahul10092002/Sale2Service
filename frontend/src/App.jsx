@@ -12,7 +12,7 @@ function App() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <div className="App min-h-screen bg-gray-50 text-gray-900 transition-colors duration-300">
+        <div className="App min-h-screen bg-gray-50 text-gray-900 dark:text-slate-100 transition-colors duration-300">
           <AppRoutes />
         </div>
       </BrowserRouter>

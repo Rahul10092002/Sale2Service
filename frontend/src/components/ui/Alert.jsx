@@ -2,14 +2,8 @@ import React from "react";
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from "lucide-react";
 
 /**
- * WarrantyDesk Alert component for displaying messages
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Alert content
- * @param {string} props.variant - Alert variant (success, error, warning, info)
- * @param {boolean} props.dismissible - Whether alert can be dismissed
- * @param {function} props.onClose - Close handler
- * @param {string} props.className - Additional CSS classes
- * @param {string} props.title - Optional alert title
+ * Alert — semantic alert banner with dark mode support.
+ * Variants: success | error | warning | info
  */
 const Alert = ({
   children,
@@ -21,11 +15,13 @@ const Alert = ({
 }) => {
   const variantClasses = {
     success:
-      "px-4 py-3 rounded-lg border bg-green-50 border-green-200 text-green-800",
-    error: "px-4 py-3 rounded-lg border bg-red-50 border-red-200 text-red-800",
+      "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300",
+    error:
+      "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300",
     warning:
-      "px-4 py-3 rounded-lg border bg-yellow-50 border-yellow-200 text-yellow-800",
-    info: "px-4 py-3 rounded-lg border bg-blue-50 border-blue-200 text-blue-800",
+      "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300",
+    info:
+      "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300",
   };
 
   const iconComponents = {
@@ -38,7 +34,9 @@ const Alert = ({
   const IconComponent = iconComponents[variant];
 
   return (
-    <div className={`${variantClasses[variant]} animate-fade-in ${className}`}>
+    <div
+      className={`px-4 py-3 rounded-lg border animate-fade-in ${variantClasses[variant]} ${className}`}
+    >
       <div className="flex">
         <div className="flex-shrink-0">
           <IconComponent className="h-5 w-5" />
@@ -53,7 +51,7 @@ const Alert = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex rounded-md p-1.5 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current transition-colors duration-200"
+                className="inline-flex rounded-md p-1.5 hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current transition-colors duration-200"
                 aria-label="Dismiss alert"
               >
                 <X className="h-4 w-4" />

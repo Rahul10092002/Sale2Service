@@ -46,15 +46,13 @@ const AlertsPanel = ({ alerts }) => {
 
   if (!alerts || alerts.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Alerts & Notifications
+      <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-6">
+        <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
+          Alerts &amp; Notifications
         </h3>
-        <div className="flex items-center gap-2 text-green-600 p-4 bg-green-50 rounded-lg">
+        <div className="flex items-center gap-2 text-green-600 dark:text-green-400 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
           <CheckCircle className="w-5 h-5" />
-          <span className="text-sm font-medium">
-            All caught up! No urgent items.
-          </span>
+          <span className="text-sm font-medium">All caught up! No urgent items.</span>
         </div>
       </div>
     );
@@ -79,35 +77,35 @@ const AlertsPanel = ({ alerts }) => {
     switch (type) {
       case "warning":
         return {
-          container: "bg-orange-50 border-orange-200",
-          icon: "text-orange-600",
-          text: "text-orange-800",
+          container: "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800",
+          icon: "text-orange-600 dark:text-orange-400",
+          text: "text-orange-800 dark:text-orange-300",
         };
       case "error":
         return {
-          container: "bg-red-50 border-red-200",
-          icon: "text-red-600",
-          text: "text-red-800",
+          container: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
+          icon: "text-red-600 dark:text-red-400",
+          text: "text-red-800 dark:text-red-300",
         };
       case "info":
         return {
-          container: "bg-blue-50 border-blue-200",
-          icon: "text-blue-600",
-          text: "text-blue-800",
+          container: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
+          icon: "text-blue-600 dark:text-blue-400",
+          text: "text-blue-800 dark:text-blue-300",
         };
       default:
         return {
-          container: "bg-gray-50 border-gray-200",
-          icon: "text-gray-600",
-          text: "text-gray-800",
+          container: "bg-gray-50 dark:bg-dark-subtle border-gray-200 dark:border-dark-border",
+          icon: "text-gray-600 dark:text-slate-400",
+          text: "text-gray-800 dark:text-slate-200",
         };
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">
-        Alerts & Notifications
+    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-6">
+      <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
+        Alerts &amp; Notifications
       </h3>
       <div className="space-y-3">
         {alerts.map((alert, index) => {
@@ -184,7 +182,7 @@ const AlertsPanel = ({ alerts }) => {
                           item.product_id &&
                           navigate(`${ROUTES.PRODUCTS}/${item.product_id}`)
                         }
-                        className={`bg-white rounded-lg border border-red-100 p-3 ${
+                        className={`bg-white dark:bg-dark-card rounded-lg border border-red-100 dark:border-red-900/50 p-3 ${
                           item.id
                             ? "cursor-pointer hover:border-red-300 hover:shadow-sm"
                             : ""
@@ -192,32 +190,32 @@ const AlertsPanel = ({ alerts }) => {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 capitalize">
+                            <p className="text-sm font-semibold text-ink-base dark:text-slate-100 capitalize">
                               {item.customer_name}
                             </p>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs text-ink-secondary dark:text-slate-400">
                               {item.product_name}
                             </p>
                             {item.invoice_number && (
-                              <p className="text-xs font-mono text-gray-400">
+                              <p className="text-xs font-mono text-ink-muted dark:text-slate-500">
                                 {item.invoice_number}
                               </p>
                             )}
                             {item.phone && (
-                              <p className="text-xs text-gray-400">
+                              <p className="text-xs text-ink-muted dark:text-slate-500">
                                 {item.phone}
                               </p>
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-ink-muted dark:text-slate-500">
                               Service #{item.service_number}
                             </p>
                             <span
                               className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
                                 item.status === "MISSED"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-orange-100 text-orange-700"
+                                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                  : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
                               }`}
                             >
                               {item.status}
@@ -225,11 +223,11 @@ const AlertsPanel = ({ alerts }) => {
                           </div>
                         </div>
                         <div className="mt-1.5 flex items-center gap-2">
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-gray-400 dark:text-slate-500">
                             Scheduled: {formatDate(item.scheduled_date)}
                           </p>
                           {daysOverdue && (
-                            <span className="text-xs font-medium text-red-600">
+                            <span className="text-xs font-medium text-red-600 dark:text-red-400">
                               ({daysOverdue}d overdue)
                             </span>
                           )}
@@ -242,31 +240,31 @@ const AlertsPanel = ({ alerts }) => {
                         onClick={() =>
                           navigate(`${ROUTES.INVOICES}/${item.id}`)
                         }
-                        className="bg-white rounded-lg border border-orange-100 p-3 cursor-pointer hover:border-orange-300 hover:shadow-sm transition-all"
+                        className="bg-white dark:bg-dark-card rounded-lg border border-orange-100 dark:border-orange-900/50 p-3 cursor-pointer hover:border-orange-300 hover:shadow-sm transition-all"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate capitalize">
+                            <p className="text-sm font-semibold text-ink-base dark:text-slate-100 truncate capitalize">
                               {item.customer_name}
                             </p>
-                            <p className="text-xs text-gray-500 font-mono">
+                            <p className="text-xs text-ink-secondary dark:text-slate-400 font-mono">
                               {item.invoice_number}
                             </p>
                             {item.phone && (
-                              <p className="text-xs text-gray-400">
+                              <p className="text-xs text-ink-muted dark:text-slate-500">
                                 {item.phone}
                               </p>
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-gray-800">
+                            <p className="text-sm font-bold text-ink-base dark:text-slate-100">
                               {formatCurrency(item.total_amount)}
                             </p>
                             <span
                               className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
                                 item.payment_status === "UNPAID"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-yellow-100 text-yellow-700"
+                                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                  : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
                               }`}
                             >
                               {item.payment_status}

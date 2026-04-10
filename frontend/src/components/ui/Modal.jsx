@@ -30,7 +30,6 @@ const Dialog = ({
     };
 
     if (open) {
-      // Use capture phase to ensure we catch the event before anything else
       document.addEventListener("mousedown", handleClickOutside, true);
       document.addEventListener("keydown", handleEscapeKey);
       document.body.style.overflow = "hidden";
@@ -46,23 +45,22 @@ const Dialog = ({
   if (!open) return null;
 
   const maxWidthClasses = {
-    xs: "max-w-xs",
-    sm: "max-w-sm",
-    md: "max-w-md",
-    lg: "max-w-lg",
-    xl: "max-w-xl",
-    "2xl": "max-w-2xl",
-    "3xl": "max-w-3xl",
-    "4xl": "max-w-4xl",
-    "5xl": "max-w-5xl",
+    xs:   "max-w-xs",
+    sm:   "max-w-sm",
+    md:   "max-w-md",
+    lg:   "max-w-lg",
+    xl:   "max-w-xl",
+    "2xl":"max-w-2xl",
+    "3xl":"max-w-3xl",
+    "4xl":"max-w-4xl",
+    "5xl":"max-w-5xl",
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
       <div
         ref={dialogRef}
-        className={`bg-white border border-gray-200 rounded-xl shadow-lg animate-slide-in w-full ${maxWidthClasses[maxWidth]} max-h-[90vh] overflow-hidden flex flex-col ${className}`}
-        // Prevent clicks inside dialog from bubbling up
+        className={`bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-modal animate-slide-in w-full ${maxWidthClasses[maxWidth]} max-h-[90vh] overflow-hidden flex flex-col ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -79,35 +77,37 @@ const DialogHeader = ({
   onClose,
   className = "",
 }) => {
-  // `title` can be a string or JSX (old call-site pattern).
-  // `children` is the recommended text-only pattern used with `icon` prop.
   const headingContent = title ?? children;
 
   return (
     <div
-      className={`px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-xl flex items-center justify-between ${className}`}
+      className={`px-6 py-4 border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input rounded-t-xl flex items-center justify-between ${className}`}
     >
       <div className="flex items-center space-x-3">
         {icon && (
-          <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">{icon}</div>
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
+            {icon}
+          </div>
         )}
         <div>
           {typeof headingContent === "string" ? (
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-ink-base dark:text-slate-100">
               {headingContent}
             </h2>
           ) : (
-            <div className="text-xl font-semibold text-gray-900">
+            <div className="text-xl font-semibold text-ink-base dark:text-slate-100">
               {headingContent}
             </div>
           )}
-          {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
+          {subtitle && (
+            <p className="text-sm text-ink-secondary dark:text-slate-400">{subtitle}</p>
+          )}
         </div>
       </div>
       {onClose && (
         <button
           onClick={onClose}
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 inline-flex items-center justify-center border-transparent"
+          className="p-2 text-ink-muted dark:text-slate-500 hover:text-ink-base dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-all duration-200 inline-flex items-center justify-center border-transparent"
           aria-label="Close dialog"
         >
           <X className="w-5 h-5" />
@@ -119,7 +119,7 @@ const DialogHeader = ({
 
 const DialogBody = ({ children, className = "" }) => (
   <div
-    className={`px-6 py-4 custom-scrollbar overflow-y-auto flex-1 ${className}`}
+    className={`px-6 py-4 custom-scrollbar overflow-y-auto flex-1 bg-white dark:bg-dark-card text-ink-base dark:text-slate-100 ${className}`}
   >
     {children}
   </div>
@@ -127,7 +127,7 @@ const DialogBody = ({ children, className = "" }) => (
 
 const DialogFooter = ({ children, className = "" }) => (
   <div
-    className={`px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex justify-end space-x-2 ${className}`}
+    className={`px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input rounded-b-xl flex justify-end space-x-2 ${className}`}
   >
     {children}
   </div>

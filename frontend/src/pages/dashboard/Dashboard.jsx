@@ -84,10 +84,10 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-6 overflow-x-hidden">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6 overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Welcome Section with Shortcuts */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 
+          {/* Welcome Section */}
+        <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm dark:shadow-glass-dark border border-gray-200 dark:border-dark-border
   p-4 sm:p-6 hover:shadow-md transition-all duration-200 mb-6">
 
   {/* Top Section */}
@@ -101,7 +101,7 @@ const Dashboard = () => {
         {getWelcomeMessage()}
       </h1>
 
-      <p className="text-xs sm:text-sm lg:text-base text-gray-600">
+      <p className="text-xs sm:text-sm lg:text-base text-ink-secondary dark:text-slate-400">
         Manage Sales & Warranty in One Place
       </p>
     </div>
@@ -120,7 +120,7 @@ const Dashboard = () => {
       <button
         onClick={handleRefresh}
         className="w-full sm:w-auto flex items-center justify-center 
-          bg-gray-100 hover:bg-gray-200 text-gray-700 
+          bg-gray-100 dark:bg-dark-hover hover:bg-gray-200 dark:hover:bg-dark-border text-ink-secondary dark:text-slate-300
           font-medium px-4 py-2 rounded-lg 
           transition-colors duration-200"
         title="Refresh"
@@ -135,15 +135,15 @@ const Dashboard = () => {
 </div>
           {/* Loading State */}
           {isLoading && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-all duration-200">
+            <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm dark:shadow-glass-dark border border-gray-200 dark:border-dark-border p-4 hover:shadow-md transition-all duration-200">
               <div className="px-6 py-4 text-center py-12">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
-                  <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full mb-4">
+                  <RefreshCw className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
                   Loading Dashboard
                 </h3>
-                <p className="text-gray-600">Fetching your latest data...</p>
+                <p className="text-ink-secondary dark:text-slate-400">Fetching your latest data...</p>
               </div>
             </div>
           )}
@@ -153,7 +153,7 @@ const Dashboard = () => {
             <div className="space-y-6 w-full max-w-full overflow-x-hidden [&>*]:min-w-0">
               {/* Key Metrics Row */}
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                <h2 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                   Key Metrics
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -257,12 +257,12 @@ const Dashboard = () => {
 
           {/* Empty State */}
           {!isLoading && !summary && (
-            <div className="bg-white rounded-lg shadow p-6 sm:p-12 text-center">
-              <p className="text-sm sm:text-base text-gray-500">
+            <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-6 sm:p-12 text-center">
+              <p className="text-sm sm:text-base text-ink-secondary dark:text-slate-400">
                 No data available. Start by creating your first invoice!
               </p>
               <button
-                className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto"
+                className="mt-4 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:bg-primary-hover transition-colors w-full sm:w-auto"
                 onClick={() => (window.location.href = "/invoices/new")}
               >
                 Create Invoice

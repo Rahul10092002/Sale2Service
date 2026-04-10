@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+﻿import React, { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Save, X, ArrowLeft } from "lucide-react";
 import { Button, LoadingSpinner } from "../../components/ui/index.js";
@@ -11,7 +11,7 @@ import CustomerInformationForm from "../../components/invoice/CustomerInformatio
 import InvoiceDetailsForm from "../../components/invoice/InvoiceDetailsForm.jsx";
 import InvoiceItemsForm from "../../components/invoice/InvoiceItemsForm.jsx";
 import InvoiceSummary from "../../components/invoice/InvoiceSummary.jsx";
-import { ROUTES } from "../../utils/constants.js";
+import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 
 const InvoiceEdit = () => {
   const { id } = useParams();
@@ -90,6 +90,12 @@ const InvoiceEdit = () => {
             selling_price: item.selling_price ?? item.price ?? 0,
             quantity: item.quantity || 1,
             product_category: item.product_category || "BATTERY",
+            battery_type:
+              item.product_category === "BATTERY" && !item.battery_type
+                ? INVOICE_CONSTANTS.BATTERY_TYPES.INVERTER_BATTERY
+                : item.battery_type || "",
+            vehicle_name: item.vehicle_name || "",
+            vehicle_number_plate: item.vehicle_number_plate || "",
             company: item.company || "",
             model_number: item.model_number || "",
             warranty_type: item.warranty_type || "STANDARD",
@@ -169,6 +175,26 @@ const InvoiceEdit = () => {
           newErrors[`item.${item.id}.selling_price`] =
             "Price must be greater than 0";
         }
+
+        if (item.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY) {
+          if (!item.battery_type) {
+            newErrors[`item.${item.id}.battery_type`] =
+              "Battery type is required";
+          }
+          if (
+            item.battery_type ===
+            INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY
+          ) {
+            if (!item.vehicle_name?.trim()) {
+              newErrors[`item.${item.id}.vehicle_name`] =
+                "Vehicle name is required";
+            }
+            if (!item.vehicle_number_plate?.trim()) {
+              newErrors[`item.${item.id}.vehicle_number_plate`] =
+                "Number plate is required";
+            }
+          }
+        }
       });
     }
 
@@ -221,6 +247,9 @@ const InvoiceEdit = () => {
           cost_price: parseFloat(item.cost_price || 0),
           quantity: parseInt(item.quantity || 1),
           product_category: item.product_category || "BATTERY",
+          battery_type: item.battery_type || "",
+          vehicle_name: item.vehicle_name || "",
+          vehicle_number_plate: item.vehicle_number_plate || "",
           company: item.company || "",
           model_number: item.model_number || "",
           warranty_type: item.warranty_type || "STANDARD",
@@ -304,7 +333,7 @@ const InvoiceEdit = () => {
   if (isLoadingInvoice) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 py-6">
+        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center items-center h-64">
               <LoadingSpinner />
@@ -318,13 +347,13 @@ const InvoiceEdit = () => {
   if (loadError || !existingInvoice) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 py-6">
+        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center py-12">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
                 Invoice not found
               </h3>
-              <p className="text-gray-500 mb-6">
+              <p className="text-ink-secondary dark:text-slate-400 mb-6">
                 The invoice you're trying to edit doesn't exist or has been
                 deleted.
               </p>
@@ -339,7 +368,7 @@ const InvoiceEdit = () => {
   }
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">

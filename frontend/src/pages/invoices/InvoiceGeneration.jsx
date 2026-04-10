@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Save, X } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
@@ -133,6 +133,26 @@ const InvoiceGenerationPage = () => {
           newErrors[`item.${item.id}.warranty_start_date`] =
             "Warranty start date is required";
         }
+
+        if (item.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY) {
+          if (!item.battery_type) {
+            newErrors[`item.${item.id}.battery_type`] =
+              "Battery type is required";
+          }
+          if (
+            item.battery_type ===
+            INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY
+          ) {
+            if (!item.vehicle_name?.trim()) {
+              newErrors[`item.${item.id}.vehicle_name`] =
+                "Vehicle name is required";
+            }
+            if (!item.vehicle_number_plate?.trim()) {
+              newErrors[`item.${item.id}.vehicle_number_plate`] =
+                "Number plate is required";
+            }
+          }
+        }
       });
     }
 
@@ -222,7 +242,7 @@ const InvoiceGenerationPage = () => {
   if (submitResult?.success) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 py-6">
+        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -264,56 +284,48 @@ const InvoiceGenerationPage = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Form Content */}
             <div className="lg:col-span-4 space-y-8">
               {/* Customer Information Section */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="">
                   <CustomerInformationForm />
                 </div>
               </div>
 
               {/* Invoice Items Section */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="">
                   <InvoiceItemsForm />
                 </div>
               </div>
 
               {/* Invoice Details Section */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Invoice Details
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Set invoice date and payment information
-                  </p>
-                </div>
-                <div className="p-6">
+              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
+                <div className="">
                   <InvoiceDetailsForm />
                 </div>
               </div>
               <InvoiceSummary />
 
               {/* Submit Section */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">
                     Review & Submit
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-slate-100 mt-1">
                     Apply discount and create the invoice
                   </p>
                 </div>
                 <div className="px-6 py-4">
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                     <div className="flex-1 max-w-xs">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-100 mb-2">
                         Discount Amount
                       </label>
                       <input

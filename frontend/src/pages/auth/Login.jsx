@@ -120,21 +120,21 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         {/* Logo and title */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Sales & Warranty Portal
+          <h1 className="text-3xl font-bold text-ink-base dark:text-slate-100 mb-2">
+            Sales &amp; Warranty Portal
           </h1>
-          <h2 className="text-xl font-semibold text-gray-700">
+          <h2 className="text-xl font-semibold text-ink-secondary dark:text-slate-300">
             Sign in to your account
           </h2>
         </div>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="bg-white dark:bg-dark-card py-8 px-4 shadow dark:shadow-glass-dark border border-transparent dark:border-dark-border sm:rounded-lg sm:px-10">
           {/* Success message */}
           {successMessage && (
             <Alert
@@ -188,7 +188,7 @@ const Login = () => {
                 onChange={() => setshowPassword((prev) => !prev)}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <label htmlFor="show-password" className="ml-2 block text-sm text-gray-900">
+              <label htmlFor="show-password" className="ml-2 block text-sm text-ink-secondary dark:text-slate-300">
                 Show Password
               </label>
             </div>
@@ -209,11 +209,11 @@ const Login = () => {
           {/* Links */}
           <div className="mt-6">
             <div className="text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-ink-secondary dark:text-slate-400">
                 Don't have an account?{" "}
                 <Link
                   to={ROUTES.SIGNUP}
-                  className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                  className="font-medium text-primary dark:text-primary-dark hover:underline transition-colors"
                 >
                   Sign up
                 </Link>

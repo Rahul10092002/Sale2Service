@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import {
   Activity,
   MessageSquare,
@@ -136,7 +136,7 @@ function Logs() {
 
   if (statsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
@@ -153,10 +153,10 @@ function Logs() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Modern Filters & Search */}
-        <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-6 gap-4">
+        <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-6 gap-4">
           <div className="flex items-center space-x-4">
             {/* Modern Filter Icon with Dropdown */}
             <div className="relative" ref={filterRef}>
@@ -167,10 +167,10 @@ function Logs() {
                 <Filter className="h-5 w-5 text-blue-600" />
               </button>
               {showFilters && (
-                <div className="absolute top-12 left-0 bg-white border border-gray-200 rounded-md shadow-lg p-4 z-10 w-80">
+                <div className="absolute top-12 left-0 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-md shadow-lg p-4 z-10 w-80">
                   <div className="grid grid-cols-1 gap-3">
                     <div className="flex flex-col">
-                      <label className="text-sm text-gray-600 font-medium mb-1">
+                      <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                         Entity Type:
                       </label>
                       <select
@@ -181,7 +181,7 @@ function Logs() {
                             entity_type: e.target.value,
                           }))
                         }
-                        className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                        className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                       >
                         <option value="">All Types</option>
                         <option value="INVOICE">Invoice</option>
@@ -192,7 +192,7 @@ function Logs() {
                     </div>
 
                     <div className="flex flex-col">
-                      <label className="text-sm text-gray-600 font-medium mb-1">
+                      <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                         Status:
                       </label>
                       <select
@@ -203,7 +203,7 @@ function Logs() {
                             message_status: e.target.value,
                           }))
                         }
-                        className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                        className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                       >
                         <option value="">All Status</option>
                         <option value="PENDING">Pending</option>
@@ -216,7 +216,7 @@ function Logs() {
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
+                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                           Date From:
                         </label>
                         <input
@@ -228,11 +228,11 @@ function Logs() {
                               start_date: e.target.value,
                             }))
                           }
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                         />
                       </div>
                       <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
+                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                           Date To:
                         </label>
                         <input
@@ -244,7 +244,7 @@ function Logs() {
                               end_date: e.target.value,
                             }))
                           }
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -254,11 +254,11 @@ function Logs() {
             </div>
 
             {/* Modern Search Bar */}
-            <div className="flex items-center space-x-3 border border-gray-300 bg-white rounded-full px-4 py-2 max-w-xs shadow-sm">
-              <Search className="h-5 w-5 text-gray-500" />
+            <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-2 max-w-xs shadow-sm">
+              <Search className="h-5 w-5 text-gray-500 dark:text-slate-400" />
               <input
                 placeholder="Search logs..."
-                className="bg-transparent focus:outline-none text-gray-600 placeholder-gray-400 w-full text-sm"
+                className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -275,8 +275,8 @@ function Logs() {
 
         {/* Stats Summary */}
         {stats && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-            <div className="flex flex-wrap divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+          <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-6">
+            <div className="flex flex-wrap divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-dark-border">
               {[
                 {
                   label: "Total",
@@ -319,8 +319,8 @@ function Logs() {
                     {icon}
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">{label}</p>
-                    <p className="text-base font-semibold text-gray-900 leading-tight">
+                    <p className="text-xs text-ink-muted dark:text-slate-500">{label}</p>
+                    <p className="text-base font-semibold text-ink-base dark:text-slate-100 leading-tight">
                       {value.toLocaleString()}
                     </p>
                   </div>
@@ -331,7 +331,7 @@ function Logs() {
         )}
 
         {/* Logs List */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
           {error ? (
             <div className="p-6 text-center">
               <div className="text-red-600">
@@ -344,10 +344,10 @@ function Logs() {
           ) : !logs?.length ? (
             <div className="p-12 text-center">
               <Activity className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
                 No logs found
               </h3>
-              <p className="text-gray-500 mb-6">
+              <p className="text-ink-secondary dark:text-slate-400 mb-6">
                 {searchTerm || filters.entity_type || filters.message_status
                   ? "No logs match your search criteria."
                   : "No reminder logs are available yet."}
@@ -358,15 +358,15 @@ function Logs() {
               {/* Desktop Table */}
               <div className="hidden md:block">
                 <table className="min-w-full">
-                  <thead className="bg-gray-200 border-b">
+                  <thead className="bg-gray-200 dark:bg-dark-subtle border-b dark:border-dark-border">
                     <tr>
-                      <th className="w-1/3 text-left px-4 py-3 text-sm font-semibold text-gray-500">
+                      <th className="w-1/3 text-left px-4 py-3 text-sm font-semibold text-ink-secondary dark:text-slate-400">
                         Recipient & Entity Details
                       </th>
-                      <th className="w-1/3 text-left px-4 py-3 text-sm font-semibold text-gray-500">
+                      <th className="w-1/3 text-left px-4 py-3 text-sm font-semibold text-ink-secondary dark:text-slate-400">
                         Message & Status Details
                       </th>
-                      <th className="w-1/3 text-left px-4 py-3 text-sm font-semibold text-gray-500">
+                      <th className="w-1/3 text-left px-4 py-3 text-sm font-semibold text-ink-secondary dark:text-slate-400">
                         Timing & Retry Details
                       </th>
                     </tr>
@@ -376,8 +376,8 @@ function Logs() {
                       <tr
                         key={log._id}
                         className={`${
-                          index % 2 === 0 ? "bg-white" : "bg-gray-100"
-                        } border-b border-gray-100 hover:bg-gray-100 transition-colors`}
+                          index % 2 === 0 ? "bg-white dark:bg-dark-card" : "bg-gray-100 dark:bg-dark-subtle"
+                        } border-b border-gray-100 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-subtle transition-colors`}
                       >
                         {/* Recipient & Entity Details */}
                         <td className="w-1/3 px-4 py-4 align-top">
@@ -386,10 +386,10 @@ function Logs() {
                               <MessageSquare className="w-5 h-5 text-blue-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="font-bold text-gray-800 text-sm mb-2 capitalize">
+                              <div className="font-bold text-ink-base dark:text-slate-100 text-sm mb-2 capitalize">
                                 {log.recipient_name || "N/A"}
                               </div>
-                              <div className="text-xs text-gray-600 space-y-1">
+                              <div className="text-xs text-ink-secondary dark:text-slate-400 space-y-1">
                                 <p className="wrap-break-word">
                                   <span className="font-medium">Phone:</span>{" "}
                                   {log.recipient_number}
@@ -407,12 +407,12 @@ function Logs() {
                         <td className="w-1/3 px-4 py-4 align-top">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-xs font-medium text-gray-500">
+                              <span className="text-xs font-medium text-ink-secondary dark:text-slate-400">
                                 Status:
                               </span>
                               {getStatusBadge(log.message_status)}
                             </div>
-                            <div className="text-xs text-gray-600 space-y-2">
+                            <div className="text-xs text-ink-secondary dark:text-slate-400 space-y-2">
                               <p className="break-words">
                                 <span className="font-medium">Template:</span>{" "}
                                 {log.template_name || "N/A"}
@@ -420,7 +420,7 @@ function Logs() {
                               {log.message_content && (
                                 <div>
                                   <p className="font-medium mb-1">Message:</p>
-                                  <div className="text-xs bg-gray-100 p-2 rounded border italic max-h-16 overflow-y-auto ">
+                                  <div className="text-xs bg-gray-100 dark:bg-dark-subtle p-2 rounded border dark:border-dark-border italic max-h-16 overflow-y-auto ">
                                     "{log.message_content}"
                                   </div>
                                 </div>
@@ -433,15 +433,15 @@ function Logs() {
                         <td className="w-1/3 px-4 py-4 align-top">
                           <div className="text-xs space-y-2">
                             <div className="space-y-1">
-                              <p className="font-medium text-gray-700 mb-1">
+                              <p className="font-medium text-ink-secondary dark:text-slate-300 mb-1">
                                 Timing:
                               </p>
-                              <p className="text-gray-600 break-words">
+                              <p className="text-ink-secondary dark:text-slate-400 break-words">
                                 <span className="font-medium">Created:</span>
                                 &nbsp;
                                 {formatDate(log.createdAt)}
                               </p>
-                              <p className="text-gray-600 break-words">
+                              <p className="text-ink-secondary dark:text-slate-400 break-words">
                                 <span className="font-medium">Sent:</span>&nbsp;
                                 {log.sent_at
                                   ? formatDate(log.sent_at)
@@ -449,7 +449,7 @@ function Logs() {
                               </p>
                               {log.updatedAt &&
                                 log.updatedAt !== log.createdAt && (
-                                  <p className="text-gray-600 break-words">
+                                  <p className="text-ink-secondary dark:text-slate-400 break-words">
                                     <span className="font-medium">
                                       Updated:
                                     </span>
@@ -458,11 +458,11 @@ function Logs() {
                                   </p>
                                 )}
                             </div>
-                            <div className="pt-1 border-t border-gray-200">
-                              <p className="font-medium text-gray-700 mb-1">
+                            <div className="pt-1 border-t border-gray-200 dark:border-dark-border">
+                              <p className="font-medium text-ink-secondary dark:text-slate-300 mb-1">
                                 Retry Info:
                               </p>
-                              <p className="text-gray-600">
+                              <p className="text-ink-secondary dark:text-slate-400">
                                 <span className="font-medium">Attempts:</span>
                                 &nbsp;
                                 {log.retry_count}/{log.max_retries}
@@ -481,8 +481,8 @@ function Logs() {
                 <div key={`mobile-${log._id}`} className="md:hidden">
                   <div
                     className={`${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-200"
-                    } border-b border-gray-100 p-4 `}
+                      index % 2 === 0 ? "bg-white dark:bg-dark-card" : "bg-gray-200 dark:bg-dark-subtle"
+                    } border-b border-gray-100 dark:border-dark-border p-4 `}
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -490,10 +490,10 @@ function Logs() {
                           <MessageSquare className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
-                          <div className="font-bold text-gray-800 capitalize">
+                          <div className="font-bold text-ink-base dark:text-slate-100 capitalize">
                             {log.recipient_name || "N/A"}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-ink-secondary dark:text-slate-400">
                             #{(currentPage - 1) * 10 + index + 1}
                           </div>
                         </div>
@@ -506,18 +506,18 @@ function Logs() {
 
                     {/* Recipient & Entity Details */}
                     <div className="mb-4">
-                      <h4 className="font-medium text-gray-800 text-sm mb-2">
+                      <h4 className="font-medium text-ink-base dark:text-slate-100 text-sm mb-2">
                         Recipient & Entity Details
                       </h4>
                       <div className="text-sm space-y-1">
                         <p>
-                          <span className="font-medium text-gray-600">
+                          <span className="font-medium text-ink-secondary dark:text-slate-400">
                             Phone:
                           </span>{" "}
                           {log.recipient_number}
                         </p>
                         <p>
-                          <span className="font-medium text-gray-600">
+                          <span className="font-medium text-ink-secondary dark:text-slate-400">
                             Entity Type:
                           </span>{" "}
                           {log.entity_type}
@@ -527,28 +527,28 @@ function Logs() {
 
                     {/* Message & Status Details */}
                     <div className="mb-4">
-                      <h4 className="font-medium text-gray-800 text-sm mb-2">
+                      <h4 className="font-medium text-ink-base dark:text-slate-100 text-sm mb-2">
                         Message & Status Details
                       </h4>
                       <div className="text-sm space-y-1">
                         <p>
-                          <span className="font-medium text-gray-600">
+                          <span className="font-medium text-ink-secondary dark:text-slate-400">
                             Template:
                           </span>{" "}
                           {log.template_name || "N/A"}
                         </p>
                         <p>
-                          <span className="font-medium text-gray-600">
+                          <span className="font-medium text-ink-secondary dark:text-slate-400">
                             Status:
                           </span>{" "}
                           {log.message_status}
                         </p>
                         {log.message_content && (
                           <div>
-                            <p className="font-medium text-gray-600 mb-1">
+                            <p className="font-medium text-ink-secondary dark:text-slate-400 mb-1">
                               Message:
                             </p>
-                            <p className="text-xs bg-gray-50 p-2 rounded border italic">
+                            <p className="text-xs bg-gray-50 dark:bg-dark-input p-2 rounded border dark:border-dark-border italic">
                               "{log.message_content}"
                             </p>
                           </div>
@@ -558,32 +558,32 @@ function Logs() {
 
                     {/* Timing & Retry Details */}
                     <div>
-                      <h4 className="font-medium text-gray-800 text-sm mb-2">
+                      <h4 className="font-medium text-ink-base dark:text-slate-100 text-sm mb-2">
                         Timing & Retry Details
                       </h4>
                       <div className="text-sm space-y-1">
                         <p>
-                          <span className="font-medium text-gray-600">
+                          <span className="font-medium text-ink-secondary dark:text-slate-400">
                             Created:
                           </span>{" "}
                           {formatDate(log.createdAt)}
                         </p>
                         <p>
-                          <span className="font-medium text-gray-600">
+                          <span className="font-medium text-ink-secondary dark:text-slate-400">
                             Sent:
                           </span>{" "}
                           {log.sent_at ? formatDate(log.sent_at) : "Not sent"}
                         </p>
                         {log.updatedAt && log.updatedAt !== log.createdAt && (
                           <p>
-                            <span className="font-medium text-gray-600">
+                            <span className="font-medium text-ink-secondary dark:text-slate-400">
                               Updated:
                             </span>{" "}
                             {formatDate(log.updatedAt)}
                           </p>
                         )}
                         <p>
-                          <span className="font-medium text-gray-600">
+                          <span className="font-medium text-ink-secondary dark:text-slate-400">
                             Retry Attempts:
                           </span>{" "}
                           {log.retry_count}/{log.max_retries}
@@ -596,8 +596,8 @@ function Logs() {
 
               {logs.length === 0 && !logsLoading && (
                 <div className="text-center py-8 bg-white border-t">
-                  <div className="text-gray-500 text-lg">No logs found</div>
-                  <div className="text-gray-400 text-sm mt-2">
+                  <div className="text-ink-secondary dark:text-slate-400 text-lg">No logs found</div>
+                  <div className="text-ink-muted dark:text-slate-500 text-sm mt-2">
                     Try adjusting your filters to see more results
                   </div>
                 </div>
@@ -607,9 +607,9 @@ function Logs() {
 
           {/* Pagination */}
           {pagination.pages > 1 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-ink-muted dark:text-slate-500">
                   Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                   {Math.min(
                     pagination.page * pagination.limit,
@@ -649,7 +649,7 @@ function Logs() {
                           return (
                             <span
                               key={pageNum}
-                              className="px-2 py-1 text-sm text-gray-500"
+                              className="px-2 py-1 text-sm text-ink-secondary dark:text-slate-400"
                             >
                               ...
                             </span>
@@ -690,8 +690,8 @@ function Logs() {
 
           {/* Simple pagination info when only 1 page */}
           {pagination.pages <= 1 && logs.length > 0 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="text-sm text-gray-500 text-center">
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
+              <div className="text-sm text-ink-secondary dark:text-slate-400 text-center">
                 Showing {pagination.total || 0} of {pagination.total || 0} logs
               </div>
             </div>

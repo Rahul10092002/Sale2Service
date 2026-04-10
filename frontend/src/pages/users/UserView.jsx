@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { showToast } from "../../features/ui/uiSlice.js";
@@ -97,11 +97,17 @@ const UserView = () => {
 
   const getRoleBadge = (role) => {
     const styles = {
-      OWNER: "bg-purple-100 text-purple-800 border-purple-200",
-      ADMIN: "bg-blue-100 text-blue-800 border-blue-200",
-      STAFF: "bg-green-100 text-green-800 border-green-200",
+      OWNER:
+        "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 border border-purple-200 dark:border-purple-800",
+      ADMIN:
+        "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800",
+      STAFF:
+        "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800",
     };
-    return styles[role] || "bg-gray-100 text-gray-800 border-gray-200";
+    return (
+      styles[role] ||
+      "bg-gray-100 dark:bg-dark-subtle text-gray-800 dark:text-slate-300 border border-gray-200 dark:border-dark-border"
+    );
   };
 
   if (isLoading) {
@@ -133,13 +139,13 @@ const UserView = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-white p-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg p-4">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6">
             <button
               onClick={() => navigate(ROUTES.USERS)}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
             >
               <ArrowLeft size={16} className="mr-2" />
               Back to Users
@@ -150,7 +156,7 @@ const UserView = () => {
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             {/* Left Column */}
             <div className="xl:col-span-2 space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
                 <div className="bg-gradient-to-r from-green-500 to-teal-600 px-6 py-4">
                   <div className="flex items-center space-x-4">
                     <div className="shrink-0">
@@ -183,42 +189,42 @@ const UserView = () => {
               </div>
 
               {/* Basic Information */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
                     <Users className="w-5 h-5 text-indigo-600" />
                     Basic Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Full Name
                       </label>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                         {user.name}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Email Address
                       </label>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                         {user.email}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Phone Number
                       </label>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                         {user.phone || "—"}
                       </p>
                     </div>
-                    <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                      <label className="block text-xs font-medium text-green-600 mb-1">
+                    <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-900/50">
+                      <label className="block text-xs font-medium text-green-600 dark:text-green-400 mb-1">
                         Status
                       </label>
-                      <p className="text-sm font-medium text-green-800">
+                      <p className="text-sm font-medium text-green-800 dark:text-green-300">
                         Active
                       </p>
                     </div>
@@ -227,9 +233,9 @@ const UserView = () => {
               </div>
 
               {/* Role & Permissions */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
                     <Shield className="w-5 h-5 text-green-600" />
                     Role & Permissions
                   </h3>
@@ -237,19 +243,19 @@ const UserView = () => {
                     <div
                       className={`rounded-lg p-3 border ${
                         user.role === "OWNER"
-                          ? "bg-purple-50 border-purple-200"
+                          ? "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900/50"
                           : user.role === "ADMIN"
-                            ? "bg-blue-50 border-blue-200"
-                            : "bg-green-50 border-green-200"
+                            ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50"
+                            : "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900/50"
                       }`}
                     >
                       <label
                         className={`block text-xs font-medium mb-1 ${
                           user.role === "OWNER"
-                            ? "text-purple-600"
+                            ? "text-purple-600 dark:text-purple-400"
                             : user.role === "ADMIN"
-                              ? "text-blue-600"
-                              : "text-green-600"
+                              ? "text-blue-600 dark:text-blue-400"
+                              : "text-green-600 dark:text-green-400"
                         }`}
                       >
                         Role
@@ -257,21 +263,21 @@ const UserView = () => {
                       <p
                         className={`text-sm font-semibold ${
                           user.role === "OWNER"
-                            ? "text-purple-800"
+                            ? "text-purple-800 dark:text-purple-200"
                             : user.role === "ADMIN"
-                              ? "text-blue-800"
-                              : "text-green-800"
+                              ? "text-blue-800 dark:text-blue-200"
+                              : "text-green-800 dark:text-green-200"
                         }`}
                       >
                         {user.role}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Created At
                       </label>
-                      <p className="text-sm font-medium text-gray-900 flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500 shrink-0" />
                         {new Date(user.created_at).toLocaleDateString("en-IN", {
                           year: "numeric",
                           month: "long",
@@ -286,21 +292,21 @@ const UserView = () => {
 
             {/* Right Column — Quick Actions */}
             <div className="xl:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 sticky top-4">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border sticky top-4">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                     Quick Actions
                   </h3>
                   <div className="space-y-3">
                     {user.role !== "OWNER" && (
                       <button
                         onClick={openEditModal}
-                        className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
+                        className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
                       >
                         <div className="shrink-0 group-hover:scale-110 transition-transform duration-200">
                           <Edit3 className="w-5 h-5 text-blue-600" />
                         </div>
-                        <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                        <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                           Edit User
                         </span>
                       </button>
@@ -308,12 +314,12 @@ const UserView = () => {
                     {user.role !== "OWNER" && (
                       <button
                         onClick={() => setShowDeleteModal(true)}
-                        className="w-full flex items-center space-x-3 p-3 text-left border border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all duration-200 group"
+                        className="w-full flex items-center space-x-3 p-3 text-left border border-red-200 dark:border-red-900/50 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-300 dark:hover:border-red-800 transition-all duration-200 group"
                       >
                         <div className="shrink-0 group-hover:scale-110 transition-transform duration-200">
                           <Trash2 className="w-5 h-5 text-red-600" />
                         </div>
-                        <span className="text-sm font-medium text-red-700 group-hover:text-red-900">
+                        <span className="text-sm font-medium text-red-700 dark:text-red-400 group-hover:text-red-900 dark:group-hover:text-red-300">
                           Delete User
                         </span>
                       </button>
@@ -363,14 +369,14 @@ const UserView = () => {
               placeholder="Enter phone number"
             />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                 Role
               </label>
               <select
                 name="role"
                 value={editForm.role}
                 onChange={handleEditChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-md bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 required
               >
                 <option value="STAFF">Staff</option>
@@ -419,12 +425,12 @@ const UserView = () => {
         />
         <DialogBody>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
-              <AlertCircle className="w-6 h-6 text-red-600" />
+            <div className="w-10 h-10 bg-red-100 dark:bg-red-950/40 rounded-full flex items-center justify-center shrink-0">
+              <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
-            <p className="text-gray-600">
+            <p className="text-ink-secondary dark:text-slate-400">
               Are you sure you want to delete{" "}
-              <span className="font-semibold text-gray-900">{user.name}</span>?
+              <span className="font-semibold text-ink-base dark:text-slate-100">{user.name}</span>?
               This action cannot be undone.
             </p>
           </div>

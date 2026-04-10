@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import {
@@ -172,17 +172,21 @@ const ProductView = () => {
       maximumFractionDigits: 2,
     }).format(amount || 0);
   };
+  const formatBatteryType = (value) => {
+    if (!value) return "—";
+    return value.replace(/_/g, " ").toLowerCase();
+  };
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case "active":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300";
       case "inactive":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300";
       case "warranty":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-slate-800/80 dark:text-slate-200";
     }
   };
 
@@ -196,24 +200,24 @@ const ProductView = () => {
       case "overdue":
         return <AlertCircle className="text-red-600" size={16} />;
       case "cancelled":
-        return <XCircle className="text-gray-600" size={16} />;
+        return <XCircle className="text-ink-secondary dark:text-slate-400" size={16} />;
       default:
-        return <Clock className="text-gray-600" size={16} />;
+        return <Clock className="text-ink-secondary dark:text-slate-400" size={16} />;
     }
   };
 
   const getServiceStatusColor = (status) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300";
       case "scheduled":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300";
       case "overdue":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300";
       case "cancelled":
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-slate-800/80 dark:text-slate-300";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-slate-800/80 dark:text-slate-300";
     }
   };
 
@@ -349,7 +353,7 @@ const ProductView = () => {
   if (isLoading) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 py-6">
+        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center items-center h-64">
               <LoadingSpinner />
@@ -363,14 +367,14 @@ const ProductView = () => {
   if (error || !product) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 py-6">
+        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center py-12">
-              <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <Package className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
                 Product not found
               </h3>
-              <p className="text-gray-500 mb-6">
+              <p className="text-ink-secondary dark:text-slate-400 mb-6">
                 The product you're looking for doesn't exist or has been
                 deleted.
               </p>
@@ -386,18 +390,18 @@ const ProductView = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-white p-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg p-4">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6">
             <button
               onClick={() => navigate(ROUTES.PRODUCTS)}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
             >
               <ArrowLeft size={16} className="mr-2" />
               Back to Products
             </button>
-            <h1 className="text-2xl font-bold text-gray-900 mt-2">
+            <h1 className="text-2xl font-bold text-ink-base dark:text-slate-100 mt-2">
               Product Details
             </h1>
           </div>
@@ -407,7 +411,7 @@ const ProductView = () => {
             {/* Left Column - Product Info */}
             <div className="xl:col-span-2 space-y-6">
               {/* Product Header Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-4">
                   <div className="flex items-center space-x-4">
                     {/* Product Icon */}
@@ -436,17 +440,20 @@ const ProductView = () => {
                           className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             product.status
                               ? {
-                                  active: "bg-green-100 text-green-800",
-                                  inactive: "bg-red-100 text-red-800",
-                                  warranty: "bg-blue-100 text-blue-800",
+                                  active:
+                                    "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300",
+                                  inactive:
+                                    "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300",
+                                  warranty:
+                                    "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
                                 }[product.status.toLowerCase()] ||
-                                "bg-gray-100 text-gray-800"
-                              : "bg-gray-100 text-gray-800"
+                                "bg-gray-100 text-gray-800 dark:bg-slate-800/80 dark:text-slate-200"
+                              : "bg-gray-100 text-gray-800 dark:bg-slate-800/80 dark:text-slate-200"
                           }`}
                         >
                           {product.status || "Unknown"}
                         </span>
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-purple-800">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white dark:bg-slate-800 text-purple-800 dark:text-purple-200">
                           {formatCurrency(product.selling_price)}
                         </span>
                       </div>
@@ -457,65 +464,65 @@ const ProductView = () => {
 
               {/* Product Image */}
               {product.product_images?.[0] && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                   <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                       Product Image
                     </h3>
                     <img
                       src={product.product_images[0]}
                       alt={product.product_name || "Product"}
-                      className="w-full max-w-xs rounded-xl border border-gray-200 object-cover shadow-sm"
+                      className="w-full max-w-xs rounded-xl border border-gray-200 dark:border-dark-border object-cover shadow-sm"
                     />
                   </div>
                 </div>
               )}
 
               {/* Product Information */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
                     <Package className="w-5 h-5 text-purple-500" />
                     Product Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Product Name
                       </label>
-                      <p className="text-sm font-medium text-gray-900 capitalize">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
                         {product.product_name || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Company
                       </label>
-                      <p className="text-sm font-medium text-gray-900 capitalize">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
                         {product.company || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Model Number
                       </label>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                         {product.model_number || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Serial Number
                       </label>
-                      <p className="text-sm font-medium text-gray-900 font-mono">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 font-mono">
                         {product.serial_number || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Category
                       </label>
-                      <p className="text-sm font-medium text-gray-900 capitalize">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
                         {product.product_category
                           ? product.product_category
                               .replace(/_/g, " ")
@@ -523,60 +530,91 @@ const ProductView = () => {
                           : "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    {product.product_category === "BATTERY" && (
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
+                          Battery Type
+                        </label>
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
+                          {formatBatteryType(product.battery_type)}
+                        </p>
+                      </div>
+                    )}
+                    {product.product_category === "BATTERY" &&
+                      product.battery_type === "VEHICLE_BATTERY" && (
+                        <>
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
+                              Vehicle Name
+                            </label>
+                            <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                              {product.vehicle_name || "—"}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
+                              Number Plate
+                            </label>
+                            <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                              {product.vehicle_number_plate || "—"}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Quantity
                       </label>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                         {product.quantity ?? "—"}
                       </p>
                     </div>
                     {product.capacity_rating && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Capacity / Rating
                         </label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {product.capacity_rating}
                         </p>
                       </div>
                     )}
                     {product.voltage && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Voltage
                         </label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {product.voltage}
                         </p>
                       </div>
                     )}
                     {product.batch_number && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Batch Number
                         </label>
-                        <p className="text-sm font-medium text-gray-900 font-mono">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100 font-mono">
                           {product.batch_number}
                         </p>
                       </div>
                     )}
                     {product.manufacturing_date && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Manufacturing Date
                         </label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {formatDate(product.manufacturing_date)}
                         </p>
                       </div>
                     )}
                     {product.purchase_source && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Purchase Source
                         </label>
-                        <p className="text-sm font-medium text-gray-900 capitalize">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
                           {product.purchase_source}
                         </p>
                       </div>
@@ -586,27 +624,27 @@ const ProductView = () => {
               </div>
 
               {/* Warranty & Pricing Information */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-yellow-500" />
                     Warranty &amp; Pricing
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                      <label className="block text-xs font-medium text-blue-600 mb-1">
+                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-100 dark:border-blue-900/50">
+                      <label className="block text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
                         Selling Price
                       </label>
-                      <p className="text-sm font-medium text-blue-800">
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
                         {formatCurrency(product.selling_price)}
                       </p>
                     </div>
                     {product.cost_price != null && (
-                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3 border border-gray-200 dark:border-dark-border">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Cost Price
                         </label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {formatCurrency(product.cost_price)}
                         </p>
                       </div>
@@ -614,15 +652,15 @@ const ProductView = () => {
                     <div
                       className={`rounded-lg p-3 border ${
                         getStatusColor(product.status).includes("green")
-                          ? "bg-green-50 border-green-200"
+                          ? "bg-green-50 dark:bg-green-950/25 border-green-200 dark:border-green-900/50"
                           : getStatusColor(product.status).includes("red")
-                            ? "bg-red-50 border-red-200"
+                            ? "bg-red-50 dark:bg-red-950/25 border-red-200 dark:border-red-900/50"
                             : getStatusColor(product.status).includes("blue")
-                              ? "bg-blue-50 border-blue-200"
-                              : "bg-gray-50 border-gray-200"
+                              ? "bg-blue-50 dark:bg-blue-950/25 border-blue-200 dark:border-blue-900/50"
+                              : "bg-gray-50 dark:bg-dark-subtle border-gray-200 dark:border-dark-border"
                       }`}
                     >
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Status
                       </label>
                       <span
@@ -631,37 +669,37 @@ const ProductView = () => {
                         {product.status || "Unknown"}
                       </span>
                     </div>
-                    <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-100">
-                      <label className="block text-xs font-medium text-yellow-600 mb-1">
+                    <div className="bg-yellow-50 dark:bg-yellow-950/25 rounded-lg p-3 border border-yellow-100 dark:border-yellow-900/50">
+                      <label className="block text-xs font-medium text-yellow-600 dark:text-yellow-400 mb-1">
                         Warranty Start Date
                       </label>
-                      <p className="text-sm font-medium text-yellow-800">
+                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
                         {formatDate(product.warranty_start_date)}
                       </p>
                     </div>
-                    <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-100">
-                      <label className="block text-xs font-medium text-yellow-600 mb-1">
+                    <div className="bg-yellow-50 dark:bg-yellow-950/25 rounded-lg p-3 border border-yellow-100 dark:border-yellow-900/50">
+                      <label className="block text-xs font-medium text-yellow-600 dark:text-yellow-400 mb-1">
                         Warranty End Date
                       </label>
-                      <p className="text-sm font-medium text-yellow-800">
+                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
                         {formatDate(product.warranty_end_date)}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3 border border-gray-200 dark:border-dark-border">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Warranty Duration
                       </label>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                         {product.warranty_duration_months
                           ? `${product.warranty_duration_months} month${product.warranty_duration_months > 1 ? "s" : ""}`
                           : "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3 border border-gray-200 dark:border-dark-border">
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Warranty Type
                       </label>
-                      <p className="text-sm font-medium text-gray-900 capitalize">
+                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
                         {product.warranty_type
                           ? product.warranty_type
                               .replace(/_/g, " ")
@@ -670,11 +708,11 @@ const ProductView = () => {
                       </p>
                     </div>
                     {product.pro_warranty_end_date && (
-                      <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
-                        <label className="block text-xs font-medium text-purple-600 mb-1">
+                      <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50">
+                        <label className="block text-xs font-medium text-purple-600 dark:text-purple-400 mb-1">
                           Pro Warranty End Date
                         </label>
-                        <p className="text-sm font-medium text-purple-800">
+                        <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
                           {formatDate(product.pro_warranty_end_date)}
                         </p>
                       </div>
@@ -685,10 +723,10 @@ const ProductView = () => {
 
               {/* Service Details */}
               {product.hasServicePlan && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-indigo-500" />
                         Service Details
                       </h3>
@@ -696,7 +734,7 @@ const ProductView = () => {
                         <button
                           onClick={openEditPlanModal}
                           disabled={actionLoading || updatingPlan}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 transition-colors disabled:opacity-50"
                         >
                           <Settings className="w-3.5 h-3.5" />
                           Edit Service Plan
@@ -707,7 +745,7 @@ const ProductView = () => {
                     {serviceLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <LoadingSpinner />
-                        <span className="ml-2 text-gray-500">
+                        <span className="ml-2 text-ink-secondary dark:text-slate-400">
                           Loading service data...
                         </span>
                       </div>
@@ -717,14 +755,14 @@ const ProductView = () => {
                           className="mx-auto text-red-500 mb-4"
                           size={40}
                         />
-                        <p className="text-red-600 text-sm">
+                        <p className="text-red-600 dark:text-red-400 text-sm">
                           {serviceError?.data?.message ||
                             serviceError?.message ||
                             "Failed to load service data"}
                         </p>
                         <button
                           onClick={refetchService}
-                          className="mt-3 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                          className="mt-3 px-4 py-2 text-sm bg-gray-100 dark:bg-dark-subtle hover:bg-gray-200 dark:hover:bg-dark-hover text-ink-base dark:text-slate-100 rounded-lg transition-colors border border-gray-200 dark:border-dark-border"
                         >
                           Try Again
                         </button>
@@ -732,24 +770,24 @@ const ProductView = () => {
                     ) : !serviceData?.schedules?.length ? (
                       <div className="text-center py-10">
                         <Calendar
-                          className="mx-auto text-gray-400 mb-3"
+                          className="mx-auto text-gray-400 dark:text-slate-500 mb-3"
                           size={40}
                         />
-                        <h4 className="text-sm font-medium text-gray-900 mb-1">
+                        <h4 className="text-sm font-medium text-ink-base dark:text-slate-100 mb-1">
                           No Services Found
                         </h4>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-ink-muted dark:text-slate-500">
                           No service schedules found for this product.
                         </p>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         {/* Header row */}
-                        <div className="grid grid-cols-[1fr_auto] gap-3 px-3 pb-1 border-b border-gray-100">
-                          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        <div className="grid grid-cols-[1fr_auto] gap-3 px-3 pb-1 border-b border-gray-100 dark:border-dark-border">
+                          <p className="text-xs font-medium text-ink-muted dark:text-slate-500 uppercase tracking-wider">
                             Service Info
                           </p>
-                          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider text-right">
+                          <p className="text-xs font-medium text-ink-muted dark:text-slate-500 uppercase tracking-wider text-right">
                             Actions
                           </p>
                         </div>
@@ -759,12 +797,12 @@ const ProductView = () => {
                             key={schedule._id}
                             className={`grid grid-cols-[1fr_auto] gap-3 items-start p-3 rounded-lg border ${
                               schedule.status === "overdue"
-                                ? "bg-red-50 border-red-100"
+                                ? "bg-red-50 dark:bg-red-950/25 border-red-100 dark:border-red-900/40"
                                 : schedule.status === "completed"
-                                  ? "bg-green-50 border-green-100"
+                                  ? "bg-green-50 dark:bg-green-950/25 border-green-100 dark:border-green-900/40"
                                   : schedule.status === "cancelled"
-                                    ? "bg-gray-50 border-gray-100"
-                                    : "bg-blue-50 border-blue-100"
+                                    ? "bg-gray-50 dark:bg-dark-subtle border-gray-100 dark:border-dark-border"
+                                    : "bg-blue-50 dark:bg-blue-950/25 border-blue-100 dark:border-blue-900/40"
                             }`}
                           >
                             {/* Left: service details */}
@@ -779,11 +817,11 @@ const ProductView = () => {
                                     {schedule.status}
                                   </span>
                                 </span>
-                                <span className="text-xs font-semibold text-gray-700">
+                                <span className="text-xs font-semibold text-ink-base dark:text-slate-200">
                                   {formatDate(schedule.scheduled_date)}
                                 </span>
                                 {schedule.completed_at && (
-                                  <span className="text-xs text-gray-400">
+                                  <span className="text-xs text-ink-muted dark:text-slate-500">
                                     · Done {formatDate(schedule.completed_at)}
                                   </span>
                                 )}
@@ -792,7 +830,7 @@ const ProductView = () => {
                               {/* Row 2: Description */}
                               {(schedule.service_description ||
                                 serviceData.plan?.service_description) && (
-                                <p className="text-xs text-gray-600 truncate">
+                                <p className="text-xs text-ink-secondary dark:text-slate-400 truncate">
                                   {schedule.service_description ||
                                     serviceData.plan?.service_description}
                                 </p>
@@ -800,9 +838,9 @@ const ProductView = () => {
 
                               {/* Row 3: Charge + Amount collected */}
                               <div className="flex items-center gap-3 flex-wrap">
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-ink-muted dark:text-slate-500">
                                   Charge:{" "}
-                                  <span className="font-medium text-gray-700">
+                                  <span className="font-medium text-ink-base dark:text-slate-200">
                                     {schedule.service_charge
                                       ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
                                       : serviceData.plan?.service_charge
@@ -813,12 +851,12 @@ const ProductView = () => {
                                 <span
                                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                                     schedule.payment_status === "PAID"
-                                      ? "bg-green-100 text-green-800"
+                                      ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300"
                                       : schedule.payment_status === "PARTIAL"
-                                        ? "bg-yellow-100 text-yellow-800"
+                                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200"
                                         : schedule.payment_status === "FREE"
-                                          ? "bg-blue-100 text-blue-800"
-                                          : "bg-gray-100 text-gray-700"
+                                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                          : "bg-gray-100 dark:bg-dark-subtle text-gray-700 dark:text-slate-300"
                                   }`}
                                 >
                                   {schedule.amount_collected
@@ -855,7 +893,7 @@ const ProductView = () => {
                                       setShowCompleteModal(schedule._id);
                                     }}
                                     disabled={actionLoading}
-                                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-950/40 hover:bg-green-200 dark:hover:bg-green-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                   >
                                     {markingComplete ? (
                                       <LoadingSpinner size="xs" />
@@ -869,7 +907,7 @@ const ProductView = () => {
                                       setShowRescheduleModal(schedule._id)
                                     }
                                     disabled={actionLoading}
-                                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/40 hover:bg-blue-200 dark:hover:bg-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                   >
                                     {rescheduling ? (
                                       <LoadingSpinner size="xs" />
@@ -884,7 +922,7 @@ const ProductView = () => {
                                         cancelService(schedule._id)
                                       }
                                       disabled={actionLoading}
-                                      className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                      className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/40 hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
                                       {cancelling ? (
                                         <LoadingSpinner size="xs" />
@@ -898,7 +936,7 @@ const ProductView = () => {
                               )}
                               {(schedule.status === "completed" ||
                                 schedule.status === "cancelled") && (
-                                <span className="text-gray-400 text-xs italic">
+                                <span className="text-ink-muted dark:text-slate-500 text-xs italic">
                                   —
                                 </span>
                               )}
@@ -914,24 +952,24 @@ const ProductView = () => {
 
             {/* Right Column - Actions */}
             <div className="xl:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 sticky top-4">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border sticky top-4">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                     Quick Actions
                   </h3>
 
                   {/* Customer summary */}
                   {product.customer && (
-                    <div className="mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-                      <p className="text-xs font-medium text-indigo-500 mb-0.5 flex items-center gap-1">
+                    <div className="mb-4 p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+                      <p className="text-xs font-medium text-indigo-500 dark:text-indigo-400 mb-0.5 flex items-center gap-1">
                         <User className="w-3 h-3" /> Customer
                       </p>
-                      <p className="text-sm font-semibold text-indigo-800">
+                      <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-200">
                         {product.customer.full_name}
                       </p>
                       <a
                         href={`tel:${product.customer.whatsapp_number}`}
-                        className="text-xs text-indigo-600 hover:text-indigo-800"
+                        className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
                       >
                         {product.customer.whatsapp_number}
                       </a>
@@ -943,17 +981,17 @@ const ProductView = () => {
                         onClick={() =>
                           navigate(`${ROUTES.INVOICES}/${product.invoice_id}`)
                         }
-                        className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
+                        className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
                       >
                         <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                           <FileText className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                          <p className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                             View Invoice
                           </p>
                           {product.invoice?.invoice_number && (
-                            <p className="text-xs text-gray-400 font-mono">
+                            <p className="text-xs text-ink-muted dark:text-slate-500 font-mono">
                               {product.invoice.invoice_number}
                             </p>
                           )}
@@ -963,12 +1001,12 @@ const ProductView = () => {
 
                     <button
                       onClick={() => setShowEditProductModal(true)}
-                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
+                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
                     >
                       <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                         <Edit className="w-5 h-5 text-indigo-600" />
                       </div>
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                      <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                         Edit Details
                       </span>
                     </button>
@@ -991,25 +1029,25 @@ const ProductView = () => {
             title={
               <div className="flex items-center space-x-2">
                 <CheckCircle2 className="text-green-600" size={20} />
-                <span>Mark Service Complete</span>
+                <span className="text-ink-base dark:text-slate-100">Mark Service Complete</span>
               </div>
             }
             onClose={() => setShowCompleteModal(null)}
           />
           <DialogBody>
             <div className="space-y-6">
-              <p className="text-gray-600">
+              <p className="text-ink-secondary dark:text-slate-400">
                 Complete the service and record payment details (if applicable).
               </p>
 
               {serviceData?.schedules?.find(
                 (s) => s._id === showCompleteModal,
               ) && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                <div className="bg-gray-50 dark:bg-dark-subtle p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Service Details
                   </h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-secondary dark:text-slate-400">
                     Service Charge:{" "}
                     {(() => {
                       const charge =
@@ -1026,11 +1064,11 @@ const ProductView = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Amount Collected *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-500">
+                    <span className="absolute left-3 top-2 text-ink-muted dark:text-slate-500">
                       ₹
                     </span>
                     <input
@@ -1046,7 +1084,7 @@ const ProductView = () => {
                         if (value >= 0) setAmountCollected(value);
                       }}
                       onBlur={() => setRawAmountCollected(null)}
-                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      className="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                       placeholder="0"
                       min="0"
                       step="1"
@@ -1054,7 +1092,7 @@ const ProductView = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Payment Method *
                   </label>
                   <select
@@ -1063,7 +1101,7 @@ const ProductView = () => {
                       setPaymentMethod(e.target.value);
                       if (e.target.value === "NONE") setAmountCollected(0);
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   >
                     <option value="CASH">Cash</option>
                     <option value="UPI">UPI</option>
@@ -1077,25 +1115,25 @@ const ProductView = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Technician Name *
                   </label>
                   <input
                     type="text"
                     value={technicianName}
                     onChange={(e) => setTechnicianName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     placeholder="Enter technician name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Service Type *
                   </label>
                   <select
                     value={completionNotes}
                     onChange={(e) => setCompletionNotes(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   >
                     <option value="">Select service type</option>
                     <option value="MAINTENANCE">Maintenance</option>
@@ -1111,32 +1149,32 @@ const ProductView = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Issue Reported *
                   </label>
                   <textarea
                     value={issueReported}
                     onChange={(e) => setIssueReported(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     rows="3"
                     placeholder="Describe the issue reported by customer"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Work Done *
                   </label>
                   <textarea
                     value={workDone}
                     onChange={(e) => setWorkDone(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     rows="3"
                     placeholder="Describe the work performed"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-dark-border">
                 <Button
                   variant="secondary"
                   onClick={() => {
@@ -1168,7 +1206,7 @@ const ProductView = () => {
                     ) : (
                       <CheckCircle2 size={16} />
                     )}
-                    <span>Complete Service</span>
+                    <span className="text-ink-base dark:text-slate-100">Complete Service</span>
                   </div>
                 </Button>
               </div>
@@ -1188,29 +1226,29 @@ const ProductView = () => {
             title={
               <div className="flex items-center space-x-2">
                 <Calendar className="text-blue-600" size={20} />
-                <span>Reschedule Service</span>
+                <span className="text-ink-base dark:text-slate-100">Reschedule Service</span>
               </div>
             }
             onClose={() => setShowRescheduleModal(null)}
           />
           <DialogBody>
             <div className="space-y-4">
-              <p className="text-gray-600">
+              <p className="text-ink-secondary dark:text-slate-400">
                 Select a new date for this service.
               </p>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                   New Service Date *
                 </label>
                 <input
                   type="date"
                   value={rescheduleDate}
                   onChange={(e) => setRescheduleDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   min={new Date().toISOString().split("T")[0]}
                 />
               </div>
-              <div className="flex justify-end space-x-3 pt-4 border-t">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-dark-border">
                 <Button
                   variant="secondary"
                   onClick={() => setShowRescheduleModal(null)}
@@ -1234,7 +1272,7 @@ const ProductView = () => {
                     ) : (
                       <Calendar size={16} />
                     )}
-                    <span>Reschedule</span>
+                    <span className="text-ink-base dark:text-slate-100">Reschedule</span>
                   </div>
                 </Button>
               </div>
@@ -1254,11 +1292,11 @@ const ProductView = () => {
             icon={<Settings className="text-indigo-600" size={20} />}
             onClose={() => setShowEditPlanModal(false)}
           >
-            <span>Edit Service Plan</span>
+            <span className="text-ink-base dark:text-slate-100">Edit Service Plan</span>
           </DialogHeader>
           <DialogBody>
             <div className="space-y-5">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-ink-muted dark:text-slate-500">
                 Update the service plan configuration. Pending schedules will be
                 regenerated based on new settings. Completed services are
                 preserved.
@@ -1266,13 +1304,13 @@ const ProductView = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Service Interval Type *
                   </label>
                   <select
                     value={planIntervalType}
                     onChange={(e) => setPlanIntervalType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   >
                     <option value="MONTHLY">Monthly</option>
                     <option value="QUARTERLY">Quarterly (3 months)</option>
@@ -1281,55 +1319,55 @@ const ProductView = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Interval Value *
                   </label>
                   <input
                     type="number"
                     value={planIntervalValue}
                     onChange={(e) => setPlanIntervalValue(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     min="1"
                     placeholder="1"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Total Services *
                   </label>
                   <input
                     type="number"
                     value={planTotalServices}
                     onChange={(e) => setPlanTotalServices(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     min="1"
                     placeholder="1"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Service Start Date *
                   </label>
                   <input
                     type="date"
                     value={planStartDate}
                     onChange={(e) => setPlanStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Service Charge (₹) *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-500">
+                    <span className="absolute left-3 top-2 text-ink-muted dark:text-slate-500">
                       ₹
                     </span>
                     <input
                       type="number"
                       value={planCharge}
                       onChange={(e) => setPlanCharge(e.target.value)}
-                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       min="0"
                       step="1"
                       placeholder="0"
@@ -1337,20 +1375,20 @@ const ProductView = () => {
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Service Description
                   </label>
                   <textarea
                     value={planDescription}
                     onChange={(e) => setPlanDescription(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     rows="3"
                     placeholder="Describe the service to be performed..."
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-dark-border">
                 <Button
                   variant="secondary"
                   onClick={() => setShowEditPlanModal(false)}
@@ -1370,7 +1408,7 @@ const ProductView = () => {
                     ) : (
                       <Settings size={16} />
                     )}
-                    <span>Save Changes</span>
+                    <span className="text-ink-base dark:text-slate-100">Save Changes</span>
                   </div>
                 </Button>
               </div>

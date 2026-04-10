@@ -43,6 +43,19 @@ const invoiceItemSchema = new mongoose.Schema(
       ],
       required: true,
     },
+    battery_type: {
+      type: String,
+      enum: ["INVERTER_BATTERY", "VEHICLE_BATTERY"],
+    },
+    vehicle_name: {
+      type: String,
+      trim: true,
+    },
+    vehicle_number_plate: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
     company: {
       type: String,
       required: true,

@@ -1,123 +1,189 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
-/* Light mode only: removed dark-mode overrides to enforce single-theme (light) */
-/* All components should rely on Tailwind light classes. */
+/* ─── Dark mode: class-based (Tailwind v4 syntax) ───────────────────── */
+@variant dark (&:is(.dark *));
 
-/* Global styles with dark mode support */
-@layer base {
-  html {
-    font-family:
-      "Inter",
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      Roboto,
-      "Helvetica Neue",
-      Arial,
-      "Noto Sans",
-      sans-serif;
+/* ─── Design Tokens via @theme (Tailwind v4 — replaces tailwind.config) ── */
+@theme {
+  /* Colors — Primary */
+  --color-primary:           #2563eb;
+  --color-primary-hover:     #1d4ed8;
+  --color-primary-light:     rgba(37,99,235,0.08);
+  --color-primary-dark:      #3b82f6;
+
+  /* Colors — Success */
+  --color-success:           #059669;
+  --color-success-light:     rgba(5,150,105,0.08);
+  --color-success-dark:      #34d399;
+
+  /* Colors — Danger */
+  --color-danger:            #dc2626;
+  --color-danger-light:      rgba(220,38,38,0.08);
+  --color-danger-dark:       #f87171;
+
+  /* Colors — Purple / GST */
+  --color-purple-gst:        #7c3aed;
+  --color-purple-gst-light:  rgba(124,58,237,0.08);
+  --color-purple-gst-dark:   #a78bfa;
+
+  /* Colors — Surface (light mode backgrounds) */
+  --color-surface-bg:        #f0f2f5;
+  --color-surface-card:      rgba(255,255,255,0.92);
+  --color-surface-input:     #ffffff;
+  --color-surface-subtle:    #f8fafc;
+  --color-surface-hover:     #f1f5f9;
+
+  /* Colors — Dark mode surfaces */
+  --color-dark-bg:           #0f172a;
+  --color-dark-card:         rgba(30,41,59,0.92);
+  --color-dark-input:        #1e293b;
+  --color-dark-subtle:       rgba(30,41,59,0.5);
+  --color-dark-hover:        #334155;
+  --color-dark-border:       rgba(51,65,85,0.8);
+
+  /* Colors — Ink / Text */
+  --color-ink-base:          #111827;
+  --color-ink-secondary:     #6b7280;
+  --color-ink-muted:         #9ca3af;
+
+  /* Font — Scale */
+  --font-size-xs:   0.70rem;
+  --font-size-sm:   0.80rem;
+  --font-size-base: 0.875rem;
+  --font-size-md:   1rem;
+  --font-size-lg:   1.15rem;
+  --font-size-xl:   1.75rem;
+  --font-size-2xl:  2rem;
+
+  /* Line heights matching font scale */
+  --line-height-xs:   1rem;
+  --line-height-sm:   1.25rem;
+  --line-height-base: 1.5rem;
+  --line-height-md:   1.5rem;
+  --line-height-lg:   1.75rem;
+  --line-height-xl:   2.25rem;
+  --line-height-2xl:  2.5rem;
+
+  /* Font family */
+  --font-family-sans: 'Inter', ui-sans-serif, system-ui, -apple-system,
+                      BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+                      Arial, 'Noto Sans', sans-serif;
+
+  /* Border radius */
+  --radius-sm:  6px;
+  --radius:     8px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --radius-xl:  16px;
+  --radius-2xl: 20px;
+
+  /* Box shadows */
+  --shadow-glass:       0 4px 24px rgba(0,0,0,0.06);
+  --shadow-glass-dark:  0 4px 24px rgba(0,0,0,0.2);
+  --shadow-card:        0 2px 8px rgba(37,99,235,0.25);
+  --shadow-card-hover:  0 4px 12px rgba(37,99,235,0.3);
+  --shadow-modal:       0 20px 60px rgba(0,0,0,0.2);
+  --shadow-dropdown:    0 8px 24px rgba(0,0,0,0.12);
+  --shadow-toast:       0 8px 24px rgba(0,0,0,0.12);
+
+  /* Custom width / spacing */
+  --width-sidebar:  260px;
+  --spacing-sidebar: 260px;
+
+  /* Backdrop blur */
+  --backdrop-blur-glass: 20px;
+
+  /* Keyframes */
+  --animate-toast-slide: toast-slide 0.3s ease;
+  --animate-pulse-dot:   pulse-dot 1.5s ease-in-out infinite;
+  --animate-spin-slow:   spin 1s linear infinite;
+
+  @keyframes toast-slide {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
   }
 
-  body {
-    @apply transition-colors duration-200;
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
   }
 }
 
-@layer utilities {
-  /* Custom scrollbar utilities */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
+/* ─── Base layer ────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    font-family: var(--font-family-sans);
+    transition: background-color 0.2s ease, color 0.15s ease;
   }
 
+  body {
+    @apply text-ink-base dark:text-slate-100;
+    transition-property: color, background-color;
+    transition-duration: 200ms;
+  }
+
+  /* Slim scrollbar (global) */
+  ::-webkit-scrollbar        { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  {
+    background: rgba(156,163,175,0.4);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(107,114,128,0.6); }
+
+  /* Hide number input spinners */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield !important;
+  }
+}
+
+/* ─── Utility layer ─────────────────────────────────────────────────── */
+@layer utilities {
+  /* Scrollbar helpers */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
 
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
+  .custom-scrollbar::-webkit-scrollbar        { width: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track  { background: #f1f5f9; border-radius: 9999px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb  { background: #d1d5db; border-radius: 9999px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-gray-100 rounded-full;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full hover:bg-gray-400;
-  }
-
-  /* Gradient utilities */
+  /* Gradient helpers */
   .gradient-primary {
     background: linear-gradient(135deg, #2563eb 0%, #10b981 100%);
   }
-
   .gradient-header {
     background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   }
 
-  /* Animation utilities */
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-in-out;
-  }
-
-  .animate-slide-in {
-    animation: slideIn 0.3s ease-in-out;
-  }
+  /* Inline animation helpers */
+  .animate-fade-in  { animation: fadeIn  0.3s ease-in-out; }
+  .animate-slide-in { animation: slideIn 0.3s ease-in-out; }
 
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
-
   @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 }
 
-/* Hide default spinner controls on number inputs */
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none !important;
-  margin: 0 !important;
-}
-
-/* Firefox */
-input[type="number"] {
-  -moz-appearance: textfield !important;
-}
-
-/* Additional specificity for custom components */
-.no-spinner input[type="number"]::-webkit-outer-spin-button,
-.no-spinner input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none !important;
-  margin: 0 !important;
-}
-
-.no-spinner input[type="number"] {
-  -moz-appearance: textfield !important;
-}
-
-/* Additional specificity for custom components */
-.no-spinner input[type="number"]::-webkit-outer-spin-button,
-.no-spinner input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none !important;
-  margin: 0 !important;
-}
-
-.no-spinner input[type="number"] {
-  -moz-appearance: textfield !important;
+/* ─── Component layer ───────────────────────────────────────────────── */
+@layer components {
+  /* Force light mode for invoice/print previews */
+  .invoice-print-scope {
+    color-scheme: light;
+    background-color: white;
+    color: #1a1a2e;
+  }
 }

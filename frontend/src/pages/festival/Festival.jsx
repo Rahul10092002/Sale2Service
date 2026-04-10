@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -146,7 +146,7 @@ const FestivalSchedule = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
@@ -163,10 +163,10 @@ const FestivalSchedule = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header and Search */}
-        <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-6 gap-4">
+        <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-6 gap-4">
           <div className="flex items-center space-x-4">
             {/* Filter */}
             <div className="relative" ref={filterRef}>
@@ -177,11 +177,11 @@ const FestivalSchedule = () => {
                 <Filter className="h-5 w-5 text-blue-600" />
               </button>
               {showFilters && (
-                <div className="absolute top-12 left-0 bg-white border border-gray-200 rounded-md shadow-lg p-4 z-10 w-64">
+                <div className="absolute top-12 left-0 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-md shadow-lg p-4 z-10 w-64">
                   <div className="text-sm text-gray-600 font-medium mb-3">
                     Filter festivals
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-muted dark:text-slate-500">
                     Use search bar above to filter by festival name
                   </p>
                 </div>
@@ -189,11 +189,11 @@ const FestivalSchedule = () => {
             </div>
 
             {/* Search Bar */}
-            <div className="flex items-center space-x-3 border border-gray-300 bg-white rounded-full px-4 py-2 max-w-xs shadow-sm">
-              <Search className="h-5 w-5 text-gray-500" />
+            <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-2 max-w-xs shadow-sm">
+              <Search className="h-5 w-5 text-gray-500 dark:text-slate-400" />
               <input
                 placeholder="Search festivals..."
-                className="bg-transparent focus:outline-none text-gray-600 placeholder-gray-400 w-full text-sm"
+                className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-sm"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -212,7 +212,7 @@ const FestivalSchedule = () => {
         </div>
 
         {/* Festival List */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
           {error ? (
             <div className="p-6 text-center">
               <div className="text-red-600 mb-4">
@@ -223,10 +223,10 @@ const FestivalSchedule = () => {
           ) : !schedules?.length ? (
             <div className="p-12 text-center">
               <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
                 No festivals found
               </h3>
-              <p className="text-gray-500 mb-6">
+              <p className="text-ink-secondary dark:text-slate-400 mb-6">
                 {searchTerm
                   ? "No festivals match your search."
                   : "Get started by adding your first festival schedule."}
@@ -238,7 +238,7 @@ const FestivalSchedule = () => {
           ) : (
             <div>
               {/* Desktop Header */}
-              <div className="hidden md:grid grid-cols-4 gap-4 text-gray-500 text-sm font-semibold bg-gray-200 p-4 rounded-t-lg">
+              <div className="hidden md:grid grid-cols-4 gap-4 text-gray-500 dark:text-slate-400 text-sm font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
                 <div>S No.</div>
                 <div>Festival Name</div>
                 <div>Schedule Date</div>
@@ -317,9 +317,9 @@ const FestivalSchedule = () => {
 
           {/* Pagination */}
           {pagination.pages > 1 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-ink-muted dark:text-slate-500">
                   Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                   {Math.min(
                     pagination.page * pagination.limit,
@@ -373,7 +373,7 @@ const FestivalSchedule = () => {
           )}
 
           {pagination.pages <= 1 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
               <div className="text-sm text-gray-500 text-center">
                 Showing {pagination.total || 0} of {pagination.total || 0}{" "}
                 festivals

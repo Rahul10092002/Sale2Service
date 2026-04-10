@@ -1,13 +1,22 @@
+import { useState, useEffect } from 'react';
+
 /**
- * Light-mode only stub for useDarkMode
- * Returns a stable API but disables dark-mode toggling.
+ * useDarkMode — Tailwind v4 class-based dark mode hook
+ *
+ * Reads initial state from localStorage ('dark' | 'light').
+ * Toggles the 'dark' class on <html> and persists to localStorage.
  */
 export const useDarkMode = () => {
-  const isDarkMode = false;
-  const toggleDarkMode = () => {
-    // no-op - dark mode removed, app runs in light mode only
-    return;
-  };
+  const [isDarkMode, setIsDarkMode] = useState(
+    () => localStorage.getItem('theme') === 'dark',
+  );
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
 
   return { isDarkMode, toggleDarkMode };
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { showToast } from "../../features/ui/uiSlice.js";
@@ -200,7 +200,7 @@ const CustomerEdit = () => {
                   onChange={handleInputChange}
                 />
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Customer Type
                   </label>
                   <select
@@ -282,7 +282,7 @@ const CustomerEdit = () => {
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-1">
                 Notes
               </label>
               <textarea

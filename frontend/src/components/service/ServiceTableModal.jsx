@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../features/ui/uiSlice.js";
 import {
@@ -246,9 +246,9 @@ export const ServiceTableModal = ({
       case "overdue":
         return <AlertCircle className="text-red-600" size={16} />;
       case "cancelled":
-        return <XCircle className="text-gray-600" size={16} />;
+        return <XCircle className="text-ink-secondary dark:text-slate-400" size={16} />;
       default:
-        return <Clock className="text-gray-600" size={16} />;
+        return <Clock className="text-ink-secondary dark:text-slate-400" size={16} />;
     }
   };
 
@@ -292,12 +292,12 @@ export const ServiceTableModal = ({
             {loading ? (
               <div className="flex items-center justify-center p-8">
                 <LoadingSpinner />
-                <span className="ml-2">Loading service data...</span>
+                <span className="ml-2 text-ink-secondary dark:text-slate-400">Loading service data...</span>
               </div>
             ) : error ? (
               <div className="text-center py-8">
                 <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
-                <p className="text-red-600">
+                <p className="text-red-600 dark:text-red-400">
                   {error?.data?.message ||
                     error?.message ||
                     "Failed to load service data"}
@@ -308,11 +308,11 @@ export const ServiceTableModal = ({
               </div>
             ) : !serviceData?.schedules?.length ? (
               <div className="text-center py-12">
-                <Calendar className="mx-auto text-gray-400 mb-4" size={48} />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <Calendar className="mx-auto text-gray-400 dark:text-slate-500 mb-4" size={48} />
+                <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
                   No Services Found
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-ink-secondary dark:text-slate-400">
                   No service schedules found for this product.
                 </p>
               </div>
@@ -320,29 +320,29 @@ export const ServiceTableModal = ({
               <div className="w-full">
                 {/* Desktop Table (lg and above) */}
                 <div className="hidden lg:block">
-                  <table className="w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="w-full divide-y divide-gray-200 dark:divide-dark-border">
+                    <thead className="bg-gray-50 dark:bg-dark-subtle">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-ink-secondary dark:text-slate-400 uppercase">
                           Service Date
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-ink-secondary dark:text-slate-400 uppercase">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-ink-secondary dark:text-slate-400 uppercase">
                           Details
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-medium text-ink-secondary dark:text-slate-400 uppercase">
                           Actions
                         </th>
                       </tr>
                     </thead>
 
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-200 dark:divide-dark-border">
                       {serviceData.schedules.map((schedule) => (
-                        <tr key={schedule._id} className="hover:bg-gray-50">
+                        <tr key={schedule._id} className="hover:bg-gray-50 dark:hover:bg-dark-subtle">
                           {/* Column 1 */}
-                          <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                          <td className="px-4 py-4 text-sm font-medium text-ink-base dark:text-slate-100">
                             {formatDate(schedule.scheduled_date)}
                           </td>
 
@@ -361,7 +361,7 @@ export const ServiceTableModal = ({
                           </td>
 
                           {/* Column 3 (Merged Details) */}
-                          <td className="px-4 py-4 text-sm text-gray-700 space-y-1">
+                          <td className="px-4 py-4 text-sm text-ink-secondary dark:text-slate-300 space-y-1">
                             <div>
                               <strong>Description:</strong>{" "}
                               {schedule.service_description ||
@@ -516,7 +516,7 @@ export const ServiceTableModal = ({
 
                             {(schedule.status === "completed" ||
                               schedule.status === "cancelled") && (
-                              <span className="text-gray-400 text-xs italic">
+                              <span className="text-ink-muted dark:text-slate-500 text-xs italic">
                                 No actions available
                               </span>
                             )}
@@ -532,10 +532,10 @@ export const ServiceTableModal = ({
                   {serviceData.schedules.map((schedule) => (
                     <div
                       key={schedule._id}
-                      className="bg-white p-4 rounded-lg shadow border"
+                      className="bg-white dark:bg-dark-card p-4 rounded-lg shadow border border-gray-200 dark:border-dark-border"
                     >
                       <div className="flex justify-between items-center mb-2">
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-ink-base dark:text-slate-100">
                           {formatDate(schedule.scheduled_date)}
                         </div>
 
@@ -548,7 +548,7 @@ export const ServiceTableModal = ({
                         </span>
                       </div>
 
-                      <div className="text-sm text-gray-600 space-y-1">
+                      <div className="text-sm text-ink-secondary dark:text-slate-400 space-y-1">
                         <div>
                           {schedule.service_description ||
                             serviceData.plan?.service_description}
@@ -673,7 +673,7 @@ export const ServiceTableModal = ({
 
                         {(schedule.status === "completed" ||
                           schedule.status === "cancelled") && (
-                          <span className="text-gray-400 text-xs italic">
+                          <span className="text-ink-muted dark:text-slate-500 text-xs italic">
                             No actions available
                           </span>
                         )}
@@ -706,7 +706,7 @@ export const ServiceTableModal = ({
           />
           <DialogBody>
             <div className="space-y-6">
-              <p className="text-gray-600">
+              <p className="text-ink-secondary dark:text-slate-400">
                 Complete the service and record payment details (if applicable).
               </p>
 
@@ -714,11 +714,11 @@ export const ServiceTableModal = ({
               {serviceData?.schedules?.find(
                 (s) => s._id === showCompleteModal,
               ) && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                <div className="bg-gray-50 dark:bg-dark-subtle p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Service Details
                   </h4>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-ink-secondary dark:text-slate-400">
                     <p>
                       Service Charge:{" "}
                       {serviceData.schedules.find(
@@ -739,11 +739,11 @@ export const ServiceTableModal = ({
               {/* Payment Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Amount Collected *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-500">
+                    <span className="absolute left-3 top-2 text-ink-muted dark:text-slate-500">
                       ₹
                     </span>
                     <input
@@ -761,7 +761,7 @@ export const ServiceTableModal = ({
                         }
                       }}
                       onBlur={() => setRawAmountCollected(null)}
-                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      className="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                       placeholder="0"
                       min="0"
                       step="1"
@@ -771,7 +771,7 @@ export const ServiceTableModal = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Payment Method *
                   </label>
                   <select
@@ -782,7 +782,7 @@ export const ServiceTableModal = ({
                         setAmountCollected(0);
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     required
                   >
                     <option value="CASH">Cash</option>
@@ -798,27 +798,27 @@ export const ServiceTableModal = ({
               {/* Service Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Technician Name *
                   </label>
                   <input
                     type="text"
                     value={technicianName}
                     onChange={(e) => setTechnicianName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     placeholder="Enter technician name (required)"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Service Type *
                   </label>
                   <select
                     value={completionNotes}
                     onChange={(e) => setCompletionNotes(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     required
                   >
                     <option value="">Select service type</option>
@@ -836,13 +836,13 @@ export const ServiceTableModal = ({
               {/* Issue and Work Description */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Issue Reported *
                   </label>
                   <textarea
                     value={issueReported}
                     onChange={(e) => setIssueReported(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     rows="3"
                     placeholder="Describe the issue reported by customer (required)"
                     required
@@ -850,13 +850,13 @@ export const ServiceTableModal = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Work Done *
                   </label>
                   <textarea
                     value={workDone}
                     onChange={(e) => setWorkDone(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     rows="3"
                     placeholder="Describe the work performed (required)"
                     required
@@ -864,7 +864,7 @@ export const ServiceTableModal = ({
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-dark-border">
                 <Button
                   variant="secondary"
                   onClick={() => {
@@ -928,25 +928,25 @@ export const ServiceTableModal = ({
           />
           <DialogBody>
             <div className="space-y-4">
-              <p className="text-gray-600">
+              <p className="text-ink-secondary dark:text-slate-400">
                 Select a new date for this service.
               </p>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                   New Service Date *
                 </label>
                 <input
                   type="date"
                   value={rescheduleDate}
                   onChange={(e) => setRescheduleDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   min={new Date().toISOString().split("T")[0]}
                   required
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-dark-border">
                 <Button
                   variant="secondary"
                   onClick={() => setShowRescheduleModal(null)}

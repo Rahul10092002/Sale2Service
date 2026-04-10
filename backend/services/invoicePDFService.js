@@ -181,6 +181,29 @@ export class InvoicePDFService {
         const amountRaw =
           item.amount !== undefined ? Number(item.amount) : null;
 
+        let batteryLine = "";
+        if (
+          item.product_category === "BATTERY" &&
+          item.battery_type &&
+          ["INVERTER_BATTERY", "VEHICLE_BATTERY"].includes(item.battery_type)
+        ) {
+          const typeLabel =
+            item.battery_type === "INVERTER_BATTERY"
+              ? "Inverter battery"
+              : "Vehicle battery";
+          if (item.battery_type === "VEHICLE_BATTERY") {
+            const vehicleBits = [
+              item.vehicle_name?.trim(),
+              item.vehicle_number_plate?.trim(),
+            ].filter(Boolean);
+            batteryLine = vehicleBits.length
+              ? `${typeLabel}: ${vehicleBits.join(" · ")}`
+              : typeLabel;
+          } else {
+            batteryLine = typeLabel;
+          }
+        }
+
         return {
           sno: index + 1,
           productName: item.product_name || "N/A",
@@ -193,6 +216,7 @@ export class InvoicePDFService {
             ? `${item.warranty_duration_months} months`
             : "N/A",
           hasServicePlan: item.service_plan_enabled || false,
+          batteryLine,
         };
       }),
 

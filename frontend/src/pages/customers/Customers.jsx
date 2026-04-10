@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+﻿import React, { useState, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { showToast } from "../../features/ui/uiSlice.js";
@@ -35,10 +35,10 @@ import {
 } from "../../components/ui/Modal.jsx";
 
 const inputCls =
-  "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400 hover:border-gray-300";
+  "w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all hover:border-gray-300 dark:hover:border-slate-500";
 
 const selectCls =
-  "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-700 hover:border-gray-300 cursor-pointer";
+  "w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all hover:border-gray-300 dark:hover:border-slate-500 cursor-pointer";
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -151,10 +151,10 @@ const Customers = () => {
     customersSection = (
       <div className="p-12 text-center">
         <UsersIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
           No customers found
         </h3>
-        <p className="text-gray-500 mb-6">
+        <p className="text-ink-secondary dark:text-slate-400 mb-6">
           {searchTerm
             ? "No customers match your search criteria."
             : "Get started by adding your first customer."}
@@ -166,7 +166,7 @@ const Customers = () => {
     customersSection = (
       <div className="">
         {/* Desktop Header */}
-        <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 text-gray-500 text-sm font-semibold bg-gray-200 p-4 rounded-t-lg">
+        <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 text-gray-500 dark:text-slate-400 text-sm font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
           <div>S No.</div>
           <div>Customer Details</div>
           <div>Contact Info</div>
@@ -177,10 +177,10 @@ const Customers = () => {
         {customers.map((customer, index) => (
           <div
             key={customer._id}
-            className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+            className={index % 2 === 0 ? "bg-white dark:bg-dark-card" : "bg-gray-50 dark:bg-dark-subtle"}
           >
             {/* ── Mobile Card ── */}
-            <div className="md:hidden p-4 border-b border-gray-100">
+            <div className="md:hidden p-4 border-b border-gray-100 dark:border-dark-border">
               {/* Header: icon + name + type badge */}
               <div className="flex items-start gap-3 mb-3">
                 <div
@@ -194,7 +194,7 @@ const Customers = () => {
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 leading-tight truncate">
+                  <p className="font-bold text-ink-base dark:text-slate-100 leading-tight truncate">
                     {customer.full_name}
                   </p>
                   {customer.gst_number && (
@@ -218,15 +218,15 @@ const Customers = () => {
 
               {/* Phone + Email chips */}
               <div className="grid grid-cols-2 gap-2 mb-3">
-                <div className="bg-gray-50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-gray-400 mb-0.5">Phone</p>
-                  <p className="text-sm font-medium text-gray-800 truncate">
+                <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                  <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">Phone</p>
+                  <p className="text-sm font-medium text-ink-base dark:text-slate-200 truncate">
                     {customer.whatsapp_number}
                   </p>
                 </div>
-                <div className="bg-gray-50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-gray-400 mb-0.5">Email</p>
-                  <p className="text-xs font-medium text-gray-700 truncate">
+                <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                  <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">Email</p>
+                  <p className="text-xs font-medium text-ink-secondary dark:text-slate-300 truncate">
                     {customer.email || "—"}
                   </p>
                 </div>
@@ -235,7 +235,7 @@ const Customers = () => {
               {/* Address */}
               {customer.address?.line1 && (
                 <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
-                  <p className="text-xs text-gray-400 mb-0.5">Address</p>
+                  <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">Address</p>
                   <p className="text-xs text-gray-600">
                     {customer.address.line1}
                     {customer.address.city ? `, ${customer.address.city}` : ""}
@@ -247,9 +247,9 @@ const Customers = () => {
               {(customer.date_of_birth || customer.anniversary_date) && (
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   {customer.date_of_birth && (
-                    <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-gray-400 mb-0.5">Birthday</p>
-                      <p className="text-xs font-medium text-gray-700">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                      <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">Birthday</p>
+                      <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
                         {/* dd//mm//yyyy formart */}
                         {new Date(customer.date_of_birth).toLocaleDateString(
                           "en-IN",
@@ -258,11 +258,11 @@ const Customers = () => {
                     </div>
                   )}
                   {customer.anniversary_date && (
-                    <div className="bg-gray-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-gray-400 mb-0.5">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                      <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
                         Anniversary
                       </p>
-                      <p className="text-xs font-medium text-gray-700">
+                      <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
                         {new Date(customer.anniversary_date).toLocaleDateString(
                           "en-IN",
                         )}
@@ -282,7 +282,7 @@ const Customers = () => {
 
             {/* ── Desktop Row ── */}
             <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4">
-              <div className="text-gray-600">{(page - 1) * 10 + index + 1}</div>
+              <div className="text-ink-secondary dark:text-slate-400">{(page - 1) * 10 + index + 1}</div>
               <div className="flex gap-3 items-center">
                 <div
                   className="cursor-pointer"
@@ -295,23 +295,23 @@ const Customers = () => {
                   </div>
                 </div>
                 <div>
-                  <div className="font-bold text-gray-800 text-base">
+                  <div className="font-bold text-ink-base dark:text-slate-100 text-base">
                     {customer.full_name}
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-secondary dark:text-slate-400">
                     Phone: {customer.whatsapp_number}
                   </p>
                   {customer.email && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-ink-secondary dark:text-slate-400">
                       Email: {customer.email}
                     </p>
                   )}
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-ink-secondary dark:text-slate-400">
                     {customer.gst_number && <p>GST: {customer.gst_number}</p>}
                   </div>
                 </div>
               </div>
-              <div className="text-gray-600">
+              <div className="text-ink-secondary dark:text-slate-400">
                 <div className="text-sm">
                   {(customer.address?.line1 || customer.address?.city) && (
                     <p>
@@ -353,8 +353,8 @@ const Customers = () => {
 
         {customers.length === 0 && (
           <div className="text-center py-8">
-            <div className="text-gray-500 text-lg">No customers found</div>
-            <div className="text-gray-400 text-sm mt-2">
+            <div className="text-ink-secondary dark:text-slate-400 text-lg">No customers found</div>
+            <div className="text-ink-muted dark:text-slate-500 text-sm mt-2">
               Add your first customer to get started
             </div>
           </div>
@@ -365,15 +365,15 @@ const Customers = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-6 gap-4">
+          <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-6 gap-4">
             <div className="flex items-center space-x-4 w-[45%] min-w-62.5">
-              <div className="flex items-center space-x-3 border border-gray-300 bg-white rounded-full px-4 py-2 w-full shadow-sm">
-                <Search className="h-5 w-5 text-gray-500" />
+              <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-2 w-full shadow-sm">
+                <Search className="h-5 w-5 text-gray-500 dark:text-slate-400" />
                 <input
                   placeholder="Search Customer by name or phone..."
-                  className="bg-transparent focus:outline-none text-gray-600 placeholder-gray-400 w-full text-sm"
+                  className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -388,14 +388,14 @@ const Customers = () => {
               Create Customer
             </button>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
             {customersSection}
           </div>
 
           {/* Pagination */}
           {pagination.pages > 1 && (
             <div className="mt-6 px-4 sm:px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-ink-muted dark:text-slate-500">
                 Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                 {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
                 of {pagination.total} customers
@@ -454,16 +454,16 @@ const Customers = () => {
                   className="space-y-4"
                 >
                   {/* Basic Information */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/60 border-b border-gray-100">
+                  <div className="bg-white dark:bg-dark-card rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/60 dark:bg-dark-input border-b border-gray-100 dark:border-dark-border">
                       <User className="w-3.5 h-3.5 text-indigo-400" />
-                      <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      <h4 className="text-xs font-semibold text-ink-secondary dark:text-slate-300 uppercase tracking-wide">
                         Basic Information
                       </h4>
                     </div>
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="sm:col-span-2 space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           Full Name{" "}
                           <span className="text-red-400 ml-0.5">*</span>
                         </label>
@@ -477,7 +477,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           <Phone className="w-3.5 h-3.5 text-gray-400" />
                           WhatsApp Number{" "}
                           <span className="text-red-400 ml-0.5">*</span>
@@ -492,7 +492,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           <Phone className="w-3.5 h-3.5 text-gray-400" />
                           Alternate Phone
                         </label>
@@ -505,7 +505,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="sm:col-span-2 space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           <Mail className="w-3.5 h-3.5 text-gray-400" />
                           Email
                         </label>
@@ -522,16 +522,16 @@ const Customers = () => {
                   </div>
 
                   {/* Address */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/60 border-b border-gray-100">
+                  <div className="bg-white dark:bg-dark-card rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/60 dark:bg-dark-input border-b border-gray-100 dark:border-dark-border">
                       <MapPin className="w-3.5 h-3.5 text-indigo-400" />
-                      <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      <h4 className="text-xs font-semibold text-ink-secondary dark:text-slate-300 uppercase tracking-wide">
                         Address
                       </h4>
                     </div>
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="sm:col-span-2 space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">
+                        <label className="text-sm font-medium text-ink-secondary dark:text-slate-300">
                           Address Line 1 <span className="text-red-400">*</span>
                         </label>
                         <input
@@ -544,7 +544,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="sm:col-span-2 space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">
+                        <label className="text-sm font-medium text-ink-secondary dark:text-slate-300">
                           Address Line 2
                         </label>
                         <input
@@ -556,7 +556,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">
+                        <label className="text-sm font-medium text-ink-secondary dark:text-slate-300">
                           City <span className="text-red-400">*</span>
                         </label>
                         <input
@@ -569,7 +569,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">
+                        <label className="text-sm font-medium text-ink-secondary dark:text-slate-300">
                           State <span className="text-red-400">*</span>
                         </label>
                         <input
@@ -582,7 +582,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">
+                        <label className="text-sm font-medium text-ink-secondary dark:text-slate-300">
                           Pincode <span className="text-red-400">*</span>
                         </label>
                         <input
@@ -598,16 +598,16 @@ const Customers = () => {
                   </div>
 
                   {/* Profile & Preferences */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/60 border-b border-gray-100">
+                  <div className="bg-white dark:bg-dark-card rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 bg-gray-50/60 dark:bg-dark-input border-b border-gray-100 dark:border-dark-border">
                       <FileText className="w-3.5 h-3.5 text-indigo-400" />
-                      <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      <h4 className="text-xs font-semibold text-ink-secondary dark:text-slate-300 uppercase tracking-wide">
                         Profile & Preferences
                       </h4>
                     </div>
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           <Building2 className="w-3.5 h-3.5 text-gray-400" />
                           Customer Type
                         </label>
@@ -623,7 +623,7 @@ const Customers = () => {
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           <Globe className="w-3.5 h-3.5 text-gray-400" />
                           Preferred Language
                         </label>
@@ -642,7 +642,7 @@ const Customers = () => {
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           <Hash className="w-3.5 h-3.5 text-gray-400" />
                           GST Number
                         </label>
@@ -656,7 +656,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           <Calendar className="w-3.5 h-3.5 text-gray-400" />
                           Date of Birth
                         </label>
@@ -669,7 +669,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           <Calendar className="w-3.5 h-3.5 text-gray-400" />
                           Anniversary Date
                         </label>
@@ -682,7 +682,7 @@ const Customers = () => {
                         />
                       </div>
                       <div className="sm:col-span-2 space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
                           <MessageSquare className="w-3.5 h-3.5 text-gray-400" />
                           Notes
                         </label>

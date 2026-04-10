@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+﻿import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Search,
   Table,
@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { Button, Input } from "../../components/ui/index.js";
 import { useGetProductsQuery } from "../../features/products/productApi.js";
 import SerialScanner from "../../components/invoice/SerialScanner.jsx";
-import { ROUTES } from "../../utils/constants.js";
+import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 import {
   ServiceBadge,
   ServiceTableModal,
@@ -140,6 +140,28 @@ const Products = () => {
       maximumFractionDigits: 2,
     }).format(amount || 0);
   };
+/** One-line summary for list/cards when category is BATTERY */
+const batteryAtAGlance = (product) => {
+  if (
+    product.product_category !== INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY ||
+    !product.battery_type
+  ) {
+    return null;
+  }
+  if (product.battery_type === INVOICE_CONSTANTS.BATTERY_TYPES.INVERTER_BATTERY) {
+    return "Inverter battery";
+  }
+  if (product.battery_type === INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY) {
+    const bits = [product.vehicle_name, product.vehicle_number_plate].filter(
+      Boolean,
+    );
+    return bits.length
+      ? `Vehicle · ${bits.join(" · ")}`
+      : "Vehicle battery";
+  }
+  return product.battery_type.replace(/_/g, " ");
+};
+
 const getWarrantyInfo = (product) => {
   if (!product.warranty_end_date) return null;
 
@@ -159,10 +181,10 @@ const getWarrantyInfo = (product) => {
 };
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Filters & Search */}
-          <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-6 gap-4">
+          <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-6 gap-4">
             <div className="flex items-center space-x-4">
               {/* Filter Icon with Dropdown */}
               <div className="relative" ref={filterRef}>
@@ -173,10 +195,10 @@ const getWarrantyInfo = (product) => {
                   <Filter className="h-5 w-5 text-blue-600" />
                 </button>
                 {showFilters && (
-                  <div className="absolute top-12 left-0 bg-white border border-gray-200 rounded-md shadow-lg p-4 z-10 w-96">
+                  <div className="absolute top-12 left-0 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-md shadow-lg p-4 z-10 w-96">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
+                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                           Category:
                         </label>
                         <select
@@ -187,7 +209,7 @@ const getWarrantyInfo = (product) => {
                               e.target.value,
                             )
                           }
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                         >
                           {CATEGORY_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -198,7 +220,7 @@ const getWarrantyInfo = (product) => {
                       </div>
 
                       <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
+                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                           Status:
                         </label>
                         <select
@@ -206,7 +228,7 @@ const getWarrantyInfo = (product) => {
                           onChange={(e) =>
                             handleFilterChange("status", e.target.value)
                           }
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                         >
                           {STATUS_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -217,7 +239,7 @@ const getWarrantyInfo = (product) => {
                       </div>
 
                       <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
+                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                           Service Plan:
                         </label>
                         <select
@@ -228,7 +250,7 @@ const getWarrantyInfo = (product) => {
                               e.target.value,
                             )
                           }
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                         >
                           {SERVICE_PLAN_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -239,7 +261,7 @@ const getWarrantyInfo = (product) => {
                       </div>
 
                       <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
+                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                           Service Due:
                         </label>
                         <select
@@ -250,7 +272,7 @@ const getWarrantyInfo = (product) => {
                               e.target.value,
                             )
                           }
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                         >
                           {SERVICE_DUE_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -261,7 +283,7 @@ const getWarrantyInfo = (product) => {
                       </div>
 
                       <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
+                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                           Warranty:
                         </label>
                         <select
@@ -272,7 +294,7 @@ const getWarrantyInfo = (product) => {
                               e.target.value,
                             )
                           }
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                         >
                           {WARRANTY_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -283,7 +305,7 @@ const getWarrantyInfo = (product) => {
                       </div>
 
                       <div className="flex flex-col">
-                        <label className="text-sm text-gray-600 font-medium mb-1">
+                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
                           Payment:
                         </label>
                         <select
@@ -291,7 +313,7 @@ const getWarrantyInfo = (product) => {
                           onChange={(e) =>
                             handleFilterChange("payment_status", e.target.value)
                           }
-                          className="p-2 bg-white border border-gray-300 rounded-md text-sm text-gray-600 focus:outline-none focus:border-blue-500"
+                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
                         >
                           {PAYMENT_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -306,11 +328,11 @@ const getWarrantyInfo = (product) => {
               </div>
 
               {/* Search Bar */}
-              <div className="flex items-center space-x-3 border border-gray-300 bg-white rounded-full px-4 py-2 max-w-xs shadow-sm">
-                <Search className="h-5 w-5 text-gray-500" />
+              <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-2 max-w-xs shadow-sm">
+                <Search className="h-5 w-5 text-gray-500 dark:text-slate-400" />
                 <input
                   placeholder="Search products..."
-                  className="bg-transparent focus:outline-none text-gray-600 placeholder-gray-400 w-full text-sm"
+                  className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-sm"
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
@@ -343,7 +365,7 @@ const getWarrantyInfo = (product) => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
             {isLoading ? (
               <div className="p-6">Loading...</div>
             ) : !products.length ? (
@@ -356,7 +378,7 @@ const getWarrantyInfo = (product) => {
             ) : (
               <div className="">
                 {/* Desktop Header */}
-                <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-4 text-gray-500 text-sm font-semibold bg-gray-200 p-4 rounded-t-lg">
+                <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-4 text-gray-500 dark:text-slate-400 text-sm font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
                   <div>#</div>
                   <div>Product</div>
                   <div>Warranty & Service</div>
@@ -365,13 +387,15 @@ const getWarrantyInfo = (product) => {
                 </div>
 
                 {/* Product Rows */}
-                {products.map((product, index) => (
+                {products.map((product, index) => {
+                  const batteryLine = batteryAtAGlance(product);
+                  return (
                   <div
                     key={product._id}
-                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                    className={index % 2 === 0 ? "bg-white dark:bg-dark-card" : "bg-gray-50 dark:bg-dark-subtle"}
                   >
                     {/* ── Mobile Card ── */}
-                    <div className="md:hidden p-4 border-b border-gray-100">
+                    <div className="md:hidden p-4 border-b border-gray-100 dark:border-dark-border">
                       {/* Header: icon + name + status */}
                       <div className="flex items-start gap-3 mb-3">
                         <div
@@ -392,6 +416,11 @@ const getWarrantyInfo = (product) => {
                           <p className="text-xs text-gray-400">
                             S/N: {product.serial_number}
                           </p>
+                          {batteryLine && (
+                            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
+                              {batteryLine}
+                            </p>
+                          )}
                         </div>
                         <span
                           className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 mt-0.5 ${
@@ -406,17 +435,17 @@ const getWarrantyInfo = (product) => {
 
                       {/* Price + Warranty chips */}
                       <div className="grid grid-cols-2 gap-2 mb-3">
-                        <div className="bg-gray-50 rounded-lg px-3 py-2">
-                          <p className="text-xs text-gray-400 mb-0.5">Price</p>
+                        <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                          <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">Price</p>
                           <p className="text-sm font-semibold text-gray-800">
                             {formatCurrency(product.selling_price)}
                           </p>
                         </div>
-                        <div className="bg-gray-50 rounded-lg px-3 py-2">
-                          <p className="text-xs text-gray-400 mb-0.5">
+                        <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                          <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
                             Warranty
                           </p>
-                          <p className="text-xs font-medium text-gray-700">
+                          <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
                             {(() => {
                               const w = getWarrantyInfo(product);
                               if (!w)
@@ -519,7 +548,7 @@ const getWarrantyInfo = (product) => {
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                              <span className="text-sm font-medium text-gray-800 truncate">
+                              <span className="text-sm font-medium text-ink-base dark:text-slate-200 truncate">
                                 {product.customer.full_name}
                               </span>
                             </div>
@@ -591,7 +620,7 @@ const getWarrantyInfo = (product) => {
                             {product.product_name}
                           </div>
 
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-ink-muted dark:text-slate-500">
                             S/N:{" "}
                             <span className="font-medium">
                               {product.serial_number}
@@ -601,9 +630,14 @@ const getWarrantyInfo = (product) => {
                           <div className="text-xs text-gray-400">
                             {product.company} · {product.model_number}
                           </div>
+                          {batteryLine && (
+                            <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5 font-medium">
+                              {batteryLine}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-ink-secondary dark:text-slate-400">
                         {/* Price */}
                         <p className="font-medium">₹{product.selling_price}</p>
 
@@ -656,7 +690,7 @@ const getWarrantyInfo = (product) => {
                         <p className="font-medium">
                           {product.customer?.full_name}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-ink-muted dark:text-slate-500">
                           {product.customer?.whatsapp_number}
                         </p>
 
@@ -699,14 +733,15 @@ const getWarrantyInfo = (product) => {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
 
                 {products.length === 0 && (
                   <div className="text-center py-8">
-                    <div className="text-gray-500 text-lg">
+                    <div className="text-ink-secondary dark:text-slate-400 text-lg">
                       No products found
                     </div>
-                    <div className="text-gray-400 text-sm mt-2">
+                    <div className="text-ink-muted dark:text-slate-500 text-sm mt-2">
                       Add products through invoices to get started
                     </div>
                   </div>
@@ -715,7 +750,7 @@ const getWarrantyInfo = (product) => {
                 {/* Pagination */}
                 {pagination.pages > 1 && (
                   <div className="px-4 sm:px-6 py-4 border-t bg-gray-50 flex items-center justify-between">
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-ink-muted dark:text-slate-500">
                       Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                       {Math.min(
                         pagination.page * pagination.limit,
@@ -753,7 +788,7 @@ const getWarrantyInfo = (product) => {
                   </div>
                 )}
                 {pagination.pages <= 1 && (
-                  <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
+                  <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
                     <div className="text-sm text-gray-500 text-center">
                       Showing {pagination.total || 0} of {pagination.total || 0}{" "}
                       products

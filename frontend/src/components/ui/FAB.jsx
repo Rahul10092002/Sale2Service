@@ -4,10 +4,10 @@ import Button from "./Button.jsx";
 const QuickAction = ({ label, onClick }) => (
   <button
     onClick={onClick}
-    className="flex items-center gap-3 px-4 py-2 rounded-lg bg-white shadow-sm hover:shadow-md text-sm"
+    className="flex items-center gap-3 px-4 py-2 rounded-lg bg-white dark:bg-dark-card shadow-sm hover:shadow-md text-sm text-ink-base dark:text-slate-200 border border-gray-100 dark:border-dark-border transition-all"
     aria-label={label}
   >
-    <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-gray-700">
+    <span className="w-6 h-6 bg-gray-100 dark:bg-dark-hover rounded-full flex items-center justify-center text-ink-secondary dark:text-slate-400">
       •
     </span>
     <span>{label}</span>
@@ -39,7 +39,7 @@ const FAB = ({ actions = [] }) => {
           onClick={() => setOpen((s) => !s)}
           aria-expanded={open}
           aria-label="Quick actions"
-          className="w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700"
+          className="w-14 h-14 rounded-full bg-primary text-white shadow-card flex items-center justify-center hover:bg-primary-hover hover:shadow-card-hover transition-all duration-200 text-2xl"
         >
           {open ? "✕" : "+"}
         </button>

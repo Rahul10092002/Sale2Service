@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
+﻿import React, { useRef, useState, useCallback, useEffect } from "react";
 import { useLazyProductAutocompleteQuery } from "../../features/products/productApi.js";
 
 /**
@@ -118,10 +118,10 @@ export default function ProductNameAutocomplete({
         placeholder={placeholder}
         autoComplete="off"
         className={
-          "w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors placeholder-gray-400 " +
+          "w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors placeholder-gray-400 dark:bg-dark-card dark:border-dark-border dark:text-slate-100 " +
           (error
-            ? "border-red-500 focus:ring-red-500 focus:border-red-500 bg-white"
-            : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white")
+            ? "border-red-500 focus:ring-red-500 focus:border-red-500 bg-white dark:bg-dark-card dark:border-dark-border dark:text-slate-100"
+            : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-card dark:border-dark-border dark:text-slate-100")
         }
       />
 
@@ -140,8 +140,7 @@ export default function ProductNameAutocomplete({
 
       {showDropdown && suggestions.length > 0 && (
         <ul
-          className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto"
-          // Prevent the input from losing focus when clicking inside the list
+          className="absolute z-50 left-0 right-0 mt-1 bg-white dark: bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg shadow-lg max-h-64 overflow-y-auto"
           onMouseDown={(e) => e.preventDefault()}
         >
           {suggestions.map((s, i) => (
@@ -149,16 +148,16 @@ export default function ProductNameAutocomplete({
               key={`${s.product_name}-${i}`}
               onClick={() => handleSelect(s)}
               className={
-                "px-3 py-2 cursor-pointer flex items-start justify-between gap-2 " +
+                "px-3 py-2 cursor-pointer flex items-start justify-between gap-2 dark:bg-dark-bg dark:border-dark-border dark:text-slate-100 " +
                 (i === highlightedIndex
-                  ? "bg-indigo-50 text-indigo-900"
-                  : "hover:bg-gray-50 text-gray-800")
+                  ? "bg-indigo-50 text-indigo-900 dark:bg-indigo-900/30 dark:text-indigo-400"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-slate-100")
               }
             >
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{s.product_name}</p>
                 {(s.company || s.product_category) && (
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-gray-500 truncate dark:text-slate-500">
                     {[s.company, s.product_category]
                       .filter(Boolean)
                       .join(" · ")}
@@ -167,16 +166,16 @@ export default function ProductNameAutocomplete({
               </div>
               <div className="shrink-0 flex flex-col items-end gap-0.5">
                 {s.selling_price > 0 && (
-                  <span className="text-xs font-medium text-gray-600">
+                  <span className="text-xs font-medium text-ink-secondary dark:text-slate-400">
                     ₹{s.selling_price.toLocaleString("en-IN")}
                   </span>
                 )}
                 <span
                   className={
-                    "text-[10px] px-1.5 py-0.5 rounded-full font-medium " +
+                    "text-[10px] px-1.5 py-0.5 rounded-full font-medium dark:bg-dark-bg dark:border-dark-border dark:text-slate-100 " +
                     (s.source === "history"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-blue-100 text-blue-700")
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400")
                   }
                 >
                   {s.source === "history" ? `×${s.count}` : "saved"}

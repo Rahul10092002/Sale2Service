@@ -1,35 +1,13 @@
 /** @type {import('tailwindcss').Config} */
+// NOTE: This project uses Tailwind CSS v4 with @tailwindcss/vite.
+// In v4, design tokens (colors, fonts, spacing, etc.) are defined via
+// the @theme block in src/index.css — NOT in this config file.
+// This file is kept for compatibility; only content + darkMode are used.
 export default {
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  darkMode: "class", // Enable class-based dark mode
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  darkMode: 'class',
   theme: {
-    extend: {
-      fontFamily: {
-        sans: [
-          "Inter",
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "Segoe UI",
-          "Roboto",
-          "Helvetica Neue",
-          "Arial",
-          "Noto Sans",
-          "sans-serif",
-        ],
-      },
-      colors: {
-        // WarrantyDesk brand colors
-        primary: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-        },
-      },
-    },
+    extend: {},
   },
   plugins: [],
 };

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -35,7 +35,7 @@ import {
   DialogBody,
   DialogFooter,
 } from "../../components/ui/Modal.jsx";
-import { ROUTES } from "../../utils/constants.js";
+import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 import { LoadingSpinner } from "../../components/ui/index.js";
 
 const InvoiceView = () => {
@@ -263,10 +263,31 @@ const InvoiceView = () => {
     }).format(amount || 0);
   };
 
+  const invoiceBatteryLine = (item) => {
+    if (
+      item.product_category !== INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY ||
+      !item.battery_type
+    ) {
+      return null;
+    }
+    if (item.battery_type === INVOICE_CONSTANTS.BATTERY_TYPES.INVERTER_BATTERY) {
+      return "Inverter battery";
+    }
+    if (item.battery_type === INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY) {
+      const bits = [item.vehicle_name, item.vehicle_number_plate].filter(
+        Boolean,
+      );
+      return bits.length
+        ? `Vehicle battery · ${bits.join(" · ")}`
+        : "Vehicle battery";
+    }
+    return item.battery_type.replace(/_/g, " ");
+  };
+
   if (isLoading) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 py-6">
+        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center items-center h-64">
               <LoadingSpinner />
@@ -280,14 +301,14 @@ const InvoiceView = () => {
   if (error || !invoice) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 py-6">
+        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <FileText className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
                 Invoice not found
               </h3>
-              <p className="text-gray-500 mb-6">
+              <p className="text-ink-secondary dark:text-slate-400 mb-6">
                 The invoice you're looking for doesn't exist or has been
                 deleted.
               </p>
@@ -307,18 +328,18 @@ const InvoiceView = () => {
   };
   return (
     <>
-      <div className="min-h-screen bg-white p-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg p-4">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6">
             <button
               onClick={() => navigate(ROUTES.INVOICES)}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
             >
               <ArrowLeft size={16} className="mr-2" />
               Back to Invoices
             </button>
-            <h1 className="text-2xl font-bold text-gray-900 mt-2">
+            <h1 className="text-2xl font-bold text-ink-base dark:text-slate-100 mt-2">
               Invoice {invoiceObj.invoice_number}
             </h1>
           </div>
@@ -328,7 +349,7 @@ const InvoiceView = () => {
             {/* Left Column - Invoice Info */}
             <div className="xl:col-span-2 space-y-6">
               {/* Invoice Header Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
                 <div className="bg-gradient-to-r from-green-500 to-teal-600 px-6 py-4">
                   <div className="flex items-center space-x-4">
                     {/* Invoice Icon */}
@@ -373,18 +394,18 @@ const InvoiceView = () => {
               </div>
 
               {/* Customer Information */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                     Customer Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {invoiceObj.customer_id?.full_name && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Customer Name
                         </label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {invoiceObj.customer_id.full_name
                             .split(" ")
                             .map(
@@ -396,31 +417,31 @@ const InvoiceView = () => {
                       </div>
                     )}
                     {invoiceObj.customer_id?.email && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Customer Email
                         </label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {invoiceObj.customer_id.email}
                         </p>
                       </div>
                     )}
                     {invoiceObj.customer_id?.whatsapp_number && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Phone Number
                         </label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {invoiceObj.customer_id.whatsapp_number}
                         </p>
                       </div>
                     )}
                     {invoiceObj.customer_id?.address && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Address
                         </label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {invoiceObj.customer_id.address?.line1}
                           {invoiceObj.customer_id.address?.city
                             ? `, ${invoiceObj.customer_id.address.city}`
@@ -439,9 +460,9 @@ const InvoiceView = () => {
               </div>
 
               {/* Invoice Details */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                     Invoice Details
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -492,9 +513,9 @@ const InvoiceView = () => {
               </div>
 
               {/* Payment Information */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                     Payment Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -525,11 +546,11 @@ const InvoiceView = () => {
                       </p>
                     </div>}
                     {invoiceObj.warranty_months > 0 && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Warranty
                         </label>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {invoiceObj.warranty_months} months
                         </p>
                       </div>
@@ -537,16 +558,16 @@ const InvoiceView = () => {
                     {invoiceObj.due_date &&
                       new Date(invoiceObj.due_date) < new Date() &&
                       invoiceObj.amount_due > 0 && (
-                        <div className="bg-red-100 text-red-700 p-2 rounded text-sm font-medium">
+                        <div className="bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 p-2 rounded text-sm font-medium border border-red-200 dark:border-red-900/50">
                           ⚠️ Payment Overdue
                         </div>
                       )}
                     {invoiceObj._id && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Due Date
                         </label>
-                        <p className="text-sm font-medium text-gray-900 ">
+                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
                           {invoiceObj.due_date
                             ? new Date(invoiceObj.due_date).toLocaleDateString(
                                 "en-IN",
@@ -560,9 +581,9 @@ const InvoiceView = () => {
               </div>
 
               {/* Invoice Items */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                     Invoice Items
                   </h3>
 
@@ -570,36 +591,43 @@ const InvoiceView = () => {
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-gray-200">
-                            <th className="text-left py-3 px-4 font-medium text-gray-700">
+                          <tr className="border-b border-gray-200 dark:border-dark-border">
+                            <th className="text-left py-3 px-4 font-medium text-ink-secondary dark:text-slate-400">
                               Product Name
                             </th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-700">
+                            <th className="text-left py-3 px-4 font-medium text-ink-secondary dark:text-slate-400">
                               Serial Number
                             </th>
-                            <th className="text-left py-3 px-4 font-medium text-gray-700">
+                            <th className="text-left py-3 px-4 font-medium text-ink-secondary dark:text-slate-400">
                               Warranty
                             </th>
-                            <th className="text-right py-3 px-4 font-medium text-gray-700">
+                            <th className="text-right py-3 px-4 font-medium text-ink-secondary dark:text-slate-400">
                               Price
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {items.map((item, index) => (
+                        <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
+                          {items.map((item, index) => {
+                            const batteryLine = invoiceBatteryLine(item);
+                            return (
                             <tr key={index}>
                               <td
-                                className="py-3 px-4 text-gray-900 underline cursor-pointer"
+                                className="py-3 px-4 text-ink-base dark:text-slate-100 underline cursor-pointer"
                                 onClick={() => {
                                   navigate(`/products/${item._id}`);
                                 }}
                               >
-                                {item.product_name}
+                                <span className="block">{item.product_name}</span>
+                                {batteryLine && (
+                                  <span className="block text-xs font-normal text-ink-muted dark:text-slate-500 no-underline mt-0.5 cursor-default">
+                                    {batteryLine}
+                                  </span>
+                                )}
                               </td>
-                              <td className="py-3 px-4 text-gray-600">
+                              <td className="py-3 px-4 text-ink-secondary dark:text-slate-400">
                                 {item.serial_number}
                               </td>
-                              <td className="py-3 px-4 text-gray-600">
+                              <td className="py-3 px-4 text-ink-secondary dark:text-slate-400">
                                 {(() => {
                                   const endDate = new Date(
                                     item.warranty_end_date,
@@ -616,12 +644,12 @@ const InvoiceView = () => {
                                   return (
                                     <div className="flex flex-col">
                                       {/* Duration */}
-                                      <span className="text-sm font-medium text-gray-800">
+                                      <span className="text-sm font-medium text-ink-base dark:text-slate-200">
                                         {item.warranty_duration_months} Month
                                       </span>
 
                                       {/* End Date */}
-                                      <span className="text-xs text-gray-500">
+                                      <span className="text-xs text-ink-muted dark:text-slate-500">
                                         Ends:{" "}
                                         {endDate.toLocaleDateString("en-IN")}
                                       </span>
@@ -642,66 +670,67 @@ const InvoiceView = () => {
                                   );
                                 })()}
                               </td>
-                              <td className="py-3 px-4 text-right text-gray-900">
+                              <td className="py-3 px-4 text-right text-ink-base dark:text-slate-100">
                                 {formatCurrency(
                                   item.selling_price || item.price || 0,
                                 )}
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-center py-8">
+                    <p className="text-ink-secondary dark:text-slate-400 text-center py-8">
                       No items found for this invoice.
                     </p>
                   )}
                 </div>
 
                 {/* Invoice Summary */}
-                <div className="p-6 border-t border-gray-200 bg-gray-50">
+                <div className="p-6 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-subtle">
                   <div className="max-w-sm ml-auto space-y-2">
                     {/* Subtotal */}
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span>{formatCurrency(invoiceObj.subtotal)}</span>
+                      <span className="text-ink-secondary dark:text-slate-400">Subtotal</span>
+                      <span className="text-ink-base dark:text-slate-100">{formatCurrency(invoiceObj.subtotal)}</span>
                     </div>
 
                     {/* Tax */}
                     <div className="flex justify-between">
-                      <span className="text-gray-600">
+                      <span className="text-ink-secondary dark:text-slate-400">
                         Tax (
                         {(
                           (invoiceObj.tax / invoiceObj.subtotal) * 100 || 0
                         ).toFixed(0)}
                         %)
                       </span>
-                      <span>{formatCurrency(invoiceObj.tax)}</span>
+                      <span className="text-ink-base dark:text-slate-100">{formatCurrency(invoiceObj.tax)}</span>
                     </div>
 
                     {/* Discount */}
                     {invoiceObj.discount > 0 && (
-                      <div className="flex justify-between text-red-600">
+                      <div className="flex justify-between text-red-600 dark:text-red-400">
                         <span>Discount</span>
                         <span>-{formatCurrency(invoiceObj.discount)}</span>
                       </div>
                     )}
 
                     {/* Total */}
-                    <div className="flex justify-between font-semibold border-t pt-2">
+                    <div className="flex justify-between font-semibold border-t border-gray-200 dark:border-dark-border pt-2 text-ink-base dark:text-slate-100">
                       <span>Total</span>
                       <span>{formatCurrency(invoiceObj.total_amount)}</span>
                     </div>
 
                     {/* Paid */}
-                    <div className="flex justify-between text-green-600">
+                    <div className="flex justify-between text-green-600 dark:text-green-400">
                       <span>Amount Paid</span>
                       <span>{formatCurrency(invoiceObj.amount_paid)}</span>
                     </div>
 
                     {/* Due */}
-                    <div className="flex justify-between text-red-600 font-semibold">
+                    <div className="flex justify-between text-red-600 dark:text-red-400 font-semibold">
                       <span>Amount Due</span>
                       <span>{formatCurrency(invoiceObj.amount_due)}</span>
                     </div>
@@ -710,11 +739,11 @@ const InvoiceView = () => {
 
                 {/* Notes */}
                 {invoice.notes && (
-                  <div className="p-6 border-t border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <div className="p-6 border-t border-gray-200 dark:border-dark-border">
+                    <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-2">
                       Notes
                     </h3>
-                    <p className="text-gray-600">{invoice.notes}</p>
+                    <p className="text-ink-secondary dark:text-slate-400">{invoice.notes}</p>
                   </div>
                 )}
               </div>
@@ -722,20 +751,20 @@ const InvoiceView = () => {
 
             {/* Right Column - Actions */}
             <div className="xl:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 sticky top-4">
+              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border sticky top-4">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                     Quick Actions
                   </h3>
                   <div className="space-y-3">
                     <button
                       onClick={handleEditInvoice}
-                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
+                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
                     >
                       <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                         <Edit className="w-5 h-5 text-blue-600" />
                       </div>
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                      <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                         Edit Details
                       </span>
                     </button>
@@ -743,12 +772,12 @@ const InvoiceView = () => {
                     <button
                       onClick={handleDownloadPDF}
                       disabled={isDownloadingPDF}
-                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group disabled:opacity-50"
+                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group disabled:opacity-50"
                     >
                       <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                         <Download className="w-5 h-5 text-indigo-600" />
                       </div>
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                      <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                         {isDownloadingPDF ? "Downloading..." : "Download PDF"}
                       </span>
                     </button>
@@ -756,12 +785,12 @@ const InvoiceView = () => {
                     <button
                       onClick={handlePreviewPDF}
                       disabled={isPreviewingPDF}
-                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group disabled:opacity-50"
+                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group disabled:opacity-50"
                     >
                       <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                         <Eye className="w-5 h-5 text-purple-600" />
                       </div>
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                      <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                         {isPreviewingPDF ? "Opening..." : "Preview PDF"}
                       </span>
                     </button>
@@ -769,12 +798,12 @@ const InvoiceView = () => {
                     <button
                       onClick={handleSendInvoice}
                       disabled={isSending}
-                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group disabled:opacity-50"
+                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group disabled:opacity-50"
                     >
                       <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                         <Send className="w-5 h-5 text-green-600" />
                       </div>
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                      <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                         {isSending ? "Sending..." : "Send via WhatsApp"}
                       </span>
                     </button>
@@ -785,12 +814,12 @@ const InvoiceView = () => {
                       <button
                         onClick={handleSendPaymentReminder}
                         disabled={isSendingReminder}
-                        className="w-full flex items-center space-x-3 p-3 text-left border border-orange-200 rounded-lg hover:bg-orange-50 hover:border-orange-300 transition-all duration-200 group disabled:opacity-50"
+                        className="w-full flex items-center space-x-3 p-3 text-left border border-orange-200 dark:border-orange-900/50 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:border-orange-300 dark:hover:border-orange-800 transition-all duration-200 group disabled:opacity-50"
                       >
                         <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                           <BellRing className="w-5 h-5 text-orange-600" />
                         </div>
-                        <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                        <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                           {isSendingReminder
                             ? "Sending..."
                             : "Send Payment Reminder"}
@@ -803,17 +832,17 @@ const InvoiceView = () => {
                     ) && (
                       <button
                         onClick={openPaymentModal}
-                        className="w-full flex items-center space-x-3 p-3 text-left border border-emerald-200 rounded-lg hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-200 group"
+                        className="w-full flex items-center space-x-3 p-3 text-left border border-emerald-200 dark:border-emerald-900/50 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:border-emerald-300 dark:hover:border-emerald-800 transition-all duration-200 group"
                       >
                         <div className="shrink-0 group-hover:scale-110 transition-transform duration-200">
                           <CheckCircle className="w-5 h-5 text-emerald-600" />
                         </div>
                         <div>
-                          <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 block">
+                          <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100 block">
                             Mark As Paid
                           </span>
                           {invoiceObj.amount_due > 0 && (
-                            <span className="text-xs text-emerald-600">
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400">
                               Due: ₹{Number(invoiceObj.amount_due).toFixed(2)}
                             </span>
                           )}
@@ -823,12 +852,12 @@ const InvoiceView = () => {
 
                     <button
                       onClick={openDeleteModal}
-                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
+                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
                     >
                       <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                         <Trash2 className="w-5 h-5 text-red-600" />
                       </div>
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                      <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                         Delete Invoice
                       </span>
                     </button>
@@ -881,31 +910,31 @@ const InvoiceView = () => {
             </DialogHeader>
             <DialogBody>
               <div className="space-y-4">
-                <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3 text-sm border border-gray-200 dark:border-dark-border">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Total Amount:</span>
-                    <span className="font-medium">
+                    <span className="text-ink-secondary dark:text-slate-400">Total Amount:</span>
+                    <span className="font-medium text-ink-base dark:text-slate-100">
                       ₹{Number(invoiceObj.total_amount || 0).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
-                    <span className="text-gray-500">Already Paid:</span>
-                    <span className="font-medium text-green-700">
+                    <span className="text-ink-secondary dark:text-slate-400">Already Paid:</span>
+                    <span className="font-medium text-green-700 dark:text-green-400">
                       ₹{Number(invoiceObj.amount_paid || 0).toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between mt-1 border-t pt-1">
-                    <span className="text-gray-700 font-medium">
+                  <div className="flex justify-between mt-1 border-t border-gray-200 dark:border-dark-border pt-1">
+                    <span className="text-ink-secondary dark:text-slate-300 font-medium">
                       Amount Due:
                     </span>
-                    <span className="font-bold text-red-600">
+                    <span className="font-bold text-red-600 dark:text-red-400">
                       ₹{Number(invoiceObj.amount_due || 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Payment Amount (₹)
                   </label>
                   <input
@@ -915,19 +944,19 @@ const InvoiceView = () => {
                     max={invoiceObj.amount_due || invoiceObj.total_amount}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-full border border-gray-300 dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     placeholder="Enter amount"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Payment Mode
                   </label>
                   <select
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-full border border-gray-300 dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   >
                     <option value="CASH">Cash</option>
                     <option value="UPI">UPI</option>

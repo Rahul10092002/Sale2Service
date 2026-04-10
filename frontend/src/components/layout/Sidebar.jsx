@@ -81,11 +81,11 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
       />
 
       <aside
-        className={`fixed z-40 top-0 left-0 h-screen bg-white shadow-xl transform transition-all duration-300 lg:static lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"} ${collapsed ? "w-20" : "w-64"} border-r border-gray-200 flex flex-col no-scrollbar`}
+        className={`fixed z-40 top-0 left-0 h-screen bg-white dark:bg-dark-input shadow-xl transform transition-all duration-300 lg:static lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"} ${collapsed ? "w-20" : "w-64"} border-r border-gray-200 dark:border-dark-border flex flex-col no-scrollbar`}
         style={{ minWidth: collapsed ? 80 : 256 }}
       >
         {/* Header with logo */}
-        <div className="h-16 flex items-center bg-white border-b border-gray-200">
+        <div className="h-16 flex items-center bg-white dark:bg-dark-input border-b border-gray-200 dark:border-dark-border">
           <div className="flex items-center space-x-2 w-full">
             <img
               src={collapsed ? "/logo_without_text.png" : "/Logo_warranty.png"}
@@ -97,7 +97,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
           <div className="ml-auto hidden lg:block">
             <button
               onClick={onToggleCollapse}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors duration-200"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover text-gray-600 dark:text-slate-400 transition-colors duration-200"
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {collapsed ? (
@@ -123,12 +123,12 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
               }}
               className={`flex items-center gap-3 rounded-lg p-3 transition-all duration-200 group ${
                 isActive(item.path)
-                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-500 shadow-sm"
-                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500 shadow-sm"
+                  : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-dark-hover hover:text-gray-900 dark:hover:text-slate-100"
               } ${collapsed ? "justify-center" : ""}`}
             >
               <span
-                className={`shrink-0 ${isActive(item.path) ? "text-blue-600" : "text-gray-500 group-hover:text-blue-600"}`}
+                className={`shrink-0 ${isActive(item.path) ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400"}`}
               >
                 {item.icon}
               </span>
@@ -147,11 +147,11 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50/50">
+        <div className="p-4 border-t border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-subtle">
           {!collapsed && (
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-xs text-gray-600 font-medium">
+              <span className="text-xs text-gray-600 dark:text-slate-400 font-medium">
                 WarrantyDesk Pro
               </span>
             </div>

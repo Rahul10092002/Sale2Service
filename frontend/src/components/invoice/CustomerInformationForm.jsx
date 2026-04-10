@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+﻿import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -93,13 +93,13 @@ const CustomerInformationForm = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+      <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
             <User className="w-5 h-5 text-indigo-600" />
             Customer Information
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-ink-muted dark:text-slate-100 mt-1">
             Enter customer details for invoice generation
           </p>
         </div>
@@ -109,7 +109,7 @@ const CustomerInformationForm = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="col-span-1 relative"> 
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-100 mb-2">
                 WhatsApp Number *
               </label>
               <div className="relative">
@@ -143,20 +143,20 @@ const CustomerInformationForm = () => {
                 </div>
 
                 {suggestions && suggestions.length > 0 && isFocused && (
-                  <div className="absolute z-40 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg">
+                  <div className="absolute z-50 left-0 right-0  bg-white dark: bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg shadow-lg max-h-64 overflow-y-auto">
                     {suggestions.map((s) => (
                       <button
                         key={s._id || s.id || s.whatsapp_number}
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleSelectSuggestion(s)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-3"
+                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:bg-dark-bg dark:border-dark-border dark:text-slate-100 flex items-center gap-3"
                       >
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-ink-base dark:text-slate-100">
                             {s.full_name || "Unnamed"}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-ink-muted dark:text-slate-500">
                             {s.whatsapp_number}
                           </div>
                         </div>
@@ -168,7 +168,7 @@ const CustomerInformationForm = () => {
             </div>
 
             <div className="col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                 Full Name *
               </label>
               <Input
@@ -185,14 +185,14 @@ const CustomerInformationForm = () => {
 
           {/* Address Section */}
           <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-md font-medium text-gray-900 flex items-center gap-2 mb-4">
+            <h3 className="text-md font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2 mb-4">
               <MapPin className="w-4 h-4 text-indigo-600" />
               Address Information
             </h3>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="lg:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                   Address Line 1 *
                 </label>
                 <Input
@@ -207,7 +207,7 @@ const CustomerInformationForm = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                   City *
                 </label>
                 <Input
@@ -222,7 +222,7 @@ const CustomerInformationForm = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                   State *
                 </label>
                 <Input
@@ -237,7 +237,7 @@ const CustomerInformationForm = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                   Pincode *
                 </label>
                 <Input
@@ -262,7 +262,7 @@ const CustomerInformationForm = () => {
               }}
               className="flex items-center justify-between w-full text-left"
             >
-              <h3 className="text-md font-medium text-gray-900 flex items-center gap-2">
+              <h3 className="text-md font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-indigo-600" />
                 Additional Information
               </h3>
@@ -276,7 +276,7 @@ const CustomerInformationForm = () => {
             {expandedSections.customerOptional && (
               <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Alternate Phone
                   </label>
                   <Input
@@ -290,7 +290,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Email
                   </label>
                   <Input
@@ -305,7 +305,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Date of Birth
                   </label>
                   <Input
@@ -318,7 +318,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Anniversary Date
                   </label>
                   <Input
@@ -331,7 +331,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     GST Number
                   </label>
                   <Input
@@ -367,7 +367,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Address Line 2
                   </label>
                   <Input
@@ -381,7 +381,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div className="lg:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
                     Notes
                   </label>
                   <textarea

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { showToast } from "../../features/ui/uiSlice.js";
@@ -153,7 +153,7 @@ const CustomerView = () => {
   }
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
         <div className="max-w-7xl mx-auto px-4 py-6">
           {/* Header */}
           <div className="mb-6">
@@ -204,23 +204,23 @@ const CustomerView = () => {
               {/* Customer Information Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Basic Information */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-100 dark:border-dark-border p-6">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
                     <User className="w-5 h-5 text-blue-600" />
                     Basic Information
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">
+                      <label className="block text-sm font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Full Name
                       </label>
-                      <p className="text-gray-900">{customer.full_name}</p>
+                      <p className="text-ink-base dark:text-slate-100">{customer.full_name}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">
+                      <label className="block text-sm font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         WhatsApp Number
                       </label>
-                      <p className="text-gray-900">
+                      <p className="text-ink-base dark:text-slate-100">
                         {customer.whatsapp_number}
                       </p>
                     </div>
@@ -272,8 +272,8 @@ const CustomerView = () => {
                 </div>
 
                 {/* Address Information */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-100 dark:border-dark-border p-6">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-green-600" />
                     Address Information
                   </h3>
@@ -334,7 +334,7 @@ const CustomerView = () => {
                         )}
                       </>
                     ) : (
-                      <p className="text-gray-500 text-sm">
+                      <p className="text-ink-secondary dark:text-slate-400 text-sm">
                         No address information provided
                       </p>
                     )}
@@ -342,14 +342,14 @@ const CustomerView = () => {
                 </div>
 
                 {/* Business Information */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-100 dark:border-dark-border p-6">
+                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-purple-600" />
                     Business Information
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">
+                      <label className="block text-sm font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Customer Type
                       </label>
                       <span className="inline-flex px-2 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -361,7 +361,7 @@ const CustomerView = () => {
                         <label className="block text-sm font-medium text-gray-500 mb-1">
                           GST Number
                         </label>
-                        <p className="text-gray-900">{customer.gst_number}</p>
+                        <p className="text-ink-base dark:text-slate-100">{customer.gst_number}</p>
                       </div>
                     )}
                     {customer.preferred_language && (
@@ -369,7 +369,7 @@ const CustomerView = () => {
                         <label className="block text-sm font-medium text-gray-500 mb-1">
                           Preferred Language
                         </label>
-                        <p className="text-gray-900">
+                        <p className="text-ink-base dark:text-slate-100">
                           {customer.preferred_language}
                         </p>
                       </div>
@@ -378,7 +378,7 @@ const CustomerView = () => {
                       <label className="block text-sm font-medium text-gray-500 mb-1">
                         Created At
                       </label>
-                      <p className="text-gray-900">
+                      <p className="text-ink-base dark:text-slate-100">
                         {customer.createdAt
                           ? new Date(customer.createdAt).toLocaleDateString()
                           : "N/A"}
@@ -389,19 +389,19 @@ const CustomerView = () => {
 
                 {/* Notes */}
                 {customer.notes && (
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-100 dark:border-dark-border p-6">
+                    <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
                       <MessageSquare className="w-5 h-5 text-orange-600" />
                       Notes
                     </h3>
-                    <p className="text-gray-700">{customer.notes}</p>
+                    <p className="text-ink-secondary dark:text-slate-300">{customer.notes}</p>
                   </div>
                 )}
               </div>
 
               {/* Related Invoices */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-100 dark:border-dark-border p-6">
+                <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
                   <FileText className="w-5 h-5 text-indigo-600" />
                   Related Invoices ({pagination.total})
                 </h3>
@@ -411,10 +411,10 @@ const CustomerView = () => {
                   </div>
                 ) : !invoices.length ? (
                   <div className="text-center py-8">
-                    <div className="text-gray-500 text-lg">
+                    <div className="text-ink-secondary dark:text-slate-400 text-lg">
                       No invoices found
                     </div>
-                    <div className="text-gray-400 text-sm mt-2">
+                    <div className="text-ink-muted dark:text-slate-500 text-sm mt-2">
                       Create the first invoice for this customer
                     </div>
                     <Button
@@ -432,25 +432,25 @@ const CustomerView = () => {
                     {invoices.map((inv) => (
                       <div
                         key={inv._id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                        className="flex items-center justify-between p-4 border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle"
                       >
                         <div className="flex-1">
-                          <div className="font-semibold text-gray-900">
+                          <div className="font-semibold text-ink-base dark:text-slate-100">
                             {inv.invoice_number}
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-ink-secondary dark:text-slate-400">
                             Date:{" "}
                             {new Date(inv.invoice_date).toLocaleDateString()} •
                             Payment: {inv.payment_mode} • Status:{" "}
                             {inv.payment_status}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-ink-muted dark:text-slate-500">
                             Created by:{" "}
                             {inv.created_by?.name || inv.created_by || "-"}
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
-                          <div className="font-bold text-lg text-gray-900">
+                          <div className="font-bold text-lg text-ink-base dark:text-slate-100">
                             ₹{inv.total_amount}
                           </div>
                           <div className="flex gap-2">
@@ -505,8 +505,8 @@ const CustomerView = () => {
 
                     {/* Pagination */}
                     {pagination && pagination.pages > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-                        <div className="text-sm text-gray-500">
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-dark-border">
+                        <div className="text-sm text-ink-muted dark:text-slate-500">
                           Showing page {pagination.page} of {pagination.pages}
                         </div>
                         <div className="flex items-center gap-2">
@@ -520,7 +520,7 @@ const CustomerView = () => {
                           >
                             Previous
                           </Button>
-                          <span className="text-sm text-gray-700 mx-2">
+                          <span className="text-sm text-ink-secondary dark:text-slate-400 mx-2">
                             {pagination.page}
                           </span>
                           <Button
@@ -545,8 +545,8 @@ const CustomerView = () => {
 
             {/* Quick Actions Sidebar */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-sm p-6 sticky top-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <div className="bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-lg shadow-sm p-6 sticky top-6">
+                <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
                   Quick Actions
                 </h3>
                 <div className="space-y-3">

@@ -9,6 +9,7 @@ import {
 } from "../../components/ui/Modal.jsx";
 import { useUpdateProductMutation } from "../../features/products/productApi.js";
 import { showToast } from "../../features/ui/uiSlice.js";
+import { INVOICE_CONSTANTS } from "../../utils/constants.js";
 
 const CATEGORY_OPTIONS = [
   { value: "BATTERY", label: "Battery" },
@@ -32,6 +33,10 @@ const STATUS_OPTIONS = [
   { value: "RETURNED", label: "Returned" },
   { value: "UNDER_SERVICE", label: "Under Service" },
 ];
+const BATTERY_TYPE_OPTIONS = [
+  { value: "INVERTER_BATTERY", label: "Inverter battery" },
+  { value: "VEHICLE_BATTERY", label: "Vehicle battery" },
+];
 
 const toDateInput = (val) =>
   val ? new Date(val).toISOString().split("T")[0] : "";
@@ -46,6 +51,9 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
     model_number: "",
     serial_number: "",
     product_category: "",
+    battery_type: "",
+    vehicle_name: "",
+    vehicle_number_plate: "",
     quantity: 1,
     selling_price: 0,
     cost_price: "",
@@ -71,6 +79,9 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
         model_number: product.model_number || "",
         serial_number: product.serial_number || "",
         product_category: product.product_category || "",
+        battery_type: product.battery_type || "",
+        vehicle_name: product.vehicle_name || "",
+        vehicle_number_plate: product.vehicle_number_plate || "",
         quantity: product.quantity ?? 1,
         selling_price: product.selling_price ?? 0,
         cost_price:
@@ -111,6 +122,28 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
       dispatch(showToast({ message: "Category is required", type: "error" }));
       return;
     }
+    if (form.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY) {
+      if (!form.battery_type) {
+        dispatch(
+          showToast({ message: "Battery type is required", type: "error" }),
+        );
+        return;
+      }
+      if (form.battery_type === INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY) {
+        if (!form.vehicle_name.trim()) {
+          dispatch(
+            showToast({ message: "Vehicle name is required", type: "error" }),
+          );
+          return;
+        }
+        if (!form.vehicle_number_plate.trim()) {
+          dispatch(
+            showToast({ message: "Number plate is required", type: "error" }),
+          );
+          return;
+        }
+      }
+    }
 
     const payload = {
       id: productId,
@@ -128,6 +161,13 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
       warranty_type: form.warranty_type,
       notes: form.notes.trim(),
     };
+    if (form.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY) {
+      payload.battery_type = form.battery_type;
+      if (form.battery_type === INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY) {
+        payload.vehicle_name = form.vehicle_name.trim();
+        payload.vehicle_number_plate = form.vehicle_number_plate.trim().toUpperCase();
+      }
+    }
 
     if (form.cost_price !== "")
       payload.cost_price = parseFloat(form.cost_price);
@@ -201,7 +241,20 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
                 <label className={labelCls}>Category *</label>
                 <select
                   value={form.product_category}
-                  onChange={set("product_category")}
+                  onChange={(e) => {
+                    const nextCategory = e.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      product_category: nextCategory,
+                      ...(nextCategory !== INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY
+                        ? {
+                            battery_type: "",
+                            vehicle_name: "",
+                            vehicle_number_plate: "",
+                          }
+                        : {}),
+                    }));
+                  }}
                   className={inputCls}
                 >
                   <option value="">Select category</option>
@@ -212,6 +265,64 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
                   ))}
                 </select>
               </div>
+              {form.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY && (
+                <>
+                  <div>
+                    <label className={labelCls}>Battery Type *</label>
+                    <select
+                      value={form.battery_type}
+                      onChange={(e) => {
+                        const nextType = e.target.value;
+                        setForm((prev) => ({
+                          ...prev,
+                          battery_type: nextType,
+                          ...(nextType !== INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY
+                            ? { vehicle_name: "", vehicle_number_plate: "" }
+                            : {}),
+                        }));
+                      }}
+                      className={inputCls}
+                    >
+                      <option value="">Select battery type</option>
+                      {BATTERY_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {form.battery_type ===
+                    INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY && (
+                    <>
+                      <div>
+                        <label className={labelCls}>Vehicle Name *</label>
+                        <input
+                          type="text"
+                          value={form.vehicle_name}
+                          onChange={set("vehicle_name")}
+                          className={inputCls}
+                          placeholder="e.g. Maruti Swift"
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Number Plate *</label>
+                        <input
+                          type="text"
+                          value={form.vehicle_number_plate}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              vehicle_number_plate: e.target.value.toUpperCase(),
+                            }))
+                          }
+                          className={inputCls}
+                          placeholder="e.g. MH12AB1234"
+                        />
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
               <div>
                 <label className={labelCls}>Company</label>
                 <input

@@ -15,8 +15,8 @@ export default defineConfig({
         name: "WarrantyDesk",
         short_name: "WarrantyDesk",
         description: "Manage Sales & Warranty in One Place",
-        theme_color: "#1e40af",
-        background_color: "#f8fafc",
+        theme_color: "#2563eb",
+        background_color: "#f0f2f5",
         display: "standalone",
         start_url: "/",
         icons: [

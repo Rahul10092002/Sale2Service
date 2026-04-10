@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Save, X } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
@@ -184,10 +184,10 @@ const InvoiceGenerationPage = () => {
             : 0,
           // PAID invoices should not have due date
           due_date: isPaid ? null : currentInvoice.invoice.due_date,
-          // Remove computed fields
-          subtotal: undefined,
-          tax: undefined,
-          total_amount: undefined,
+          // Send computed fields so backend doesn't recalculate incorrectly
+          subtotal: Number(currentInvoice.invoice.subtotal || 0),
+          tax: Number(currentInvoice.invoice.tax || 0),
+          total_amount: Number(currentInvoice.invoice.total_amount || 0),
         },
         invoice_items: currentInvoice.invoice_items.map((item) => ({
           ...item,
@@ -324,29 +324,52 @@ const InvoiceGenerationPage = () => {
                 </div>
                 <div className="px-6 py-4">
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-                    <div className="flex-1 max-w-xs">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-100 mb-2">
-                        Discount Amount
-                      </label>
-                      <input
-                        type="number"
-                        value={
-                          rawDiscount !== null
-                            ? rawDiscount
-                            : currentInvoice.invoice.discount || 0
-                        }
-                        onChange={(e) => {
-                          setRawDiscount(e.target.value);
-                          const discount = parseFloat(e.target.value) || 0;
-                          updateInvoiceData({ discount });
-                          setTimeout(() => recalculateInvoice(), 0);
-                        }}
-                        onBlur={() => setRawDiscount(null)}
-                        placeholder="0.00"
-                        min="0"
-                        step="1"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      />
+                    <div className="flex flex-wrap gap-6 items-end flex-1">
+                      <div className="max-w-xs w-full sm:w-auto">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-100 mb-2">
+                          Discount Amount
+                        </label>
+                        <input
+                          type="number"
+                          value={
+                            rawDiscount !== null
+                              ? rawDiscount
+                              : currentInvoice.invoice.discount || 0
+                          }
+                          onChange={(e) => {
+                            setRawDiscount(e.target.value);
+                            const discount = parseFloat(e.target.value) || 0;
+                            updateInvoiceData({ discount });
+                            setTimeout(() => recalculateInvoice(), 0);
+                          }}
+                          onBlur={() => setRawDiscount(null)}
+                          placeholder="0.00"
+                          min="0"
+                          step="1"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                      </div>
+
+                      <div className="flex items-center mb-2 sm:mb-0 h-[42px]">
+                        <label className="flex items-center cursor-pointer gap-3">
+                          <span className="text-sm font-medium text-gray-700 dark:text-slate-100">
+                            Tax {currentInvoice.invoice.is_tax_inclusive !== false ? "Inclusive" : "Exclusive"}
+                          </span>
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={currentInvoice.invoice.is_tax_inclusive !== false}
+                              onChange={(e) => {
+                                updateInvoiceData({ is_tax_inclusive: e.target.checked });
+                                setTimeout(() => recalculateInvoice(), 0);
+                              }}
+                            />
+                            <div className={`block w-10 h-6 rounded-full transition-colors ${currentInvoice.invoice.is_tax_inclusive !== false ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-600'}`}></div>
+                            <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${currentInvoice.invoice.is_tax_inclusive !== false ? 'translate-x-4' : ''}`}></div>
+                          </div>
+                        </label>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-2">
                       {Object.keys(errors).length > 0 && (

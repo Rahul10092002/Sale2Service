@@ -26,6 +26,7 @@ const initialState = {
       invoice_date: new Date().toISOString().split("T")[0],
       payment_status: "UNPAID",
       payment_mode: "CASH",
+      is_tax_inclusive: true,
       subtotal: 0,
       discount: 0,
       tax: 0,
@@ -48,19 +49,28 @@ const initialState = {
 const calculateInvoiceTotals = (state) => {
   const items = state.currentInvoice.invoice_items;
 
-  const inclusiveTotal = items.reduce(
+  const itemTotal = items.reduce(
     (sum, item) =>
       sum + parseFloat(item.selling_price || 0) * parseInt(item.quantity || 1),
     0,
   );
 
   const taxRate = 0.18;
+  const isInclusive = state.currentInvoice.invoice.is_tax_inclusive !== false; // defaults to true
 
-  // ✅ Correct GST calculation
-  const subtotal = inclusiveTotal / (1 + taxRate);
-  const tax = inclusiveTotal - subtotal;
+  let subtotal, tax;
 
-  const discount = state.currentInvoice.invoice.discount || 0;
+  if (isInclusive) {
+    // ✅ Correct GST calculation for inclusive tax
+    subtotal = itemTotal / (1 + taxRate);
+    tax = itemTotal - subtotal;
+  } else {
+    // Exclusive tax calculation
+    subtotal = itemTotal;
+    tax = subtotal * taxRate;
+  }
+
+  const discount = parseFloat(state.currentInvoice.invoice.discount || 0);
   const taxableAmount = subtotal - discount;
   
   const total = taxableAmount + tax;

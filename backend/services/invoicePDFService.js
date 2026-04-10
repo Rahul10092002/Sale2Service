@@ -73,7 +73,7 @@ export class InvoicePDFService {
         subtotal: Number(invoice.subtotal) || 0,
         gstRate:
           invoice.tax && invoice.subtotal
-            ? (Number(invoice.tax) / Number(invoice.subtotal)) * 100
+            ? Number(((Number(invoice.tax) / Number(invoice.subtotal)) * 100).toFixed(2))
             : null,
         gstAmount: Number(invoice.tax) || 0,
         total: Number(invoice.total_amount) || 0,
@@ -87,7 +87,7 @@ export class InvoicePDFService {
         subtotal: Number(invoice.subtotal) || 0,
         gstRate:
           invoice.tax && invoice.subtotal
-            ? (Number(invoice.tax) / Number(invoice.subtotal)) * 100
+            ? Number(((Number(invoice.tax) / Number(invoice.subtotal)) * 100).toFixed(2))
             : 18,
         gstAmount: Number(invoice.tax) || 0,
         total: Number(invoice.total_amount) || 0,

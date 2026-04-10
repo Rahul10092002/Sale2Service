@@ -173,10 +173,16 @@ export default class InvoiceController {
           : inclusiveTotal * taxRate;
 
       // Subtotal is inclusive total minus tax (i.e., amount before GST as per requested behavior)
-      const subtotal = inclusiveTotal - tax;
+      const subtotal =
+        typeof invoice.subtotal === "number"
+          ? Number(invoice.subtotal)
+          : inclusiveTotal - tax;
 
       // Total amount after applying discount should equal inclusiveTotal - discount
-      const totalAmount = Math.max(0, inclusiveTotal - discount);
+      const totalAmount =
+        typeof invoice.total_amount === "number"
+          ? Number(invoice.total_amount)
+          : Math.max(0, inclusiveTotal - discount);
 
       // Consider any amount_paid submitted
       let amountPaid = Number(invoice.amount_paid || 0) || 0;

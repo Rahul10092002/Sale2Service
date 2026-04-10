@@ -607,9 +607,9 @@ function Logs() {
 
           {/* Pagination */}
           {pagination.pages > 1 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-card ">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-ink-muted dark:text-slate-500">
+                <div className="text-sm text-ink-muted dark:text-slate-100">
                   Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                   {Math.min(
                     pagination.page * pagination.limit,
@@ -619,15 +619,14 @@ function Logs() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={pagination.page <= 1}
-                    className="p-2"
+                    className="px-3 py-1 rounded-md bg-white dark:bg-dark-card border hover:bg-gray-50 disabled:opacity-50 dark:border-dark-border"
+
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
+                    <ChevronLeft className="w-4 h-4 dark:text-slate-100" />
+                  </button>
 
                   <div className="flex items-center gap-1">
                     {Array.from(
@@ -649,7 +648,7 @@ function Logs() {
                           return (
                             <span
                               key={pageNum}
-                              className="px-2 py-1 text-sm text-ink-secondary dark:text-slate-400"
+                              className="px-2 py-1 text-sm text-ink-secondary dark:text-slate-100"
                             >
                               ...
                             </span>
@@ -659,30 +658,24 @@ function Logs() {
                       }
 
                       return (
-                        <Button
+                        <button
                           key={pageNum}
-                          variant={
-                            pageNum === pagination.page ? "default" : "outline"
-                          }
-                          size="sm"
                           onClick={() => handlePageChange(pageNum)}
-                          className="w-8 h-8 p-0 text-sm"
+                          className={`w-8 h-8 p-0 text-sm rounded ${pageNum === pagination.page ? "bg-indigo-600 text-white" : "bg-white border dark:bg-dark-card dark:border-dark-border"}`} 
                         >
                           {pageNum}
-                        </Button>
+                        </button>
                       );
                     })}
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={pagination.page >= pagination.pages}
-                    className="p-2"
+                    className="px-3 py-1 rounded-md bg-white dark:bg-dark-card border hover:bg-gray-50 disabled:opacity-50 dark:border-dark-border"
                   >
                     <ChevronRight className="w-4 h-4" />
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>

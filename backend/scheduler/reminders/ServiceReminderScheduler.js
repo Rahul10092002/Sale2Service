@@ -121,12 +121,19 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       case "UPCOMING_1D":
       case "TODAY":
         templateName = "service_reminder";
+
+         const getServiceCountHindi = (n) => {
+    const map = ["पहली", "दूसरी", "तीसरी", "चौथी", "पांचवीं"];
+    return map[n - 1] || `${n}वीं`;
+  };
         variables = {
-          1: customer.full_name,
-          2: invoiceItem.product_name,
-          3: serviceDate,
-          4: getShopName(shop),
-        };
+    1: customer.full_name,                     // {{1}}
+    2: invoiceItem.product_name,               // {{2}}
+    3: invoiceItem.serial_number || "",     // {{3}} ✅ ADD THIS FIELD IN DB
+    4: getServiceCountHindi(service.service_number || 1), // {{4}}
+    5: shopContact,                            // {{5}}
+    6: getShopName(shop),                      // {{6}}
+  };
         break;
 
       case "MISSED":

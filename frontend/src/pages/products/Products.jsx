@@ -749,7 +749,7 @@ const getWarrantyInfo = (product) => {
 
                 {/* Pagination */}
                 {pagination.pages > 1 && (
-                  <div className="px-4 sm:px-6 py-4 border-t bg-gray-50 flex items-center justify-between">
+                  <div className="px-4 sm:px-6 py-4 border-t bg-gray-50 dark:bg-dark-card flex items-center justify-between">
                     <div className="text-sm text-ink-muted dark:text-slate-500">
                       Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                       {Math.min(
@@ -762,15 +762,15 @@ const getWarrantyInfo = (product) => {
                       <button
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page <= 1}
-                        className="px-3 py-1 rounded-md bg-white border hover:bg-gray-50 disabled:opacity-50"
-                      >
+                        className="px-3 py-1 rounded-md bg-white dark:bg-dark-card border hover:bg-gray-50 disabled:opacity-50 dark:border-dark-border"
+                      > 
                         Prev
                       </button>
                       {pagesArray.map((pg) => (
                         <button
                           key={pg}
                           onClick={() => setPage(pg)}
-                          className={`w-8 h-8 p-0 text-sm rounded ${pg === pagination.page ? "bg-indigo-600 text-white" : "bg-white border"}`}
+                          className={`w-8 h-8 p-0 text-sm rounded ${pg === pagination.page ? "bg-indigo-600 text-white" : "bg-white border dark:bg-dark-card dark:border-dark-border"}`}
                         >
                           {pg}
                         </button>
@@ -780,7 +780,7 @@ const getWarrantyInfo = (product) => {
                           setPage((p) => Math.min(pagination.pages, p + 1))
                         }
                         disabled={page >= pagination.pages}
-                        className="px-3 py-1 rounded-md bg-white border hover:bg-gray-50 disabled:opacity-50"
+                        className="px-3 py-1 rounded-md bg-white dark:bg-dark-card border hover:bg-gray-50 disabled:opacity-50 dark:border-dark-border"
                       >
                         Next
                       </button>

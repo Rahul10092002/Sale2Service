@@ -205,6 +205,7 @@ export default class SchedulerService {
     phoneNumber,
     templateName = "service_reminder",
     variables = {},
+    buttons = [],
   ) {
     try {
       console.log(
@@ -216,6 +217,7 @@ export default class SchedulerService {
         to: phoneNumber,
         templateName,
         variables,
+        buttons,
         metadata: {
           campaignName: "test_message",
           messageType: "test",

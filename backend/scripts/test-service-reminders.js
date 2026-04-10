@@ -42,6 +42,7 @@ try {
 async function main() {
   try {
     const forceResend = process.argv.includes("--force");
+    const testPhone = process.argv.find(arg => arg.startsWith("--phone="))?.split("=")[1];
 
     const mongoUri =
       process.env.MONGODB_URI ||
@@ -56,21 +57,47 @@ async function main() {
 
     const scheduler = new SchedulerService();
 
-    // Test different reminder types
-    console.log("Testing scheduler status...");
-    const status = scheduler.getStatus();
-    console.log("Scheduler status:", status);
+    if (testPhone) {
+      console.log(`Running direct message test for updated variables to ${testPhone}...`);
+      
+      // Updated variables matched from ServiceReminderScheduler.js
+      const getServiceCountHindi = (n) => {
+        const map = ["पहली", "दूसरी", "तीसरी", "चौथी", "पांचवीं"];
+        return map[n - 1] || `${n}वीं`;
+      };
+      
+      const testVariables = {
+        1: "Rahul (Test Customer)", // {{1}} Customer Name
+        2: "Test Product",          // {{2}} Product Name
+        3: "SN-987654321",          // {{3}} Serial Number (Added)
+        4: getServiceCountHindi(2), // {{4}} Service Count in Hindi
+        5: "9876543210",            // {{5}} Shop Contact
+        6: "Rajdeep Power Point"    // {{6}} Shop Name
+      };
 
-    console.log("Running service reminder test...");
-    await scheduler.runManualTest("service", forceResend);
+      console.log("Testing with variables:", testVariables);
+      await scheduler.testMessage(testPhone, "service_reminder", testVariables, [testVariables[5]]);
+      console.log("Direct message test complete.");
+    } else {
+      // Test different reminder types
+      console.log("Testing scheduler status...");
+      const status = scheduler.getStatus();
+      console.log("Scheduler status:", status);
 
-    console.log("Running warranty reminder test...");
-    await scheduler.runManualTest("warranty");
+      console.log("Running service reminder test...");
+      await scheduler.runManualTest("service", forceResend);
 
-    console.log("Running payment reminder test...");
-    await scheduler.runManualTest("payment");
+      console.log("Running warranty reminder test...");
+      await scheduler.runManualTest("warranty");
 
-    console.log("All reminder tests complete");
+      console.log("Running payment reminder test...");
+      await scheduler.runManualTest("payment");
+
+      console.log("All reminder tests complete");
+      console.log("\n💡 Tip: To test just a single message with the updated variables, run:");
+      console.log("node backend/scripts/test-service-reminders.js --phone=YOURNUMBER");
+    }
+
   } catch (err) {
     console.error("Error running reminder test:", err);
   } finally {

@@ -152,10 +152,10 @@ const InvoiceList = () => {
                   <Filter className="h-5 w-5 text-blue-600" />
                 </button>
                 {showFilters && (
-                  <div className="absolute top-12 left-0 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-xl p-5 z-10 w-[340px] space-y-4">
+                  <div className="absolute top-12 left-0 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl shadow-xl p-5 z-10 w-[340px] space-y-4">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b pb-2">
-                      <h3 className="text-sm font-semibold text-gray-800">
+                      <h3 className="text-sm font-semibold text-gray-800 dark:text-slate-100">
                         Filters
                       </h3>
                       <button
@@ -173,7 +173,7 @@ const InvoiceList = () => {
                             quick_filter: "",
                           })
                         }
-                        className="text-xs text-red-500 hover:text-red-600"
+                        className="text-xs text-red-500 hover:text-red-600 dark:text-red-400"
                       >
                         Clear All
                       </button>
@@ -181,7 +181,7 @@ const InvoiceList = () => {
 
                     {/* Search In */}
                     <div>
-                      <label className="text-xs text-ink-muted dark:text-slate-500">Search In</label>
+                      <label className="text-xs text-ink-muted dark:text-slate-100">Search In</label>
                       <select
                         value={searchIn}
                         onChange={(e) => setSearchIn(e.target.value)}

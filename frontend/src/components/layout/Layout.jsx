@@ -80,7 +80,7 @@ const Layout = ({ children, title }) => {
     <div className="h-screen flex bg-gray-50 dark:bg-dark-bg text-ink-base dark:text-slate-100 transition-colors duration-200">
       {/* Left: fixed full-height sidebar (desktop) */}
       <div
-        className={`hidden lg:block ${collapsed ? "w-20" : "w-64"} h-screen sticky top-0 overflow-auto transition-all duration-200  no-scrollbar`}
+        className={`hidden lg:block ${collapsed ? "w-20" : "w-48"} h-screen sticky top-0 overflow-auto transition-all duration-200  no-scrollbar`}
       >
         <Sidebar
           isOpen={true}

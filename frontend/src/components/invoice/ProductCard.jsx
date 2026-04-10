@@ -22,10 +22,7 @@ const API_BASE_URL =
     ? import.meta.env.VITE_PROD_API_URL
     : import.meta.env.VITE_LOCAL_API_URL;
 
-/**
- * Compress an image File using the canvas API.
- * Returns a Blob (JPEG, quality 0.78, max 900px on longest side).
- */
+
 const compressImage = (file) =>
   new Promise((resolve, reject) => {
     const MAX_PX = 900;
@@ -69,8 +66,7 @@ const ProductCard = React.memo(function ProductCard({
 }) {
   const isExpanded = expandedSections.productMetadata[item.id] || false;
 
-  // rawNumbers tracks the raw string the user is currently typing so that
-  // backspacing to "" doesn't immediately snap back to the fallback value.
+
   const [rawNumbers, setRawNumbers] = React.useState({});
 
   const setRaw = (key, value) =>

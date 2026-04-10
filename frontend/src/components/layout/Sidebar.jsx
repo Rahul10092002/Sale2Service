@@ -81,18 +81,39 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
       />
 
       <aside
-        className={`fixed z-40 top-0 left-0 h-screen bg-white dark:bg-dark-input shadow-xl transform transition-all duration-300 lg:static lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"} ${collapsed ? "w-20" : "w-64"} border-r border-gray-200 dark:border-dark-border flex flex-col no-scrollbar`}
-        style={{ minWidth: collapsed ? 80 : 256 }}
+        className={`fixed z-40 top-0 left-0 h-screen bg-white dark:bg-dark-input shadow-xl transform transition-all duration-300 lg:static lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"} ${collapsed ? "w-20" : "w-48"} border-r border-gray-200 dark:border-dark-border flex flex-col no-scrollbar`}
+        style={{ minWidth: collapsed ? 80 : 192 }}
       >
         {/* Header with logo */}
         <div className="h-16 flex items-center bg-white dark:bg-dark-input border-b border-gray-200 dark:border-dark-border">
-          <div className="flex items-center space-x-2 w-full">
-            <img
-              src={collapsed ? "/logo_without_text.png" : "/Logo_warranty.png"}
-              alt="WarrantyDesk Logo"
-              className={`${collapsed ? " ml-2 w-10 h-10" : "w-full h-8 max-w-48"} object-contain`}
-            />
-          </div>
+          <div className="flex items-center gap-2 w-full px-1">
+  {/* Icon (simple modern replacement) */}
+  <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-green-500 text-white font-bold">
+    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-5 h-5 text-white"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3l7 4v5c0 5-3.5 9-7 9s-7-4-7-9V7l7-4z" />
+  </svg>
+</div>
+  </div>
+
+  {/* Text Logo */}
+  {!collapsed && (
+    <h1 className="text-md font-bold tracking-tight">
+     <span className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent dark:from-slate-100 dark:to-slate-300">
+  Warranty
+</span>
+      <span className="bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+        Desk
+      </span>
+    </h1>
+  )}
+</div>
 
           <div className="ml-auto hidden lg:block">
             <button
@@ -157,7 +178,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
             </div>
           )}
           {collapsed && (
-            <div className="flex justify-center">
+            <div className="flex flex-col item-center space-y-1">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             </div>
           )}

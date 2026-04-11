@@ -15,6 +15,8 @@ export default class ServiceReminderScheduler extends BaseScheduler {
     try {
       this.logInfo("🚀 Service Scheduler Started");
 
+      const now = new Date();
+
       // We calculate time stages relative to scheduled_date
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
@@ -167,8 +169,10 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       );
 
       if (result.success) {
+        this.logInfo(`✅ Success for ${service._id} with product_name ${invoiceItem.product_name} and serial_number ${invoiceItem.serial_number}`);
         await this.handleSuccess(service);
       } else {
+        this.logInfo(`❌ Failure for ${service._id} with product_name ${invoiceItem.product_name} and serial_number ${invoiceItem.serial_number}`);
         await this.handleFailure(service, result.error);
       }
     } catch (error) {

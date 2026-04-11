@@ -115,17 +115,30 @@ const getSummary = async () => {
   );
 
   // 🛠 Today's Service reminders (stage-based logic)
-  const todayEnd = createDateRange(0).end; // today's end
-
   console.log(`\n🛠 Today's Service reminders (stage-based):`);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+  const todayEnd1D = new Date(todayEnd);
+  todayEnd1D.setDate(todayEnd1D.getDate() + 1);
+  const todayEnd3D = new Date(todayEnd);
+  todayEnd3D.setDate(todayEnd3D.getDate() + 3);
 
   const servicesToday = await ServiceSchedule.aggregate([
     {
       $match: {
-        next_reminder_at: { $lte: todayEnd },
-        status: { $nin: ["COMPLETED", "CANCELLED"] },
         deleted_at: null,
         shop_id: SHOP_ID,
+        status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+        $or: [
+          { scheduled_date: { $lte: todayEnd3D, $gt: todayEnd1D }, reminder_stage: { $nin: ["UPCOMING_3D", "UPCOMING_1D", "TODAY", "MISSED", "FOLLOWUP"] } },
+          { scheduled_date: { $lte: todayEnd1D, $gt: todayEnd }, reminder_stage: { $nin: ["UPCOMING_1D", "TODAY", "MISSED", "FOLLOWUP"] } },
+          { scheduled_date: { $lte: todayEnd, $gt: todayStart }, reminder_stage: { $nin: ["TODAY", "MISSED", "FOLLOWUP"] } },
+          { scheduled_date: { $lt: todayStart }, status: { $in: ["PENDING"] }, reminder_stage: { $nin: ["MISSED", "FOLLOWUP"] } },
+          { scheduled_date: { $lt: new Date(todayStart.getTime() - 86400000) }, status: { $in: ["PENDING", "MISSED"] }, reminder_stage: "MISSED" }
+        ]
       },
     },
     {
@@ -436,15 +449,30 @@ const getSummary = async () => {
   );
 
   // 🛠 Services (tomorrow)
-  const tomorrowEnd = createDateRange(1).end;
-
   console.log(`\n🛠 Service reminders (tomorrow run preview - stage-based):`);
+  
+  const tomorrowStart = new Date();
+  tomorrowStart.setHours(0, 0, 0, 0);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const tmrwEnd = new Date(tomorrowStart);
+  tmrwEnd.setDate(tmrwEnd.getDate() + 1);
+  const tmrwEnd1D = new Date(tmrwEnd);
+  tmrwEnd1D.setDate(tmrwEnd1D.getDate() + 1);
+  const tmrwEnd3D = new Date(tmrwEnd);
+  tmrwEnd3D.setDate(tmrwEnd3D.getDate() + 3);
+
   const servicesToProcess = await ServiceSchedule.aggregate([
     {
       $match: {
-        next_reminder_at: { $lte: tomorrowEnd },
-       status: { $nin: ["COMPLETED", "CANCELLED"] },
         deleted_at: null,
+        status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+        $or: [
+          { scheduled_date: { $lte: tmrwEnd3D, $gt: tmrwEnd1D }, reminder_stage: { $nin: ["UPCOMING_3D", "UPCOMING_1D", "TODAY", "MISSED", "FOLLOWUP"] } },
+          { scheduled_date: { $lte: tmrwEnd1D, $gt: tmrwEnd }, reminder_stage: { $nin: ["UPCOMING_1D", "TODAY", "MISSED", "FOLLOWUP"] } },
+          { scheduled_date: { $lte: tmrwEnd, $gt: tomorrowStart }, reminder_stage: { $nin: ["TODAY", "MISSED", "FOLLOWUP"] } },
+          { scheduled_date: { $lt: tomorrowStart }, status: { $in: ["PENDING"] }, reminder_stage: { $nin: ["MISSED", "FOLLOWUP"] } },
+          { scheduled_date: { $lt: new Date(tomorrowStart.getTime() - 86400000) }, status: { $in: ["PENDING", "MISSED"] }, reminder_stage: "MISSED" }
+        ]
       },
     },
     {

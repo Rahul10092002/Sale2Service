@@ -526,8 +526,7 @@ const InvoiceList = () => {
                         {/* Header: icon + invoice number + status pill */}
                         <div className="flex items-start gap-3 mb-3">
                           <div
-                            className="shrink-0 cursor-pointer"
-                            onClick={() => handleViewInvoice(invoice._id)}
+                            className="shrink-0 "
                           >
                             <div className="w-11 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
                               <FileText className="w-6 h-6 text-blue-600" />
@@ -563,6 +562,9 @@ const InvoiceList = () => {
                                 .map((item, i) => (
                                   <span
                                     key={i}
+                                    onClick={() =>
+                                      navigate(`${ROUTES.PRODUCTS}/${item._id}`)
+                                    }
                                     className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full"
                                   >
                                     {item.product_name}
@@ -610,7 +612,7 @@ const InvoiceList = () => {
                         </div>
 
                         <button
-                          className="w-full bg-blue-500 text-white py-1.5.5 rounded-xl text-xs font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                          className="w-full bg-blue-500 text-white py-2 rounded-xl text-xs font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
                           onClick={() => handleViewInvoice(invoice._id)}
                         >
                           <Eye className="w-4 h-4" />
@@ -620,8 +622,7 @@ const InvoiceList = () => {
 
                       {/* ── Desktop Row ── */}
                       <div
-                        className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 items-center p-4 cursor-pointer"
-                        onClick={() => handleViewInvoice(invoice._id)}
+                        className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 items-center p-4 "
                       >
                         <div className="text-ink-secondary dark:text-slate-400">
                           {(currentPage - 1) * 10 + index + 1}
@@ -663,7 +664,10 @@ const InvoiceList = () => {
                                 .map((item, i) => (
                                   <div
                                     key={i}
-                                    className="flex items-center gap-1.5 min-w-0"
+                                    onClick={() =>
+                                      navigate(`${ROUTES.PRODUCTS}/${item._id}`)
+                                    }
+                                    className="flex items-center gap-1.5 min-w-0 cursor-pointer"
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
 

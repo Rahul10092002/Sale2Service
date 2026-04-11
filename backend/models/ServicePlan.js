@@ -47,6 +47,26 @@ const servicePlanSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    service_description: {
+      type: String,
+      trim: true,
+    },
+    completed_services: {
+      type: Number,
+      default: 0,
+    },
+    pending_services: {
+      type: Number,
+      default: 0,
+    },
+    missed_services: {
+      type: Number,
+      default: 0,
+    },
+    cancelled_services: {
+      type: Number,
+      default: 0,
+    },
     notes: {
       type: String,
       trim: true,

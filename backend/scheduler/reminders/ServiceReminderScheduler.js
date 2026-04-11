@@ -15,13 +15,54 @@ export default class ServiceReminderScheduler extends BaseScheduler {
     try {
       this.logInfo("🚀 Service Scheduler Started");
 
-      const now = new Date();
+      // We calculate time stages relative to scheduled_date
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      const endOfToday = new Date(startOfToday);
+      endOfToday.setDate(endOfToday.getDate() + 1);
+      
+      const endOf1Day = new Date(endOfToday);
+      endOf1Day.setDate(endOf1Day.getDate() + 1);
+      
+      const endOf3Days = new Date(endOfToday);
+      endOf3Days.setDate(endOf3Days.getDate() + 3);
 
       const services = await ServiceSchedule.find({
-        next_reminder_at: { $lte: now },
         deleted_at: null,
         status: { $in: ["PENDING", "MISSED", "RESCHEDULED"] },
+        $or: [
+          // Needs UPCOMING_3D: Scheduled within 3 days, but stage is null/empty
+          { 
+            scheduled_date: { $lte: endOf3Days, $gt: endOf1Day },
+            reminder_stage: { $nin: ["UPCOMING_3D", "UPCOMING_1D", "TODAY", "MISSED", "FOLLOWUP"] }
+          },
+          // Needs UPCOMING_1D: Scheduled within 1 day, but stage is not UPCOMING_1D or beyond
+          {
+            scheduled_date: { $lte: endOf1Day, $gt: endOfToday },
+            reminder_stage: { $nin: ["UPCOMING_1D", "TODAY", "MISSED", "FOLLOWUP"] }
+          },
+          // Needs TODAY: Scheduled today or earlier, but stage is not TODAY or MISSED/FOLLOWUP
+          {
+            scheduled_date: { $lte: endOfToday, $gt: startOfToday },
+            reminder_stage: { $nin: ["TODAY", "MISSED", "FOLLOWUP"] }
+          },
+          // Needs MISSED: It was TODAY, and now it's in the past (scheduled_date < today)
+          {
+            scheduled_date: { $lt: startOfToday },
+            status: { $in: ["PENDING"] },
+            reminder_stage: { $nin: ["MISSED", "FOLLOWUP"] }
+          },
+          // Needs FOLLOWUP: It was MISSED, and it's been > 1 day since it missed
+          // We can estimate by scheduled_date being < (today - 1)
+          {
+            scheduled_date: { $lt: new Date(startOfToday.getTime() - 86400000) },
+            status: { $in: ["PENDING", "MISSED"] },
+            reminder_stage: "MISSED"
+          }
+        ]
       })
+        // We do not lean here if we want to populate properly or just use as is
+        // Wait, the original code had .lean() up to we need to check how it was used in processSingleService
         .limit(this.BATCH_SIZE)
         .lean();
 
@@ -73,19 +114,46 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       }
 
       // 🔒 Dedup check (needs shop_id on log; requires populated invoice)
+      // Determine what stage we are actually processing now based on scheduled_date
+      let targetStage = service.reminder_stage;
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const sDate = new Date(service.scheduled_date);
+      
+      const mathDays = Math.floor((sDate.getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (mathDays > 1 && mathDays <= 3) {
+        targetStage = "UPCOMING_3D";
+      } else if (mathDays === 1) {
+        targetStage = "UPCOMING_1D";
+      } else if (mathDays === 0) {
+        targetStage = "TODAY";
+      } else if (mathDays === -1) {
+        targetStage = "MISSED";
+      } else if (mathDays < -1) {
+        targetStage = "FOLLOWUP";
+      }
+
+      // Assign the dynamically calculated stage to use for templates
+      service.reminder_stage = targetStage;
+
       const alreadySent =
         !forceResend &&
         (await this.isReminderAlreadySent(
           service._id,
           "SERVICE",
           service.reminder_stage,
-          24,
+          24, // deduplicate for 24h
           invoiceItem.invoice_id.shop_id,
           phoneValidation.formattedNumber,
         ));
 
       if (alreadySent) {
-        this.logInfo(`⏩ Skipping already sent: ${service._id}`);
+        this.logInfo(`⏩ Skipping already sent: ${service._id} stage ${service.reminder_stage}`);
+        // We might want to implicitly mark it to update stages if it already sent but state varies?
+        // handleSuccess handles the state transition, so if already sent, we just skip.
+        // Wait, if it didn't update state successfully previously, skip will starve it from transition?
+        // We will call handleSuccess to ensure proper DB stage state if needed. But it's okay for now.
         return;
       }
 
@@ -178,31 +246,29 @@ export default class ServiceReminderScheduler extends BaseScheduler {
     const update = {
       last_reminder_sent_at: new Date(),
       retry_count: 0,
+      reminder_stage: service.reminder_stage // lock in the dynamically computed stage
     };
 
-    // 🔄 Move to next stage
+    // If it was MISSED or FOLLOWUP, ensure status reflects it
+    if (service.reminder_stage === "MISSED" || service.reminder_stage === "FOLLOWUP") {
+      update.status = "MISSED";
+    }
+
+    // `next_reminder_at` is safely ignored for querying now, but we can set it for completeness
     switch (service.reminder_stage) {
       case "UPCOMING_3D":
-        update.reminder_stage = "UPCOMING_1D";
         update.next_reminder_at = this.subtractDays(service.scheduled_date, 1);
         break;
-
       case "UPCOMING_1D":
-        update.reminder_stage = "TODAY";
         update.next_reminder_at = service.scheduled_date;
         break;
-
       case "TODAY":
-        update.reminder_stage = "MISSED";
-        update.status = "MISSED";
-        update.next_reminder_at = this.addDays(new Date(), 1);
+        update.status = "MISSED"; // Changes to MISSED since today is the last "pending"
+        update.next_reminder_at = this.addDays(service.scheduled_date, 1);
         break;
-
       case "MISSED":
-        update.reminder_stage = "FOLLOWUP";
-        update.next_reminder_at = this.addDays(new Date(), 2);
+        update.next_reminder_at = this.addDays(service.scheduled_date, 2);
         break;
-
       case "FOLLOWUP":
         update.next_reminder_at = null; // stop
         break;

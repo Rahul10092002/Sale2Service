@@ -326,6 +326,7 @@ export default class InvoiceController {
             service_charge: item.service_plan.service_charge || 0,
             is_active: item.service_plan.is_active !== false,
             created_by: user.userId,
+            pending_services: totalServices,
           });
 
           await servicePlan.save({ session });

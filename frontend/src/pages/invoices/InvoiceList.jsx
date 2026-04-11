@@ -31,18 +31,18 @@ const InvoiceList = () => {
   const [searchIn, setSearchIn] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
- const [filters, setFilters] = useState({
-   payment_status: "",
-   payment_mode: "",
-   date_from: "",
-   date_to: "",
-   due_date_from: "",
-   due_date_to: "",
-   min_amount: "",
-   max_amount: "",
-   overdue: "",
-   quick_filter: "",
- });
+  const [filters, setFilters] = useState({
+    payment_status: "",
+    payment_mode: "",
+    date_from: "",
+    date_to: "",
+    due_date_from: "",
+    due_date_to: "",
+    min_amount: "",
+    max_amount: "",
+    overdue: "",
+    quick_filter: "",
+  });
   const filterRef = useRef(null);
 
   const {
@@ -89,7 +89,7 @@ const InvoiceList = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-3lg:px-8">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
             <div className="h-20 bg-gray-200 rounded"></div>
@@ -139,23 +139,23 @@ const InvoiceList = () => {
   return (
     <>
       <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-3lg:px-8">
           {/* Modern Filters & Search */}
-          <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-6 gap-4">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center justify-between px-3 py-1.5 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-3 gap-2">
+            <div className="flex items-center space-x-2">
               {/* Modern Filter Icon with Dropdown */}
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={toggleFilter}
                   className="flex items-center justify-center bg-blue-100 rounded-md p-2 hover:bg-blue-200 transition-colors"
                 >
-                  <Filter className="h-5 w-5 text-blue-600" />
+                  <Filter className="h-4 w-4 text-blue-600" />
                 </button>
                 {showFilters && (
                   <div className="absolute top-12 left-0 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl shadow-xl p-5 z-10 w-[340px] space-y-4">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b pb-2">
-                      <h3 className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+                      <h3 className="text-xs font-semibold text-gray-800 dark:text-slate-100">
                         Filters
                       </h3>
                       <button
@@ -181,11 +181,13 @@ const InvoiceList = () => {
 
                     {/* Search In */}
                     <div>
-                      <label className="text-xs text-ink-muted dark:text-slate-100">Search In</label>
+                      <label className="text-xs text-ink-muted dark:text-slate-100">
+                        Search In
+                      </label>
                       <select
                         value={searchIn}
                         onChange={(e) => setSearchIn(e.target.value)}
-                        className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
                       >
                         <option value="">All Fields</option>
                         <option value="invoice_number">Invoice #</option>
@@ -201,7 +203,9 @@ const InvoiceList = () => {
                     {/* Payment Filters */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-ink-muted dark:text-slate-500">Status</label>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Status
+                        </label>
                         <select
                           value={filters.payment_status}
                           onChange={(e) =>
@@ -210,7 +214,7 @@ const InvoiceList = () => {
                               payment_status: e.target.value,
                             }))
                           }
-                          className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
+                          className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           <option value="">All</option>
                           <option value="PAID">Paid</option>
@@ -220,7 +224,9 @@ const InvoiceList = () => {
                       </div>
 
                       <div>
-                        <label className="text-xs text-ink-muted dark:text-slate-500">Mode</label>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Mode
+                        </label>
                         <select
                           value={filters.payment_mode}
                           onChange={(e) =>
@@ -229,7 +235,7 @@ const InvoiceList = () => {
                               payment_mode: e.target.value,
                             }))
                           }
-                          className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
+                          className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           <option value="">All</option>
                           <option value="CASH">Cash</option>
@@ -256,7 +262,7 @@ const InvoiceList = () => {
                               date_from: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
+                          className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                         <input
                           type="date"
@@ -267,14 +273,16 @@ const InvoiceList = () => {
                               date_to: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
+                          className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
                     </div>
 
                     {/* Due Date */}
                     <div>
-                      <label className="text-xs text-ink-muted dark:text-slate-500">Due Date</label>
+                      <label className="text-xs text-ink-muted dark:text-slate-500">
+                        Due Date
+                      </label>
                       <div className="grid grid-cols-2 gap-2 mt-1">
                         <input
                           type="date"
@@ -285,7 +293,7 @@ const InvoiceList = () => {
                               due_date_from: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
+                          className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                         <input
                           type="date"
@@ -296,7 +304,7 @@ const InvoiceList = () => {
                               due_date_to: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
+                          className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
                     </div>
@@ -317,7 +325,7 @@ const InvoiceList = () => {
                               min_amount: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
+                          className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                         <input
                           type="number"
@@ -329,7 +337,7 @@ const InvoiceList = () => {
                               max_amount: e.target.value,
                             }))
                           }
-                          className="px-2 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
+                          className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
                     </div>
@@ -344,13 +352,13 @@ const InvoiceList = () => {
                             quick_filter: e.target.value,
                           }))
                         }
-                        className="px-3 py-2 text-sm border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
+                        className="px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                       >
                         <option value="">Quick</option>
                         <option value="today">Today</option>
                       </select>
 
-                      <label className="flex items-center gap-2 text-sm">
+                      <label className="flex items-center gap-2 text-xs">
                         <input
                           type="checkbox"
                           checked={filters.overdue === "true"}
@@ -369,18 +377,18 @@ const InvoiceList = () => {
               </div>
 
               {/* Modern Search Bar */}
-              <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-2 max-w-xs shadow-sm">
-                <Search className="h-5 w-5 text-gray-500 dark:text-slate-400" />
+              <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-1.5 max-w-xs shadow-sm">
+                <Search className="h-4 w-4 text-gray-500 dark:text-slate-400" />
                 <input
                   placeholder="Search invoices..."
-                  className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-sm"
+                  className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-xs"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
             <Link to={`${ROUTES.INVOICES}/new`}>
-              <button className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-sm font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600">
+              <button className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-xs font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600">
                 <Plus className="w-4 h-4" />
                 Create Invoice
               </button>
@@ -467,10 +475,10 @@ const InvoiceList = () => {
             ) : !invoices?.length ? (
               <div className="p-12 text-center">
                 <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
+                <h3 className="text-base font-medium text-ink-base dark:text-slate-100 mb-2">
                   No invoices found
                 </h3>
-                <p className="text-ink-secondary dark:text-slate-400 mb-6">
+                <p className="text-ink-secondary dark:text-slate-400 mb-3">
                   {searchTerm || filters.payment_status
                     ? "No invoices match your search criteria."
                     : "Get started by creating your first invoice."}
@@ -484,7 +492,7 @@ const InvoiceList = () => {
             ) : (
               <div className="">
                 {/* Desktop Header */}
-                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 text-gray-500 dark:text-slate-400 text-sm font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
+                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 text-gray-500 dark:text-slate-400 text-xs font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
                   <div>S No.</div>
                   <div>Invoice Details</div>
                   <div>Items</div>
@@ -507,7 +515,11 @@ const InvoiceList = () => {
                   return (
                     <div
                       key={invoice._id}
-                      className={index % 2 === 0 ? "bg-white dark:bg-dark-card" : "bg-gray-50 dark:bg-dark-subtle"}
+                      className={
+                        index % 2 === 0
+                          ? "bg-white dark:bg-dark-card"
+                          : "bg-gray-50 dark:bg-dark-subtle"
+                      }
                     >
                       {/* ── Mobile Card ── */}
                       <div className="md:hidden p-4 border-b border-gray-100 dark:border-dark-border">
@@ -517,7 +529,7 @@ const InvoiceList = () => {
                             className="shrink-0 cursor-pointer"
                             onClick={() => handleViewInvoice(invoice._id)}
                           >
-                            <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <div className="w-11 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
                               <FileText className="w-6 h-6 text-blue-600" />
                             </div>
                           </div>
@@ -571,15 +583,15 @@ const InvoiceList = () => {
 
                         {/* Amount + Date chips */}
                         <div className="grid grid-cols-3 gap-2 mb-3">
-                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-1.5">
                             <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
                               Total Amount
                             </p>
-                            <p className="text-sm font-semibold text-gray-800">
+                            <p className="text-xs font-semibold text-gray-800">
                               {formatCurrency(invoice.total_amount)}
                             </p>
                           </div>
-                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-1.5">
                             <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
                               Invoice Date
                             </p>
@@ -587,7 +599,7 @@ const InvoiceList = () => {
                               {formatDate(invoice.invoice_date)}
                             </p>
                           </div>
-                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-1.5">
                             <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
                               Due Date
                             </p>
@@ -598,7 +610,7 @@ const InvoiceList = () => {
                         </div>
 
                         <button
-                          className="w-full bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                          className="w-full bg-blue-500 text-white py-1.5.5 rounded-xl text-xs font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
                           onClick={() => handleViewInvoice(invoice._id)}
                         >
                           <Eye className="w-4 h-4" />
@@ -608,7 +620,7 @@ const InvoiceList = () => {
 
                       {/* ── Desktop Row ── */}
                       <div
-                        className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-4 items-center p-4 cursor-pointer"
+                        className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 items-center p-4 cursor-pointer"
                         onClick={() => handleViewInvoice(invoice._id)}
                       >
                         <div className="text-ink-secondary dark:text-slate-400">
@@ -619,15 +631,15 @@ const InvoiceList = () => {
                             className="cursor-pointer"
                             onClick={() => handleViewInvoice(invoice._id)}
                           >
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <div className="w-10 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                               <FileText className="w-6 h-6 text-blue-600" />
                             </div>
                           </div>
                           <div>
-                            <div className="font-bold text-ink-base dark:text-slate-100 text-base">
+                            <div className="font-bold text-ink-base dark:text-slate-100 text-sm">
                               {customerName}
                             </div>
-                            <div className="text-sm text-ink-secondary dark:text-slate-400">
+                            <div className="text-xs text-ink-secondary dark:text-slate-400">
                               <p>
                                 Mobile No.:{" "}
                                 {invoice.customer_id?.whatsapp_number || "N/A"}
@@ -643,7 +655,7 @@ const InvoiceList = () => {
                           </div>
                         </div>
                         {/* Items column */}
-                        <div className="text-sm text-ink-secondary dark:text-slate-400">
+                        <div className="text-xs text-ink-secondary dark:text-slate-400">
                           {invoice.invoice_items?.length > 0 ? (
                             <div className="space-y-1">
                               {invoice.invoice_items
@@ -688,7 +700,7 @@ const InvoiceList = () => {
                         </div>
                         {/* Payment Details column */}
                         <div className="text-ink-secondary dark:text-slate-400">
-                          <div className="text-sm">
+                          <div className="text-xs">
                             <p>
                               Total Amount:{" "}
                               {formatCurrency(invoice.total_amount)}
@@ -703,7 +715,7 @@ const InvoiceList = () => {
                             </p>
                             {invoice.due_date && (
                               <p
-                                className={`text-red-600 text-sm ${new Date(invoice.due_date) < new Date() ? "font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? "text-red-600" : "text-gray-600"}`}
+                                className={`text-red-600 text-xs ${new Date(invoice.due_date) < new Date() ? "font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? "text-red-600" : "text-gray-600"}`}
                               >
                                 Due Date:{" "}
                                 {new Date(invoice.due_date).toLocaleDateString(
@@ -715,7 +727,7 @@ const InvoiceList = () => {
                         </div>
                         <div>
                           <button
-                            className="bg-blue-500 text-white px-3 py-2 rounded-md text-xs font-medium hover:bg-blue-600 transition-colors flex items-center gap-1"
+                            className="bg-blue-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-blue-600 transition-colors flex items-center gap-1"
                             onClick={() => handleViewInvoice(invoice._id)}
                           >
                             <Eye className="w-4 h-4" />
@@ -729,10 +741,10 @@ const InvoiceList = () => {
 
                 {invoices.length === 0 && (
                   <div className="text-center py-8">
-                    <div className="text-ink-secondary dark:text-slate-400 text-lg">
+                    <div className="text-ink-secondary dark:text-slate-400 text-base">
                       No invoices found
                     </div>
-                    <div className="text-ink-muted dark:text-slate-500 text-sm mt-2">
+                    <div className="text-ink-muted dark:text-slate-500 text-xs mt-2">
                       Create your first invoice to get started
                     </div>
                   </div>
@@ -742,9 +754,9 @@ const InvoiceList = () => {
 
             {/* Pagination */}
             {pagination.pages > 1 && (
-              <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="text-sm text-ink-muted dark:text-slate-500">
+              <div className="px-4 sm:px-3 py-1.5 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                  <div className="text-xs text-ink-muted dark:text-slate-500">
                     Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                     {Math.min(
                       pagination.page * pagination.limit,
@@ -784,7 +796,7 @@ const InvoiceList = () => {
                             return (
                               <span
                                 key={pageNum}
-                                className="px-2 py-1 text-sm text-gray-500"
+                                className="px-2 py-1 text-xs text-gray-500"
                               >
                                 ...
                               </span>
@@ -803,7 +815,7 @@ const InvoiceList = () => {
                             }
                             size="sm"
                             onClick={() => handlePageChange(pageNum)}
-                            className="w-8 h-8 p-0 text-sm"
+                            className="w-8 h-8 p-0 text-xs"
                           >
                             {pageNum}
                           </Button>
@@ -827,8 +839,8 @@ const InvoiceList = () => {
 
             {/* Simple pagination info when only 1 page */}
             {pagination.pages <= 1 && (
-              <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
-                <div className="text-sm text-gray-500 text-center">
+              <div className="px-4 sm:px-3 py-1.5 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
+                <div className="text-xs text-gray-500 text-center">
                   Showing {pagination.total || 0} of {pagination.total || 0}{" "}
                   invoices
                 </div>

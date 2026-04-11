@@ -26,6 +26,7 @@ export const ROUTES = {
   LOGS: "/logs",
   FESTIVAL_SCHEDULE: "/festival-schedule",
   SETTINGS: "/settings",
+  NEW_INVOICE: "/invoices/new",
 };
 
 // API endpoints

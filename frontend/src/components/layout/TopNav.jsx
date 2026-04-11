@@ -9,10 +9,10 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="h-16 w-full bg-white dark:bg-dark-input border-b border-gray-200 dark:border-dark-border shadow-sm dark:shadow-glass-dark sticky top-0 z-30 transition-colors duration-200">
+    <div className="w-full sticky top-0 z-50 pt-[env(safe-area-inset-top)] h-[calc(64px+env(safe-area-inset-top))] bg-white dark:bg-dark-input border-b border-gray-200 dark:border-dark-border shadow-sm">
+      {" "}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
         <div className="flex h-full items-center justify-between">
-
           {/* ── Left: sidebar toggle + page title ─────────────────── */}
           <div className="flex items-center">
             <button
@@ -35,12 +35,15 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
 
           {/* ── Right: dark-mode toggle + user info + avatar ───────── */}
           <div className="flex items-center gap-3">
-
             {/* Dark mode toggle */}
             <button
               onClick={toggleDarkMode}
-              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={
+                isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+              }
+              title={
+                isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+              }
               className="relative p-2 rounded-lg text-ink-secondary dark:text-slate-400 hover:bg-surface-hover dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200 group"
             >
               {/* Sun icon — visible in dark mode */}
@@ -126,17 +129,24 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
 
                     {/* Dark mode toggle row inside dropdown */}
                     <button
-                      onClick={() => { toggleDarkMode(); setOpen(false); }}
+                      onClick={() => {
+                        toggleDarkMode();
+                        setOpen(false);
+                      }}
                       className="w-full text-left flex items-center justify-between px-4 py-2 text-sm text-ink-secondary dark:text-slate-300 hover:bg-surface-hover dark:hover:bg-dark-hover transition-colors duration-150"
                     >
                       <span className="flex items-center gap-3">
-                        {isDarkMode
-                          ? <Sun className="w-4 h-4" />
-                          : <Moon className="w-4 h-4" />}
+                        {isDarkMode ? (
+                          <Sun className="w-4 h-4" />
+                        ) : (
+                          <Moon className="w-4 h-4" />
+                        )}
                         {isDarkMode ? "Light mode" : "Dark mode"}
                       </span>
                       {/* visual pill indicator */}
-                      <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors duration-200 ${isDarkMode ? "bg-primary justify-end" : "bg-gray-200 justify-start"}`}>
+                      <span
+                        className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors duration-200 ${isDarkMode ? "bg-primary justify-end" : "bg-gray-200 justify-start"}`}
+                      >
                         <span className="w-3 h-3 rounded-full bg-white shadow-sm" />
                       </span>
                     </button>
@@ -148,7 +158,9 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
 
                     <button
                       className="w-full text-left flex items-center px-4 py-2 text-sm text-ink-secondary dark:text-slate-300 hover:bg-surface-hover dark:hover:bg-dark-hover transition-colors duration-150"
-                      onClick={() => { window.location.href = "/settings"; }}
+                      onClick={() => {
+                        window.location.href = "/settings";
+                      }}
                     >
                       <Settings className="w-4 h-4 mr-3" />
                       Settings
@@ -157,7 +169,10 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
                     <div className="border-t border-gray-200 dark:border-dark-border my-1" />
 
                     <button
-                      onClick={() => { logout && logout(true); setOpen(false); }}
+                      onClick={() => {
+                        logout && logout(true);
+                        setOpen(false);
+                      }}
                       className="w-full text-left flex items-center px-4 py-2 text-sm text-danger hover:bg-danger-light dark:hover:bg-danger/10 transition-colors duration-150"
                     >
                       <LogOut className="w-4 h-4 mr-3" />

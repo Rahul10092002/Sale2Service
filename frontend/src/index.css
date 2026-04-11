@@ -141,7 +141,20 @@
     -moz-appearance: textfield !important;
   }
 }
+/* Enable safe area support */
+:root {
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
 
+/* Utility classes */
+.safe-top {
+  padding-top: var(--safe-top);
+}
+
+.safe-bottom {
+  padding-bottom: var(--safe-bottom);
+}
 /* ─── Utility layer ─────────────────────────────────────────────────── */
 @layer utilities {
   /* Scrollbar helpers */
@@ -187,3 +200,4 @@
     color: #1a1a2e;
   }
 }
+

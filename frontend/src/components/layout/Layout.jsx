@@ -101,8 +101,8 @@ const Layout = ({ children, title }) => {
       </div>
 
       {/* Right: top nav (sticky) + main area (scrollable) */}
-      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-x-hidden">
-        <div className="sticky top-0 z-20 bg-transparent">
+      <div className="flex-1 flex flex-col  min-h-screen min-w-0 overflow-x-hidden">
+        <div className="sticky top-0 z-40 bg-white dark:bg-dark-input safe-top">
           <TopNav
             onToggleSidebar={onToggleSidebar}
             onToggleCollapse={onToggleCollapse}
@@ -119,7 +119,9 @@ const Layout = ({ children, title }) => {
           onTouchEnd={handleTouchEnd}
           className={`flex-1 overflow-auto transition-all duration-200 ease-in-out bg-gray-50 dark:bg-dark-bg text-ink-base dark:text-slate-100`}
         >
-          <div className="max-w-7xl mx-auto bg-gray-50 dark:bg-dark-bg">{children}</div>
+          <div className="max-w-7xl mx-auto bg-gray-50 dark:bg-dark-bg">
+            {children}
+          </div>
         </main>
       </div>
     </div>

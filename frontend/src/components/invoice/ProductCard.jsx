@@ -406,85 +406,82 @@ const ProductCard = React.memo(function ProductCard({
         </div>
 
         {/* Product Image Upload */}
-        <div className="border-t border-gray-200 pt-2">
-          <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 mb-3">
-            <ImagePlus className="w-4 h-4 text-indigo-600" />
-            Product Image
-          </h4>
+      <div className="border-t border-gray-200 pt-2 space-y-2">
+  
+  <h4 className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
+    <ImagePlus className="w-3.5 h-3.5 text-indigo-600" />
+    Product Image
+  </h4>
 
-          {item.product_image_url ? (
-            <div className="relative inline-block">
-              <img
-                src={item.product_image_url}
-                alt="Product"
-                className="w-24 h-24 object-cover rounded-lg border border-gray-200"
-              />
-              <button
-                type="button"
-                onClick={removeImage}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
-                title="Remove image"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              {/* Upload from gallery */}
-              <label className="flex flex-col items-center justify-center gap-2 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
-                {imageUploading ? (
-                  <span className="text-xs text-indigo-600 text-center px-2">
-                    Uploading…
-                  </span>
-                ) : (
-                  <>
-                    <ImagePlus className="w-6 h-6 text-gray-400" />
-                    <span className="text-xs text-gray-500 text-center">
-                      Add photo
-                    </span>
-                  </>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  disabled={imageUploading}
-                  onChange={handleImageChange}
-                />
-              </label>
+  {item.product_image_url ? (
+    <div className="relative inline-block">
+      <img
+        src={item.product_image_url}
+        alt="Product"
+        className="w-20 h-20 object-cover rounded-md border border-gray-200"
+      />
 
-              {/* Capture from camera */}
-              <label className="flex flex-col items-center justify-center gap-2 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors">
-                {imageUploading ? (
-                  <span className="text-xs text-green-600 text-center px-2">
-                    Uploading…
-                  </span>
-                ) : (
-                  <>
-                    <Camera className="w-6 h-6 text-gray-400" />
-                    <span className="text-xs text-gray-500 text-center">
-                      Take photo
-                    </span>
-                  </>
-                )}
-                <input
-                  ref={cameraInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  capture="environment"
-                  className="hidden"
-                  disabled={imageUploading}
-                  onChange={handleImageChange}
-                />
-              </label>
-            </div>
-          )}
+      <button
+        type="button"
+        onClick={removeImage}
+        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-[2px]"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </div>
+  ) : (
+    <div className="flex gap-2">
 
-          {imageError && (
-            <p className="mt-2 text-xs text-red-600">{imageError}</p>
-          )}
-        </div>
+      {/* Upload */}
+      <label className="flex flex-col items-center justify-center w-20 h-20 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition">
+        {imageUploading ? (
+          <span className="text-[10px] text-indigo-600">Uploading…</span>
+        ) : (
+          <>
+            <ImagePlus className="w-4 h-4 text-gray-400" />
+            <span className="text-[10px] text-gray-500">Upload</span>
+          </>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          disabled={imageUploading}
+          onChange={handleImageChange}
+        />
+      </label>
+
+      {/* Camera */}
+      <label className="flex flex-col items-center justify-center w-20 h-20 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition">
+        {imageUploading ? (
+          <span className="text-[10px] text-green-600">Uploading…</span>
+        ) : (
+          <>
+            <Camera className="w-4 h-4 text-gray-400" />
+            <span className="text-[10px] text-gray-500">Camera</span>
+          </>
+        )}
+
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          capture="environment"
+          className="hidden"
+          disabled={imageUploading}
+          onChange={handleImageChange}
+        />
+      </label>
+
+    </div>
+  )}
+
+  {imageError && (
+    <p className="text-[11px] text-red-600">{imageError}</p>
+  )}
+</div>
 
         <div className="border-t border-gray-200 pt-2">
           <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2 mb-3">

@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import TopNav from "./TopNav.jsx";
 import Sidebar from "./Sidebar.jsx";
+import MobileBottomNav from "./MobileBottomNav.jsx";
 import ToastContainer from "../ui/ToastContainer.jsx";
 import { ROUTES } from "../../utils/constants.js";
 
@@ -21,27 +22,9 @@ const SWIPE_THRESHOLD = 60; // minimum horizontal px to trigger navigation
 const SWIPE_ANGLE_LIMIT = 35; // max angle (deg) from horizontal to count as a swipe
 
 const Layout = ({ children, title }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const touchStart = useRef(null);
-
-  // close sidebar overlay on large screens if toggled accidentally
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(false);
-      }
-    };
-    window.addEventListener("resize", handleResize);
-    handleResize();
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const onToggleSidebar = () => setSidebarOpen((s) => !s);
-  const onCloseSidebar = () => setSidebarOpen(false);
-  const onToggleCollapse = () => setCollapsed((c) => !c);
 
   const handleTouchStart = (e) => {
     if (window.innerWidth >= 1024) return; // desktop — no swipe nav
@@ -79,36 +62,19 @@ const Layout = ({ children, title }) => {
   return (
     <div className="h-screen flex bg-gray-50 dark:bg-dark-bg text-ink-base dark:text-slate-100 transition-colors duration-200">
       {/* Left: fixed full-height sidebar (desktop) */}
-      <div
-        className={`hidden lg:block ${collapsed ? "w-20" : "w-48"} h-screen sticky top-0 overflow-auto transition-all duration-200  no-scrollbar`}
-      >
-        <Sidebar
-          isOpen={true}
-          onClose={onCloseSidebar}
-          collapsed={collapsed}
-          onToggleCollapse={onToggleCollapse}
-        />
+      <div className="hidden lg:block h-screen sticky top-0 overflow-auto no-scrollbar border-r border-gray-200 dark:border-dark-border">
+        <Sidebar />
       </div>
 
-      {/* Mobile / overlay Sidebar (keeps existing mobile behavior) */}
+      {/* Mobile Bottom Navigation (Mobile-first ultra compact vision) */}
       <div className="lg:hidden">
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={onCloseSidebar}
-          collapsed={collapsed}
-          onToggleCollapse={onToggleCollapse}
-        />
+        <MobileBottomNav />
       </div>
 
       {/* Right: top nav (sticky) + main area (scrollable) */}
-      <div className="flex-1 flex flex-col  min-h-screen min-w-0 overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden">
         <div className="sticky top-0 z-40 bg-white dark:bg-dark-input safe-top">
-          <TopNav
-            onToggleSidebar={onToggleSidebar}
-            onToggleCollapse={onToggleCollapse}
-            isCollapsed={collapsed}
-            title={title}
-          />
+          <TopNav title={title} />
         </div>
 
         {/* Global toast container */}
@@ -117,7 +83,7 @@ const Layout = ({ children, title }) => {
         <main
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className={`flex-1 overflow-auto transition-all duration-200 ease-in-out bg-gray-50 dark:bg-dark-bg text-ink-base dark:text-slate-100`}
+          className={`flex-1 overflow-auto pb-[80px] lg:pb-0 transition-all duration-200 ease-in-out bg-gray-50 dark:bg-dark-bg text-ink-base dark:text-slate-100`}
         >
           <div className="max-w-7xl mx-auto bg-gray-50 dark:bg-dark-bg">
             {children}

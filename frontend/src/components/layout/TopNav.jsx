@@ -18,7 +18,7 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
             <button
               aria-label="Open sidebar"
               onClick={onToggleSidebar}
-              className="xl:hidden p-2 rounded-lg text-ink-secondary dark:text-slate-400 hover:bg-surface-hover dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors duration-200"
+              className="hidden p-2 rounded-lg text-ink-secondary dark:text-slate-400 hover:bg-surface-hover dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors duration-200"
             >
               <Menu className="w-5 h-5" />
             </button>

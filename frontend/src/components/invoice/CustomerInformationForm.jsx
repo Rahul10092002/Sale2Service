@@ -109,34 +109,43 @@ const CustomerInformationForm = () => {
                 WhatsApp Number *
               </label>
               <div className="relative">
-                <div className="flex">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    step="1"
-                    value={customer.whatsapp_number}
-                    onChange={(e) =>
-                      updateCustomerData({ whatsapp_number: e.target.value })
-                    }
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => {
-                      handleCustomerSearch();
-                      setTimeout(() => setIsFocused(false), 150);
-                    }}
-                    placeholder="+91 9876543210"
-                    error={errors["customer.whatsapp_number"]}
-                    className="rounded-r-none flex-1 h-8 no-spinner"
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleCustomerSearch}
-                    disabled={isSearching || !customer.whatsapp_number}
-                    className="rounded-l-none border-l-0 px-3 h-8 flex items-center justify-center min-w-0"
-                  >
-                    <Search className="w-4 h-4" />
-                  </Button>
-                </div>
+               <div className="flex w-full focus-within:ring-2 focus-within:ring-primary rounded-lg">
+  <Input
+    type="tel"
+    inputMode="numeric"
+    pattern="[0-9]*"
+    value={customer.whatsapp_number}
+    onChange={(e) =>
+      updateCustomerData({ whatsapp_number: e.target.value })
+    }
+    onFocus={() => setIsFocused(true)}
+    onBlur={() => {
+      handleCustomerSearch();
+      setTimeout(() => setIsFocused(false), 150);
+    }}
+    placeholder="+91 9876543210"
+    error={errors["customer.whatsapp_number"]}
+    className="flex-1 h-8 rounded-r-none border-r-0 focus:ring-0 focus:outline-none"
+  />
+
+  <button
+    type="button"
+    onClick={handleCustomerSearch}
+    disabled={isSearching || !customer.whatsapp_number}
+    className={`
+      h-8 px-3 flex items-center justify-center
+      border border-gray-300 dark:border-dark-border
+      border-l-0
+      rounded-r-lg
+      bg-gray-50 dark:bg-dark-input
+      hover:bg-gray-100 dark:hover:bg-dark-hover
+      transition-colors
+      disabled:opacity-50
+    `}
+  >
+    <Search className="w-4 h-4 text-gray-600 dark:text-slate-400" />
+  </button>
+</div>
 
                 {suggestions && suggestions.length > 0 && isFocused && (
                   <div className="absolute z-50 left-0 right-0  bg-white dark: bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg shadow-lg max-h-64 overflow-y-auto">

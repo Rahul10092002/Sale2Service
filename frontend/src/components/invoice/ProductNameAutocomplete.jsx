@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState, useCallback, useEffect } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import { useLazyProductAutocompleteQuery } from "../../features/products/productApi.js";
 
 /**
@@ -30,7 +30,23 @@ export default function ProductNameAutocomplete({
   // Keep a ref to latest suggestions so the blur handler reads current data
   const suggestionsRef = useRef([]);
 
-  const [triggerAutocomplete] = useLazyProductAutocompleteQuery();
+  // UX: Add loading state from RTK Query
+  const [triggerAutocomplete, { isLoading }] = useLazyProductAutocompleteQuery();
+
+  // UX: Highlight matched text helper
+  const highlight = (text, query) => {
+    if (!query) return text;
+    const parts = text.split(new RegExp(`(${query})`, "gi"));
+    return parts.map((part, i) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <span key={i} className="bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-100 px-0.5 rounded">
+          {part}
+        </span>
+      ) : (
+        part
+      )
+    );
+  };
 
   const fetchSuggestions = useCallback(
     async (query) => {
@@ -50,7 +66,7 @@ export default function ProductNameAutocomplete({
         const suggs = result.data?.suggestions ?? [];
         setSuggestions(suggs);
         suggestionsRef.current = suggs;
-        setShowDropdown(suggs.length > 0);
+        setShowDropdown(true); // Always show dropdown if we attempted a search
       } catch {
         setSuggestions([]);
         suggestionsRef.current = [];
@@ -107,6 +123,7 @@ export default function ProductNameAutocomplete({
 
   // Cleanup debounce on unmount
   useEffect(() => () => clearTimeout(debounceRef.current), []);
+
   return (
     <div className="relative">
       <input
@@ -118,16 +135,20 @@ export default function ProductNameAutocomplete({
         placeholder={placeholder}
         autoComplete="off"
         className={
-          "w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors placeholder-gray-400 dark:bg-dark-card dark:border-dark-border dark:text-slate-100 " +
-          (error
-            ? "border-red-500 focus:ring-red-500 focus:border-red-500 bg-white dark:bg-dark-card dark:border-dark-border dark:text-slate-100"
-            : "border-gray-300 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-card dark:border-dark-border dark:text-slate-100")
+          "w-full h-8 px-3 rounded-lg text-xs " +
+          "border border-gray-300 dark:border-dark-border " +
+          "bg-white dark:bg-dark-input " +
+          "text-ink-base dark:text-slate-100 " +
+          "placeholder:text-ink-muted dark:placeholder:text-slate-500 " +
+          "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary " +
+          "transition-colors " +
+          (error ? "border-danger focus:ring-danger/20 focus:border-danger" : "")
         }
       />
 
       {error && (
-        <p className="mt-2 text-sm text-red-600 flex items-center">
-          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+        <p className="mt-1 text-[11px] text-danger flex items-center">
+          <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"
               d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -138,41 +159,55 @@ export default function ProductNameAutocomplete({
         </p>
       )}
 
-      {showDropdown && suggestions.length > 0 && (
+      {showDropdown && (
         <ul
-          className="absolute z-50 left-0 right-0 mt-1 bg-white dark: bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg shadow-lg max-h-64 overflow-y-auto"
+          className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-md shadow-dropdown max-h-60 overflow-auto"
           onMouseDown={(e) => e.preventDefault()}
         >
+          {isLoading && (
+            <li className="px-3 py-2 text-[11px] text-gray-500 italic flex items-center gap-2">
+              <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              Searching...
+            </li>
+          )}
+
+          {!isLoading && suggestions.length === 0 && (
+            <li className="px-3 py-2 text-[11px] text-gray-400">No results found</li>
+          )}
+
           {suggestions.map((s, i) => (
             <li
               key={`${s.product_name}-${i}`}
               onClick={() => handleSelect(s)}
               className={
-                "px-3 py-2 cursor-pointer flex items-start justify-between gap-2 dark:bg-dark-bg dark:border-dark-border dark:text-slate-100 " +
+                "px-2 py-1.5 cursor-pointer flex items-start justify-between gap-2 text-xs " +
                 (i === highlightedIndex
-                  ? "bg-indigo-50 text-indigo-900 dark:bg-indigo-900/30 dark:text-indigo-400"
-                  : "hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-slate-100")
+                  ? "bg-indigo-50 text-indigo-900 dark:bg-indigo-900/30 dark:text-indigo-300"
+                  : "hover:bg-gray-50 dark:hover:bg-dark-hover text-gray-700 dark:text-slate-200")
               }
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{s.product_name}</p>
+                <p className="font-medium truncate text-xs">
+                  {highlight(s.product_name, value)}
+                </p>
+
                 {(s.company || s.product_category) && (
-                  <p className="text-xs text-gray-500 truncate dark:text-slate-500">
-                    {[s.company, s.product_category]
-                      .filter(Boolean)
-                      .join(" · ")}
+                  <p className="text-[10px] text-gray-500 truncate dark:text-slate-500">
+                    {[s.company, s.product_category].filter(Boolean).join(" · ")}
                   </p>
                 )}
               </div>
+
               <div className="shrink-0 flex flex-col items-end gap-0.5">
                 {s.selling_price > 0 && (
-                  <span className="text-xs font-medium text-ink-secondary dark:text-slate-400">
+                  <span className="text-[10px] font-medium text-ink-secondary dark:text-slate-400">
                     ₹{s.selling_price.toLocaleString("en-IN")}
                   </span>
                 )}
+
                 <span
                   className={
-                    "text-[10px] px-1.5 py-0.5 rounded-full font-medium dark:bg-dark-bg dark:border-dark-border dark:text-slate-100 " +
+                    "text-[9px] px-1.5 py-[2px] rounded-full font-medium " +
                     (s.source === "history"
                       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                       : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400")

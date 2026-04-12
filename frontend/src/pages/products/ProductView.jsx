@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import {
   ArrowLeft,
@@ -47,7 +47,19 @@ import { ServiceIntegration } from "../../components/service/index.js";
 const ProductView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
+
+  const routeLabels = {
+    "/products": "Products",
+    "/dashboard": "Dashboard",
+    "/invoices": "Invoices",
+    "/customers": "Customers",
+  };
+
+  const from = location.state?.from || "/products";
+  const label =
+    location.state?.label || routeLabels[location.state?.from] || "Products";
 
   const { data: response, isLoading, error } = useGetProductByIdQuery(id);
 
@@ -395,11 +407,11 @@ const ProductView = () => {
           {/* Header */}
           <div className="mb-3">
             <button
-              onClick={() => navigate(ROUTES.PRODUCTS)}
+              onClick={() => navigate(from)}
               className="inline-flex items-center px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
             >
               <ArrowLeft size={16} className="mr-2" />
-              Back to Products
+              Back to {label}
             </button>
             <h1 className="text-lg font-bold text-ink-base dark:text-slate-100 mt-1">
               Product Details
@@ -907,7 +919,22 @@ const ProductView = () => {
                       <p className="text-xs font-medium text-indigo-500 dark:text-indigo-400 mb-0.5 flex items-center gap-1">
                         <User className="w-3 h-3" /> Customer
                       </p>
-                      <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-200">
+                      <p
+                        className="text-sm font-semibold text-indigo-800 dark:text-indigo-200 cursor-pointer hover:underline"
+                        onClick={() => {
+                          if (product.customer?._id) {
+                            navigate(
+                              `${ROUTES.CUSTOMERS}/${product.customer._id}`,
+                              {
+                                state: {
+                                  from: location.pathname,
+                                  label: "Products",
+                                },
+                              },
+                            );
+                          }
+                        }}
+                      >
                         {product.customer.full_name}
                       </p>
                       <a
@@ -922,7 +949,9 @@ const ProductView = () => {
                     {product.invoice_id && (
                       <button
                         onClick={() =>
-                          navigate(`${ROUTES.INVOICES}/${product.invoice_id}`)
+                          navigate(`${ROUTES.INVOICES}/${product.invoice_id}`, {
+                            state: { from: location.pathname, label: "Products" },
+                          })
                         }
                         className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
                       >

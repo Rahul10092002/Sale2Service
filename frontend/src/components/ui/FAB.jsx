@@ -34,7 +34,7 @@ const FAB = ({ actions = [] }) => {
         </div>
       )}
 
-      <div className="fixed bottom-6 right-4 z-50">
+      <div className="hidden md:block fixed bottom-6 right-4 z-50">
         <button
           onClick={() => setOpen((s) => !s)}
           aria-expanded={open}

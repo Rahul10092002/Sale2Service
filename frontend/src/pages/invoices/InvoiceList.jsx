@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Plus,
   Search,
@@ -10,16 +10,16 @@ import {
   ChevronRight,
   Download,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button, Input, SelectField } from "../../components/ui/index.js";
 import { useGetInvoicesQuery } from "../../features/invoices/invoiceApi.js";
 import { ROUTES } from "../../utils/constants.js";
 import Layout from "../../components/layout/Layout.jsx";
 const Chip = ({ label, onRemove }) => {
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full border border-blue-200 dark:border-blue-800">
       {label}
-      <button onClick={onRemove} className="text-blue-500 hover:text-red-500">
+      <button onClick={onRemove} className="text-blue-500 dark:text-blue-400 hover:text-red-500 dark:hover:text-red-400">
         ✕
       </button>
     </div>
@@ -27,6 +27,7 @@ const Chip = ({ label, onRemove }) => {
 };
 const InvoiceList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchIn, setSearchIn] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -62,7 +63,9 @@ const InvoiceList = () => {
   const pagination = response?.pagination || {};
 
   const handleViewInvoice = (invoiceId) => {
-    navigate(`${ROUTES.INVOICES}/${invoiceId}`);
+    navigate(`${ROUTES.INVOICES}/${invoiceId}`, {
+      state: { from: location.pathname, label: "Invoices" },
+    });
   };
 
   const handlePageChange = (newPage) => {
@@ -127,13 +130,13 @@ const InvoiceList = () => {
   const getPaymentStatusColor = (status) => {
     switch (status) {
       case "PAID":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
       case "PARTIAL":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "UNPAID":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
     }
   };
   return (
@@ -147,7 +150,7 @@ const InvoiceList = () => {
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={toggleFilter}
-                  className="flex items-center justify-center bg-blue-100 rounded-md p-2 hover:bg-blue-200 transition-colors"
+                  className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-md p-2 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                 >
                   <Filter className="h-4 w-4 text-blue-600" />
                 </button>
@@ -388,10 +391,10 @@ const InvoiceList = () => {
               </div>
             </div>
             <Link to={`${ROUTES.INVOICES}/new`}>
-              <button className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-xs font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600">
-                <Plus className="w-4 h-4" />
-                Create Invoice
-              </button>
+                <button className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 hover:text-blue-600">
+                  <Plus className="w-4 h-4" />
+                  Create Invoice
+                </button>
             </Link>
           </div>
           {/* Active Filter Chips */}
@@ -528,16 +531,31 @@ const InvoiceList = () => {
                           <div
                             className="shrink-0 "
                           >
-                            <div className="w-11 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
-                              <FileText className="w-6 h-6 text-blue-600" />
+                            <div className="w-11 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                              <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-ink-base dark:text-slate-100 leading-tight truncate">
+                            <p
+                              className="font-bold text-ink-base dark:text-slate-100 leading-tight truncate cursor-pointer hover:underline"
+                              onClick={() => {
+                                if (invoice.customer_id?._id) {
+                                  navigate(
+                                    `${ROUTES.CUSTOMERS}/${invoice.customer_id._id}`,
+                                    {
+                                      state: {
+                                        from: location.pathname,
+                                        label: "Invoices",
+                                      },
+                                    },
+                                  );
+                                }
+                              }}
+                            >
                               {customerName}
                             </p>
                             {invoice.customer_id?.whatsapp_number && (
-                              <span className="text-xs font-mono text-gray-600 mt-0.5">
+                              <span className="text-xs font-mono text-gray-600 dark:text-slate-400 mt-0.5">
                                 {invoice.customer_id.whatsapp_number}
                               </span>
                             )}
@@ -563,9 +581,14 @@ const InvoiceList = () => {
                                   <span
                                     key={i}
                                     onClick={() =>
-                                      navigate(`${ROUTES.PRODUCTS}/${item._id}`)
+                                      navigate(`${ROUTES.PRODUCTS}/${item._id}`, {
+                                        state: {
+                                          from: location.pathname,
+                                          label: "Invoices",
+                                        },
+                                      })
                                     }
-                                    className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full"
+                                    className="flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full"
                                   >
                                     {item.product_name}
                                     <span className="inline-block max-w-[80px] truncate">
@@ -589,7 +612,7 @@ const InvoiceList = () => {
                             <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
                               Total Amount
                             </p>
-                            <p className="text-xs font-semibold text-gray-800">
+                            <p className="text-xs font-semibold text-gray-800 dark:text-slate-100">
                               {formatCurrency(invoice.total_amount)}
                             </p>
                           </div>
@@ -632,12 +655,27 @@ const InvoiceList = () => {
                             className="cursor-pointer"
                             onClick={() => handleViewInvoice(invoice._id)}
                           >
-                            <div className="w-10 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <FileText className="w-6 h-6 text-blue-600" />
+                            <div className="w-10 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                              <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                             </div>
                           </div>
                           <div>
-                            <div className="font-bold text-ink-base dark:text-slate-100 text-sm">
+                            <div
+                              className="font-bold text-sm text-ink-base dark:text-slate-100 cursor-pointer hover:underline"
+                              onClick={() => {
+                                if (invoice.customer_id?._id) {
+                                  navigate(
+                                    `${ROUTES.CUSTOMERS}/${invoice.customer_id._id}`,
+                                    {
+                                      state: {
+                                        from: location.pathname,
+                                        label: "Invoices",
+                                      },
+                                    },
+                                  );
+                                }
+                              }}
+                            >
                               {customerName}
                             </div>
                             <div className="text-xs text-ink-secondary dark:text-slate-400">
@@ -665,26 +703,31 @@ const InvoiceList = () => {
                                   <div
                                     key={i}
                                     onClick={() =>
-                                      navigate(`${ROUTES.PRODUCTS}/${item._id}`)
+                                      navigate(`${ROUTES.PRODUCTS}/${item._id}`, {
+                                        state: {
+                                          from: location.pathname,
+                                          label: "Invoices",
+                                        },
+                                      })
                                     }
                                     className="flex items-center gap-1.5 min-w-0 cursor-pointer"
                                   >
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
 
                                     {/* Product name full visible */}
-                                    <span className="text-gray-700 shrink-0">
+                                    <span className="text-gray-700 dark:text-slate-200 shrink-0">
                                       {item.product_name}
                                     </span>
 
                                     {/* Only serial truncated */}
                                     <span
-                                      className="truncate max-w-[80px] text-gray-700"
+                                      className="truncate max-w-[80px] text-gray-700 dark:text-slate-300"
                                       title={item?.serial_number}
                                     >
                                       ({item?.serial_number})
                                     </span>
 
-                                    <span className="text-gray-400 shrink-0">
+                                    <span className="text-gray-400 dark:text-slate-500 shrink-0">
                                       ×{item.quantity}
                                     </span>
                                   </div>
@@ -719,7 +762,7 @@ const InvoiceList = () => {
                             </p>
                             {invoice.due_date && (
                               <p
-                                className={`text-red-600 text-xs ${new Date(invoice.due_date) < new Date() ? "font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? "text-red-600" : "text-gray-600"}`}
+                                className={`text-xs ${new Date(invoice.due_date) < new Date() ? "text-red-600 dark:text-red-400 font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? (new Date(invoice.due_date) < new Date() ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-slate-400") : "text-gray-600 dark:text-slate-400"}`}
                               >
                                 Due Date:{" "}
                                 {new Date(invoice.due_date).toLocaleDateString(
@@ -844,7 +887,7 @@ const InvoiceList = () => {
             {/* Simple pagination info when only 1 page */}
             {pagination.pages <= 1 && (
               <div className="px-4 sm:px-3 py-1.5 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
-                <div className="text-xs text-gray-500 text-center">
+                <div className="text-xs text-gray-500 dark:text-slate-400 text-center">
                   Showing {pagination.total || 0} of {pagination.total || 0}{" "}
                   invoices
                 </div>

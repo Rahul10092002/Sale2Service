@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Edit,
@@ -41,6 +41,18 @@ import { LoadingSpinner } from "../../components/ui/index.js";
 const InvoiceView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const routeLabels = {
+    "/products": "Products",
+    "/dashboard": "Dashboard",
+    "/invoices": "Invoices",
+    "/customers": "Customers",
+  };
+
+  const from = location.state?.from || "/invoices";
+  const label =
+    location.state?.label || routeLabels[location.state?.from] || "Invoices";
 
   const { data: invoice, isLoading, error } = useGetInvoiceByIdQuery(id);
 
@@ -333,11 +345,11 @@ const InvoiceView = () => {
           {/* Header */}
           <div className="mb-3">
             <button
-              onClick={() => navigate(ROUTES.INVOICES)}
+              onClick={() => navigate(from)}
               className="inline-flex items-center px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
             >
               <ArrowLeft size={16} className="mr-2" />
-              Back to Invoices
+              Back to {label}
             </button>
             <h1 className="text-lg font-bold text-ink-base dark:text-slate-100 mt-1">
               Invoice {invoiceObj.invoice_number}
@@ -360,7 +372,16 @@ const InvoiceView = () => {
                     </div>
                     {/* Invoice Info */}
                     <div className="text-white">
-                      <h2 className="text-base font-bold">
+                      <h2
+                        className="text-base font-bold cursor-pointer hover:underline"
+                        onClick={() => {
+                          if (invoiceObj.customer_id?._id) {
+                            navigate(`${ROUTES.CUSTOMERS}/${invoiceObj.customer_id._id}`, {
+                              state: { from: location.pathname, label: "Invoices" },
+                            });
+                          }
+                        }}
+                      >
                         {invoiceObj.customer_id?.full_name
                           ? invoiceObj.customer_id.full_name
                               .split(" ")
@@ -405,7 +426,22 @@ const InvoiceView = () => {
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Customer Name
                         </label>
-                        <p className="text-xs font-medium text-ink-base dark:text-slate-100">
+                        <p
+                          className="text-xs font-medium text-ink-base dark:text-slate-100 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 underline"
+                          onClick={() => {
+                            if (invoiceObj.customer_id?._id) {
+                              navigate(
+                                `${ROUTES.CUSTOMERS}/${invoiceObj.customer_id._id}`,
+                                {
+                                  state: {
+                                    from: location.pathname,
+                                    label: "Invoices",
+                                  },
+                                },
+                              );
+                            }
+                          }}
+                        >
                           {invoiceObj.customer_id.full_name
                             .split(" ")
                             .map(
@@ -614,7 +650,9 @@ const InvoiceView = () => {
                               <td
                                 className="py-2 px-2 text-ink-base dark:text-slate-100 underline cursor-pointer"
                                 onClick={() => {
-                                  navigate(`/products/${item._id}`);
+                                  navigate(`${ROUTES.PRODUCTS}/${item._id}`, {
+                                    state: { from: location.pathname, label: "Invoices" },
+                                  });
                                 }}
                               >
                                 <span className="block">{item.product_name}</span>

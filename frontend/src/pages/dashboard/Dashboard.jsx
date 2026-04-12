@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth.js";
 import FAB from "../../components/ui/FAB.jsx";
 import ShortcutGrid from "../../components/ui/ShortcutGrid.jsx";
@@ -27,6 +28,8 @@ import {
 } from "lucide-react";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [period, setPeriod] = useState("today");
 
   // Fetch dashboard data
@@ -55,7 +58,7 @@ const Dashboard = () => {
   const shortcutItems = [
     {
       label: "New Invoice",
-      onClick: () => (window.location.href = "/invoices/new"),
+      onClick: () => navigate("/invoices/new"),
     },
 
   ];
@@ -120,7 +123,7 @@ const Dashboard = () => {
                     trend={summary.revenue?.changePercentage}
                     icon={IndianRupee}
                     color="blue"
-                    onClick={() => (window.location.href = "/invoices")}
+                    onClick={() => navigate("/invoices")}
                   />
                   <MetricCard
                     title="Invoices"
@@ -128,7 +131,7 @@ const Dashboard = () => {
                     subtitle={`${summary.invoices?.paid?.count || 0} paid, ${summary.invoices?.unpaid?.count || 0} unpaid`}
                     icon={FileText}
                     color="purple"
-                    onClick={() => (window.location.href = "/invoices")}
+                    onClick={() => navigate("/invoices")}
                   />
                   <MetricCard
                     title="Customers"
@@ -136,7 +139,7 @@ const Dashboard = () => {
                     subtitle={`${summary.customers?.new || 0} new, ${summary.customers?.active || 0} active`}
                     icon={Users}
                     color="green"
-                    onClick={() => (window.location.href = "/customers")}
+                    onClick={() => navigate("/customers")}
                   />
                    <MetricCard
                     title="Service Visits"
@@ -144,7 +147,7 @@ const Dashboard = () => {
                     subtitle={`${summary.services?.completed || 0} completed, ${summary.services?.scheduled || 0} scheduled`}
                     icon={Wrench}
                     color="orange"
-                    onClick={() => (window.location.href = "/services")}
+                    onClick={() => navigate("/services")}
                   />
                 </div>
                  
@@ -218,7 +221,7 @@ const Dashboard = () => {
               </p>
               <button
                 className="mt-4 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:bg-primary-hover transition-colors w-full sm:w-auto"
-                onClick={() => (window.location.href = "/invoices/new")}
+                onClick={() => navigate("/invoices/new")}
               >
                 Create Invoice
               </button>
@@ -232,7 +235,7 @@ const Dashboard = () => {
         actions={[
           {
             label: "New Invoice",
-            onClick: () => (window.location.href = "/invoices/new"),
+            onClick: () => navigate("/invoices/new"),
           },
           {
             label: "Refresh Data",

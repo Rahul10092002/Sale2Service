@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   Table,
@@ -11,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+
 import { Button, Input } from "../../components/ui/index.js";
 import { useGetProductsQuery } from "../../features/products/productApi.js";
 import SerialScanner from "../../components/invoice/SerialScanner.jsx";
@@ -82,6 +83,7 @@ const DEFAULT_FILTERS = {
 
 const Products = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [showServiceTable, setShowServiceTable] = useState(null);
@@ -132,7 +134,9 @@ const Products = () => {
   }, [pagination.pages]);
 
   const handleViewProduct = (productId) => {
-    navigate(`${ROUTES.PRODUCTS}/${productId}`);
+    navigate(`${ROUTES.PRODUCTS}/${productId}`, {
+      state: { from: location.pathname, label: "Products" },
+    });
   };
 
   const formatCurrency = (amount) => {
@@ -192,7 +196,7 @@ const getWarrantyInfo = (product) => {
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center justify-center bg-blue-100 rounded-md p-2 hover:bg-blue-200 transition-colors"
+                  className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-md p-2 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                 >
                   <Filter className="h-4 w-4 text-blue-600" />
                 </button>
@@ -387,7 +391,7 @@ const getWarrantyInfo = (product) => {
             ) : !products.length ? (
               <div className="p-12 text-center">
                 <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">
                   No products found
                 </h3>
               </div>
@@ -418,18 +422,18 @@ const getWarrantyInfo = (product) => {
                           className="shrink-0 cursor-pointer"
                           onClick={() => handleViewProduct(product._id)}
                         >
-                          <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
-                            <Package className="w-6 h-6 text-blue-600" />
+                          <div className="w-11 h-11 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                            <Package className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 capitalize leading-tight truncate">
+                          <p className="font-bold text-gray-900 dark:text-slate-100 capitalize leading-tight truncate">
                             {product.product_name}
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                             {product.company} · {product.model_number}
                           </p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-gray-400 dark:text-slate-500">
                             S/N: {product.serial_number}
                           </p>
                           {batteryLine && (
@@ -441,8 +445,8 @@ const getWarrantyInfo = (product) => {
                         <span
                           className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 mt-0.5 ${
                             product.status === "ACTIVE"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-500"
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
                           }`}
                         >
                           {product.status}
@@ -453,7 +457,7 @@ const getWarrantyInfo = (product) => {
                       <div className="grid grid-cols-2 gap-2 mb-3">
                         <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
                           <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">Price</p>
-                          <p className="text-sm font-semibold text-gray-800">
+                          <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
                             {formatCurrency(product.selling_price)}
                           </p>
                         </div>
@@ -466,7 +470,7 @@ const getWarrantyInfo = (product) => {
                               const w = getWarrantyInfo(product);
                               if (!w)
                                 return (
-                                  <p className="text-xs text-gray-400">
+                                  <p className="text-xs text-gray-400 dark:text-slate-500">
                                     No Warranty
                                   </p>
                                 );
@@ -475,11 +479,11 @@ const getWarrantyInfo = (product) => {
                                 <div className="flex flex-col gap-1">
                                   {/* Duration + Type */}
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-xs font-semibold text-gray-800">
+                                    <span className="text-xs font-semibold text-gray-800 dark:text-slate-100">
                                       {product.warranty_duration_months}M
                                     </span>
 
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300">
                                       {product.warranty_type}
                                     </span>
 
@@ -487,10 +491,10 @@ const getWarrantyInfo = (product) => {
                                     <span
                                       className={`text-[10px] px-2 py-0.5 rounded-full ${
                                         w.isExpired
-                                          ? "bg-red-100 text-red-600"
+                                          ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
                                           : w.isExpiringSoon
-                                            ? "bg-yellow-100 text-yellow-600"
-                                            : "bg-green-100 text-green-600"
+                                            ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                            : "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
                                       }`}
                                     >
                                       {w.isExpired
@@ -502,7 +506,7 @@ const getWarrantyInfo = (product) => {
                                   </div>
 
                                   {/* Dates */}
-                                  <div className="text-[11px] text-gray-500">
+                                  <div className="text-[11px] text-gray-500 dark:text-slate-400">
                                     {w.start.toLocaleDateString("en-IN")} →{" "}
                                     {w.end.toLocaleDateString("en-IN")}
                                   </div>
@@ -511,8 +515,8 @@ const getWarrantyInfo = (product) => {
                                   <div
                                     className={`text-[11px] font-medium ${
                                       w.isExpired
-                                        ? "text-red-500"
-                                        : "text-green-600"
+                                        ? "text-red-500 dark:text-red-400"
+                                        : "text-green-600 dark:text-green-400"
                                     }`}
                                   >
                                     {w.isExpired
@@ -522,7 +526,7 @@ const getWarrantyInfo = (product) => {
 
                                   {/* Pro warranty */}
                                   {product.pro_warranty_end_date && (
-                                    <div className="text-[10px] text-indigo-600">
+                                    <div className="text-[10px] text-indigo-600 dark:text-indigo-300">
                                       Pro till{" "}
                                       {new Date(
                                         product.pro_warranty_end_date,
@@ -548,10 +552,10 @@ const getWarrantyInfo = (product) => {
                         {product.hasServicePlan && (
                           <button
                             onClick={() => setShowServiceTable(product)}
-                            className="p-1 rounded-md hover:bg-blue-100"
+                            className="p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30"
                             title="View Service Table"
                           >
-                            <span className="w-3.5 h-3.5 text-blue-600">
+                            <span className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400">
                               View Services
                             </span>
                           </button>
@@ -560,29 +564,59 @@ const getWarrantyInfo = (product) => {
 
                       {/* Customer + Invoice */}
                       {product.customer ? (
-                        <div className="bg-indigo-50 rounded-lg px-3 py-2 mb-3">
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg px-3 py-2 mb-3">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                              <span className="text-sm font-medium text-ink-base dark:text-slate-200 truncate">
+                               <span
+                                className="text-sm font-medium text-ink-base dark:text-slate-200 truncate cursor-pointer hover:underline"
+                                onClick={() => {
+                                  if (product.customer?._id) {
+                                    navigate(
+                                      `${ROUTES.CUSTOMERS}/${product.customer._id}`,
+                                      {
+                                        state: {
+                                          from: location.pathname,
+                                          label: "Products",
+                                        },
+                                      },
+                                    );
+                                  }
+                                }}
+                              >
                                 {product.customer.full_name}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1 text-gray-500 shrink-0">
+                            <div className="flex items-center gap-1 text-gray-500 dark:text-slate-400 shrink-0">
                               <Phone className="w-3 h-3 shrink-0" />
-                              <span className="text-xs">
+                              <span className="text-xs dark:text-gray-400">
                                 {product.customer.whatsapp_number}
                               </span>
                             </div>
                           </div>
                           {product.invoice && (
                             <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-indigo-100 flex-wrap">
-                              <FileText className="w-3 h-3 text-indigo-400 shrink-0" />
-                              <span className="font-mono text-xs text-indigo-700">
+                              <FileText className="w-3 h-3 text-indigo-400 dark:text-indigo-300 shrink-0" />
+                               <span
+                                className="font-mono text-xs text-indigo-700 dark:text-indigo-300 cursor-pointer hover:underline"
+                                onClick={() => {
+                                  if (product.invoice_id) {
+                                    navigate(
+                                      `${ROUTES.INVOICES}/${product.invoice_id}`,
+                                      {
+                                        state: {
+                                          from: location.pathname,
+                                          label: "Products",
+                                        },
+                                      },
+                                    );
+                                  }
+                                }}
+                              >
                                 {product.invoice.invoice_number}
                               </span>
-                              <span className="text-xs text-gray-400">·</span>
-                              <span className="text-xs text-gray-400">
+                              <span className="text-xs text-gray-400 dark:text-slate-500">·</span>
+                              <span className="text-xs text-gray-400 dark:text-slate-500">
                                 {new Date(
                                   product.invoice.invoice_date,
                                 ).toLocaleDateString("en-IN")}
@@ -590,11 +624,11 @@ const getWarrantyInfo = (product) => {
                               <span
                                 className={`ml-auto text-xs font-semibold ${
                                   product.invoice.payment_status === "PAID"
-                                    ? "text-green-600"
+                                    ? "text-green-600 dark:text-green-400"
                                     : product.invoice.payment_status ===
                                         "PARTIAL"
-                                      ? "text-yellow-600"
-                                      : "text-red-500"
+                                      ? "text-yellow-600 dark:text-yellow-400"
+                                      : "text-red-500 dark:text-red-400"
                                 }`}
                               >
                                 {product.invoice.payment_status}
@@ -603,7 +637,7 @@ const getWarrantyInfo = (product) => {
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-400 mb-3">
+                        <p className="text-xs text-gray-400 dark:text-slate-500 mb-3">
                           No customer data
                         </p>
                       )}
@@ -619,7 +653,7 @@ const getWarrantyInfo = (product) => {
 
                     {/* ── Desktop Row ── */}
                     <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-2 items-center p-4">
-                      <div className="text-gray-600 pt-1">
+                      <div className="text-gray-600 dark:text-slate-400 pt-1">
                         {(page - 1) * pagination.limit + index + 1}
                       </div>
                       <div className="flex gap-3 items-center">
@@ -627,12 +661,12 @@ const getWarrantyInfo = (product) => {
                           className="cursor-pointer"
                           onClick={() => handleViewProduct(product._id)}
                         >
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Package className="w-6 h-6 text-blue-600" />
+                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                            <Package className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                           </div>
                         </div>
                         <div>
-                          <div className="font-semibold text-gray-900">
+                          <div className="font-semibold text-gray-900 dark:text-slate-100">
                             {product.product_name}
                           </div>
 
@@ -643,7 +677,7 @@ const getWarrantyInfo = (product) => {
                             </span>
                           </div>
 
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-gray-400 dark:text-slate-500">
                             {product.company} · {product.model_number}
                           </div>
                           {batteryLine && (
@@ -669,8 +703,8 @@ const getWarrantyInfo = (product) => {
                                 <span
                                   className={`ml-1 font-medium ${
                                     w.isExpired
-                                      ? "text-red-500"
-                                      : "text-green-600"
+                                      ? "text-red-500 dark:text-red-400"
+                                      : "text-green-600 dark:text-green-400"
                                   }`}
                                 >
                                   {w.isExpired
@@ -693,7 +727,7 @@ const getWarrantyInfo = (product) => {
                           />
 
                           {product.hasServicePlan && (
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                               Next:{" "}
                               {new Date(
                                 product.nextServiceDate,
@@ -703,7 +737,7 @@ const getWarrantyInfo = (product) => {
                         </div>
                       </div>
                       <div className="text-sm">
-                        <p className="font-medium">
+                        <p className="font-medium dark:text-slate-200">
                           {product.customer?.full_name}
                         </p>
                         <p className="text-xs text-ink-muted dark:text-slate-500">
@@ -712,15 +746,15 @@ const getWarrantyInfo = (product) => {
 
                         {product.invoice && (
                           <>
-                            <p className="text-xs font-mono text-indigo-600 mt-1">
+                            <p className="text-xs font-mono text-indigo-600 dark:text-indigo-400 mt-1">
                               {product.invoice.invoice_number}
                             </p>
 
                             <p
                               className={`text-xs font-medium ${
                                 product.invoice.payment_status === "PAID"
-                                  ? "text-green-600"
-                                  : "text-red-500"
+                                  ? "text-green-600 dark:text-green-400"
+                                  : "text-red-500 dark:text-red-400"
                               }`}
                             >
                               {product.invoice.payment_status} · ₹
@@ -847,7 +881,7 @@ const getWarrantyInfo = (product) => {
                 )}
                 {pagination.pages <= 1 && (
                   <div className="px-4 sm:px-3 py-1.5 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
-                    <div className="text-xs text-gray-500 text-center">
+                    <div className="text-xs text-gray-500 dark:text-slate-400 text-center">
                       Showing {pagination.total || 0} of {pagination.total || 0}{" "}
                       products
                     </div>

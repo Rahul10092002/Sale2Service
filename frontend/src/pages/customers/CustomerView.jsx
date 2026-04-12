@@ -1,6 +1,6 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { showToast } from "../../features/ui/uiSlice.js";
 import {
   ArrowLeft,
@@ -32,6 +32,18 @@ import { ROUTES } from "../../utils/constants.js";
 const CustomerView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const routeLabels = {
+    "/products": "Products",
+    "/dashboard": "Dashboard",
+    "/invoices": "Invoices",
+    "/customers": "Customers",
+  };
+
+  const from = location.state?.from || "/customers";
+  const label =
+    location.state?.label || routeLabels[location.state?.from] || "Customers";
 
   const {
     data: customerResp,
@@ -158,12 +170,12 @@ const CustomerView = () => {
           {/* Header */}
           <div className="mb-3">
             <Button
-              onClick={() => navigate(ROUTES.CUSTOMERS)}
+              onClick={() => navigate(from)}
               variant="outline"
               className="mb-4 flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Customers
+              Back to {label}
             </Button>
           </div>
 
@@ -448,7 +460,17 @@ const CustomerView = () => {
                               key={inv._id}
                               className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle"
                             >
-                              <td className="py-2 px-2 text-xs font-semibold text-ink-base dark:text-slate-200 whitespace-nowrap">
+                              <td
+                                className="py-2 px-2 text-xs font-semibold text-ink-base dark:text-slate-200 whitespace-nowrap cursor-pointer hover:underline"
+                                onClick={() =>
+                                  navigate(`${ROUTES.INVOICES}/${inv._id}`, {
+                                    state: {
+                                      from: location.pathname,
+                                      label: "Customers",
+                                    },
+                                  })
+                                }
+                              >
                                 {inv.invoice_number}
                               </td>
                               <td className="py-2 px-2 text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">
@@ -471,7 +493,14 @@ const CustomerView = () => {
                               <td className="py-2 px-2 text-right">
                                 <div className="flex items-center justify-end gap-1 min-w-[max-content]">
                                   <button
-                                    onClick={() => navigate(`${ROUTES.INVOICES}/${inv._id}`)}
+                                    onClick={() =>
+                                      navigate(`${ROUTES.INVOICES}/${inv._id}`, {
+                                        state: {
+                                          from: location.pathname,
+                                          label: "Customers",
+                                        },
+                                      })
+                                    }
                                     className="p-1.5 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors"
                                     title="View Invoice"
                                   >

@@ -135,8 +135,8 @@ const ProductCard = React.memo(function ProductCard({
   // ── End image upload state ──────────────────────────────────────
 
   return (
-    <div className="bg-white dark:bg-dark-card  border border-gray-200 dark:border-dark-border rounded-lg overflow-hidden">
-      <div className="bg-gray-50 dark:bg-dark-card px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-dark-border">
+    <div className="bg-white dark:bg-dark-card  overflow-hidden">
+      <div className="bg-gray-50 dark:bg-dark-card  py-2 flex items-center justify-between border-b border-gray-200 dark:border-dark-border">
         <h3 className="font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
           <Package className="w-4 h-4 text-indigo-600" />
           Product {index + 1}
@@ -155,7 +155,7 @@ const ProductCard = React.memo(function ProductCard({
         </Button>
       </div>
 
-      <div className="p-3 space-y-3">
+      <div className=" space-y-3">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
           <div className="lg:col-span-1">
             <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">

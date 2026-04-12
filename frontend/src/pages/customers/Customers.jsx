@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { showToast } from "../../features/ui/uiSlice.js";
 import {
   Plus,
@@ -42,6 +42,7 @@ const selectCls =
 
 const Customers = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -186,7 +187,9 @@ const Customers = () => {
                 <div
                   className="shrink-0 cursor-pointer"
                   onClick={() =>
-                    navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)
+                    navigate(`${ROUTES.CUSTOMERS}/${customer._id}`, {
+                      state: { from: location.pathname, label: "Customers" },
+                    })
                   }
                 >
                   <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -274,7 +277,11 @@ const Customers = () => {
 
               <button
                 className="w-full bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
-                onClick={() => navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)}
+                onClick={() =>
+                  navigate(`${ROUTES.CUSTOMERS}/${customer._id}`, {
+                    state: { from: location.pathname, label: "Customers" },
+                  })
+                }
               >
                 View Details
               </button>
@@ -287,7 +294,9 @@ const Customers = () => {
                 <div
                   className="cursor-pointer"
                   onClick={() =>
-                    navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)
+                    navigate(`${ROUTES.CUSTOMERS}/${customer._id}`, {
+                      state: { from: location.pathname, label: "Customers" },
+                    })
                   }
                 >
                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -341,7 +350,9 @@ const Customers = () => {
                 <button
                   className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
                   onClick={() =>
-                    navigate(`${ROUTES.CUSTOMERS}/${customer._id}`)
+                    navigate(`${ROUTES.CUSTOMERS}/${customer._id}`, {
+                      state: { from: location.pathname, label: "Customers" },
+                    })
                   }
                 >
                   View Details

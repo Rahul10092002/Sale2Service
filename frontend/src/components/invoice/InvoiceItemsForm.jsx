@@ -49,7 +49,7 @@ const InvoiceItemsForm = () => {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="px-2 sm:px-4 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
               <Package className="w-5 h-5 text-indigo-600" />
@@ -69,7 +69,7 @@ const InvoiceItemsForm = () => {
           </Button>
         </div>
 
-        <div className="p-4 sm:p-6">
+        <div className="">
           {invoice_items.length === 0 ? (
             <div className="text-center py-8 sm:py-12 border-2 border-dashed border-gray-300 rounded-lg">
               <Package className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />

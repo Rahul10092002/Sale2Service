@@ -21,7 +21,7 @@ const InvoiceDetailsForm = () => {
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
-        <div className="px-3 py-2 border-b border-gray-200 dark:border-dark-border">
+        <div className="px-2 py-2 border-b border-gray-200 dark:border-dark-border">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
             <Receipt className="w-5 h-5 text-indigo-600" />
             Invoice Details

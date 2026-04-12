@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Receipt, Calendar, CreditCard } from "lucide-react";
 import { Input, SelectField } from "../ui/index.js";
 import { INVOICE_CONSTANTS } from "../../utils/constants.js";
@@ -21,21 +21,21 @@ const InvoiceDetailsForm = () => {
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+        <div className="px-3 py-2 border-b border-gray-200 dark:border-dark-border">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
             <Receipt className="w-5 h-5 text-indigo-600" />
             Invoice Details
           </h2>
-          <p className="text-sm text-ink-muted dark:text-slate-500 mt-1">
+          <p className="text-xs text-ink-muted dark:text-slate-500 mt-1">
             Configure invoice settings and payment information
           </p>
         </div>
 
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="p-3 space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {/* Invoice Date */}
             <div>
-              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                 Invoice Date *
               </label>
               <div className="relative">
@@ -103,7 +103,7 @@ const InvoiceDetailsForm = () => {
               invoice.payment_status ===
                 INVOICE_CONSTANTS.PAYMENT_STATUSES.PARTIAL) && (
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Due Date *
                 </label>
                 <Input
@@ -119,7 +119,7 @@ const InvoiceDetailsForm = () => {
             {invoice.payment_status ===
               INVOICE_CONSTANTS.PAYMENT_STATUSES.PARTIAL && (
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Amount Paid *
                 </label>
                 <Input

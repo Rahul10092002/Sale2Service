@@ -26,7 +26,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
     const shopIds = [
       ...new Set(
         invoiceItems
-          .map((item) => item.invoice_id.shop_id)
+          .map((item) => item?.shop_id)
           .filter((shopId) => shopId != null),
       ),
     ];
@@ -88,7 +88,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
         const shopMap = await this.getShopMapForInvoiceItems(expiringWarranties);
         await Promise.all(
           expiringWarranties.map((item) =>
-            this.sendWarrantyExpiryReminder(item, days, shopMap[String(item.invoice_id.shop_id)]),
+            this.sendWarrantyExpiryReminder(item, days, shopMap[String(item.invoice_id?.shop_id)]),
           ),
         );
       }
@@ -124,7 +124,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       const shopMap = await this.getShopMapForInvoiceItems(expiredWarranties);
       await Promise.all(
         expiredWarranties.map((item) =>
-          this.sendWarrantyExpiredReminder(item, shopMap[String(item.invoice_id.shop_id)]),
+          this.sendWarrantyExpiredReminder(item, shopMap[String(item.invoice_id?.shop_id)]),
         ),
       );
     } catch (error) {
@@ -142,13 +142,9 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
     try {
       // Validate invoice item structure
       if (!invoiceItem.invoice_id?.customer_id) {
-        this.logError(
-          "sendWarrantyExpiryReminder",
-          new Error("Invalid invoice item structure"),
-          {
-            itemId: invoiceItem.invoice_item_id,
-          },
-        );
+        this.logInfo("Skipping item with invalid invoice/customer structure", {
+          itemId: invoiceItem.invoice_item_id,
+        });
         return;
       }
 
@@ -246,13 +242,9 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
     try {
       // Validate invoice item structure
       if (!invoiceItem.invoice_id?.customer_id) {
-        this.logError(
-          "sendWarrantyExpiredReminder",
-          new Error("Invalid invoice item structure"),
-          {
-            itemId: invoiceItem.invoice_item_id,
-          },
-        );
+        this.logInfo("Skipping item with invalid invoice/customer structure", {
+          itemId: invoiceItem.invoice_item_id,
+        });
         return;
       }
 

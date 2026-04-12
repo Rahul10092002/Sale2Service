@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import {
   Trash2,
   ChevronDown,
@@ -136,7 +136,7 @@ const ProductCard = React.memo(function ProductCard({
 
   return (
     <div className="bg-white dark:bg-dark-card  border border-gray-200 dark:border-dark-border rounded-lg overflow-hidden">
-      <div className="bg-gray-50 dark:bg-dark-card px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-dark-border">
+      <div className="bg-gray-50 dark:bg-dark-card px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-dark-border">
         <h3 className="font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
           <Package className="w-4 h-4 text-indigo-600" />
           Product {index + 1}
@@ -155,10 +155,10 @@ const ProductCard = React.memo(function ProductCard({
         </Button>
       </div>
 
-      <div className="p-4 space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="lg:col-span-2">
-            <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+      <div className="p-3 space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+          <div className="lg:col-span-1">
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
               Serial Number *
             </label>
             <div className="flex gap-2 items-start">
@@ -177,7 +177,7 @@ const ProductCard = React.memo(function ProductCard({
                 type="button"
                 onClick={() => setShowScanner(true)}
                 title="Scan barcode / QR code"
-                className="shrink-0 flex items-center gap-1.5 px-3 py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium rounded-lg transition-colors"
+                className="shrink-0 flex items-center gap-1.5 px-2 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 <ScanLine className="w-4 h-4" />
                 <span className="hidden sm:inline">Scan</span>
@@ -195,7 +195,7 @@ const ProductCard = React.memo(function ProductCard({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
               Product Name *
             </label>
             <ProductNameAutocomplete
@@ -265,7 +265,7 @@ const ProductCard = React.memo(function ProductCard({
 
           {item.product_category === "BATTERY" && (
             <>
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-1">
                 <SelectField
                   id={`battery-type-${item.id}`}
                   label="Battery type"
@@ -298,7 +298,7 @@ const ProductCard = React.memo(function ProductCard({
                 INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                    <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                       Vehicle name *
                     </label>
                     <Input
@@ -314,7 +314,7 @@ const ProductCard = React.memo(function ProductCard({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                    <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                       Number plate *
                     </label>
                     <Input
@@ -335,7 +335,7 @@ const ProductCard = React.memo(function ProductCard({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
               Company/Brand *
             </label>
             <Input
@@ -348,7 +348,7 @@ const ProductCard = React.memo(function ProductCard({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
               Model Number *
             </label>
             <Input
@@ -363,7 +363,7 @@ const ProductCard = React.memo(function ProductCard({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
               Selling Price *
             </label>
             <Input
@@ -385,7 +385,7 @@ const ProductCard = React.memo(function ProductCard({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
               Quantity
             </label>
             <Input
@@ -406,7 +406,7 @@ const ProductCard = React.memo(function ProductCard({
         </div>
 
         {/* Product Image Upload */}
-        <div className="border-t border-gray-200 pt-4">
+        <div className="border-t border-gray-200 pt-2">
           <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2 mb-3">
             <ImagePlus className="w-4 h-4 text-indigo-600" />
             Product Image
@@ -417,7 +417,7 @@ const ProductCard = React.memo(function ProductCard({
               <img
                 src={item.product_image_url}
                 alt="Product"
-                className="w-32 h-32 object-cover rounded-lg border border-gray-200"
+                className="w-24 h-24 object-cover rounded-lg border border-gray-200"
               />
               <button
                 type="button"
@@ -431,7 +431,7 @@ const ProductCard = React.memo(function ProductCard({
           ) : (
             <div className="flex items-center gap-3">
               {/* Upload from gallery */}
-              <label className="flex flex-col items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+              <label className="flex flex-col items-center justify-center gap-2 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
                 {imageUploading ? (
                   <span className="text-xs text-indigo-600 text-center px-2">
                     Uploading…
@@ -455,7 +455,7 @@ const ProductCard = React.memo(function ProductCard({
               </label>
 
               {/* Capture from camera */}
-              <label className="flex flex-col items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors">
+              <label className="flex flex-col items-center justify-center gap-2 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors">
                 {imageUploading ? (
                   <span className="text-xs text-green-600 text-center px-2">
                     Uploading…
@@ -486,13 +486,13 @@ const ProductCard = React.memo(function ProductCard({
           )}
         </div>
 
-        <div className="border-t border-gray-200 pt-4">
+        <div className="border-t border-gray-200 pt-2">
           <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2 mb-3">
             <Shield className="w-4 h-4 text-indigo-600" />
             Warranty Information
           </h4>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
             <div>
               <SelectField
                 id={`warranty-type-${item.id}`}
@@ -514,7 +514,7 @@ const ProductCard = React.memo(function ProductCard({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                 Warranty Duration (Months) *
               </label>
               <Input
@@ -539,7 +539,7 @@ const ProductCard = React.memo(function ProductCard({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                 Warranty Start Date *
               </label>
               <Input
@@ -555,7 +555,7 @@ const ProductCard = React.memo(function ProductCard({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                 Warranty End Date
               </label>
               <Input
@@ -570,8 +570,8 @@ const ProductCard = React.memo(function ProductCard({
             </div>
 
             {item.warranty_type === "PRO" && (
-              <div className="lg:col-span-2">
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+              <div className="lg:col-span-1">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Pro Warranty End Date
                 </label>
                 <Input
@@ -590,7 +590,7 @@ const ProductCard = React.memo(function ProductCard({
         </div>
 
         {/* Service Plan Configuration Section */}
-        <div className="border-t border-gray-200 pt-4">
+        <div className="border-t border-gray-200 pt-2">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
               <Settings className="w-4 h-4 text-indigo-600" />
@@ -653,7 +653,7 @@ const ProductCard = React.memo(function ProductCard({
 
           {item.service_plan_enabled && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                 <div>
                   <SelectField
                     id={`service-interval-type-${item.id}`}
@@ -692,7 +692,7 @@ const ProductCard = React.memo(function ProductCard({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Service Interval Value
                   </label>
                   <Input
@@ -734,7 +734,7 @@ const ProductCard = React.memo(function ProductCard({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Service Start Date
                   </label>
                   <Input
@@ -753,7 +753,7 @@ const ProductCard = React.memo(function ProductCard({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Service Charge (₹)
                   </label>
                   <Input
@@ -781,7 +781,7 @@ const ProductCard = React.memo(function ProductCard({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Total Services
                   </label>
                   <Input
@@ -824,7 +824,7 @@ const ProductCard = React.memo(function ProductCard({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Service End Date
                   </label>
                   <Input
@@ -835,8 +835,8 @@ const ProductCard = React.memo(function ProductCard({
                   />
                 </div>
 
-                <div className="lg:col-span-2">
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <div className="lg:col-span-1">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Service Description
                   </label>
                   <textarea
@@ -881,7 +881,7 @@ const ProductCard = React.memo(function ProductCard({
           )}
         </div>
 
-        <div className="border-t border-gray-200 pt-4">
+        <div className="border-t border-gray-200 pt-2">
           <button
             type="button"
             onClick={() => toggleProductMetadata(item.id)}
@@ -900,7 +900,7 @@ const ProductCard = React.memo(function ProductCard({
           {isExpanded && (
             <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Manufacturing Date
                 </label>
                 <Input
@@ -915,7 +915,7 @@ const ProductCard = React.memo(function ProductCard({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Capacity Rating
                 </label>
                 <Input
@@ -929,7 +929,7 @@ const ProductCard = React.memo(function ProductCard({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Voltage
                 </label>
                 <Input
@@ -943,7 +943,7 @@ const ProductCard = React.memo(function ProductCard({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Batch Number
                 </label>
                 <Input
@@ -957,7 +957,7 @@ const ProductCard = React.memo(function ProductCard({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Purchase Source
                 </label>
                 <Input
@@ -971,7 +971,7 @@ const ProductCard = React.memo(function ProductCard({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Cost Price
                 </label>
                 <Input
@@ -992,7 +992,7 @@ const ProductCard = React.memo(function ProductCard({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Margin (%)
                 </label>
                 <Input

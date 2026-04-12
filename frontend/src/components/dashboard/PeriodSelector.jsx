@@ -11,14 +11,14 @@ const PeriodSelector = ({ value, onChange }) => {
   ];
 
   return (
-    <div className="inline-flex rounded-lg border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-input p-1">
+    <div className="inline-flex rounded-lg border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-input p-0.5 shadow-sm">
       {periods.map((period) => (
         <button
           key={period.value}
           onClick={() => onChange(period.value)}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
             value === period.value
-              ? "bg-primary text-white dark:bg-primary-dark"
+              ? "bg-primary text-white dark:bg-primary-dark shadow-sm"
               : "text-ink-secondary dark:text-slate-400 hover:bg-surface-hover dark:hover:bg-dark-hover"
           }`}
         >

@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Activity,
   MessageSquare,
@@ -156,22 +156,41 @@ function Logs() {
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Modern Filters & Search */}
-        <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-6 gap-4">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center justify-between px-3 py-1.5 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-3 gap-2">
+          <div className="flex items-center space-x-2">
             {/* Modern Filter Icon with Dropdown */}
             <div className="relative" ref={filterRef}>
               <button
                 onClick={toggleFilter}
                 className="flex items-center justify-center bg-blue-100 rounded-md p-2 hover:bg-blue-200 transition-colors"
               >
-                <Filter className="h-5 w-5 text-blue-600" />
+                <Filter className="h-4 w-4 text-blue-600" />
               </button>
               {showFilters && (
-                <div className="absolute top-12 left-0 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-md shadow-lg p-4 z-10 w-80">
+                <div className="absolute top-12 left-0 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl shadow-xl p-5 z-10 w-80 space-y-4">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h3 className="text-xs font-semibold text-gray-800 dark:text-slate-100">
+                      Filters
+                    </h3>
+                    <button
+                      onClick={() =>
+                        setFilters({
+                          entity_type: "",
+                          message_status: "",
+                          start_date: "",
+                          end_date: "",
+                        })
+                      }
+                      className="text-xs text-red-500 hover:text-red-600 dark:text-red-400"
+                    >
+                      Clear All
+                    </button>
+                  </div>
                   <div className="grid grid-cols-1 gap-3">
-                    <div className="flex flex-col">
-                      <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                        Entity Type:
+                    <div>
+                      <label className="text-xs text-ink-muted dark:text-slate-500">
+                        Entity Type
                       </label>
                       <select
                         value={filters.entity_type}
@@ -181,7 +200,7 @@ function Logs() {
                             entity_type: e.target.value,
                           }))
                         }
-                        className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                        className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                       >
                         <option value="">All Types</option>
                         <option value="INVOICE">Invoice</option>
@@ -191,9 +210,9 @@ function Logs() {
                       </select>
                     </div>
 
-                    <div className="flex flex-col">
-                      <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                        Status:
+                    <div>
+                      <label className="text-xs text-ink-muted dark:text-slate-500">
+                        Status
                       </label>
                       <select
                         value={filters.message_status}
@@ -203,7 +222,7 @@ function Logs() {
                             message_status: e.target.value,
                           }))
                         }
-                        className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                        className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                       >
                         <option value="">All Status</option>
                         <option value="PENDING">Pending</option>
@@ -215,9 +234,9 @@ function Logs() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="flex flex-col">
-                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                          Date From:
+                      <div>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Date From
                         </label>
                         <input
                           type="date"
@@ -228,12 +247,12 @@ function Logs() {
                               start_date: e.target.value,
                             }))
                           }
-                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
-                      <div className="flex flex-col">
-                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                          Date To:
+                      <div>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Date To
                         </label>
                         <input
                           type="date"
@@ -244,7 +263,7 @@ function Logs() {
                               end_date: e.target.value,
                             }))
                           }
-                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
                     </div>
@@ -254,11 +273,11 @@ function Logs() {
             </div>
 
             {/* Modern Search Bar */}
-            <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-2 max-w-xs shadow-sm">
-              <Search className="h-5 w-5 text-gray-500 dark:text-slate-400" />
+            <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-1.5 max-w-xs shadow-sm">
+              <Search className="h-4 w-4 text-gray-500 dark:text-slate-400" />
               <input
                 placeholder="Search logs..."
-                className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-sm"
+                className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-xs"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -266,7 +285,7 @@ function Logs() {
           </div>
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-sm font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600"
+            className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-xs font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh Data
@@ -358,15 +377,15 @@ function Logs() {
               {/* Desktop Table */}
               <div className="hidden md:block">
                 <table className="min-w-full">
-                  <thead className="bg-gray-200 dark:bg-dark-subtle border-b dark:border-dark-border">
+                  <thead className="bg-gray-200 dark:bg-dark-subtle border-b dark:border-dark-border text-xs font-semibold text-gray-500 dark:text-slate-400">
                     <tr>
-                      <th className="w-1/3 text-left px-4 py-3 text-sm font-semibold text-ink-secondary dark:text-slate-400">
+                      <th className="w-1/3 text-left px-4 py-3">
                         Recipient & Entity Details
                       </th>
-                      <th className="w-1/3 text-left px-4 py-3 text-sm font-semibold text-ink-secondary dark:text-slate-400">
+                      <th className="w-1/3 text-left px-4 py-3">
                         Message & Status Details
                       </th>
-                      <th className="w-1/3 text-left px-4 py-3 text-sm font-semibold text-ink-secondary dark:text-slate-400">
+                      <th className="w-1/3 text-left px-4 py-3">
                         Timing & Retry Details
                       </th>
                     </tr>
@@ -607,9 +626,9 @@ function Logs() {
 
           {/* Pagination */}
           {pagination.pages > 1 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-card ">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-ink-muted dark:text-slate-100">
+            <div className="px-4 sm:px-3 py-1.5 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                <div className="text-xs text-ink-muted dark:text-slate-500">
                   Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                   {Math.min(
                     pagination.page * pagination.limit,
@@ -619,28 +638,27 @@ function Logs() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={pagination.page <= 1}
-                    className="px-3 py-1 rounded-md bg-white dark:bg-dark-card border hover:bg-gray-50 disabled:opacity-50 dark:border-dark-border"
-
+                    className="p-2"
                   >
-                    <ChevronLeft className="w-4 h-4 dark:text-slate-100" />
-                  </button>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
 
                   <div className="flex items-center gap-1">
                     {Array.from(
                       { length: pagination.pages },
                       (_, i) => i + 1,
                     ).map((pageNum) => {
-                      // Show first page, last page, current page, and pages around current
                       const showPage =
                         pageNum === 1 ||
                         pageNum === pagination.pages ||
                         Math.abs(pageNum - pagination.page) <= 1;
 
                       if (!showPage) {
-                        // Show ellipsis
                         if (
                           pageNum === pagination.page - 2 ||
                           pageNum === pagination.page + 2
@@ -648,7 +666,7 @@ function Logs() {
                           return (
                             <span
                               key={pageNum}
-                              className="px-2 py-1 text-sm text-ink-secondary dark:text-slate-100"
+                              className="px-2 py-1 text-xs text-gray-500"
                             >
                               ...
                             </span>
@@ -658,24 +676,32 @@ function Logs() {
                       }
 
                       return (
-                        <button
+                        <Button
                           key={pageNum}
+                          variant={
+                            pageNum === pagination.page
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
                           onClick={() => handlePageChange(pageNum)}
-                          className={`w-8 h-8 p-0 text-sm rounded ${pageNum === pagination.page ? "bg-indigo-600 text-white" : "bg-white border dark:bg-dark-card dark:border-dark-border"}`} 
+                          className="w-8 h-8 p-0 text-xs"
                         >
                           {pageNum}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
 
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={pagination.page >= pagination.pages}
-                    className="px-3 py-1 rounded-md bg-white dark:bg-dark-card border hover:bg-gray-50 disabled:opacity-50 dark:border-dark-border"
+                    className="p-2"
                   >
                     <ChevronRight className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -683,8 +709,8 @@ function Logs() {
 
           {/* Simple pagination info when only 1 page */}
           {pagination.pages <= 1 && logs.length > 0 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
-              <div className="text-sm text-ink-secondary dark:text-slate-400 text-center">
+            <div className="px-4 sm:px-3 py-1.5 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
+              <div className="text-xs text-gray-500 text-center">
                 Showing {pagination.total || 0} of {pagination.total || 0} logs
               </div>
             </div>

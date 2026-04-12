@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { showToast } from "../../features/ui/uiSlice.js";
@@ -139,13 +139,13 @@ const UserView = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg p-4">
+      <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg p-2">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-6">
+          <div className="mb-3">
             <button
               onClick={() => navigate(ROUTES.USERS)}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
+              className="inline-flex items-center px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
             >
               <ArrowLeft size={16} className="mr-2" />
               Back to Users
@@ -153,19 +153,19 @@ const UserView = () => {
           </div>
 
           {/* Main Content Grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
             {/* Left Column */}
-            <div className="xl:col-span-2 space-y-6">
+            <div className="xl:col-span-2 space-y-3">
               <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
-                <div className="bg-gradient-to-r from-green-500 to-teal-600 px-6 py-4">
+                <div className="bg-gradient-to-r from-green-500 to-teal-600 px-3 py-2">
                   <div className="flex items-center space-x-4">
                     <div className="shrink-0">
-                      <div className="w-16 h-16 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center">
-                        <Users className="w-8 h-8 text-indigo-500" />
+                      <div className="w-12 h-12 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center">
+                        <Users className="w-6 h-6 text-indigo-500" />
                       </div>
                     </div>
                     <div className="text-white flex-1 min-w-0">
-                      <h2 className="text-2xl font-bold">{user.name}</h2>
+                      <h2 className="text-lg font-bold">{user.name}</h2>
                       <p className="text-indigo-100 mt-1 flex items-center gap-1 flex-wrap">
                         <Mail className="w-4 h-4" />
                         <span>{user.email}</span>
@@ -190,41 +190,41 @@ const UserView = () => {
 
               {/* Basic Information */}
               <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2 flex items-center gap-2">
                     <Users className="w-5 h-5 text-indigo-600" />
                     Basic Information
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Full Name
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                         {user.name}
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Email Address
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                         {user.email}
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Phone Number
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                         {user.phone || "—"}
                       </p>
                     </div>
-                    <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border border-green-200 dark:border-green-900/50">
+                    <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-2 border border-green-200 dark:border-green-900/50">
                       <label className="block text-xs font-medium text-green-600 dark:text-green-400 mb-1">
                         Status
                       </label>
-                      <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                      <p className="text-xs font-medium text-green-800 dark:text-green-300">
                         Active
                       </p>
                     </div>
@@ -234,12 +234,12 @@ const UserView = () => {
 
               {/* Role & Permissions */}
               <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2 flex items-center gap-2">
                     <Shield className="w-5 h-5 text-green-600" />
                     Role & Permissions
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div
                       className={`rounded-lg p-3 border ${
                         user.role === "OWNER"
@@ -272,11 +272,11 @@ const UserView = () => {
                         {user.role}
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Created At
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 flex items-center gap-1">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100 flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500 shrink-0" />
                         {new Date(user.created_at).toLocaleDateString("en-IN", {
                           year: "numeric",
@@ -293,20 +293,20 @@ const UserView = () => {
             {/* Right Column — Quick Actions */}
             <div className="xl:col-span-1">
               <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border sticky top-4">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2">
                     Quick Actions
                   </h3>
                   <div className="space-y-3">
                     {user.role !== "OWNER" && (
                       <button
                         onClick={openEditModal}
-                        className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
+                        className="w-full flex items-center space-x-2 p-2 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
                       >
                         <div className="shrink-0 group-hover:scale-110 transition-transform duration-200">
-                          <Edit3 className="w-5 h-5 text-blue-600" />
+                          <Edit3 className="w-4 h-4 text-blue-600" />
                         </div>
-                        <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
+                        <span className="text-xs font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
                           Edit User
                         </span>
                       </button>
@@ -314,12 +314,12 @@ const UserView = () => {
                     {user.role !== "OWNER" && (
                       <button
                         onClick={() => setShowDeleteModal(true)}
-                        className="w-full flex items-center space-x-3 p-3 text-left border border-red-200 dark:border-red-900/50 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-300 dark:hover:border-red-800 transition-all duration-200 group"
+                        className="w-full flex items-center space-x-2 p-2 text-left border border-red-200 dark:border-red-900/50 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-300 dark:hover:border-red-800 transition-all duration-200 group"
                       >
                         <div className="shrink-0 group-hover:scale-110 transition-transform duration-200">
-                          <Trash2 className="w-5 h-5 text-red-600" />
+                          <Trash2 className="w-4 h-4 text-red-600" />
                         </div>
-                        <span className="text-sm font-medium text-red-700 dark:text-red-400 group-hover:text-red-900 dark:group-hover:text-red-300">
+                        <span className="text-xs font-medium text-red-700 dark:text-red-400 group-hover:text-red-900 dark:group-hover:text-red-300">
                           Delete User
                         </span>
                       </button>
@@ -341,7 +341,7 @@ const UserView = () => {
         <DialogHeader
           title={
             <div className="flex items-center gap-2">
-              <Edit3 className="w-5 h-5 text-blue-600" />
+              <Edit3 className="w-4 h-4 text-blue-600" />
               <span>Edit User</span>
             </div>
           }

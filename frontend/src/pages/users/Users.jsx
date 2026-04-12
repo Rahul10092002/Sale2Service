@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../features/ui/uiSlice.js";
-import { Plus, Eye, Users as UsersIcon } from "lucide-react";
+import { Plus, Eye, Users as UsersIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   useGetUsersQuery,
@@ -96,20 +96,20 @@ const Users = () => {
     <>
       <div className="p-6">
         {/* Users management table */}
-        <div className="flex justify-between items-center mb-6">
-          <Button
+        <div className="flex justify-end items-center mb-3">
+          <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-xs font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600"
           >
             <Plus className="w-4 h-4" />
             Add User
-          </Button>
+          </button>
         </div>
 
         {/* Users Grid */}
         <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-100 dark:border-dark-border space-y-2">
           {/* Header */}
-          <div className="hidden md:grid md:grid-cols-[60px_2fr_1fr_120px] gap-4 p-4 bg-gray-50 dark:bg-dark-input rounded-lg text-sm font-medium text-ink-muted dark:text-slate-400">
+          <div className="hidden md:grid md:grid-cols-[60px_2fr_1fr_120px] gap-2 text-gray-500 dark:text-slate-400 text-xs font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
             <div>S.No</div>
             <div>USER DETAILS</div>
             <div>ROLE & DATE</div>
@@ -185,7 +185,7 @@ const Users = () => {
                 </div>
 
                 {/* ── Desktop Row ── */}
-                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-4 items-center p-4">
+                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-2 items-center p-4">
                   <div className="text-ink-secondary dark:text-slate-400">{index + 1}</div>
                   <div className="flex gap-3 items-center">
                     <div

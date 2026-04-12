@@ -242,7 +242,7 @@ const InvoiceGenerationPage = () => {
   if (submitResult?.success) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
+        <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg py-3">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -284,12 +284,12 @@ const InvoiceGenerationPage = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
+      <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg py-3">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Form Content */}
-            <div className="lg:col-span-4 space-y-8">
+            <div className="lg:col-span-4 space-y-4">
               {/* Customer Information Section */}
               <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
                 <div className="">
@@ -314,19 +314,19 @@ const InvoiceGenerationPage = () => {
 
               {/* Submit Section */}
               <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">
+                <div className="px-3 py-2 border-b border-gray-200">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-slate-100">
                     Review & Submit
                   </h2>
-                  <p className="text-sm text-gray-500 dark:text-slate-100 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-slate-100 mt-1">
                     Apply discount and create the invoice
                   </p>
                 </div>
-                <div className="px-6 py-4">
+                <div className="px-3 py-2">
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                     <div className="flex flex-wrap gap-6 items-end flex-1">
                       <div className="max-w-xs w-full sm:w-auto">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-100 mb-2">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-100 mb-1">
                           Discount Amount
                         </label>
                         <input
@@ -352,7 +352,7 @@ const InvoiceGenerationPage = () => {
 
                       <div className="flex items-center mb-2 sm:mb-0 h-[42px]">
                         <label className="flex items-center cursor-pointer gap-3">
-                          <span className="text-sm font-medium text-gray-700 dark:text-slate-100">
+                          <span className="text-xs font-medium text-gray-700 dark:text-slate-100">
                             Tax {currentInvoice.invoice.is_tax_inclusive !== false ? "Inclusive" : "Exclusive"}
                           </span>
                           <div className="relative">

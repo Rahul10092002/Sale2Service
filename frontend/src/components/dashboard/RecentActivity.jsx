@@ -8,11 +8,11 @@ import { formatDistanceToNow } from "date-fns";
 const RecentActivity = ({ data, limit = 5 }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-6">
-        <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
+      <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-3">
+        <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2">
           Recent Activity
         </h3>
-        <div className="text-center text-ink-muted dark:text-slate-500 py-8">
+        <div className="text-center text-xs text-ink-muted dark:text-slate-500 py-4">
           No recent activity
         </div>
       </div>
@@ -60,35 +60,37 @@ const RecentActivity = ({ data, limit = 5 }) => {
   const displayData = data.slice(0, limit);
 
   return (
-    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-6">
-      <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
+    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-3">
+      <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2">
         Recent Activity
       </h3>
-      <div className="space-y-3">
+      <div className="space-y-1.5">
         {displayData.map((activity, index) => (
           <div
             key={activity.id || index}
-            className="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-hover dark:hover:bg-dark-hover transition-colors"
+            className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-surface-hover dark:hover:bg-dark-hover transition-colors"
           >
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+              <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-ink-base dark:text-slate-100 truncate">
-                {getActivityTitle(activity)}
-              </p>
-              <p className="text-sm text-ink-secondary dark:text-slate-400 truncate">
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-ink-base dark:text-slate-100 truncate">
+                  {getActivityTitle(activity)}
+                </p>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Clock className="w-3 h-3 text-ink-muted dark:text-slate-500" />
+                  <span className="text-[10px] text-ink-muted dark:text-slate-500">
+                    {formatTimestamp(activity)}
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] text-ink-secondary dark:text-slate-400 truncate">
                 {getActivityDescription(activity)}
               </p>
-              <div className="flex items-center gap-2 mt-1">
-                <Clock className="w-3 h-3 text-ink-muted dark:text-slate-500" />
-                <span className="text-xs text-ink-muted dark:text-slate-500">
-                  {formatTimestamp(activity)}
-                </span>
-              </div>
             </div>
             {activity.status && (
-              <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(activity.status)}`}>
+              <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${getStatusColor(activity.status)}`}>
                 {activity.status}
               </span>
             )}
@@ -96,7 +98,7 @@ const RecentActivity = ({ data, limit = 5 }) => {
         ))}
       </div>
       {data.length > limit && (
-        <button className="w-full mt-4 text-sm text-primary dark:text-primary-dark hover:underline font-medium">
+        <button className="w-full mt-2 text-xs text-primary dark:text-primary-dark hover:underline font-medium">
           View all activity →
         </button>
       )}

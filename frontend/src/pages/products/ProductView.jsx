@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import {
@@ -390,39 +390,39 @@ const ProductView = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg p-4">
+      <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg p-2">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-6">
+          <div className="mb-3">
             <button
               onClick={() => navigate(ROUTES.PRODUCTS)}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
+              className="inline-flex items-center px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
             >
               <ArrowLeft size={16} className="mr-2" />
               Back to Products
             </button>
-            <h1 className="text-2xl font-bold text-ink-base dark:text-slate-100 mt-2">
+            <h1 className="text-lg font-bold text-ink-base dark:text-slate-100 mt-1">
               Product Details
             </h1>
           </div>
 
           {/* Main Content Grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
             {/* Left Column - Product Info */}
-            <div className="xl:col-span-2 space-y-6">
+            <div className="xl:col-span-2 space-y-3">
               {/* Product Header Card */}
               <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-4">
+                <div className="bg-gradient-to-r from-purple-500 to-indigo-600 px-3 py-2 rounded-xl">
                   <div className="flex items-center space-x-4">
                     {/* Product Icon */}
                     <div className="flex-shrink-0">
-                      <div className="w-20 h-20 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center">
-                        <Package size={32} className="text-purple-500" />
+                      <div className="w-14 h-14 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center">
+                        <Package size={24} className="text-purple-500" />
                       </div>
                     </div>
                     {/* Product Info */}
                     <div className="text-white">
-                      <h2 className="text-2xl font-bold capitalize">
+                      <h2 className="text-base font-bold capitalize">
                         {product.product_name || "Unknown Product"}
                       </h2>
                       <p className="text-purple-100">
@@ -465,8 +465,8 @@ const ProductView = () => {
               {/* Product Image */}
               {product.product_images?.[0] && (
                 <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
+                  <div className="p-3">
+                    <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2">
                       Product Image
                     </h3>
                     <img
@@ -480,49 +480,49 @@ const ProductView = () => {
 
               {/* Product Information */}
               <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2 flex items-center gap-2">
                     <Package className="w-5 h-5 text-purple-500" />
                     Product Information
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Product Name
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100 capitalize">
                         {product.product_name || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Company
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100 capitalize">
                         {product.company || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Model Number
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                         {product.model_number || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Serial Number
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 font-mono">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100 font-mono">
                         {product.serial_number || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Category
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100 capitalize">
                         {product.product_category
                           ? product.product_category
                               .replace(/_/g, " ")
@@ -531,11 +531,11 @@ const ProductView = () => {
                       </p>
                     </div>
                     {product.product_category === "BATTERY" && (
-                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Battery Type
                         </label>
-                        <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
+                        <p className="text-xs font-medium text-ink-base dark:text-slate-100 capitalize">
                           {formatBatteryType(product.battery_type)}
                         </p>
                       </div>
@@ -543,78 +543,78 @@ const ProductView = () => {
                     {product.product_category === "BATTERY" &&
                       product.battery_type === "VEHICLE_BATTERY" && (
                         <>
-                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                             <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                               Vehicle Name
                             </label>
-                            <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                            <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                               {product.vehicle_name || "—"}
                             </p>
                           </div>
-                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                             <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                               Number Plate
                             </label>
-                            <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                            <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                               {product.vehicle_number_plate || "—"}
                             </p>
                           </div>
                         </>
                       )}
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Quantity
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                         {product.quantity ?? "—"}
                       </p>
                     </div>
                     {product.capacity_rating && (
-                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Capacity / Rating
                         </label>
-                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                        <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                           {product.capacity_rating}
                         </p>
                       </div>
                     )}
                     {product.voltage && (
-                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Voltage
                         </label>
-                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                        <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                           {product.voltage}
                         </p>
                       </div>
                     )}
                     {product.batch_number && (
-                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Batch Number
                         </label>
-                        <p className="text-sm font-medium text-ink-base dark:text-slate-100 font-mono">
+                        <p className="text-xs font-medium text-ink-base dark:text-slate-100 font-mono">
                           {product.batch_number}
                         </p>
                       </div>
                     )}
                     {product.manufacturing_date && (
-                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Manufacturing Date
                         </label>
-                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                        <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                           {formatDate(product.manufacturing_date)}
                         </p>
                       </div>
                     )}
                     {product.purchase_source && (
-                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Purchase Source
                         </label>
-                        <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
+                        <p className="text-xs font-medium text-ink-base dark:text-slate-100 capitalize">
                           {product.purchase_source}
                         </p>
                       </div>
@@ -625,26 +625,26 @@ const ProductView = () => {
 
               {/* Warranty & Pricing Information */}
               <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4 flex items-center gap-2">
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2 flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-yellow-500" />
                     Warranty &amp; Pricing
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-100 dark:border-blue-900/50">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-2 border border-blue-100 dark:border-blue-900/50">
                       <label className="block text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
                         Selling Price
                       </label>
-                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      <p className="text-xs font-medium text-blue-800 dark:text-blue-200">
                         {formatCurrency(product.selling_price)}
                       </p>
                     </div>
                     {product.cost_price != null && (
-                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3 border border-gray-200 dark:border-dark-border">
+                      <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2 border border-gray-200 dark:border-dark-border">
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                           Cost Price
                         </label>
-                        <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                        <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                           {formatCurrency(product.cost_price)}
                         </p>
                       </div>
@@ -669,37 +669,37 @@ const ProductView = () => {
                         {product.status || "Unknown"}
                       </span>
                     </div>
-                    <div className="bg-yellow-50 dark:bg-yellow-950/25 rounded-lg p-3 border border-yellow-100 dark:border-yellow-900/50">
+                    <div className="bg-yellow-50 dark:bg-yellow-950/25 rounded-lg p-2 border border-yellow-100 dark:border-yellow-900/50">
                       <label className="block text-xs font-medium text-yellow-600 dark:text-yellow-400 mb-1">
                         Warranty Start Date
                       </label>
-                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                      <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
                         {formatDate(product.warranty_start_date)}
                       </p>
                     </div>
-                    <div className="bg-yellow-50 dark:bg-yellow-950/25 rounded-lg p-3 border border-yellow-100 dark:border-yellow-900/50">
+                    <div className="bg-yellow-50 dark:bg-yellow-950/25 rounded-lg p-2 border border-yellow-100 dark:border-yellow-900/50">
                       <label className="block text-xs font-medium text-yellow-600 dark:text-yellow-400 mb-1">
                         Warranty End Date
                       </label>
-                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                      <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200">
                         {formatDate(product.warranty_end_date)}
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3 border border-gray-200 dark:border-dark-border">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2 border border-gray-200 dark:border-dark-border">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Warranty Duration
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100">
                         {product.warranty_duration_months
                           ? `${product.warranty_duration_months} month${product.warranty_duration_months > 1 ? "s" : ""}`
                           : "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-3 border border-gray-200 dark:border-dark-border">
+                    <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2 border border-gray-200 dark:border-dark-border">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Warranty Type
                       </label>
-                      <p className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
+                      <p className="text-xs font-medium text-ink-base dark:text-slate-100 capitalize">
                         {product.warranty_type
                           ? product.warranty_type
                               .replace(/_/g, " ")
@@ -708,11 +708,11 @@ const ProductView = () => {
                       </p>
                     </div>
                     {product.pro_warranty_end_date && (
-                      <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3 border border-purple-100 dark:border-purple-900/50">
+                      <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-2 border border-purple-100 dark:border-purple-900/50">
                         <label className="block text-xs font-medium text-purple-600 dark:text-purple-400 mb-1">
                           Pro Warranty End Date
                         </label>
-                        <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                        <p className="text-xs font-medium text-purple-800 dark:text-purple-200">
                           {formatDate(product.pro_warranty_end_date)}
                         </p>
                       </div>
@@ -724,7 +724,7 @@ const ProductView = () => {
               {/* Service Details */}
               {product.hasServicePlan && (
                 <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
-                  <div className="p-6">
+                  <div className="p-3">
                     <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-indigo-500" />
@@ -773,7 +773,7 @@ const ProductView = () => {
                           className="mx-auto text-gray-400 dark:text-slate-500 mb-3"
                           size={40}
                         />
-                        <h4 className="text-sm font-medium text-ink-base dark:text-slate-100 mb-1">
+                        <h4 className="text-xs font-medium text-ink-base dark:text-slate-100 mb-1">
                           No Services Found
                         </h4>
                         <p className="text-sm text-ink-muted dark:text-slate-500">
@@ -781,168 +781,111 @@ const ProductView = () => {
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {/* Header row */}
-                        <div className="grid grid-cols-[1fr_auto] gap-3 px-3 pb-1 border-b border-gray-100 dark:border-dark-border">
-                          <p className="text-xs font-medium text-ink-muted dark:text-slate-500 uppercase tracking-wider">
-                            Service Info
-                          </p>
-                          <p className="text-xs font-medium text-ink-muted dark:text-slate-500 uppercase tracking-wider text-right">
-                            Actions
-                          </p>
-                        </div>
-
-                        {serviceData.schedules.map((schedule) => (
-                          <div
-                            key={schedule._id}
-                            className={`grid grid-cols-[1fr_auto] gap-3 items-start p-3 rounded-lg border ${
-                              schedule.status === "overdue"
-                                ? "bg-red-50 dark:bg-red-950/25 border-red-100 dark:border-red-900/40"
-                                : schedule.status === "completed"
-                                  ? "bg-green-50 dark:bg-green-950/25 border-green-100 dark:border-green-900/40"
-                                  : schedule.status === "cancelled"
-                                    ? "bg-gray-50 dark:bg-dark-subtle border-gray-100 dark:border-dark-border"
-                                    : "bg-blue-50 dark:bg-blue-950/25 border-blue-100 dark:border-blue-900/40"
-                            }`}
-                          >
-                            {/* Left: service details */}
-                            <div className="min-w-0 space-y-1.5">
-                              {/* Row 1: Status badge + date */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getServiceStatusColor(schedule.status)}`}
-                                >
-                                  {getServiceStatusIcon(schedule.status)}
-                                  <span className="capitalize">
-                                    {schedule.status}
-                                  </span>
-                                </span>
-                                <span className="text-xs font-semibold text-ink-base dark:text-slate-200">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-dark-border">
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Date</th>
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Status</th>
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Description</th>
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Charge</th>
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Collected</th>
+                              <th className="text-right py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {serviceData.schedules.map((schedule) => (
+                              <tr
+                                key={schedule._id}
+                                className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle"
+                              >
+                                <td className="py-2 px-2 text-xs text-ink-base dark:text-slate-200">
                                   {formatDate(schedule.scheduled_date)}
-                                </span>
-                                {schedule.completed_at && (
-                                  <span className="text-xs text-ink-muted dark:text-slate-500">
-                                    · Done {formatDate(schedule.completed_at)}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Row 2: Description */}
-                              {(schedule.service_description ||
-                                serviceData.plan?.service_description) && (
-                                <p className="text-xs text-ink-secondary dark:text-slate-400 truncate">
-                                  {schedule.service_description ||
-                                    serviceData.plan?.service_description}
-                                </p>
-                              )}
-
-                              {/* Row 3: Charge + Amount collected */}
-                              <div className="flex items-center gap-3 flex-wrap">
-                                <span className="text-xs text-ink-muted dark:text-slate-500">
-                                  Charge:{" "}
-                                  <span className="font-medium text-ink-base dark:text-slate-200">
-                                    {schedule.service_charge
-                                      ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
-                                      : serviceData.plan?.service_charge
-                                        ? `₹${serviceData.plan.service_charge.toLocaleString("en-IN")}`
-                                        : "Free"}
-                                  </span>
-                                </span>
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    schedule.payment_status === "PAID"
-                                      ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300"
-                                      : schedule.payment_status === "PARTIAL"
-                                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200"
-                                        : schedule.payment_status === "FREE"
-                                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
-                                          : "bg-gray-100 dark:bg-dark-subtle text-gray-700 dark:text-slate-300"
-                                  }`}
-                                >
-                                  {schedule.amount_collected
-                                    ? `₹${schedule.amount_collected.toLocaleString("en-IN")}`
-                                    : "₹0"}{" "}
-                                  ({schedule.payment_status || "PENDING"})
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Right: actions */}
-                            <div className="flex flex-col gap-1.5 shrink-0">
-                              {(schedule.status === "scheduled" ||
-                                schedule.status === "overdue") && (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      const serviceCharge =
-                                        schedule.service_charge ||
-                                        serviceData.plan?.service_charge ||
-                                        0;
-                                      setAmountCollected(serviceCharge);
-                                      setPaymentMethod(
-                                        serviceCharge === 0 ? "NONE" : "CASH",
-                                      );
-                                      setTechnicianName("");
-                                      setCompletionNotes("MAINTENANCE");
-                                      setIssueReported(
-                                        "Regular maintenance service",
-                                      );
-                                      setWorkDone(
-                                        "Service completed successfully",
-                                      );
-                                      setShowCompleteModal(schedule._id);
-                                    }}
-                                    disabled={actionLoading}
-                                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-950/40 hover:bg-green-200 dark:hover:bg-green-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                </td>
+                                <td className="py-2 px-2">
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${getServiceStatusColor(schedule.status)}`}
                                   >
-                                    {markingComplete ? (
-                                      <LoadingSpinner size="xs" />
-                                    ) : (
-                                      <CheckCircle2 size={11} />
-                                    )}
-                                    Complete
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      setShowRescheduleModal(schedule._id)
-                                    }
-                                    disabled={actionLoading}
-                                    className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/40 hover:bg-blue-200 dark:hover:bg-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    <span className="capitalize">{schedule.status}</span>
+                                  </span>
+                                </td>
+                                <td className="py-2 px-2 text-xs text-ink-secondary dark:text-slate-400 max-w-[150px] truncate">
+                                  {schedule.service_description || serviceData.plan?.service_description || "—"}
+                                </td>
+                                <td className="py-2 px-2 text-xs font-medium text-ink-base dark:text-slate-200">
+                                  {schedule.service_charge
+                                    ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
+                                    : serviceData.plan?.service_charge
+                                      ? `₹${serviceData.plan.service_charge.toLocaleString("en-IN")}`
+                                      : "Free"}
+                                </td>
+                                <td className="py-2 px-2">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                      schedule.payment_status === "PAID"
+                                        ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300"
+                                        : schedule.payment_status === "PARTIAL"
+                                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200"
+                                          : schedule.payment_status === "FREE"
+                                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                            : "bg-gray-100 dark:bg-dark-subtle text-gray-700 dark:text-slate-300"
+                                    }`}
                                   >
-                                    {rescheduling ? (
-                                      <LoadingSpinner size="xs" />
-                                    ) : (
-                                      <RotateCcw size={11} />
+                                    {schedule.amount_collected ? `₹${schedule.amount_collected.toLocaleString("en-IN")}` : "₹0"}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-2 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {(schedule.status === "scheduled" || schedule.status === "overdue") && (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            const serviceCharge = schedule.service_charge || serviceData.plan?.service_charge || 0;
+                                            setAmountCollected(serviceCharge);
+                                            setPaymentMethod(serviceCharge === 0 ? "NONE" : "CASH");
+                                            setTechnicianName("");
+                                            setCompletionNotes("MAINTENANCE");
+                                            setIssueReported("Regular maintenance service");
+                                            setWorkDone("Service completed successfully");
+                                            setShowCompleteModal(schedule._id);
+                                          }}
+                                          disabled={actionLoading}
+                                          className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/40 rounded transition-colors disabled:opacity-50"
+                                          title="Complete Service"
+                                        >
+                                          {markingComplete ? <LoadingSpinner size="xs" /> : <CheckCircle2 size={14} />}
+                                        </button>
+                                        <button
+                                          onClick={() => setShowRescheduleModal(schedule._id)}
+                                          disabled={actionLoading}
+                                          className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors disabled:opacity-50"
+                                          title="Reschedule Service"
+                                        >
+                                          {rescheduling ? <LoadingSpinner size="xs" /> : <RotateCcw size={14} />}
+                                        </button>
+                                        {schedule.status === "scheduled" && (
+                                          <button
+                                            onClick={() => cancelService(schedule._id)}
+                                            disabled={actionLoading}
+                                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors disabled:opacity-50"
+                                            title="Cancel Service"
+                                          >
+                                            {cancelling ? <LoadingSpinner size="xs" /> : <XCircle size={14} />}
+                                          </button>
+                                        )}
+                                      </>
                                     )}
-                                    Reschedule
-                                  </button>
-                                  {schedule.status === "scheduled" && (
-                                    <button
-                                      onClick={() =>
-                                        cancelService(schedule._id)
-                                      }
-                                      disabled={actionLoading}
-                                      className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/40 hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                      {cancelling ? (
-                                        <LoadingSpinner size="xs" />
-                                      ) : (
-                                        <XCircle size={11} />
-                                      )}
-                                      Cancel
-                                    </button>
-                                  )}
-                                </>
-                              )}
-                              {(schedule.status === "completed" ||
-                                schedule.status === "cancelled") && (
-                                <span className="text-ink-muted dark:text-slate-500 text-xs italic">
-                                  —
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                                    {(schedule.status === "completed" || schedule.status === "cancelled") && (
+                                      <span className="text-[10px] text-ink-muted dark:text-slate-500 italic px-2">
+                                        Done
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
                   </div>
@@ -953,8 +896,8 @@ const ProductView = () => {
             {/* Right Column - Actions */}
             <div className="xl:col-span-1">
               <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border sticky top-4">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2">
                     Quick Actions
                   </h3>
 

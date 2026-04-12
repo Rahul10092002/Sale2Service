@@ -39,7 +39,7 @@ function SelectField({
     <div ref={ref} className="relative">
       <label
         htmlFor={id}
-        className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2"
+        className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1"
       >
         {label}
         {required && <span className="text-danger ml-1">*</span>}
@@ -48,12 +48,12 @@ function SelectField({
       <button
         type="button"
         onClick={() => setIsOpen((s) => !s)}
-        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 flex items-center justify-between hover:border-gray-400 dark:hover:border-slate-500 text-sm border-gray-300 dark:border-dark-border focus:ring-primary/20 focus:border-primary dark:focus:border-primary-dark ${isOpen ? "ring-2 ring-primary/20 border-primary" : ""}`}
+        className={`w-full h-8 px-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 flex items-center justify-between hover:border-gray-400 dark:hover:border-slate-500 text-xs border-gray-300 dark:border-dark-border focus:ring-primary/20 focus:border-primary dark:focus:border-primary-dark ${isOpen ? "ring-2 ring-primary/20 border-primary" : ""}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         id={id}
       >
-        <span className={`truncate text-sm ${value ? "text-ink-base dark:text-slate-100" : "text-ink-muted dark:text-slate-500"}`}>
+        <span className={`truncate text-xs ${value ? "text-ink-base dark:text-slate-100" : "text-ink-muted dark:text-slate-500"}`}>
           {selected ? selected.label : placeholder}
         </span>
         <svg
@@ -77,7 +77,7 @@ function SelectField({
                 key={opt.value}
                 role="option"
                 aria-selected={opt.value === value}
-                className={`px-3 py-2 cursor-pointer text-sm border-b border-gray-100 dark:border-dark-border last:border-b-0 transition-colors text-ink-base dark:text-slate-200 ${
+                className={`px-2 py-1.5 cursor-pointer text-xs border-b border-gray-100 dark:border-dark-border last:border-b-0 transition-colors text-ink-base dark:text-slate-200 ${
                   opt.value === value
                     ? "bg-blue-50 dark:bg-blue-900/30 text-primary dark:text-primary-dark"
                     : "hover:bg-surface-hover dark:hover:bg-dark-hover"
@@ -88,7 +88,7 @@ function SelectField({
               </li>
             ))
           ) : (
-            <li className="px-3 py-2 text-ink-muted dark:text-slate-500 text-sm">No options</li>
+            <li className="px-2 py-1.5 text-ink-muted dark:text-slate-500 text-xs">No options</li>
           )}
         </ul>
       )}

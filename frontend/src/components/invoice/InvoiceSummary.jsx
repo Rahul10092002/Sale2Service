@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from "react";
+import React, { useEffect } from "react";
 import { Calculator, CreditCard, Receipt } from "lucide-react";
 import { useInvoiceForm } from "../../features/invoices/hooks.js";
 
@@ -29,14 +29,14 @@ const InvoiceSummary = ({ className = "" }) => {
     <div
       className={`bg-white dark:bg-dark-card  rounded-lg shadow-sm border border-gray-200  dark:border-dark-border ${className}`}
     >
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-card">
+      <div className="px-3 py-2 border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-card">
         <h3 className="text-md font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
           <Calculator className="w-4 h-4 text-indigo-600 " />
           Invoice Summary
         </h3>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="p-3 space-y-2">
         {/* Items Overview */}
         <div className="flex justify-between items-center text-sm">
           <span className="text-ink-secondary dark:text-slate-100">Products</span>
@@ -74,10 +74,10 @@ const InvoiceSummary = ({ className = "" }) => {
         {/* Total */}
         <div className="border-t border-gray-200 pt-3">
           <div className="flex justify-between items-center">
-            <span className="text-lg font-semibold text-ink-base dark:text-slate-100">
+            <span className="text-sm font-semibold text-ink-base dark:text-slate-100">
               Total Amount
             </span>
-            <span className="text-lg font-bold text-indigo-600 dark:text-slate-100">
+            <span className="text-sm font-bold text-indigo-600 dark:text-slate-100">
               {formatCurrency(invoice.total_amount)}
             </span>
           </div>
@@ -131,7 +131,7 @@ const InvoiceSummary = ({ className = "" }) => {
               <Receipt className="w-3 h-3" />
               Product Breakdown
             </h4>
-            <div className="space-y-1 max-h-32 overflow-y-auto">
+            <div className="space-y-1 max-h-24 overflow-y-auto">
               {invoice_items.map((item, index) => (
                 <div key={item.id} className="flex justify-between text-xs">
                   <span className="text-gray-600 dark:text-slate-100 truncate max-w-[60%]">

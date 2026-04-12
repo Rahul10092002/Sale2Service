@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Search,
   Table,
@@ -8,6 +8,8 @@ import {
   Phone,
   Filter,
   ScanLine,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input } from "../../components/ui/index.js";
@@ -184,22 +186,36 @@ const getWarrantyInfo = (product) => {
       <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Filters & Search */}
-          <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-6 gap-4">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center justify-between px-3 py-1.5 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-3 gap-2">
+            <div className="flex items-center space-x-2">
               {/* Filter Icon with Dropdown */}
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={() => setShowFilters(!showFilters)}
                   className="flex items-center justify-center bg-blue-100 rounded-md p-2 hover:bg-blue-200 transition-colors"
                 >
-                  <Filter className="h-5 w-5 text-blue-600" />
+                  <Filter className="h-4 w-4 text-blue-600" />
                 </button>
                 {showFilters && (
-                  <div className="absolute top-12 left-0 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-md shadow-lg p-4 z-10 w-96">
+                  <div className="absolute top-12 left-0 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl shadow-xl p-5 z-10 w-[340px] space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h3 className="text-xs font-semibold text-gray-800 dark:text-slate-100">
+                        Filters
+                      </h3>
+                      <button
+                        onClick={() =>
+                          setFilters(DEFAULT_FILTERS)
+                        }
+                        className="text-xs text-red-500 hover:text-red-600 dark:text-red-400"
+                      >
+                        Clear All
+                      </button>
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col">
-                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                          Category:
+                      <div>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Category
                         </label>
                         <select
                           value={filters.product_category}
@@ -209,7 +225,7 @@ const getWarrantyInfo = (product) => {
                               e.target.value,
                             )
                           }
-                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           {CATEGORY_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -219,16 +235,16 @@ const getWarrantyInfo = (product) => {
                         </select>
                       </div>
 
-                      <div className="flex flex-col">
-                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                          Status:
+                      <div>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Status
                         </label>
                         <select
                           value={filters.status}
                           onChange={(e) =>
                             handleFilterChange("status", e.target.value)
                           }
-                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           {STATUS_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -238,9 +254,9 @@ const getWarrantyInfo = (product) => {
                         </select>
                       </div>
 
-                      <div className="flex flex-col">
-                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                          Service Plan:
+                      <div>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Service Plan
                         </label>
                         <select
                           value={filters.has_service_plan}
@@ -250,7 +266,7 @@ const getWarrantyInfo = (product) => {
                               e.target.value,
                             )
                           }
-                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           {SERVICE_PLAN_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -260,9 +276,9 @@ const getWarrantyInfo = (product) => {
                         </select>
                       </div>
 
-                      <div className="flex flex-col">
-                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                          Service Due:
+                      <div>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Service Due
                         </label>
                         <select
                           value={filters.service_due_days}
@@ -272,7 +288,7 @@ const getWarrantyInfo = (product) => {
                               e.target.value,
                             )
                           }
-                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           {SERVICE_DUE_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -282,9 +298,9 @@ const getWarrantyInfo = (product) => {
                         </select>
                       </div>
 
-                      <div className="flex flex-col">
-                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                          Warranty:
+                      <div>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Warranty
                         </label>
                         <select
                           value={filters.warranty_status}
@@ -294,7 +310,7 @@ const getWarrantyInfo = (product) => {
                               e.target.value,
                             )
                           }
-                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           {WARRANTY_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -304,16 +320,16 @@ const getWarrantyInfo = (product) => {
                         </select>
                       </div>
 
-                      <div className="flex flex-col">
-                        <label className="text-sm text-ink-secondary dark:text-slate-300 font-medium mb-1">
-                          Payment:
+                      <div>
+                        <label className="text-xs text-ink-muted dark:text-slate-500">
+                          Payment
                         </label>
                         <select
                           value={filters.payment_status}
                           onChange={(e) =>
                             handleFilterChange("payment_status", e.target.value)
                           }
-                          className="p-2 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border rounded-md text-sm text-ink-base dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           {PAYMENT_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -327,12 +343,12 @@ const getWarrantyInfo = (product) => {
                 )}
               </div>
 
-              {/* Search Bar */}
-              <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-2 max-w-xs shadow-sm">
-                <Search className="h-5 w-5 text-gray-500 dark:text-slate-400" />
+              {/* Modern Search Bar */}
+              <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-1.5 max-w-xs shadow-sm">
+                <Search className="h-4 w-4 text-gray-500 dark:text-slate-400" />
                 <input
                   placeholder="Search products..."
-                  className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-sm"
+                  className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-xs"
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
@@ -340,29 +356,29 @@ const getWarrantyInfo = (product) => {
                   }}
                 />
               </div>
-
-              {/* Scan button */}
-              <button
-                type="button"
-                onClick={() => setShowScanner(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium rounded-lg transition-colors"
-                title="Scan serial number"
-              >
-                <ScanLine className="h-4 w-4" />
-                <span className="hidden sm:inline">Scan</span>
-              </button>
-
-              {showScanner && (
-                <SerialScanner
-                  onScan={(value) => {
-                    setSearchTerm(value);
-                    setPage(1);
-                    setShowScanner(false);
-                  }}
-                  onClose={() => setShowScanner(false)}
-                />
-              )}
             </div>
+
+            {/* Scan button */}
+            <button
+              type="button"
+              onClick={() => setShowScanner(true)}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-50 border-2 border-indigo-500 text-indigo-600 rounded-md text-xs font-medium hover:bg-indigo-100 dark:bg-indigo-900/30 dark:border-indigo-500 dark:text-indigo-400 transition-colors"
+              title="Scan serial number"
+            >
+              <ScanLine className="h-4 w-4" />
+              <span className="hidden sm:inline">Scan</span>
+            </button>
+
+            {showScanner && (
+              <SerialScanner
+                onScan={(value) => {
+                  setSearchTerm(value);
+                  setPage(1);
+                  setShowScanner(false);
+                }}
+                onClose={() => setShowScanner(false)}
+              />
+            )}
           </div>
 
           <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
@@ -378,7 +394,7 @@ const getWarrantyInfo = (product) => {
             ) : (
               <div className="">
                 {/* Desktop Header */}
-                <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-4 text-gray-500 dark:text-slate-400 text-sm font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
+                <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-2 text-gray-500 dark:text-slate-400 text-xs font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
                   <div>#</div>
                   <div>Product</div>
                   <div>Warranty & Service</div>
@@ -602,7 +618,7 @@ const getWarrantyInfo = (product) => {
                     </div>
 
                     {/* ── Desktop Row ── */}
-                    <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-4 items-start p-4">
+                    <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-2 items-center p-4">
                       <div className="text-gray-600 pt-1">
                         {(page - 1) * pagination.limit + index + 1}
                       </div>
@@ -749,47 +765,89 @@ const getWarrantyInfo = (product) => {
 
                 {/* Pagination */}
                 {pagination.pages > 1 && (
-                  <div className="px-4 sm:px-6 py-4 border-t bg-gray-50 dark:bg-dark-card flex items-center justify-between">
-                    <div className="text-sm text-ink-muted dark:text-slate-500">
-                      Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                      {Math.min(
-                        pagination.page * pagination.limit,
-                        pagination.total,
-                      )}{" "}
-                      of {pagination.total} products
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page <= 1}
-                        className="px-3 py-1 rounded-md bg-white dark:bg-dark-card border hover:bg-gray-50 disabled:opacity-50 dark:border-dark-border"
-                      > 
-                        Prev
-                      </button>
-                      {pagesArray.map((pg) => (
-                        <button
-                          key={pg}
-                          onClick={() => setPage(pg)}
-                          className={`w-8 h-8 p-0 text-sm rounded ${pg === pagination.page ? "bg-indigo-600 text-white" : "bg-white border dark:bg-dark-card dark:border-dark-border"}`}
+                  <div className="px-4 sm:px-3 py-1.5 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                      <div className="text-xs text-ink-muted dark:text-slate-500">
+                        Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                        {Math.min(
+                          pagination.page * pagination.limit,
+                          pagination.total,
+                        )}{" "}
+                        of {pagination.total} products
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          disabled={pagination.page <= 1}
+                          className="p-2"
                         >
-                          {pg}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() =>
-                          setPage((p) => Math.min(pagination.pages, p + 1))
-                        }
-                        disabled={page >= pagination.pages}
-                        className="px-3 py-1 rounded-md bg-white dark:bg-dark-card border hover:bg-gray-50 disabled:opacity-50 dark:border-dark-border"
-                      >
-                        Next
-                      </button>
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+
+                        <div className="flex items-center gap-1">
+                          {Array.from(
+                            { length: pagination.pages },
+                            (_, i) => i + 1,
+                          ).map((pageNum) => {
+                            const showPage =
+                              pageNum === 1 ||
+                              pageNum === pagination.pages ||
+                              Math.abs(pageNum - pagination.page) <= 1;
+
+                            if (!showPage) {
+                              if (
+                                pageNum === pagination.page - 2 ||
+                                pageNum === pagination.page + 2
+                              ) {
+                                return (
+                                  <span
+                                    key={pageNum}
+                                    className="px-2 py-1 text-xs text-gray-500"
+                                  >
+                                    ...
+                                  </span>
+                                );
+                              }
+                              return null;
+                            }
+
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={
+                                  pageNum === pagination.page
+                                    ? "default"
+                                    : "outline"
+                                }
+                                size="sm"
+                                onClick={() => setPage(pageNum)}
+                                className="w-8 h-8 p-0 text-xs"
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          })}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
+                          disabled={pagination.page >= pagination.pages}
+                          className="p-2"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
                 {pagination.pages <= 1 && (
-                  <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
-                    <div className="text-sm text-gray-500 text-center">
+                  <div className="px-4 sm:px-3 py-1.5 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
+                    <div className="text-xs text-gray-500 text-center">
                       Showing {pagination.total || 0} of {pagination.total || 0}{" "}
                       products
                     </div>

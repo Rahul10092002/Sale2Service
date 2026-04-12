@@ -201,3 +201,23 @@
   }
 }
 
+/* ultra compact mode */
+.compact, .compact * {
+  line-height: 1.2;
+}
+
+.compact input,
+.compact select,
+.compact textarea {
+  padding: 6px 8px !important;
+}
+
+.compact .card,
+.compact .bg-white {
+  padding: 0.75rem !important;
+}
+
+.compact table td,
+.compact table th {
+  padding: 6px !important;
+}

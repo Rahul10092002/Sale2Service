@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth.js";
-import { USER_ROLES } from "../../utils/constants.js";
 import FAB from "../../components/ui/FAB.jsx";
 import ShortcutGrid from "../../components/ui/ShortcutGrid.jsx";
 import MetricCard from "../../components/ui/MetricCard.jsx";
@@ -28,7 +27,6 @@ import {
 } from "lucide-react";
 
 const Dashboard = () => {
-  const { user, role } = useAuth();
   const [period, setPeriod] = useState("today");
 
   // Fetch dashboard data
@@ -62,18 +60,6 @@ const Dashboard = () => {
 
   ];
 
-  /**
-   * Get role-specific welcome message
-   */
-  const getWelcomeMessage = () => {
-    if (role === USER_ROLES.OWNER) {
-      return "Welcome to your sales dashboard";
-    }
-    if (role === USER_ROLES.STAFF) {
-      return "Welcome to your staff dashboard";
-    }
-    return "Welcome to the portal";
-  };
 
   /**
    * Handle refresh
@@ -84,59 +70,28 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Welcome Section */}
-        <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm dark:shadow-glass-dark border border-gray-200 dark:border-dark-border
-  p-4 sm:p-6 hover:shadow-md transition-all duration-200 mb-6">
-
-  {/* Top Section */}
-  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-
-    {/* Left Content */}
-    <div className="flex-1 min-w-0">
-      <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold 
-        bg-gradient-to-r from-blue-600 to-green-600 
-        bg-clip-text text-transparent mb-1 sm:mb-2 leading-tight">
-        {getWelcomeMessage()}
-      </h1>
-
-      <p className="text-xs sm:text-sm lg:text-base text-ink-secondary dark:text-slate-400">
-        Manage Sales & Warranty in One Place
-      </p>
-    </div>
-
-    {/* Right Controls */}
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-
-      {/* Period Selector */}
-      <div className="w-full sm:flex-1 lg:w-auto">
-        <div className="w-full overflow-x-auto no-scrollbar">
-          <PeriodSelector value={period} onChange={setPeriod} />
-        </div>
-      </div>
-
-      {/* Refresh Button */}
-      <button
-        onClick={handleRefresh}
-        className="w-full sm:w-auto flex items-center justify-center 
-          bg-gray-100 dark:bg-dark-hover hover:bg-gray-200 dark:hover:bg-dark-border text-ink-secondary dark:text-slate-300
-          font-medium px-4 py-2 rounded-lg 
-          transition-colors duration-200"
-        title="Refresh"
-      >
-        <RefreshCw
-          className={`w-5 h-5 ${summaryLoading ? "animate-spin" : ""}`}
-        />
-      </button>
-    </div>
-
-  </div>
-</div>
+      <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg py-3 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          {/* Top Controls */}
+          <div className="flex justify-end items-center gap-2 mb-3">
+            <PeriodSelector value={period} onChange={setPeriod} />
+            <button
+              onClick={handleRefresh}
+              className="flex items-center justify-center 
+                bg-white dark:bg-dark-card hover:bg-gray-50 dark:hover:bg-dark-hover border border-gray-200 dark:border-dark-border text-ink-secondary dark:text-slate-300
+                font-medium p-1.5 rounded-lg 
+                transition-colors duration-200 shadow-sm"
+              title="Refresh"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${summaryLoading ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
           {/* Loading State */}
           {isLoading && (
-            <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm dark:shadow-glass-dark border border-gray-200 dark:border-dark-border p-4 hover:shadow-md transition-all duration-200">
-              <div className="px-6 py-4 text-center py-12">
+            <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm dark:shadow-glass-dark border border-gray-200 dark:border-dark-border p-3 hover:shadow-md transition-all duration-200">
+              <div className="px-6 py-8 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full mb-4">
                   <RefreshCw className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
                 </div>
@@ -150,13 +105,13 @@ const Dashboard = () => {
 
           {/* Dashboard Content */}
           {!isLoading && summary && (
-            <div className="space-y-6 w-full max-w-full overflow-x-hidden [&>*]:min-w-0">
+            <div className="space-y-3 w-full max-w-full overflow-x-hidden [&>*]:min-w-0">
               {/* Key Metrics Row */}
               <div>
-                <h2 className="text-lg font-semibold text-ink-base dark:text-slate-100 mb-4">
+                <h2 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2">
                   Key Metrics
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-2">
                   <MetricCard
                     title="Total Revenue"
                     // round off to nearest 10 for cleaner display, can adjust as needed
@@ -196,7 +151,7 @@ const Dashboard = () => {
               </div>
 
               {/* Service Plans, Warranties & Alerts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-2">
                 {summary.servicePlans && (
                   <MetricCard
                     title="Active Service Plans"
@@ -257,8 +212,8 @@ const Dashboard = () => {
 
           {/* Empty State */}
           {!isLoading && !summary && (
-            <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-6 sm:p-12 text-center">
-              <p className="text-sm sm:text-base text-ink-secondary dark:text-slate-400">
+            <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-4 sm:p-6 text-center">
+              <p className="text-xs sm:text-sm text-ink-secondary dark:text-slate-400">
                 No data available. Start by creating your first invoice!
               </p>
               <button

@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -11,10 +11,6 @@ import {
   Globe,
 } from "lucide-react";
 import { Button, Input, SelectField } from "../ui/index.js";
-import {
-  INVOICE_CONSTANTS,
-  VALIDATION_MESSAGES,
-} from "../../utils/constants.js";
 import { useInvoiceForm } from "../../features/invoices/hooks.js";
 import { useGetCustomersQuery } from "../../features/customers/customerApi.js";
 
@@ -94,22 +90,22 @@ const CustomerInformationForm = () => {
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+        <div className="px-3 py-2 border-b border-gray-200 dark:border-dark-border">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
             <User className="w-5 h-5 text-indigo-600" />
             Customer Information
           </h2>
-          <p className="text-sm text-ink-muted dark:text-slate-100 mt-1">
+          <p className="text-xs text-ink-muted dark:text-slate-100 mt-1">
             Enter customer details for invoice generation
           </p>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-3 space-y-3">
           {/* Mandatory Fields */}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="col-span-1 relative"> 
-              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-100 mb-2">
+              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-100 mb-1">
                 WhatsApp Number *
               </label>
               <div className="relative">
@@ -130,13 +126,13 @@ const CustomerInformationForm = () => {
                     }}
                     placeholder="+91 9876543210"
                     error={errors["customer.whatsapp_number"]}
-                    className="rounded-r-none flex-1 h-10 no-spinner"
+                    className="rounded-r-none flex-1 h-8 no-spinner"
                   />
                   <Button
                     type="button"
                     onClick={handleCustomerSearch}
                     disabled={isSearching || !customer.whatsapp_number}
-                    className="rounded-l-none border-l-0 px-3 h-10 flex items-center justify-center min-w-0"
+                    className="rounded-l-none border-l-0 px-3 h-8 flex items-center justify-center min-w-0"
                   >
                     <Search className="w-4 h-4" />
                   </Button>
@@ -150,7 +146,7 @@ const CustomerInformationForm = () => {
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleSelectSuggestion(s)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:bg-dark-bg dark:border-dark-border dark:text-slate-100 flex items-center gap-3"
+                        className="w-full text-left px-2 py-1.5 hover:bg-gray-50 dark:bg-dark-bg dark:border-dark-border dark:text-slate-100 flex items-center gap-3"
                       >
                         <div className="flex-1">
                           <div className="text-sm font-medium text-ink-base dark:text-slate-100">
@@ -168,7 +164,7 @@ const CustomerInformationForm = () => {
             </div>
 
             <div className="col-span-1">
-              <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                 Full Name *
               </label>
               <Input
@@ -191,8 +187,8 @@ const CustomerInformationForm = () => {
             </h3>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="lg:col-span-2">
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+              <div className="lg:col-span-1">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Address Line 1 *
                 </label>
                 <Input
@@ -207,7 +203,7 @@ const CustomerInformationForm = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   City *
                 </label>
                 <Input
@@ -222,7 +218,7 @@ const CustomerInformationForm = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   State *
                 </label>
                 <Input
@@ -237,7 +233,7 @@ const CustomerInformationForm = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                   Pincode *
                 </label>
                 <Input
@@ -276,7 +272,7 @@ const CustomerInformationForm = () => {
             {expandedSections.customerOptional && (
               <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Alternate Phone
                   </label>
                   <Input
@@ -290,7 +286,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Email
                   </label>
                   <Input
@@ -305,7 +301,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Date of Birth
                   </label>
                   <Input
@@ -318,7 +314,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Anniversary Date
                   </label>
                   <Input
@@ -331,7 +327,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     GST Number
                   </label>
                   <Input
@@ -367,7 +363,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Address Line 2
                   </label>
                   <Input
@@ -381,7 +377,7 @@ const CustomerInformationForm = () => {
                 </div>
 
                 <div className="lg:col-span-2">
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
                     Notes
                   </label>
                   <textarea

@@ -41,15 +41,15 @@ const MetricCard = ({
 
   return (
     <div
-      className={`bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border p-4 hover:shadow-md transition-all duration-200 ${onClick ? "cursor-pointer hover:-translate-y-1" : ""} ${className}`}
+      className={`bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border p-3 hover:shadow-md transition-all duration-200 ${onClick ? "cursor-pointer hover:-translate-y-1" : ""} ${className}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between gap-2 min-w-0">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-ink-secondary dark:text-slate-400 mb-1 truncate">
+          <p className="text-[11px] sm:text-xs font-medium text-ink-secondary dark:text-slate-400 mb-0.5 truncate">
             {title}
           </p>
-          <p className="text-2xl font-bold text-ink-base dark:text-slate-100 mb-1 truncate">
+          <p className="text-lg sm:text-xl font-bold text-ink-base dark:text-slate-100 mb-0.5 truncate">
             {value}
           </p>
           {subtitle && (

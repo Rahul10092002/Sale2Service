@@ -350,26 +350,33 @@ const InvoiceGenerationPage = () => {
                         />
                       </div>
 
-                      <div className="flex items-center mb-2 sm:mb-0 h-[42px]">
-                        <label className="flex items-center cursor-pointer gap-3">
-                          <span className="text-xs font-medium text-gray-700 dark:text-slate-100">
-                            Tax {currentInvoice.invoice.is_tax_inclusive !== false ? "Inclusive" : "Exclusive"}
-                          </span>
-                          <div className="relative">
-                            <input
-                              type="checkbox"
-                              className="sr-only"
-                              checked={currentInvoice.invoice.is_tax_inclusive !== false}
-                              onChange={(e) => {
-                                updateInvoiceData({ is_tax_inclusive: e.target.checked });
-                                setTimeout(() => recalculateInvoice(), 0);
-                              }}
-                            />
-                            <div className={`block w-10 h-6 rounded-full transition-colors ${currentInvoice.invoice.is_tax_inclusive !== false ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-600'}`}></div>
-                            <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${currentInvoice.invoice.is_tax_inclusive !== false ? 'translate-x-4' : ''}`}></div>
-                          </div>
-                        </label>
-                      </div>
+                   <div className="flex items-center mb-2 sm:mb-0 h-[42px]">
+  <label className="flex items-center cursor-pointer gap-3">
+
+    <span className="text-xs font-medium text-gray-700 dark:text-slate-100">
+      Tax {currentInvoice.invoice.is_tax_inclusive !== false ? "Inclusive" : "Exclusive"}
+    </span>
+
+    <div className="relative w-10 h-6">
+      <input
+        type="checkbox"
+        className="sr-only peer"
+        checked={currentInvoice.invoice.is_tax_inclusive !== false}
+        onChange={(e) => {
+          updateInvoiceData({ is_tax_inclusive: e.target.checked });
+          setTimeout(() => recalculateInvoice(), 0);
+        }}
+      />
+
+      {/* Track */}
+      <div className="w-full h-full rounded-full bg-gray-300 dark:bg-slate-600 peer-checked:bg-indigo-600 transition-colors"></div>
+
+      {/* Thumb */}
+      <div className="absolute top-1/2 left-[2px] -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ease-in-out peer-checked:translate-x-[18px]"></div>
+    </div>
+
+  </label>
+</div>
                     </div>
                     <div className="flex flex-col gap-2">
                       {Object.keys(errors).length > 0 && (

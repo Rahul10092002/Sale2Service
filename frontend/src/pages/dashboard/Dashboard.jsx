@@ -154,7 +154,7 @@ const Dashboard = () => {
               </div>
 
               {/* Service Plans, Warranties & Alerts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-2 gap-2">
                 {summary.servicePlans && (
                   <MetricCard
                     title="Active Service Plans"
@@ -173,7 +173,7 @@ const Dashboard = () => {
                     color="purple"
                   />
                 )}
-                <div className="sm:col-span-2 2xl:col-span-1 min-w-0">
+                <div className="sm:col-span-2 2xl:col-span-2 min-w-0">
                   <AlertsPanel alerts={summary.alerts} />
                 </div>
               </div>

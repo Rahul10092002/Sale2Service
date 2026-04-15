@@ -39,7 +39,6 @@ const InvoiceEdit = () => {
     setErrors,
     setSubmitting,
     updateInvoiceData,
-    recalculateInvoice,
     setInvoiceData,
   } = useInvoiceForm();
 
@@ -68,7 +67,7 @@ const InvoiceEdit = () => {
               "",
             city: source.customer_id?.address?.city || "",
             state: source.customer_id?.address?.state || "",
-            postal_code: source.customer_id?.address?.pincode || "",
+            pincode: source.customer_id?.address?.pincode || "",
           },
         },
         invoice: {
@@ -78,7 +77,16 @@ const InvoiceEdit = () => {
             : new Date().toISOString().split("T")[0],
           payment_mode: source.payment_mode || "CASH",
           payment_status: source.payment_status || "UNPAID",
+          is_tax_inclusive: source.is_tax_inclusive !== false,
+          subtotal: source.subtotal || 0,
           discount: source.discount || 0,
+          tax: source.tax || 0,
+          total_amount: source.total_amount || 0,
+          amount_paid: source.amount_paid || 0,
+          amount_due: source.amount_due || 0,
+          due_date: source.due_date
+            ? new Date(source.due_date).toISOString().split("T")[0]
+            : "",
           warranty_months: source.warranty_months || 0,
           notes: source.notes || "",
         },
@@ -158,6 +166,28 @@ const InvoiceEdit = () => {
       newErrors["invoice.payment_status"] = "Payment status is required";
     }
 
+    if (invoice.payment_status === INVOICE_CONSTANTS.PAYMENT_STATUSES.UNPAID) {
+      if (!invoice.due_date) {
+        newErrors["invoice.due_date"] =
+          "Due date is required for unpaid invoices";
+      }
+    }
+
+    if (invoice.payment_status === INVOICE_CONSTANTS.PAYMENT_STATUSES.PARTIAL) {
+      if (!invoice.due_date) {
+        newErrors["invoice.due_date"] =
+          "Due date is required for partial invoices";
+      }
+
+      if (!invoice.amount_paid || invoice.amount_paid <= 0) {
+        newErrors["invoice.amount_paid"] =
+          "Amount paid must be greater than 0 for partial invoices";
+      } else if (invoice.amount_paid >= invoice.total_amount) {
+        newErrors["invoice.amount_paid"] =
+          "Amount paid must be less than total amount for partial invoices";
+      }
+    }
+
     // Invoice items validation
     if (!invoice_items || invoice_items.length === 0) {
       newErrors["invoice_items"] = "At least one invoice item is required";
@@ -226,14 +256,23 @@ const InvoiceEdit = () => {
         customer: {
           full_name: currentInvoice.customer.full_name,
           whatsapp_number: currentInvoice.customer.whatsapp_number,
-          address: currentInvoice.customer.address.line1,
+          address: currentInvoice.customer.address,
         },
         invoice: {
           invoice_number: currentInvoice.invoice.invoice_number,
           invoice_date: currentInvoice.invoice.invoice_date,
           payment_mode: currentInvoice.invoice.payment_mode,
           payment_status: currentInvoice.invoice.payment_status,
+          is_tax_inclusive: currentInvoice.invoice.is_tax_inclusive !== false,
+          subtotal: Number(currentInvoice.invoice.subtotal || 0),
           discount: parseFloat(currentInvoice.invoice.discount || 0),
+          tax: Number(currentInvoice.invoice.tax || 0),
+          total_amount: Number(currentInvoice.invoice.total_amount || 0),
+          amount_paid: Number(currentInvoice.invoice.amount_paid || 0),
+          due_date:
+            currentInvoice.invoice.payment_status === "PAID"
+              ? null
+              : currentInvoice.invoice.due_date,
           warranty_months: parseInt(
             currentInvoice.invoice.warranty_months || 0,
           ),

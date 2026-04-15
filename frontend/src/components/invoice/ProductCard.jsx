@@ -552,14 +552,14 @@ const ProductCard = React.memo(function ProductCard({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300  mb-1">
                 Warranty End Date
               </label>
               <Input
                 type="date"
                 value={item.warranty_end_date || ""}
                 readOnly
-                className="bg-gray-50 cursor-not-allowed"
+                className=" cursor-not-allowed"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Auto-calculated from start date and duration
@@ -996,7 +996,7 @@ const ProductCard = React.memo(function ProductCard({
                   type="text"
                   value={item.margin || ""}
                   readOnly
-                  className="bg-gray-50 cursor-not-allowed"
+                  className="cursor-not-allowed"
                   placeholder="Auto-calculated"
                 />
               </div>

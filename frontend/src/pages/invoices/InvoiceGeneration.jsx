@@ -8,6 +8,7 @@ import {
   useInvoiceActions,
 } from "../../features/invoices/hooks.js";
 import { useSaveMasterProductMutation } from "../../features/products/productApi.js";
+import { useGetNextInvoiceNumberQuery } from "../../features/invoices/invoiceApi.js";
 import CustomerInformationForm from "../../components/invoice/CustomerInformationForm.jsx";
 import InvoiceDetailsForm from "../../components/invoice/InvoiceDetailsForm.jsx";
 import InvoiceItemsForm from "../../components/invoice/InvoiceItemsForm.jsx";
@@ -23,13 +24,20 @@ const InvoiceGenerationPage = () => {
     setErrors,
     setSubmitting,
     updateInvoiceData,
-    recalculateInvoice,
   } = useInvoiceForm();
-
+  console.log(errors);  
   const { createInvoice } = useInvoiceActions();
   const [saveMaster] = useSaveMasterProductMutation();
   const [submitResult, setSubmitResult] = useState(null);
   const [rawDiscount, setRawDiscount] = useState(null);
+  const { data: nextInvoicePreview } = useGetNextInvoiceNumberQuery();
+
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+    }).format(amount || 0);
 
   // Comprehensive validation for all sections
   const validateAllSections = useCallback(() => {
@@ -225,6 +233,7 @@ const InvoiceGenerationPage = () => {
         success: false,
         error:
           error.data?.message || "Failed to create invoice. Please try again.",
+        details: Array.isArray(error.data?.errors) ? error.data.errors : [],
       });
     } finally {
       setSubmitting(false);
@@ -251,10 +260,24 @@ const InvoiceGenerationPage = () => {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 Invoice Created Successfully!
               </h2>
-              <p className="text-gray-600 mb-6">
-                Invoice #{submitResult.data.invoice_number} has been created and
-                saved.
-              </p>
+              <div className="text-gray-600 mb-6 space-y-2">
+                <p>
+                  Invoice #{submitResult.data.invoice_number} for{" "}
+                  {submitResult.data.invoice?.customer_id?.full_name ||
+                    currentInvoice.customer.full_name ||
+                    "this customer"}{" "}
+                  has been saved.
+                </p>
+                <p>
+                  Total: {formatCurrency(submitResult.data.total_amount)}.
+                  {" "}Amount due: {formatCurrency(submitResult.data.amount_due)}.
+                </p>
+                {submitResult.data.pdf_error && (
+                  <p className="text-amber-700">
+                    PDF generation needs attention: {submitResult.data.pdf_error}
+                  </p>
+                )}
+              </div>
               <div className="flex justify-center gap-4">
                 <Button
                   variant="outline"
@@ -323,6 +346,19 @@ const InvoiceGenerationPage = () => {
                   </p>
                 </div>
                 <div className="px-3 py-2">
+                  <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-slate-200">
+                    {nextInvoicePreview?.invoice_number && (
+                      <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800">
+                        Next Invoice: {nextInvoicePreview.invoice_number}
+                      </span>
+                    )}
+                    <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800">
+                      Current Total: {formatCurrency(currentInvoice.invoice.total_amount)}
+                    </span>
+                    <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800">
+                      Amount Due: {formatCurrency(currentInvoice.invoice.amount_due)}
+                    </span>
+                  </div>
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                     <div className="flex flex-wrap gap-6 items-end flex-1">
                       <div className="max-w-xs w-full sm:w-auto">
@@ -340,12 +376,11 @@ const InvoiceGenerationPage = () => {
                             setRawDiscount(e.target.value);
                             const discount = parseFloat(e.target.value) || 0;
                             updateInvoiceData({ discount });
-                            setTimeout(() => recalculateInvoice(), 0);
                           }}
                           onBlur={() => setRawDiscount(null)}
                           placeholder="0.00"
                           min="0"
-                          step="1"
+                          step="0.01"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                       </div>
@@ -364,7 +399,6 @@ const InvoiceGenerationPage = () => {
         checked={currentInvoice.invoice.is_tax_inclusive !== false}
         onChange={(e) => {
           updateInvoiceData({ is_tax_inclusive: e.target.checked });
-          setTimeout(() => recalculateInvoice(), 0);
         }}
       />
 
@@ -382,7 +416,7 @@ const InvoiceGenerationPage = () => {
                       {Object.keys(errors).length > 0 && (
                         <div className="text-sm text-red-600 flex items-center gap-2">
                           <X className="w-4 h-4" />
-                          Please fix the errors above
+                          Please fix the errors below
                         </div>
                       )}
                       {errors.general && (
@@ -391,8 +425,15 @@ const InvoiceGenerationPage = () => {
                         </div>
                       )}
                       {submitResult?.error && (
-                        <div className="text-sm text-red-600">
+                        <div className="text-sm text-red-600 space-y-1">
                           <strong>Error:</strong> {submitResult.error}
+                          {submitResult.details?.length > 0 && (
+                            <ul className="list-disc pl-5">
+                              {submitResult.details.map((detail) => (
+                                <li key={detail}>{detail}</li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                       )}
                       <Button

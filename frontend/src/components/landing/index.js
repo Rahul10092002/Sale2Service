@@ -1,0 +1,11 @@
+export { default as HeroSection } from './HeroSection';
+export { default as ProblemSection } from './ProblemSection';
+export { default as SolutionSection } from './SolutionSection';
+export { default as FeaturesSection } from './FeaturesSection';
+export { default as HowItWorks } from './HowItWorks';
+export { default as WhyChooseUs } from './WhyChooseUs';
+export { default as Testimonials } from './Testimonials';
+export { default as PricingSection } from './PricingSection';
+export { default as FinalCTA } from './FinalCTA';
+export { default as Footer } from './Footer';
+export { default as ContactFormModal } from './ContactFormModal';

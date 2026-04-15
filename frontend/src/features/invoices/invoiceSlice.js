@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { calculateInvoiceTotals as calculateSharedInvoiceTotals } from "../../../../shared/invoiceMath.js";
 
 const initialState = {
   // Current invoice being created/edited
@@ -47,44 +48,21 @@ const initialState = {
 };
 
 const calculateInvoiceTotals = (state) => {
-  const items = state.currentInvoice.invoice_items;
+  const totals = calculateSharedInvoiceTotals({
+    invoice: state.currentInvoice.invoice,
+    items: state.currentInvoice.invoice_items,
+  });
+  state.currentInvoice.invoice.subtotal = totals.subtotal;
 
-  const itemTotal = items.reduce(
-    (sum, item) =>
-      sum + parseFloat(item.selling_price || 0) * parseInt(item.quantity || 1),
-    0,
-  );
-
-  const taxRate = 0.18;
-  const isInclusive = state.currentInvoice.invoice.is_tax_inclusive !== false; // defaults to true
-
-  let subtotal, tax;
-
-  if (isInclusive) {
     // ✅ Correct GST calculation for inclusive tax
-    subtotal = itemTotal / (1 + taxRate);
-    tax = itemTotal - subtotal;
-  } else {
-    // Exclusive tax calculation
-    subtotal = itemTotal;
-    tax = subtotal * taxRate;
-  }
 
-  const discount = parseFloat(state.currentInvoice.invoice.discount || 0);
-  const taxableAmount = subtotal - discount;
-  
-  const total = taxableAmount + tax;
-
-  const amountPaid =
-    parseFloat(state.currentInvoice.invoice.amount_paid || 0) || 0;
-
-  const amountDue = Math.max(0, total - amountPaid);
-
-  state.currentInvoice.invoice.subtotal = Number(subtotal.toFixed(2));
-  state.currentInvoice.invoice.tax = Number(tax.toFixed(2));
-  state.currentInvoice.invoice.total_amount = Number(total.toFixed(2));
-  state.currentInvoice.invoice.amount_paid = amountPaid;
-  state.currentInvoice.invoice.amount_due = amountDue;
+  state.currentInvoice.invoice.discount = totals.discount;
+  state.currentInvoice.invoice.tax = totals.tax;
+  state.currentInvoice.invoice.total_amount = totals.total_amount;
+  state.currentInvoice.invoice.amount_paid = totals.amount_paid;
+  state.currentInvoice.invoice.amount_due = totals.amount_due;
+  state.currentInvoice.invoice.payment_status = totals.payment_status;
+  state.currentInvoice.invoice.is_tax_inclusive = totals.is_tax_inclusive;
 };
 
 const invoiceSlice = createSlice({

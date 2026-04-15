@@ -134,10 +134,6 @@
             background: #f8f9fa;
         }
         
-        .items-table tbody tr:hover {
-            background: #e8f4fd;
-        }
-        
         .text-right {
             text-align: right;
         }
@@ -217,6 +213,16 @@
             background: #fff3cd;
             color: #856404;
         }
+
+        .status-unpaid {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-partial {
+            background: #fff4e5;
+            color: #b45309;
+        }
         
         .status-overdue {
             background: #f8d7da;
@@ -271,9 +277,17 @@
             <% } %>
             <div class="info-row">
                 <span class="info-label">Status:</span>
-                <span class="status-badge status-<%= (invoice.payment_status || 'UNPAID').toLowerCase() %>">
+                <span class="status-badge status-<%= invoice.isOverdue ? 'overdue' : (invoice.payment_status || 'UNPAID').toLowerCase() %>">
                     <%= invoice.payment_status || 'UNPAID' %>
                 </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Payment Mode:</span>
+                <span><%= invoice.paymentMode %></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Due State:</span>
+                <span style="<%= invoice.isOverdue ? 'color: #e74c3c; font-weight: bold;' : '' %>"><%= invoice.dueState %></span>
             </div>
         </div>
 
@@ -358,6 +372,12 @@
                 <td class="label">Subtotal:</td>
                 <td class="text-right"><%= totals.subtotal %></td>
             </tr>
+            <% if (totals.discountRaw > 0) { %>
+            <tr>
+                <td class="label">Discount:</td>
+                <td class="text-right" style="color: #c0392b;">-<%= totals.discount %></td>
+            </tr>
+            <% } %>
             <tr>
                 <td class="label">GST (<%= totals.gstRate %>%):</td>
                 <td class="text-right"><%= totals.gstAmount %></td>
@@ -392,11 +412,11 @@
     <% } %>
 
     <!-- Footer -->
-    <!-- <div class="footer">
+    <div class="footer">
         <p>Thank you for your business!</p>
         <p>This invoice was generated on <%= generatedOn %></p>
         <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
         <p><em>This is a computer generated invoice and does not require signature.</em></p>
-    </div> -->
+    </div>
 </body>
 </html>

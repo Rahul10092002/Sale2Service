@@ -5,23 +5,18 @@ import Input from "../../components/ui/Input.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Alert from "../../components/ui/Alert.jsx";
 import { ROUTES, VALIDATION_MESSAGES } from "../../utils/constants.js";
+import { CheckCircle } from "lucide-react";
 
-/**
- * Signup page component
- * Handles new user registration with shop details
- */
 const Signup = () => {
   const navigate = useNavigate();
   const { signup, isSignupLoading, signupError, isAuthenticated } = useAuth();
 
-  // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       navigate(ROUTES.DASHBOARD, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated]);
 
-  // Form state
   const [formData, setFormData] = useState({
     shopName: "",
     ownerName: "",
@@ -31,289 +26,165 @@ const Signup = () => {
     confirmPassword: "",
   });
 
-  // Form validation errors
   const [errors, setErrors] = useState({});
 
-  /**
-   * Handle input change
-   */
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
-    // Clear error for this field
     if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
-
-    // Clear confirm password error if passwords now match
-    if (name === "password" || name === "confirmPassword") {
-      if (
-        name === "password" &&
-        formData.confirmPassword &&
-        value === formData.confirmPassword
-      ) {
-        setErrors((prev) => ({
-          ...prev,
-          confirmPassword: "",
-        }));
-      }
-      if (
-        name === "confirmPassword" &&
-        formData.password &&
-        value === formData.password
-      ) {
-        setErrors((prev) => ({
-          ...prev,
-          confirmPassword: "",
-        }));
-      }
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
-  /**
-   * Validate email format
-   */
-  const isValidEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  /**
-   * Validate mobile number format (basic validation)
-   */
-  const isValidMobile = (mobile) => {
-    const mobileRegex = /^[+]?[0-9]{10,15}$/;
-    return mobileRegex.test(mobile.replace(/\s+/g, ""));
-  };
-
-  /**
-   * Validate form data
-   */
   const validateForm = () => {
     const newErrors = {};
 
-    // Shop name validation
-    if (!formData.shopName.trim()) {
+    if (!formData.shopName.trim())
       newErrors.shopName = VALIDATION_MESSAGES.REQUIRED;
-    } else if (formData.shopName.trim().length < 3) {
-      newErrors.shopName = VALIDATION_MESSAGES.SHOP_NAME_MIN_LENGTH;
-    }
-
-    // Owner name validation
-    if (!formData.ownerName.trim()) {
+    if (!formData.ownerName.trim())
       newErrors.ownerName = VALIDATION_MESSAGES.REQUIRED;
-    } else if (formData.ownerName.trim().length < 2) {
-      newErrors.ownerName = VALIDATION_MESSAGES.OWNER_NAME_MIN_LENGTH;
-    }
-
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = VALIDATION_MESSAGES.REQUIRED;
-    } else if (!isValidEmail(formData.email)) {
-      newErrors.email = VALIDATION_MESSAGES.EMAIL_INVALID;
-    }
-
-    // Mobile number validation
-    if (!formData.mobileNumber.trim()) {
+    if (!formData.email.trim()) newErrors.email = VALIDATION_MESSAGES.REQUIRED;
+    if (!formData.mobileNumber.trim())
       newErrors.mobileNumber = VALIDATION_MESSAGES.REQUIRED;
-    } else if (!isValidMobile(formData.mobileNumber)) {
-      newErrors.mobileNumber = VALIDATION_MESSAGES.MOBILE_INVALID;
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = VALIDATION_MESSAGES.REQUIRED;
-    } else if (formData.password.length < 8) {
-      newErrors.password = VALIDATION_MESSAGES.PASSWORD_MIN_LENGTH;
-    }
-
-    // Confirm password validation
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = VALIDATION_MESSAGES.REQUIRED;
-    } else if (formData.password !== formData.confirmPassword) {
+    if (!formData.password) newErrors.password = VALIDATION_MESSAGES.REQUIRED;
+    if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = VALIDATION_MESSAGES.PASSWORDS_DONT_MATCH;
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  /**
-   * Handle form submission
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (!validateForm()) {
-      return;
-    }
-
-    try {
-      // Exclude confirmPassword from API call
-      const { confirmPassword, ...signupData } = formData;
-      await signup(signupData);
-
-      // Navigation will be handled by useEffect when isAuthenticated changes
-    } catch (error) {
-      console.error("Signup failed:", error);
-      // Error is handled by RTK Query and displayed via signupError
-    }
+    const { confirmPassword, ...signupData } = formData;
+    await signup(signupData);
   };
 
-  /**
-   * Get error message from API response
-   */
   const getErrorMessage = () => {
-    if (signupError?.data?.message) {
-      return signupError.data.message;
-    }
-    if (signupError?.message) {
-      return signupError.message;
-    }
-    if (signupError?.status === 409) {
-      return "An account with this email or mobile number already exists.";
-    }
-    if (signupError?.status >= 500) {
-      return "Server error. Please try again later.";
-    }
+    if (signupError?.data?.message) return signupError.data.message;
+    if (signupError?.message) return signupError.message;
     return "Signup failed. Please try again.";
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        {/* Logo and title */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Sales & Warranty Portal
-          </h1>
-          <h2 className="text-xl font-semibold text-gray-700">
-            Create your account
+    <div className="min-h-screen flex">
+      {/* LEFT SIDE */}
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-blue-600 to-blue-700 text-white p-12 flex-col justify-between">
+        <div>
+          <h1 className="text-2xl font-bold mb-6">WarrantyDesk</h1>
+
+          <h2 className="text-3xl font-bold mb-4 leading-tight">
+            Apni Shop Ko Digital Banaao 🚀
           </h2>
+
+          <p className="text-blue-100 mb-8">
+            Register hatao. Smart system use karo. Sab kuch automatic.
+          </p>
+
+          <div className="space-y-4">
+            {[
+              "Customer search in 2 seconds",
+              "Auto warranty tracking",
+              "Invoice + PDF instantly",
+              "WhatsApp reminders",
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <CheckCircle size={18} className="text-green-300" />
+                <span className="text-sm">{item}</span>
+              </div>
+            ))}
+          </div>
         </div>
+
+        <p className="text-sm text-blue-100">
+          10+ dukaan owners already using WarrantyDesk 🚀
+        </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {/* Error message */}
-          {signupError && (
-            <Alert variant="error" className="mb-6">
-              {getErrorMessage()}
-            </Alert>
-          )}
+      {/* RIGHT SIDE */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 px-6 py-12">
+        <div className="w-full max-w-md">
+          {/* Heading */}
+          <div className="mb-6 text-center">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Create Your Account
+            </h2>
+            <p className="text-gray-600 text-sm">
+              Start managing your shop digitally
+            </p>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Shop Name */}
-            <Input
-              type="text"
-              name="shopName"
-              label="Shop Name"
-              placeholder="Enter your shop name"
-              value={formData.shopName}
-              onChange={handleInputChange}
-              error={errors.shopName}
-              required
-              autoComplete="organization"
-            />
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
+            {signupError && (
+              <Alert variant="error" className="mb-4">
+                {getErrorMessage()}
+              </Alert>
+            )}
 
-            {/* Owner Name */}
-            <Input
-              type="text"
-              name="ownerName"
-              label="Owner Name"
-              placeholder="Enter the owner's name"
-              value={formData.ownerName}
-              onChange={handleInputChange}
-              error={errors.ownerName}
-              required
-              autoComplete="name"
-            />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                name="shopName"
+                label="Shop Name"
+                value={formData.shopName}
+                onChange={handleInputChange}
+                error={errors.shopName}
+              />
+              <Input
+                name="ownerName"
+                label="Owner Name"
+                value={formData.ownerName}
+                onChange={handleInputChange}
+                error={errors.ownerName}
+              />
+              <Input
+                name="email"
+                label="Email"
+                value={formData.email}
+                onChange={handleInputChange}
+                error={errors.email}
+              />
+              <Input
+                name="mobileNumber"
+                label="Mobile Number"
+                value={formData.mobileNumber}
+                onChange={handleInputChange}
+                error={errors.mobileNumber}
+              />
+              <Input
+                type="password"
+                name="password"
+                label="Password"
+                value={formData.password}
+                onChange={handleInputChange}
+                error={errors.password}
+              />
+              <Input
+                type="password"
+                name="confirmPassword"
+                label="Confirm Password"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                error={errors.confirmPassword}
+              />
 
-            {/* Email */}
-            <Input
-              type="email"
-              name="email"
-              label="Email Address"
-              placeholder="Enter your email address"
-              value={formData.email}
-              onChange={handleInputChange}
-              error={errors.email}
-              required
-              autoComplete="email"
-            />
+              <Button
+                type="submit"
+                className="w-full"
+                loading={isSignupLoading}
+              >
+                {isSignupLoading ? "Creating..." : "Create Account"}
+              </Button>
+            </form>
 
-            {/* Mobile Number */}
-            <Input
-              type="tel"
-              name="mobileNumber"
-              label="Mobile Number (WhatsApp)"
-              placeholder="Enter your mobile number"
-              value={formData.mobileNumber}
-              onChange={handleInputChange}
-              error={errors.mobileNumber}
-              required
-              autoComplete="tel"
-            />
-
-            {/* Password */}
-            <Input
-              type="password"
-              name="password"
-              label="Password"
-              placeholder="Enter your password (min 8 characters)"
-              value={formData.password}
-              onChange={handleInputChange}
-              error={errors.password}
-              required
-              autoComplete="new-password"
-            />
-
-            {/* Confirm Password */}
-            <Input
-              type="password"
-              name="confirmPassword"
-              label="Confirm Password"
-              placeholder="Confirm your password"
-              value={formData.confirmPassword}
-              onChange={handleInputChange}
-              error={errors.confirmPassword}
-              required
-              autoComplete="new-password"
-            />
-
-            {/* Submit button */}
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              loading={isSignupLoading}
-              disabled={isSignupLoading}
-              className="w-full"
-            >
-              {isSignupLoading ? "Creating Account..." : "Create Account"}
-            </Button>
-          </form>
-
-          {/* Links */}
-          <div className="mt-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Already have an account?{" "}
-                <Link
-                  to={ROUTES.LOGIN}
-                  className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
-                >
-                  Sign in
-                </Link>
-              </p>
-            </div>
+            <p className="text-sm text-center mt-5 text-gray-600">
+              Already have an account?{" "}
+              <Link to={ROUTES.LOGIN} className="text-blue-600 font-medium">
+                Login
+              </Link>
+            </p>
           </div>
         </div>
       </div>

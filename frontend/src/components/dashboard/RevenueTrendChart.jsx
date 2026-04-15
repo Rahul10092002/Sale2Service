@@ -51,9 +51,8 @@ const RevenueTrendChart = ({ data, height = 300 }) => {
       </div>
     );
   }
-
   // Format data for the chart
-  const formattedData = data.map((item) => ({
+  const formattedData = data?.data?.map((item) => ({
     ...item,
     displayDate: format(parseISO(item.date), "MMM dd"),
     revenue: Number(item.revenue || 0),

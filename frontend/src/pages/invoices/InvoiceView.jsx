@@ -92,7 +92,7 @@ const InvoiceView = () => {
     try {
       await deleteInvoice(id).unwrap();
       dispatch(showToast({ message: "Invoice deleted", type: "success" }));
-      navigate(ROUTES.INVOICES);
+navigate(location.state?.from || "/invoices")
     } catch (err) {
       console.error("Failed to delete invoice:", err);
       dispatch(
@@ -324,9 +324,9 @@ const InvoiceView = () => {
                 The invoice you're looking for doesn't exist or has been
                 deleted.
               </p>
-              <Link to={ROUTES.INVOICES}>
-                <Button>Back to Invoices</Button>
-              </Link>
+              <div>
+                <Button onClick={()=>navigate(location.state?.from || "/invoices")}>Back to Invoices</Button>
+              </div>
             </div>
           </div>
         </div>
@@ -345,7 +345,7 @@ const InvoiceView = () => {
           {/* Header */}
           <div className="mb-3">
             <button
-              onClick={() => navigate(from)}
+              onClick={() => navigate(location.state?.from || "/invoices")}
               className="inline-flex items-center px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
             >
               <ArrowLeft size={16} className="mr-2" />
@@ -376,9 +376,15 @@ const InvoiceView = () => {
                         className="text-base font-bold cursor-pointer hover:underline"
                         onClick={() => {
                           if (invoiceObj.customer_id?._id) {
-                            navigate(`${ROUTES.CUSTOMERS}/${invoiceObj.customer_id._id}`, {
-                              state: { from: location.pathname, label: "Invoices" },
-                            });
+                            navigate(
+                              `${ROUTES.CUSTOMERS}/${invoiceObj.customer_id._id}`,
+                              {
+                                state: {
+                                  from: location.pathname,
+                                  label: "Invoices",
+                                },
+                              },
+                            );
                           }
                         }}
                       >
@@ -555,32 +561,34 @@ const InvoiceView = () => {
                     Payment Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                   { <div
-                      className={`rounded-lg p-3 border ${
-                        invoiceObj.payment_status === "PAID"
-                          ? "bg-green-50 border-green-200"
-                          : "bg-red-50 border-red-200"
-                      }`}
-                    >
-                      <label
-                        className={`block text-xs font-medium mb-1 ${
+                    {
+                      <div
+                        className={`rounded-lg p-3 border ${
                           invoiceObj.payment_status === "PAID"
-                            ? "text-green-600"
-                            : "text-red-600"
+                            ? "bg-green-50 border-green-200"
+                            : "bg-red-50 border-red-200"
                         }`}
                       >
-                        Payment Status
-                      </label>
-                      <p
-                        className={`text-sm font-medium ${
-                          getPaymentStatus() === "PAID"
-                            ? "text-green-800"
-                            : "text-red-800"
-                        }`}
-                      >
-                        {getPaymentStatus()}
-                      </p>
-                    </div>}
+                        <label
+                          className={`block text-xs font-medium mb-1 ${
+                            invoiceObj.payment_status === "PAID"
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          Payment Status
+                        </label>
+                        <p
+                          className={`text-sm font-medium ${
+                            getPaymentStatus() === "PAID"
+                              ? "text-green-800"
+                              : "text-red-800"
+                          }`}
+                        >
+                          {getPaymentStatus()}
+                        </p>
+                      </div>
+                    }
                     {invoiceObj.warranty_months > 0 && (
                       <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
@@ -646,74 +654,79 @@ const InvoiceView = () => {
                           {items.map((item, index) => {
                             const batteryLine = invoiceBatteryLine(item);
                             return (
-                            <tr key={index}>
-                              <td
-                                className="py-2 px-2 text-ink-base dark:text-slate-100 underline cursor-pointer"
-                                onClick={() => {
-                                  navigate(`${ROUTES.PRODUCTS}/${item._id}`, {
-                                    state: { from: location.pathname, label: "Invoices" },
-                                  });
-                                }}
-                              >
-                                <span className="block">{item.product_name}</span>
-                                {batteryLine && (
-                                  <span className="block text-[10px] font-normal text-ink-muted dark:text-slate-500 no-underline mt-[2px] cursor-default">
-                                    {batteryLine}
+                              <tr key={index}>
+                                <td
+                                  className="py-2 px-2 text-ink-base dark:text-slate-100 underline cursor-pointer"
+                                  onClick={() => {
+                                    navigate(`${ROUTES.PRODUCTS}/${item._id}`, {
+                                      state: {
+                                        from: location.pathname,
+                                        label: "Invoices",
+                                      },
+                                    });
+                                  }}
+                                >
+                                  <span className="block">
+                                    {item.product_name}
                                   </span>
-                                )}
-                              </td>
-                              <td className="py-2 px-2 text-ink-secondary dark:text-slate-400">
-                                {item.serial_number}
-                              </td>
-                              <td className="py-2 px-2 text-ink-secondary dark:text-slate-400">
-                                {(() => {
-                                  const endDate = new Date(
-                                    item.warranty_end_date,
-                                  );
-                                  const today = new Date();
+                                  {batteryLine && (
+                                    <span className="block text-[10px] font-normal text-ink-muted dark:text-slate-500 no-underline mt-[2px] cursor-default">
+                                      {batteryLine}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-2 text-ink-secondary dark:text-slate-400">
+                                  {item.serial_number}
+                                </td>
+                                <td className="py-2 px-2 text-ink-secondary dark:text-slate-400">
+                                  {(() => {
+                                    const endDate = new Date(
+                                      item.warranty_end_date,
+                                    );
+                                    const today = new Date();
 
-                                  const diffTime = endDate - today;
-                                  const diffDays = Math.ceil(
-                                    diffTime / (1000 * 60 * 60 * 24),
-                                  );
+                                    const diffTime = endDate - today;
+                                    const diffDays = Math.ceil(
+                                      diffTime / (1000 * 60 * 60 * 24),
+                                    );
 
-                                  const isExpired = diffDays < 0;
+                                    const isExpired = diffDays < 0;
 
-                                  return (
-                                    <div className="flex flex-col">
-                                      {/* Duration */}
-                                      <span className="text-sm font-medium text-ink-base dark:text-slate-200">
-                                        {item.warranty_duration_months} Month
-                                      </span>
+                                    return (
+                                      <div className="flex flex-col">
+                                        {/* Duration */}
+                                        <span className="text-sm font-medium text-ink-base dark:text-slate-200">
+                                          {item.warranty_duration_months} Month
+                                        </span>
 
-                                      {/* End Date */}
-                                      <span className="text-xs text-ink-muted dark:text-slate-500">
-                                        Ends:{" "}
-                                        {endDate.toLocaleDateString("en-IN")}
-                                      </span>
+                                        {/* End Date */}
+                                        <span className="text-xs text-ink-muted dark:text-slate-500">
+                                          Ends:{" "}
+                                          {endDate.toLocaleDateString("en-IN")}
+                                        </span>
 
-                                      {/* Status */}
-                                      <span
-                                        className={`text-xs font-medium ${
-                                          isExpired
-                                            ? "text-red-500"
-                                            : "text-green-600"
-                                        }`}
-                                      >
-                                        {isExpired
-                                          ? `Expired ${Math.abs(diffDays)} days ago`
-                                          : `${diffDays} days left`}
-                                      </span>
-                                    </div>
-                                  );
-                                })()}
-                              </td>
-                              <td className="py-2 px-2 text-right text-ink-base dark:text-slate-100">
-                                {formatCurrency(
-                                  item.selling_price || item.price || 0,
-                                )}
-                              </td>
-                            </tr>
+                                        {/* Status */}
+                                        <span
+                                          className={`text-xs font-medium ${
+                                            isExpired
+                                              ? "text-red-500"
+                                              : "text-green-600"
+                                          }`}
+                                        >
+                                          {isExpired
+                                            ? `Expired ${Math.abs(diffDays)} days ago`
+                                            : `${diffDays} days left`}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
+                                </td>
+                                <td className="py-2 px-2 text-right text-ink-base dark:text-slate-100">
+                                  {formatCurrency(
+                                    item.selling_price || item.price || 0,
+                                  )}
+                                </td>
+                              </tr>
                             );
                           })}
                         </tbody>
@@ -731,8 +744,12 @@ const InvoiceView = () => {
                   <div className="max-w-sm ml-auto space-y-1 text-xs">
                     {/* Subtotal */}
                     <div className="flex justify-between">
-                      <span className="text-ink-secondary dark:text-slate-400">Subtotal</span>
-                      <span className="text-ink-base dark:text-slate-100">{formatCurrency(invoiceObj.subtotal)}</span>
+                      <span className="text-ink-secondary dark:text-slate-400">
+                        Subtotal
+                      </span>
+                      <span className="text-ink-base dark:text-slate-100">
+                        {formatCurrency(invoiceObj.subtotal)}
+                      </span>
                     </div>
 
                     {/* Tax */}
@@ -744,7 +761,9 @@ const InvoiceView = () => {
                         ).toFixed(0)}
                         %)
                       </span>
-                      <span className="text-ink-base dark:text-slate-100">{formatCurrency(invoiceObj.tax)}</span>
+                      <span className="text-ink-base dark:text-slate-100">
+                        {formatCurrency(invoiceObj.tax)}
+                      </span>
                     </div>
 
                     {/* Discount */}
@@ -781,7 +800,9 @@ const InvoiceView = () => {
                     <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2">
                       Notes
                     </h3>
-                    <p className="text-xs text-ink-secondary dark:text-slate-400">{invoice.notes}</p>
+                    <p className="text-xs text-ink-secondary dark:text-slate-400">
+                      {invoice.notes}
+                    </p>
                   </div>
                 )}
               </div>
@@ -950,13 +971,17 @@ const InvoiceView = () => {
               <div className="space-y-4">
                 <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2 text-sm border border-gray-200 dark:border-dark-border">
                   <div className="flex justify-between">
-                    <span className="text-ink-secondary dark:text-slate-400">Total Amount:</span>
+                    <span className="text-ink-secondary dark:text-slate-400">
+                      Total Amount:
+                    </span>
                     <span className="font-medium text-ink-base dark:text-slate-100">
                       ₹{Number(invoiceObj.total_amount || 0).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
-                    <span className="text-ink-secondary dark:text-slate-400">Already Paid:</span>
+                    <span className="text-ink-secondary dark:text-slate-400">
+                      Already Paid:
+                    </span>
                     <span className="font-medium text-green-700 dark:text-green-400">
                       ₹{Number(invoiceObj.amount_paid || 0).toFixed(2)}
                     </span>

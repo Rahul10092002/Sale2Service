@@ -14,12 +14,16 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button, Input, SelectField } from "../../components/ui/index.js";
 import { useGetInvoicesQuery } from "../../features/invoices/invoiceApi.js";
 import { ROUTES } from "../../utils/constants.js";
-import Layout from "../../components/layout/Layout.jsx";
+import { useSearchParams } from "react-router-dom";
+
 const Chip = ({ label, onRemove }) => {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full border border-blue-200 dark:border-blue-800">
       {label}
-      <button onClick={onRemove} className="text-blue-500 dark:text-blue-400 hover:text-red-500 dark:hover:text-red-400">
+      <button
+        onClick={onRemove}
+        className="text-blue-500 dark:text-blue-400 hover:text-red-500 dark:hover:text-red-400"
+      >
         ✕
       </button>
     </div>
@@ -28,24 +32,30 @@ const Chip = ({ label, onRemove }) => {
 const InvoiceList = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchIn, setSearchIn] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || "",
+  );
+  const [searchIn, setSearchIn] = useState(searchParams.get("search_in") || "");
   const [showFilters, setShowFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(
+    Number(searchParams.get("page")) || 1,
+  );
   const [filters, setFilters] = useState({
-    payment_status: "",
-    payment_mode: "",
-    date_from: "",
-    date_to: "",
-    due_date_from: "",
-    due_date_to: "",
-    min_amount: "",
-    max_amount: "",
-    overdue: "",
-    quick_filter: "",
+    payment_status: searchParams.get("payment_status") || "",
+    payment_mode: searchParams.get("payment_mode") || "",
+    date_from: searchParams.get("date_from") || "",
+    date_to: searchParams.get("date_to") || "",
+    due_date_from: searchParams.get("due_date_from") || "",
+    due_date_to: searchParams.get("due_date_to") || "",
+    min_amount: searchParams.get("min_amount") || "",
+    max_amount: searchParams.get("max_amount") || "",
+    overdue: searchParams.get("overdue") || "",
+    quick_filter: searchParams.get("quick_filter") || "",
   });
   const filterRef = useRef(null);
-
+const isHydrated = useRef(false);
   const {
     data: response,
     isLoading,
@@ -64,18 +74,66 @@ const InvoiceList = () => {
 
   const handleViewInvoice = (invoiceId) => {
     navigate(`${ROUTES.INVOICES}/${invoiceId}`, {
-      state: { from: location.pathname, label: "Invoices" },
+      state: {
+        from: location.pathname + location.search, // ✅ IMPORTANT
+        label: "Invoices",
+      },
     });
   };
 
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
-  };
+ const handlePageChange = (newPage) => {
+   setCurrentPage(newPage);
+
+   updateURL({
+     currentPage: newPage,
+   });
+ };
 
   const toggleFilter = () => {
     setShowFilters(!showFilters);
   };
+ useEffect(() => {
+   setSearchTerm(searchParams.get("search") || "");
+   setSearchIn(searchParams.get("search_in") || "");
+   setCurrentPage(Number(searchParams.get("page")) || 1);
 
+   setFilters({
+     payment_status: searchParams.get("payment_status") || "",
+     payment_mode: searchParams.get("payment_mode") || "",
+     date_from: searchParams.get("date_from") || "",
+     date_to: searchParams.get("date_to") || "",
+     due_date_from: searchParams.get("due_date_from") || "",
+     due_date_to: searchParams.get("due_date_to") || "",
+     min_amount: searchParams.get("min_amount") || "",
+     max_amount: searchParams.get("max_amount") || "",
+     overdue: searchParams.get("overdue") || "",
+     quick_filter: searchParams.get("quick_filter") || "",
+   });
+
+   isHydrated.current = true; // ✅ mark ready
+ }, [location.search]);// ✅ THIS is key
+  
+const updateURL = (newState) => {
+  const params = {};
+
+  const finalState = {
+    filters,
+    searchTerm,
+    searchIn,
+    currentPage,
+    ...newState,
+  };
+
+  Object.entries(finalState.filters).forEach(([key, value]) => {
+    if (value) params[key] = value;
+  });
+
+  if (finalState.searchTerm) params.search = finalState.searchTerm;
+  if (finalState.searchIn) params.search_in = finalState.searchIn;
+  if (finalState.currentPage > 1) params.page = finalState.currentPage;
+
+  setSearchParams(params);
+};
   // Close filter dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -189,7 +247,22 @@ const InvoiceList = () => {
                       </label>
                       <select
                         value={searchIn}
-                        onChange={(e) => setSearchIn(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+
+                          const newFilters = {
+                            ...filters,
+                            searchIn: value,
+                          };
+
+                          setFilters(newFilters);
+                          setCurrentPage(1);
+
+                          updateURL({
+                            filters: newFilters,
+                            currentPage: 1,
+                          });
+                        }}
                         className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
                       >
                         <option value="">All Fields</option>
@@ -211,12 +284,22 @@ const InvoiceList = () => {
                         </label>
                         <select
                           value={filters.payment_status}
-                          onChange={(e) =>
-                            setFilters((p) => ({
-                              ...p,
-                              payment_status: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+
+                            const newFilters = {
+                              ...filters,
+                              payment_status: value,
+                            };
+
+                            setFilters(newFilters);
+                            setCurrentPage(1);
+
+                            updateURL({
+                              filters: newFilters,
+                              currentPage: 1,
+                            });
+                          }}
                           className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           <option value="">All</option>
@@ -232,12 +315,22 @@ const InvoiceList = () => {
                         </label>
                         <select
                           value={filters.payment_mode}
-                          onChange={(e) =>
-                            setFilters((p) => ({
-                              ...p,
-                              payment_mode: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+
+                            const newFilters = {
+                              ...filters,
+                              payment_mode: value,
+                            };
+
+                            setFilters(newFilters);
+                            setCurrentPage(1);
+
+                            updateURL({
+                              filters: newFilters,
+                              currentPage: 1,
+                            });
+                          }}
                           className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         >
                           <option value="">All</option>
@@ -259,23 +352,43 @@ const InvoiceList = () => {
                         <input
                           type="date"
                           value={filters.date_from}
-                          onChange={(e) =>
-                            setFilters((p) => ({
-                              ...p,
-                              date_from: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+
+                            const newFilters = {
+                              ...filters,
+                              date_from: value,
+                            };
+
+                            setFilters(newFilters);
+                            setCurrentPage(1);
+
+                            updateURL({
+                              filters: newFilters,
+                              currentPage: 1,
+                            });
+                          }}
                           className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                         <input
                           type="date"
                           value={filters.date_to}
-                          onChange={(e) =>
-                            setFilters((p) => ({
-                              ...p,
-                              date_to: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+
+                            const newFilters = {
+                              ...filters,
+                              date_to: value,
+                            };
+
+                            setFilters(newFilters);
+                            setCurrentPage(1);
+
+                            updateURL({
+                              filters: newFilters,
+                              currentPage: 1,
+                            });
+                          }}
                           className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
@@ -290,23 +403,43 @@ const InvoiceList = () => {
                         <input
                           type="date"
                           value={filters.due_date_from}
-                          onChange={(e) =>
-                            setFilters((p) => ({
-                              ...p,
-                              due_date_from: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+
+                            const newFilters = {
+                              ...filters,
+                              due_date_from: value,
+                            };
+
+                            setFilters(newFilters);
+                            setCurrentPage(1);
+
+                            updateURL({
+                              filters: newFilters,
+                              currentPage: 1,
+                            });
+                          }}
                           className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                         <input
                           type="date"
                           value={filters.due_date_to}
-                          onChange={(e) =>
-                            setFilters((p) => ({
-                              ...p,
-                              due_date_to: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+
+                            const newFilters = {
+                              ...filters,
+                              due_date_to: value,
+                            };
+
+                            setFilters(newFilters);
+                            setCurrentPage(1);
+
+                            updateURL({
+                              filters: newFilters,
+                              currentPage: 1,
+                            });
+                          }}
                           className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
@@ -322,24 +455,44 @@ const InvoiceList = () => {
                           type="number"
                           placeholder="Min"
                           value={filters.min_amount}
-                          onChange={(e) =>
-                            setFilters((p) => ({
-                              ...p,
-                              min_amount: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+
+                            const newFilters = {
+                              ...filters,
+                              min_amount: value,
+                            };
+
+                            setFilters(newFilters);
+                            setCurrentPage(1);
+
+                            updateURL({
+                              filters: newFilters,
+                              currentPage: 1,
+                            });
+                          }}
                           className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                         <input
                           type="number"
                           placeholder="Max"
                           value={filters.max_amount}
-                          onChange={(e) =>
-                            setFilters((p) => ({
-                              ...p,
-                              max_amount: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+
+                            const newFilters = {
+                              ...filters,
+                              max_amount: value,
+                            };
+
+                            setFilters(newFilters);
+                            setCurrentPage(1);
+
+                            updateURL({
+                              filters: newFilters,
+                              currentPage: 1,
+                            });
+                          }}
                           className="px-2 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                         />
                       </div>
@@ -349,12 +502,22 @@ const InvoiceList = () => {
                     <div className="flex items-center justify-between">
                       <select
                         value={filters.quick_filter}
-                        onChange={(e) =>
-                          setFilters((p) => ({
-                            ...p,
-                            quick_filter: e.target.value,
-                          }))
-                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+
+                          const newFilters = {
+                            ...filters,
+                            quick_filter: value,
+                          };
+
+                          setFilters(newFilters);
+                          setCurrentPage(1);
+
+                          updateURL({
+                            filters: newFilters,
+                            currentPage: 1,
+                          });
+                        }}
                         className="px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                       >
                         <option value="">Quick</option>
@@ -365,12 +528,22 @@ const InvoiceList = () => {
                         <input
                           type="checkbox"
                           checked={filters.overdue === "true"}
-                          onChange={(e) =>
-                            setFilters((p) => ({
-                              ...p,
-                              overdue: e.target.checked ? "true" : "",
-                            }))
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+
+                            const newFilters = {
+                              ...filters,
+                              overdue: value,
+                            };
+
+                            setFilters(newFilters);
+                            setCurrentPage(1);
+
+                            updateURL({
+                              filters: newFilters,
+                              currentPage: 1,
+                            });
+                          }}
                         />
                         Overdue
                       </label>
@@ -386,15 +559,24 @@ const InvoiceList = () => {
                   placeholder="Search invoices..."
                   className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-xs"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSearchTerm(value);
+                    setCurrentPage(1);
+
+                    updateURL({
+                      searchTerm: value,
+                      currentPage: 1,
+                    });
+                  }}
                 />
               </div>
             </div>
             <Link to={`${ROUTES.INVOICES}/new`}>
-                <button className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 hover:text-blue-600">
-                  <Plus className="w-4 h-4" />
-                  Create Invoice
-                </button>
+              <button className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 hover:text-blue-600">
+                <Plus className="w-4 h-4" />
+                Create Invoice
+              </button>
             </Link>
           </div>
           {/* Active Filter Chips */}
@@ -528,9 +710,7 @@ const InvoiceList = () => {
                       <div className="md:hidden p-4 border-b border-gray-100 dark:border-dark-border">
                         {/* Header: icon + invoice number + status pill */}
                         <div className="flex items-start gap-3 mb-3">
-                          <div
-                            className="shrink-0 "
-                          >
+                          <div className="shrink-0 ">
                             <div className="w-11 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
                               <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                             </div>
@@ -581,12 +761,15 @@ const InvoiceList = () => {
                                   <span
                                     key={i}
                                     onClick={() =>
-                                      navigate(`${ROUTES.PRODUCTS}/${item._id}`, {
-                                        state: {
-                                          from: location.pathname,
-                                          label: "Invoices",
+                                      navigate(
+                                        `${ROUTES.PRODUCTS}/${item._id}`,
+                                        {
+                                          state: {
+                                            from: location.pathname,
+                                            label: "Invoices",
+                                          },
                                         },
-                                      })
+                                      )
                                     }
                                     className="flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full"
                                   >
@@ -624,14 +807,16 @@ const InvoiceList = () => {
                               {formatDate(invoice.invoice_date)}
                             </p>
                           </div>
-                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-1.5">
-                            <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
-                              Due Date
-                            </p>
-                            <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
-                              {formatDate(invoice.due_date)}
-                            </p>
-                          </div>
+                          {invoice.payment_status != "PAID" && (
+                            <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-1.5">
+                              <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
+                                Due Date
+                              </p>
+                              <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
+                                {formatDate(invoice.due_date)}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         <button
@@ -644,9 +829,7 @@ const InvoiceList = () => {
                       </div>
 
                       {/* ── Desktop Row ── */}
-                      <div
-                        className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 items-center p-4 "
-                      >
+                      <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 items-center p-4 ">
                         <div className="text-ink-secondary dark:text-slate-400">
                           {(currentPage - 1) * 10 + index + 1}
                         </div>
@@ -703,12 +886,15 @@ const InvoiceList = () => {
                                   <div
                                     key={i}
                                     onClick={() =>
-                                      navigate(`${ROUTES.PRODUCTS}/${item._id}`, {
-                                        state: {
-                                          from: location.pathname,
-                                          label: "Invoices",
+                                      navigate(
+                                        `${ROUTES.PRODUCTS}/${item._id}`,
+                                        {
+                                          state: {
+                                            from: location.pathname,
+                                            label: "Invoices",
+                                          },
                                         },
-                                      })
+                                      )
                                     }
                                     className="flex items-center gap-1.5 min-w-0 cursor-pointer"
                                   >
@@ -760,16 +946,17 @@ const InvoiceList = () => {
                                 {invoice.payment_status || "UNPAID"}
                               </span>
                             </p>
-                            {invoice.due_date && (
-                              <p
-                                className={`text-xs ${new Date(invoice.due_date) < new Date() ? "text-red-600 dark:text-red-400 font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? (new Date(invoice.due_date) < new Date() ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-slate-400") : "text-gray-600 dark:text-slate-400"}`}
-                              >
-                                Due Date:{" "}
-                                {new Date(invoice.due_date).toLocaleDateString(
-                                  "en-IN",
-                                ) || "N/A"}
-                              </p>
-                            )}
+                            {invoice.due_date &&
+                              invoice.payment_status != "PAID" && (
+                                <p
+                                  className={`text-xs ${new Date(invoice.due_date) < new Date() ? "text-red-600 dark:text-red-400 font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? (new Date(invoice.due_date) < new Date() ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-slate-400") : "text-gray-600 dark:text-slate-400"}`}
+                                >
+                                  Due Date:{" "}
+                                  {new Date(
+                                    invoice.due_date,
+                                  ).toLocaleDateString("en-IN") || "N/A"}
+                                </p>
+                              )}
                           </div>
                         </div>
                         <div>

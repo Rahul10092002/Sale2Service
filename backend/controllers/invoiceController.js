@@ -7,9 +7,13 @@ import Shop from "../models/Shop.js";
 import ServicePlan from "../models/ServicePlan.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
 import { sendWhatsappMessageViaMSG91 } from "../config/msg91.js";
-import { InvoicePDFService } from "../services/invoicePDFService.js";
-import cloudinaryUpload from "../services/cloudinaryUpload.js";
+import { InvoiceDocumentService } from "../services/invoiceDocumentService.js";
 import InvoiceCounter from "../models/InvoiceCounter.js";
+import {
+  buildInvoiceNumberPreview,
+  calculateInvoiceTotals,
+} from "../../shared/invoiceMath.js";
+import { validateInvoicePayload } from "../utils/invoiceValidation.js";
 
 const getNextInvoiceSequence = async (shopId, datePart, session) => {
   const counter = await InvoiceCounter.findOneAndUpdate(
@@ -30,6 +34,7 @@ const getNextInvoiceSequence = async (shopId, datePart, session) => {
 // Cloudinary CDN propagation race (error 131053). Tokens are single-use,
 // expire in 5 minutes, and are keyed by a cryptographically random UUID.
 const tempPdfStore = new Map();
+const invoiceDocumentService = new InvoiceDocumentService();
 
 export default class InvoiceController {
   /**
@@ -46,18 +51,17 @@ export default class InvoiceController {
 
       // (debug logs removed)
 
-      // Validation
-      if (
-        !customer ||
-        !invoice ||
-        !invoice_items ||
-        !Array.isArray(invoice_items) ||
-        invoice_items.length === 0
-      ) {
+      const validation = validateInvoicePayload({
+        customer,
+        invoice,
+        invoice_items,
+      });
+
+      if (!validation.isValid) {
         return res.status(400).json({
           success: false,
-          message:
-            "Customer, invoice details, and at least one invoice item are required",
+          message: validation.errors[0],
+          errors: validation.errors,
         });
       }
 
@@ -140,66 +144,30 @@ export default class InvoiceController {
       let invoiceNumber = invoice.invoice_number;
       if (!invoiceNumber) {
         const now = new Date();
-        const year = String(now.getFullYear()).slice(-2);
-        const month = String(now.getMonth() + 1).padStart(2, "0");
-        const day = String(now.getDate()).padStart(2, "0");
-        const datePart = `${year}${month}${day}`; // e.g. "240403"
-
+        const datePart = buildInvoiceNumberPreview({ date: now }).datePart;
         const sequence = await getNextInvoiceSequence(
           user.shopId,
           datePart,
           session,
         );
-
-        const paddedSeq = String(sequence).padStart(3, "0");
-        invoiceNumber = `INV-${datePart}-${paddedSeq}`;
+        invoiceNumber = buildInvoiceNumberPreview({
+          date: now,
+          sequence,
+        }).invoice_number;
       }
 
       // Step 4: Calculate totals
-      // Treat incoming item.selling_price as GST-inclusive amount (matching frontend behavior)
-      const inclusiveTotal = invoice_items.reduce(
-        (sum, item) =>
-          sum + Number(item.selling_price || 0) * Number(item.quantity || 1),
-        0,
-      );
-
-      const discount = Number(invoice.discount || 0) || 0;
-      const taxRate = 0.18; // 18% GST
-
-      // If invoice.tax provided, use it; otherwise compute as percentage of inclusive total
-      const tax =
-        typeof invoice.tax === "number"
-          ? Number(invoice.tax)
-          : inclusiveTotal * taxRate;
-
-      // Subtotal is inclusive total minus tax (i.e., amount before GST as per requested behavior)
-      const subtotal =
-        typeof invoice.subtotal === "number"
-          ? Number(invoice.subtotal)
-          : inclusiveTotal - tax;
-
-      // Total amount after applying discount should equal inclusiveTotal - discount
-      const totalAmount =
-        typeof invoice.total_amount === "number"
-          ? Number(invoice.total_amount)
-          : Math.max(0, inclusiveTotal - discount);
-
-      // Consider any amount_paid submitted
-      let amountPaid = Number(invoice.amount_paid || 0) || 0;
-      let amountDue = Math.max(0, totalAmount - amountPaid);
-
-      // If client marks invoice as PAID, enforce "paid" semantics:
-      // amount_due must be 0 and due_date must be null.
-      const incomingPaymentStatus = invoice.payment_status || "UNPAID";
-      if (incomingPaymentStatus === "PAID") {
-        amountPaid = totalAmount;
-        amountDue = 0;
-      }
-
-      // Derive payment status from amounts to avoid inconsistent states
-      // (e.g. payment_status=PAID but amount_paid=0).
-      const derivedPaymentStatus =
-        amountDue === 0 ? "PAID" : amountPaid > 0 ? "PARTIAL" : "UNPAID";
+      const totals = calculateInvoiceTotals({
+        invoice,
+        items: invoice_items,
+      });
+      const discount = totals.discount;
+      const subtotal = totals.subtotal;
+      const tax = totals.tax;
+      const totalAmount = totals.total_amount;
+      let amountPaid = totals.amount_paid;
+      let amountDue = totals.amount_due;
+      const derivedPaymentStatus = totals.payment_status;
       const dueDateToStore =
         derivedPaymentStatus === "PAID" ? null : invoice.due_date || null;
 
@@ -349,43 +317,23 @@ export default class InvoiceController {
       // Generate and store PDF in Cloudinary after successful invoice creation
       let pdfBuffer = null; // kept accessible to the WhatsApp IIFE below
       try {
-        // Generate PDF
-        const pdfService = new InvoicePDFService();
-        const pdfResult = await pdfService.generateInvoicePDF(
-          newInvoice,
-          newInvoice.customer_id,
-          createdInvoiceItems,
-          shop,
-        );
-        pdfBuffer = pdfResult.buffer;
-
-        // Upload to Cloudinary
-        const cloudinaryResult = await cloudinaryUpload.uploadPDFFromBuffer(
-          pdfResult.buffer,
+        const pdfResult = await invoiceDocumentService.generateAndStoreInvoicePdf(
           {
-            folder: "invoices",
-            fileName: `invoice_${newInvoice.invoice_number}_${Date.now()}.pdf`,
-            tags: [
-              "invoice",
-              "auto-generated",
-              `user_${user.userId}`,
-              `invoice_${newInvoice._id}`,
-              `shop_${user.shopId}`,
-            ],
-            overwrite: false,
+            invoice: newInvoice,
+            customer: newInvoice.customer_id,
+            invoiceItems: createdInvoiceItems,
+            shop,
+            userId: user.userId,
+            tag: "auto-generated",
+            replaceExisting: false,
           },
         );
+        pdfBuffer = pdfResult.buffer;
+        newInvoice.invoice_pdf = pdfResult.pdf_url;
 
-        // PDF uploaded to Cloudinary
-
-        // Store Cloudinary URL and public ID in the invoice record
-        await Invoice.findByIdAndUpdate(newInvoice._id, {
-          invoice_pdf: cloudinaryResult.url,
-          pdf_public_id: cloudinaryResult.public_id,
-        });
-
-        // Add PDF URL to response data
-        newInvoice.invoice_pdf = cloudinaryResult.url;
+        if (pdfResult.uploadError) {
+          throw pdfResult.uploadError;
+        }
       } catch (pdfError) {
         // PDF auto-generation failed (non-fatal) — record error for response
         console.error("PDF generation/upload error:", pdfError);
@@ -596,68 +544,24 @@ export default class InvoiceController {
       const customer = invoice.customer_id;
       const customerNumber = customer?.whatsapp_number;
 
-      // Always serve the PDF from our own backend URL so Meta can reliably
-      // download it. Cloudinary RAW CDN URLs cause error 131053 because Meta's
-      // servers hit geographically distant edge nodes that may not yet have
-      // the file, or may be blocked. We proxy the bytes through our server.
-      let pdfBuffer = null;
-
-      if (
-        invoice.invoice_pdf &&
-        !invoice.invoice_pdf.includes("/image/upload/")
-      ) {
-        // Fetch existing PDF from Cloudinary through our server
-        try {
-          const { default: nodeFetch } = await import("node-fetch");
-          const fetchResp = await nodeFetch(invoice.invoice_pdf, {
-            timeout: 10000,
-          });
-          if (fetchResp.ok) {
-            pdfBuffer = Buffer.from(await fetchResp.arrayBuffer());
-          }
-        } catch (_) {
-          // fall through to regenerate below
-        }
-      }
-
-      if (!pdfBuffer) {
-        // Generate fresh PDF (no valid stored URL, or fetch failed)
-        try {
-          const invoiceItems = await InvoiceItem.find({ invoice_id: id });
-          const pdfService = new InvoicePDFService();
-          const pdfResult = await pdfService.generateInvoicePDF(
-            invoice,
-            customer,
-            invoiceItems,
-            shop,
-          );
-          pdfBuffer = pdfResult.buffer;
-          // Upload and store the fresh PDF for future use
-          const cloudinaryResult = await cloudinaryUpload.uploadPDFFromBuffer(
-            pdfBuffer,
-            {
-              folder: "invoices",
-              fileName: `invoice_${invoice.invoice_number}_${Date.now()}.pdf`,
-              tags: [
-                "invoice",
-                "regenerated",
-                `invoice_${invoice._id}`,
-                `shop_${user.shopId}`,
-              ],
-              overwrite: false,
-            },
-          );
-          await Invoice.findByIdAndUpdate(id, {
-            invoice_pdf: cloudinaryResult.url,
-            pdf_public_id: cloudinaryResult.public_id,
-          });
-        } catch (pdfErr) {
-          console.error("PDF generation failed in sendInvoice:", pdfErr);
-          return res.status(500).json({
-            success: false,
-            message: "Cannot send invoice: PDF generation failed",
-          });
-        }
+      let pdfBuffer;
+      try {
+        const invoiceItems = await InvoiceItem.find({ invoice_id: id });
+        const pdfResult = await invoiceDocumentService.getOrCreateInvoicePdf({
+          invoice,
+          customer,
+          invoiceItems,
+          shop,
+          userId: user.userId,
+          tag: "regenerated",
+        });
+        pdfBuffer = pdfResult.buffer;
+      } catch (pdfErr) {
+        console.error("PDF generation failed in sendInvoice:", pdfErr);
+        return res.status(500).json({
+          success: false,
+          message: "Cannot send invoice: PDF generation failed",
+        });
       }
 
       // Store buffer in temp map — Meta will fetch from our backend URL
@@ -1454,25 +1358,24 @@ export default class InvoiceController {
   async getNextInvoiceNumber(req, res) {
     try {
       const { user } = req;
-      const currentYear = new Date().getFullYear();
-
-      const invoiceCount = await Invoice.countDocuments({
+      const now = new Date();
+      const preview = buildInvoiceNumberPreview({ date: now });
+      const counter = await InvoiceCounter.findOne({
         shop_id: user.shopId,
-        invoice_date: {
-          $gte: new Date(currentYear, 0, 1),
-          $lt: new Date(currentYear + 1, 0, 1),
-        },
-        deleted_at: null,
+        date: preview.datePart,
       });
-
-      const nextInvoiceNumber = `INV-${currentYear}-${String(invoiceCount + 1).padStart(4, "0")}`;
+      const nextSequence = (counter?.sequence || 0) + 1;
+      const nextInvoice = buildInvoiceNumberPreview({
+        date: now,
+        sequence: nextSequence,
+      });
 
       res.json({
         success: true,
         data: {
-          invoice_number: nextInvoiceNumber,
-          year: currentYear,
-          sequence: invoiceCount + 1,
+          invoice_number: nextInvoice.invoice_number,
+          date_part: nextInvoice.datePart,
+          sequence: nextInvoice.sequence,
         },
       });
     } catch (error) {
@@ -1582,18 +1485,18 @@ export default class InvoiceController {
       const { customer, invoice, invoice_items } = req.body;
       const { user } = req; // From authentication middleware
 
-      // Validation
-      if (
-        !customer ||
-        !invoice ||
-        !invoice_items ||
-        !Array.isArray(invoice_items) ||
-        invoice_items.length === 0
-      ) {
+      const validation = validateInvoicePayload({
+        customer,
+        invoice,
+        invoice_items,
+        requireInvoiceNumber: true,
+      });
+
+      if (!validation.isValid) {
         return res.status(400).json({
           success: false,
-          message:
-            "Customer, invoice details, and at least one invoice item are required",
+          message: validation.errors[0],
+          errors: validation.errors,
         });
       }
 
@@ -1807,19 +1710,24 @@ export default class InvoiceController {
       }
 
       // Step 4: Update invoice
-      const totalAmount = invoice_items.reduce(
-        (sum, item) => sum + parseFloat(item.price),
-        0,
-      );
-      const finalAmount = totalAmount - parseFloat(invoice.discount || 0);
+      const totals = calculateInvoiceTotals({
+        invoice,
+        items: invoice_items,
+      });
 
       existingInvoice.invoice_number =
         invoice.invoice_number || existingInvoice.invoice_number;
       existingInvoice.invoice_date = new Date(invoice.invoice_date);
-      existingInvoice.payment_mode = invoice.payment_mode;
-      existingInvoice.payment_status = invoice.payment_status;
-      existingInvoice.discount = parseFloat(invoice.discount || 0);
-      existingInvoice.total_amount = finalAmount;
+      existingInvoice.payment_mode = invoice.payment_mode || "CASH";
+      existingInvoice.payment_status = totals.payment_status;
+      existingInvoice.subtotal = totals.subtotal;
+      existingInvoice.discount = totals.discount;
+      existingInvoice.tax = totals.tax;
+      existingInvoice.total_amount = totals.total_amount;
+      existingInvoice.amount_paid = totals.amount_paid;
+      existingInvoice.amount_due = totals.amount_due;
+      existingInvoice.due_date =
+        totals.payment_status === "PAID" ? null : invoice.due_date || null;
       existingInvoice.warranty_months = parseInt(invoice.warranty_months || 0);
       existingInvoice.notes = invoice.notes || "";
       existingInvoice.updated_at = new Date();
@@ -2581,56 +2489,6 @@ export default class InvoiceController {
         });
       }
 
-      // Check if PDF already exists in Cloudinary
-      if (invoice.invoice_pdf) {
-        // Fix duplicate folder issue in existing URLs
-        let correctedUrl = invoice.invoice_pdf;
-        if (correctedUrl.includes("/invoices/invoices/")) {
-          correctedUrl = correctedUrl.replace(
-            "/invoices/invoices/",
-            "/invoices/",
-          );
-
-          // Update the database with corrected URL
-          try {
-            await Invoice.findByIdAndUpdate(invoice._id, {
-              invoice_pdf: correctedUrl,
-            });
-          } catch (updateError) {
-            // failed to update corrected URL (non-fatal)
-          }
-        }
-
-        // Verify if the PDF actually exists in Cloudinary and proxy it
-        try {
-          const fetch = await import("node-fetch");
-          const response = await fetch.default(correctedUrl);
-
-          if (response.ok) {
-            const pdfBuffer = Buffer.from(await response.arrayBuffer());
-            res.setHeader("Content-Type", "application/pdf");
-            res.setHeader(
-              "Content-Disposition",
-              `attachment; filename="Invoice_${invoice.invoice_number}.pdf"`,
-            );
-            res.setHeader("Content-Length", pdfBuffer.length);
-            return res.send(pdfBuffer);
-          } else {
-            // Clear the invalid URL from database
-            await Invoice.findByIdAndUpdate(invoice._id, {
-              invoice_pdf: null,
-              pdf_public_id: null,
-            }).catch(() => {});
-          }
-        } catch (verifyError) {
-          // Failed to fetch - clear invalid URL and regenerate
-          await Invoice.findByIdAndUpdate(invoice._id, {
-            invoice_pdf: null,
-            pdf_public_id: null,
-          }).catch(() => {});
-        }
-      }
-
       // Fetch shop details
       const shop = await Shop.findById(user.shopId);
       if (!shop) {
@@ -2640,50 +2498,14 @@ export default class InvoiceController {
         });
       }
 
-      // Initialize PDF service and generate PDF
-      const pdfService = new InvoicePDFService();
-      const pdfResult = await pdfService.generateInvoicePDF(
+      const pdfResult = await invoiceDocumentService.getOrCreateInvoicePdf({
         invoice,
-        invoice.customer_id,
-        invoice.invoice_items,
+        customer: invoice.customer_id,
+        invoiceItems: invoice.invoice_items,
         shop,
-      );
-
-      // Upload PDF to Cloudinary for storage
-      try {
-        // Delete existing PDF if present (for updated invoice data)
-        if (invoice.pdf_public_id) {
-          try {
-            await cloudinaryUpload.deleteFile(invoice.pdf_public_id);
-          } catch (deleteError) {
-            // Continue even if delete fails (file might not exist)
-          }
-        }
-
-        const cloudinaryResult = await cloudinaryUpload.uploadPDFFromBuffer(
-          pdfResult.buffer,
-          {
-            folder: "invoices",
-            fileName: `invoice_${invoice.invoice_number}_${Date.now()}.pdf`,
-            tags: [
-              "invoice",
-              "generated",
-              `user_${user.userId}`,
-              `invoice_${invoice._id}`,
-            ],
-            overwrite: false,
-          },
-        );
-
-        // Store the Cloudinary URL in the invoice record
-        await Invoice.findByIdAndUpdate(invoice._id, {
-          invoice_pdf: cloudinaryResult.url,
-          pdf_public_id: cloudinaryResult.public_id,
-        });
-      } catch (cloudinaryError) {
-        // Failed to store PDF in Cloudinary (non-fatal)
-        // Continue with download even if cloud storage fails
-      }
+        userId: user.userId,
+        tag: "generated",
+      });
 
       // Set response headers for PDF download
       res.setHeader("Content-Type", "application/pdf");
@@ -2728,56 +2550,6 @@ export default class InvoiceController {
         });
       }
 
-      // Check if PDF already exists in Cloudinary
-      if (invoice.invoice_pdf) {
-        // Fix duplicate folder issue in existing URLs
-        let correctedUrl = invoice.invoice_pdf;
-        if (correctedUrl.includes("/invoices/invoices/")) {
-          correctedUrl = correctedUrl.replace(
-            "/invoices/invoices/",
-            "/invoices/",
-          );
-
-          // Update the database with corrected URL
-          try {
-            await Invoice.findByIdAndUpdate(invoice._id, {
-              invoice_pdf: correctedUrl,
-            });
-          } catch (updateError) {
-            // failed to update corrected URL (non-fatal)
-          }
-        }
-
-        // Verify if the PDF actually exists in Cloudinary and proxy it inline
-        try {
-          const fetch = await import("node-fetch");
-          const response = await fetch.default(correctedUrl);
-
-          if (response.ok) {
-            const pdfBuffer = Buffer.from(await response.arrayBuffer());
-            res.setHeader("Content-Type", "application/pdf");
-            res.setHeader(
-              "Content-Disposition",
-              `inline; filename="Invoice_${invoice.invoice_number}.pdf"`,
-            );
-            res.setHeader("Content-Length", pdfBuffer.length);
-            return res.send(pdfBuffer);
-          } else {
-            // Clear the invalid URL from database
-            await Invoice.findByIdAndUpdate(invoice._id, {
-              invoice_pdf: null,
-              pdf_public_id: null,
-            }).catch(() => {});
-          }
-        } catch (verifyError) {
-          // Failed to fetch - clear invalid URL and regenerate
-          await Invoice.findByIdAndUpdate(invoice._id, {
-            invoice_pdf: null,
-            pdf_public_id: null,
-          }).catch(() => {});
-        }
-      }
-
       // Fetch shop details
       const shop = await Shop.findById(user.shopId);
       if (!shop) {
@@ -2787,50 +2559,14 @@ export default class InvoiceController {
         });
       }
 
-      // Initialize PDF service and generate PDF
-      const pdfService = new InvoicePDFService();
-      const pdfResult = await pdfService.generateInvoicePDF(
+      const pdfResult = await invoiceDocumentService.getOrCreateInvoicePdf({
         invoice,
-        invoice.customer_id,
-        invoice.invoice_items,
+        customer: invoice.customer_id,
+        invoiceItems: invoice.invoice_items,
         shop,
-      );
-
-      // Upload PDF to Cloudinary for storage (for future use)
-      try {
-        // Delete existing PDF if present (for updated invoice data)
-        if (invoice.pdf_public_id) {
-          try {
-            await cloudinaryUpload.deleteFile(invoice.pdf_public_id);
-          } catch (deleteError) {
-            // Continue even if delete fails (file might not exist)
-          }
-        }
-
-        const cloudinaryResult = await cloudinaryUpload.uploadPDFFromBuffer(
-          pdfResult.buffer,
-          {
-            folder: "invoices",
-            fileName: `invoice_${invoice.invoice_number}_${Date.now()}.pdf`,
-            tags: [
-              "invoice",
-              "generated",
-              `user_${user.userId}`,
-              `invoice_${invoice._id}`,
-            ],
-            overwrite: false,
-          },
-        );
-
-        // Store the Cloudinary URL in the invoice record
-        await Invoice.findByIdAndUpdate(invoice._id, {
-          invoice_pdf: cloudinaryResult.url,
-          pdf_public_id: cloudinaryResult.public_id,
-        });
-      } catch (cloudinaryError) {
-        // Failed to store PDF in Cloudinary during preview (non-fatal)
-        // Continue with preview even if cloud storage fails
-      }
+        userId: user.userId,
+        tag: "generated",
+      });
 
       // Set response headers for PDF preview (inline)
       res.setHeader("Content-Type", "application/pdf");

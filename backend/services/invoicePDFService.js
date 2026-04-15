@@ -1,7 +1,12 @@
-import { log } from "console";
 import { PDFGenerator } from "./pdfGenerator.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import {
+  GST_RATE_PERCENT,
+  calculateInvoiceTotals,
+  getInvoiceItemAmount,
+  getInvoiceItemUnitPrice,
+} from "../../shared/invoiceMath.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,61 +45,24 @@ export class InvoicePDFService {
   }
 
   // Calculate invoice totals
-  calculateTotals(invoiceItems) {
-    let subtotal = 0;
-
-    invoiceItems.forEach((item) => {
-      const quantity = Number(item.quantity) || 0;
-      const sellingPrice = Number(item.selling_price) || 0;
-      subtotal += quantity * sellingPrice;
+  calculateTotals(invoice, invoiceItems) {
+    const totals = calculateInvoiceTotals({
+      invoice,
+      items: invoiceItems,
     });
 
-    const gstRate = 18; // 18% GST
-    const gstAmount = (subtotal * gstRate) / 100;
-    const total = subtotal + gstAmount;
     return {
-      subtotal,
-      gstRate,
-      gstAmount,
-      total,
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      gstRate: GST_RATE_PERCENT,
+      gstAmount: totals.tax,
+      total: totals.total_amount,
     };
   }
 
   // Prepare invoice data for template
   prepareInvoiceData(invoice, customer, invoiceItems, shop) {
-    // If invoice is UNPAID or PARTIAL: rely solely on stored invoice fields
-    // and do not perform any calculations. Otherwise prefer invoice fields
-    // if present, else calculate from items.
-    const status = (invoice.payment_status || "").toString().toUpperCase();
-    let totals = null;
-
-    if (status === "UNPAID" || status === "PARTIAL") {
-      totals = {
-        subtotal: Number(invoice.subtotal) || 0,
-        gstRate:
-          invoice.tax && invoice.subtotal
-            ? Number(((Number(invoice.tax) / Number(invoice.subtotal)) * 100).toFixed(2))
-            : null,
-        gstAmount: Number(invoice.tax) || 0,
-        total: Number(invoice.total_amount) || 0,
-      };
-    } else if (
-      invoice.subtotal !== undefined &&
-      invoice.tax !== undefined &&
-      invoice.total_amount !== undefined
-    ) {
-      totals = {
-        subtotal: Number(invoice.subtotal) || 0,
-        gstRate:
-          invoice.tax && invoice.subtotal
-            ? Number(((Number(invoice.tax) / Number(invoice.subtotal)) * 100).toFixed(2))
-            : 18,
-        gstAmount: Number(invoice.tax) || 0,
-        total: Number(invoice.total_amount) || 0,
-      };
-    } else {
-      totals = this.calculateTotals(invoiceItems);
-    }
+    const totals = this.calculateTotals(invoice, invoiceItems);
 
     // Normalize addresses for template
     const normalizeAddress = (addr) => {
@@ -130,6 +98,15 @@ export class InvoicePDFService {
 
     const customerAddress = normalizeAddress(customer.address || {});
     const shopAddress = normalizeAddress(shop.address || {});
+    const paymentStatus = invoice.payment_status || "UNPAID";
+    const isOutstanding = ["UNPAID", "PARTIAL"].includes(paymentStatus);
+    const isOverdue =
+      Boolean(invoice.due_date) && isOutstanding && new Date(invoice.due_date) < new Date();
+    const dueState = isOverdue
+      ? "Overdue"
+      : isOutstanding
+        ? "Payment Due"
+        : "Settled";
 
     return {
       // Invoice details
@@ -137,7 +114,10 @@ export class InvoicePDFService {
         number: invoice.invoice_number,
         date: this.formatDate(invoice.invoice_date),
         dueDate: invoice.due_date ? this.formatDate(invoice.due_date) : null,
-        payment_status: invoice.payment_status || "UNPAID",
+        paymentMode: invoice.payment_mode || "CASH",
+        payment_status: paymentStatus,
+        dueState,
+        isOverdue,
         notes: invoice.notes,
       },
 
@@ -177,9 +157,11 @@ export class InvoicePDFService {
       // performing backend arithmetic.
       items: invoiceItems.map((item, index) => {
         const quantity = item.quantity !== undefined ? item.quantity : "";
-        const unitRaw = item.selling_price ?? item.price ?? null;
+        const unitRaw = getInvoiceItemUnitPrice(item);
         const amountRaw =
-          item.amount !== undefined ? Number(item.amount) : null;
+          item.amount !== undefined
+            ? Number(item.amount)
+            : getInvoiceItemAmount(item);
 
         let batteryLine = "";
         if (
@@ -210,8 +192,8 @@ export class InvoicePDFService {
           modelNumber: item.model_number || "N/A",
           serialNumber: item.serial_number || "N/A",
           quantity: quantity,
-          unitPrice: unitRaw !== null ? this.formatCurrency(unitRaw) : "",
-          amount: amountRaw !== null ? this.formatCurrency(amountRaw) : "",
+          unitPrice: this.formatCurrency(unitRaw),
+          amount: this.formatCurrency(amountRaw),
           warrantyPeriod: item.warranty_duration_months
             ? `${item.warranty_duration_months} months`
             : "N/A",
@@ -223,6 +205,8 @@ export class InvoicePDFService {
       // Totals (display values taken from invoice when status is UNPAID/PARTIAL)
       totals: {
         subtotal: this.formatCurrency(totals.subtotal),
+        discount: this.formatCurrency(totals.discount),
+        discountRaw: totals.discount,
         gstRate: totals.gstRate,
         gstAmount: this.formatCurrency(totals.gstAmount),
         total: this.formatCurrency(totals.total),
@@ -230,10 +214,12 @@ export class InvoicePDFService {
 
       // Payment info from invoice (show due date when unpaid/partial)
       payment: {
+        amountPaidRaw: Number(invoice.amount_paid) || 0,
         amount_paid:
           invoice.amount_paid !== undefined
             ? this.formatCurrency(invoice.amount_paid)
             : "",
+        amountDueRaw: Number(invoice.amount_due) || 0,
         amount_due:
           invoice.amount_due !== undefined
             ? this.formatCurrency(invoice.amount_due)

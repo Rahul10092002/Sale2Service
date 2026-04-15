@@ -44,7 +44,7 @@ export default class UserService {
     }
 
     // Generate temporary password
-    const temporaryPassword = this.generateTemporaryPassword();
+    const temporaryPassword = "ADMIN1234"
 
     // Create new user
     const newUser = new User({

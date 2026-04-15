@@ -30,6 +30,7 @@ import Settings from "../pages/settings/Settings.jsx";
 // Dynamic import for Logs component using React.lazy()
 import { lazy, Suspense } from "react";
 import FestivalSchedule from "../pages/festival/Festival.jsx";
+import LandingPage from "../pages/landingpage/LandingPage.jsx";
 
 // Lazy load the Logs component to avoid build issues
 const LogsPage = lazy(() => import("../pages/logs/Logs.jsx"));
@@ -79,6 +80,10 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public routes */}
+      <Route
+        path={ROUTES.HOME}
+        element={<LandingPage/>}
+      />
       <Route
         path={ROUTES.LOGIN}
         element={

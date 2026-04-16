@@ -39,7 +39,10 @@ function ContactFormModal({ isOpen, onClose, contactType }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData, contactType);
+    //send message to whatsapp
+    window.open(`https://wa.me/918085035032?text=${encodeURIComponent(
+      `Name: ${formData.name}\nPhone: ${formData.phone}\nShop Name: ${formData.shopName}\nMessage: ${formData.message}`,
+    )}`);
     onClose();
   };
 

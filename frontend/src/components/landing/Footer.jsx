@@ -81,17 +81,17 @@ function Footer() {
               </li>
               <li className="flex gap-2">
                 <Mail size={16} className="flex-shrink-0" />{" "}
-                hello@warrantydesk.com
+                rahulpatidar2132@gmail.com
               </li>
               <li className="flex gap-2">
-                <MapPin size={16} className="flex-shrink-0" /> India
+                <MapPin size={16} className="shrink-0" /> India
               </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-400">
-          <p>&copy; 2024 WarrantyDesk. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} WarrantyDesk. All rights reserved.</p>
           <div className="flex justify-center gap-4 mt-4">
             <a href="#" className="hover:text-white transition">
               Privacy Policy

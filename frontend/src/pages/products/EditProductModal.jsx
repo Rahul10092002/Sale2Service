@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { Edit, Package } from "lucide-react";
+import { Edit, Package, ImagePlus, Camera, X } from "lucide-react";
 import { Button, LoadingSpinner } from "../../components/ui/index.js";
 import {
   Dialog as Modal,
@@ -9,7 +9,43 @@ import {
 } from "../../components/ui/Modal.jsx";
 import { useUpdateProductMutation } from "../../features/products/productApi.js";
 import { showToast } from "../../features/ui/uiSlice.js";
+import { getToken } from "../../utils/token.js";
 import { INVOICE_CONSTANTS } from "../../utils/constants.js";
+
+const API_BASE_URL =
+  import.meta.env.VITE_ENVIRONMENT === "production"
+    ? import.meta.env.VITE_PROD_API_URL
+    : import.meta.env.VITE_LOCAL_API_URL;
+
+const compressImage = (file) =>
+  new Promise((resolve, reject) => {
+    const MAX_PX = 900;
+    const QUALITY = 0.78;
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const ratio = Math.min(MAX_PX / img.width, MAX_PX / img.height, 1);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Canvas compression failed"));
+        },
+        "image/jpeg",
+        QUALITY,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = objectUrl;
+  });
 
 const CATEGORY_OPTIONS = [
   { value: "BATTERY", label: "Battery" },
@@ -69,7 +105,10 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
     manufacturing_date: "",
     purchase_source: "",
     notes: "",
+    product_images: [],
   });
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState(null);
 
   useEffect(() => {
     if (product && open) {
@@ -98,12 +137,57 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
         manufacturing_date: toDateInput(product.manufacturing_date),
         purchase_source: product.purchase_source || "",
         notes: product.notes || "",
+        product_images: product.product_images || [],
       });
     }
   }, [product, open]);
 
   const set = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+  const handleImageChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setImageError(null);
+    setImageUploading(true);
+    try {
+      const formData = new FormData();
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        formData.append("product_images", compressed, "product.jpg");
+      }
+
+      const token = getToken();
+      const response = await fetch(`${API_BASE_URL}/files/product-image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(json.message || "Upload failed");
+      }
+
+      const newUrls = json.data.images.map((img) => img.image_url);
+      setForm((prev) => ({
+        ...prev,
+        product_images: [...(prev.product_images || []), ...newUrls],
+      }));
+    } catch (err) {
+      console.error("Product image upload error:", err);
+      setImageError(err.message || "Upload failed");
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const removeImage = (urlToRemove) => {
+    setForm((prev) => ({
+      ...prev,
+      product_images: prev.product_images.filter((url) => url !== urlToRemove),
+    }));
+  };
 
   const handleSave = async () => {
     if (!form.product_name.trim()) {
@@ -160,6 +244,7 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
       warranty_duration_months: Number(form.warranty_duration_months),
       warranty_type: form.warranty_type,
       notes: form.notes.trim(),
+      product_images: form.product_images,
     };
     if (form.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY) {
       payload.battery_type = form.battery_type;
@@ -543,6 +628,73 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
               rows="3"
               placeholder="Additional notes..."
             />
+          </div>
+
+          {/* Product Images */}
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <ImagePlus className="w-4 h-4 text-indigo-500" />
+              Product Images
+            </h4>
+            <div className="flex flex-wrap gap-3">
+              {form.product_images?.map((url, idx) => (
+                <div key={idx} className="relative group">
+                  <img
+                    src={url}
+                    alt={`Product ${idx + 1}`}
+                    className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(url)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+
+              <label className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                {imageUploading ? (
+                  <LoadingSpinner size="xs" />
+                ) : (
+                  <>
+                    <ImagePlus className="w-5 h-5 text-gray-400" />
+                    <span className="text-[10px] text-gray-500 mt-1">Upload</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  disabled={imageUploading}
+                />
+              </label>
+
+              <label className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                {imageUploading ? (
+                  <LoadingSpinner size="xs" />
+                ) : (
+                  <>
+                    <Camera className="w-5 h-5 text-gray-400" />
+                    <span className="text-[10px] text-gray-500 mt-1">Camera</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  disabled={imageUploading}
+                />
+              </label>
+            </div>
+            {imageError && (
+              <p className="text-xs text-red-500 mt-2">{imageError}</p>
+            )}
           </div>
 
           {/* Actions */}

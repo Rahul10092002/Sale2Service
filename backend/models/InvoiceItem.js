@@ -85,6 +85,26 @@ const invoiceItemSchema = new mongoose.Schema(
       min: 1,
       default: 1,
     },
+    hsn_code: {
+      type: String,
+      trim: true,
+    },
+    gst_rate: {
+      type: Number,
+      default: 18,
+    },
+    taxable_amount: {
+      type: Number,
+      min: 0,
+    },
+    gst_amount: {
+      type: Number,
+      min: 0,
+    },
+    line_total: {
+      type: Number,
+      min: 0,
+    },
     // Warranty Information
     warranty_start_date: {
       type: Date,

@@ -39,7 +39,7 @@ function WhyChooseUs() {
     {
       icon: TrendingUp,
       title: "Auto Reminders",
-      desc: "Expiry se pehle WhatsApp alert",
+      desc: "Expiry se pehle WhatsApp alert with your own brand name",
     },
   ];
 

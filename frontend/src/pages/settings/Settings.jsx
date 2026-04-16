@@ -20,6 +20,8 @@ import {
   CheckCircle,
   Languages,
   Briefcase,
+  CreditCard,
+  QrCode,
 } from "lucide-react";
 
 const FieldGroup = ({ icon: Icon, label, required, children }) => (
@@ -63,6 +65,13 @@ const Settings = () => {
     gst_number: "",
     timezone: "",
     logo_url: "",
+    bank_details: {
+      account_holder_name: "",
+      account_number: "",
+      bank_name: "",
+      ifsc_code: "",
+      upi_id: "",
+    },
   });
 
   const { data, isLoading: queryLoading, error } = useGetShopProfileQuery();
@@ -89,6 +98,18 @@ const Settings = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
+    setSaved(false);
+  };
+
+  const handleBankChange = (e) => {
+    const { name, value } = e.target;
+    setForm((f) => ({
+      ...f,
+      bank_details: {
+        ...(f.bank_details || {}),
+        [name]: value,
+      },
+    }));
     setSaved(false);
   };
 
@@ -253,15 +274,17 @@ const Settings = () => {
                 />
               </FieldGroup>
             </div>
-            <FieldGroup icon={Clock} label="Timezone">
-              <input
-                name="timezone"
-                value={form.timezone}
-                onChange={handleChange}
-                placeholder="Asia/Kolkata"
-                className={inputCls}
-              />
-            </FieldGroup>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <FieldGroup icon={Clock} label="Timezone">
+                <input
+                  name="timezone"
+                  value={form.timezone}
+                  onChange={handleChange}
+                  placeholder="Asia/Kolkata"
+                  className={inputCls}
+                />
+              </FieldGroup>
+            </div>
             <FieldGroup icon={MapPin} label="Address">
               <textarea
                 name="address"
@@ -272,6 +295,64 @@ const Settings = () => {
                 rows={3}
               />
             </FieldGroup>
+          </div>
+        </SectionCard>
+
+        {/* Bank Details */}
+        <SectionCard
+          title="Bank & Payment Details"
+          description="Used for automated payments and QR code on invoices"
+        >
+          <div className="space-y-4">
+            <FieldGroup icon={CreditCard} label="Account Holder Name">
+              <input
+                name="account_holder_name"
+                value={form.bank_details?.account_holder_name || ""}
+                onChange={handleBankChange}
+                placeholder="Shop or Owner Name"
+                className={inputCls}
+              />
+            </FieldGroup>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldGroup icon={Briefcase} label="Bank Name">
+                <input
+                  name="bank_name"
+                  value={form.bank_details?.bank_name || ""}
+                  onChange={handleBankChange}
+                  placeholder="State Bank of India"
+                  className={inputCls}
+                />
+              </FieldGroup>
+              <FieldGroup icon={FileText} label="IFSC Code">
+                <input
+                  name="ifsc_code"
+                  value={form.bank_details?.ifsc_code || ""}
+                  onChange={handleBankChange}
+                  placeholder="SBIN0001234"
+                  className={`${inputCls} uppercase`}
+                />
+              </FieldGroup>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldGroup icon={CreditCard} label="Account Number">
+                <input
+                  name="account_number"
+                  value={form.bank_details?.account_number || ""}
+                  onChange={handleBankChange}
+                  placeholder="1234567890"
+                  className={inputCls}
+                />
+              </FieldGroup>
+              <FieldGroup icon={QrCode} label="UPI ID (for QR Code)">
+                <input
+                  name="upi_id"
+                  value={form.bank_details?.upi_id || ""}
+                  onChange={handleBankChange}
+                  placeholder="shop@upi"
+                  className={inputCls}
+                />
+              </FieldGroup>
+            </div>
           </div>
         </SectionCard>
 

@@ -7,6 +7,7 @@ import {
   getISTTodayParts,
   getISTDateParts,
   getShopName,
+  formatPhoneNumber,
 } from "../core/utils.js";
 
 /**
@@ -17,6 +18,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
   constructor() {
     super();
     this.messageSender = new MessageSender();
+    this.dailySummaryMap = {};
   }
 
   /**
@@ -41,7 +43,22 @@ export default class WishesReminderScheduler extends BaseScheduler {
       return map;
     }, {});
   }
+  addToSummary(customer, type) {
+    const shopId = String(customer.shop_id);
 
+    if (!this.dailySummaryMap[shopId]) {
+      this.dailySummaryMap[shopId] = {
+        birthdays: [],
+        anniversaries: [],
+      };
+    }
+
+    if (type === "birthday") {
+      this.dailySummaryMap[shopId].birthdays.push(customer);
+    } else {
+      this.dailySummaryMap[shopId].anniversaries.push(customer);
+    }
+  }
   /**
    * Process all wishes reminders
    */
@@ -54,6 +71,12 @@ export default class WishesReminderScheduler extends BaseScheduler {
         this.processAnniversaryWishes(),
         this.processFestivalWishes(),
       ]);
+
+       await Promise.all(
+         Object.entries(this.dailySummaryMap).map(([shopId, data]) =>
+           this.sendDailySummary(shopId, data.birthdays, data.anniversaries),
+         ),
+       );
 
       this.logInfo("Wishes reminders processing completed");
     } catch (error) {
@@ -225,10 +248,11 @@ export default class WishesReminderScheduler extends BaseScheduler {
       });
 
       if (result.success) {
-        this.logInfo(`Birthday wish sent successfully`, {
-          customer: customer.full_name,
-          date: new Date(customer.date_of_birth).toLocaleDateString(),
-        });
+        // this.logInfo(`Birthday wish sent successfully`, {
+        //   customer: customer.full_name,
+        //   date: new Date(customer.date_of_birth).toLocaleDateString(),
+        // });
+        this.addToSummary(customer, "birthday");
       } else {
         this.logError("sendBirthdayWish", new Error(result.error), {
           customer: customer.full_name,
@@ -315,10 +339,11 @@ export default class WishesReminderScheduler extends BaseScheduler {
       });
 
       if (result.success) {
-        this.logInfo(`Anniversary wish sent successfully`, {
-          customer: customer.full_name,
-          date: new Date(customer.anniversary_date).toLocaleDateString(),
-        });
+        // this.logInfo(`Anniversary wish sent successfully`, {
+        //   customer: customer.full_name,
+        //   date: new Date(customer.anniversary_date).toLocaleDateString(),
+        // });
+        this.addToSummary(customer, "anniversary");
       } else {
         this.logError("sendAnniversaryWish", new Error(result.error), {
           customer: customer.full_name,
@@ -487,6 +512,95 @@ ${variables[2]} की ओर से`;
       this.logError("sendFestivalWish", error, {
         customerId: customer.customer_id,
       });
+    }
+  }
+  async sendDailySummary(shopId, todayBirthdays, todayAnniversaries) {
+    try {
+      const shop = await Shop.findById(shopId);
+      if (!shop) return;
+      if (!shop.phone) {
+        this.logError(
+          "sendDailySummary",
+          new Error("Missing shop phone number"),
+          {
+            shopId,
+          },
+        );
+        return;
+      }
+      const shopName = getShopName(shop);
+
+      // 📅 Date
+      const today = new Date();
+      const formattedDate = today.toLocaleDateString("hi-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+
+      // 📊 Counts
+      const birthdayCount = todayBirthdays.length;
+      const anniversaryCount = todayAnniversaries.length;
+      const total = birthdayCount + anniversaryCount;
+
+      // 👥 Customer List (limit 5)
+      const allCustomers = [
+        ...todayBirthdays.map((c) => ({
+          name: c.full_name,
+          whatsapp_number: c.whatsapp_number,
+          type: "जन्मदिन",
+        })),
+        ...todayAnniversaries.map((c) => ({
+          name: c.full_name,
+          whatsapp_number: c.whatsapp_number,
+          type: "वर्षगाँठ",
+        })),
+      ];
+      console.log("allCustomers", allCustomers);
+
+      const limitedCustomers = allCustomers.slice(0, 5);
+
+      let customerList = limitedCustomers
+        .map((c) => `• ${c.name}(${c.whatsapp_number}) – ${c.type}`)
+        .join(" | ");
+
+      if (allCustomers.length > 5) {
+        customerList += `\n+${allCustomers.length - 5} अन्य ग्राहक`;
+      }
+
+      // 📦 MSG91 Variables
+      const variables = {
+        1: formattedDate,
+        2: shopName,
+        3: String(total),
+        4: String(birthdayCount),
+        5: String(anniversaryCount),
+        6: customerList || "-",
+      };
+
+      // 📩 Send to shop owner
+     
+
+      const to = formatPhoneNumber(shop.phone);
+
+      if (!to) {
+        console.error("MSG91 ERROR: Missing 'to' number");
+        return null;
+      }
+
+      await this.messageSender.sendTemplateMessage({
+        to: to, // owner number
+        templateName: "daily_wishes_summary",
+        variables,
+        metadata: {
+          campaignName: "daily_summary",
+          type: "summary",
+        },
+      });
+
+      this.logInfo(`Daily summary sent to shop ${shopName}`);
+    } catch (error) {
+      this.logError("sendDailySummary", error);
     }
   }
 }

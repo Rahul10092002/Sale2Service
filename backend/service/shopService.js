@@ -24,6 +24,7 @@ export default class ShopService {
       gst_number: shop.gst_number,
       timezone: shop.timezone,
       logo_url: shop.logo_url,
+      bank_details: shop.bank_details || {},
     };
   }
 
@@ -40,6 +41,7 @@ export default class ShopService {
       timezone,
       logo_url,
       business_type,
+      bank_details,
     } = updateData;
 
     const shop = await Shop.findOne({
@@ -60,6 +62,12 @@ export default class ShopService {
     if (timezone) shop.timezone = timezone;
     if (logo_url) shop.logo_url = logo_url;
     if (business_type) shop.business_type = business_type;
+    if (bank_details) {
+      shop.bank_details = {
+        ...(shop.bank_details || {}),
+        ...bank_details,
+      };
+    }
 
     await shop.save();
 
@@ -73,6 +81,7 @@ export default class ShopService {
       gst_number: shop.gst_number,
       timezone: shop.timezone,
       logo_url: shop.logo_url,
+      bank_details: shop.bank_details || {},
     };
   }
 }

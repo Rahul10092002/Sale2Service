@@ -480,7 +480,7 @@ export default class ProductController {
         ]),
         ProductMaster.find({ shop_id: shopObjId, product_name: regex })
           .select(
-            "product_name product_category company model_number selling_price capacity_rating voltage warranty_type warranty_duration_months",
+            "product_name product_category battery_type company model_number selling_price cost_price capacity_rating voltage warranty_type warranty_duration_months product_images",
           )
           .limit(lim)
           .lean(),
@@ -510,14 +510,13 @@ export default class ProductController {
     const { user } = req;
     const {
       product_name,
-      product_category,
-      company,
-      model_number,
-      selling_price,
+      battery_type,
       capacity_rating,
       voltage,
       warranty_type,
       warranty_duration_months,
+      cost_price,
+      product_images,
     } = req.body;
 
     if (!product_name?.trim()) {
@@ -536,18 +535,22 @@ export default class ProductController {
       const setFields = {
         product_name: product_name.trim(),
         shop_id: shopObjId,
-        auto_saved: true,
+        auto_saved: req.body.auto_saved !== false,
       };
       if (product_category) setFields.product_category = product_category;
+      if (battery_type) setFields.battery_type = battery_type;
       if (company) setFields.company = company;
       if (model_number) setFields.model_number = model_number;
       if (selling_price != null && selling_price > 0)
         setFields.selling_price = selling_price;
+      if (cost_price != null)
+        setFields.cost_price = cost_price;
       if (capacity_rating) setFields.capacity_rating = capacity_rating;
       if (voltage) setFields.voltage = voltage;
       if (warranty_type) setFields.warranty_type = warranty_type;
       if (warranty_duration_months != null && warranty_duration_months > 0)
         setFields.warranty_duration_months = warranty_duration_months;
+      if (product_images) setFields.product_images = product_images;
 
       await ProductMaster.findOneAndUpdate(
         { product_name: product_name.trim(), shop_id: shopObjId },
@@ -562,6 +565,108 @@ export default class ProductController {
       return res
         .status(500)
         .json({ success: false, message: "Failed to save product master" });
+    }
+  }
+
+  // Get all master products for the shop (Inventory)
+  async getMasterProducts(req, res) {
+    try {
+      const { user } = req;
+      const { page = 1, limit = 10, search, category } = req.query;
+
+      const query = { shop_id: user.shopId };
+
+      if (category) {
+        query.product_category = category;
+      }
+
+      if (search) {
+        query.$or = [
+          { product_name: { $regex: search, $options: "i" } },
+          { company: { $regex: search, $options: "i" } },
+          { model_number: { $regex: search, $options: "i" } },
+        ];
+      }
+
+      const skip = (page - 1) * parseInt(limit);
+
+      const [products, total] = await Promise.all([
+        ProductMaster.find(query)
+          .sort({ product_name: 1 })
+          .skip(skip)
+          .limit(parseInt(limit))
+          .lean(),
+        ProductMaster.countDocuments(query),
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          products,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            pages: Math.ceil(total / parseInt(limit)),
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Get master products error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch inventory products",
+      });
+    }
+  }
+
+  // Delete a master product
+  async deleteMasterProduct(req, res) {
+    try {
+      const { user } = req;
+      const { id } = req.params;
+
+      const result = await ProductMaster.findOneAndDelete({
+        _id: id,
+        shop_id: user.shopId,
+      });
+
+      if (!result) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Product not found" });
+      }
+
+      res.json({ success: true, message: "Product deleted from inventory" });
+    } catch (error) {
+      console.error("Delete master product error:", error);
+      res.status(500).json({ success: false, message: "Failed to delete" });
+    }
+  }
+
+  // Update a master product
+  async updateMasterProduct(req, res) {
+    try {
+      const { user } = req;
+      const { id } = req.params;
+      const payload = req.body;
+
+      const product = await ProductMaster.findOneAndUpdate(
+        { _id: id, shop_id: user.shopId },
+        { $set: payload },
+        { new: true },
+      );
+
+      if (!product) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Product not found" });
+      }
+
+      res.json({ success: true, data: { product } });
+    } catch (error) {
+      console.error("Update master product error:", error);
+      res.status(500).json({ success: false, message: "Failed to update" });
     }
   }
 }

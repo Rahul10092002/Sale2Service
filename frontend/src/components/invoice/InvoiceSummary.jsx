@@ -132,17 +132,36 @@ const InvoiceSummary = ({ className = "" }) => {
               Product Breakdown
             </h4>
             <div className="space-y-1 max-h-24 overflow-y-auto">
-              {invoice_items.map((item, index) => (
-                <div key={item.id} className="flex justify-between text-xs">
-                  <span className="text-gray-600 dark:text-slate-100 truncate max-w-[60%]">
-                    {item.product_name || `Product ${index + 1}`}
-                    {item.quantity > 1 && ` (×${item.quantity})`}
-                  </span>
-                  <span className="text-gray-900 font-medium dark:text-slate-100">
-                    {formatCurrency(item.selling_price * (item.quantity || 1))}
-                  </span>
-                </div>
-              ))}
+              {invoice_items.map((item, index) => {
+                const qty = Number(item.quantity) || 1;
+                const originalUnit = Number(item.selling_price || 0);
+                const originalLine = originalUnit * qty;
+                const isTaxInclusive = invoice.is_tax_inclusive !== false;
+                const taxRate = 0.18;
+                
+                const lineTotal = isTaxInclusive ? originalLine : originalLine * (1 + taxRate);
+                const lineTax = isTaxInclusive ? originalLine - (originalLine / (1 + taxRate)) : originalLine * taxRate;
+                const lineTaxable = lineTotal - lineTax;
+                const unitTaxable = lineTaxable / qty;
+
+                return (
+                  <div key={item.id || index} className="space-y-0.5 border-b border-gray-100 dark:border-dark-border pb-1 mb-1 last:border-0">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600 dark:text-slate-100 truncate max-w-[60%] font-medium">
+                        {item.product_name || `Product ${index + 1}`}
+                        {item.quantity > 1 && ` (×${item.quantity})`}
+                      </span>
+                      <span className="text-gray-900 font-bold dark:text-slate-100">
+                        {formatCurrency(lineTotal)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-500">
+                      <span>Rate: {formatCurrency(unitTaxable)}</span>
+                      <span>Tax (18%): {formatCurrency(lineTax)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

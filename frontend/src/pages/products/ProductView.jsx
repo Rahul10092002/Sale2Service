@@ -21,6 +21,10 @@ import {
   Pencil,
   Settings,
   Edit,
+  ImagePlus,
+  Maximize2,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import {
@@ -99,6 +103,9 @@ const ProductView = () => {
   const [updateServicePlanMutation, { isLoading: updatingPlan }] =
     useUpdateServicePlanMutation();
   const actionLoading = markingComplete || rescheduling || cancelling;
+
+  // Image viewer state
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Edit product modal
   const [showEditProductModal, setShowEditProductModal] = useState(false);
@@ -474,18 +481,104 @@ const ProductView = () => {
                 </div>
               </div>
 
-              {/* Product Image */}
-              {product.product_images?.[0] && (
-                <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
+              {/* Product Media Gallery */}
+              {(product.product_images?.length > 0 ||
+                product.serial_number_image ||
+                product.warranty_card_image ||
+                product.installation_image ||
+                product.customer_with_product_image) && (
+                <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
                   <div className="p-3">
-                    <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2">
-                      Product Image
-                    </h3>
-                    <img
-                      src={product.product_images[0]}
-                      alt={product.product_name || "Product"}
-                      className="w-full max-w-xs rounded-xl border border-gray-200 dark:border-dark-border object-cover shadow-sm"
-                    />
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 flex items-center gap-2">
+                        <ImagePlus className="w-5 h-5 text-purple-500" />
+                        Product Media
+                      </h3>
+                      <span className="text-[10px] bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded-full font-medium">
+                        {(product.product_images?.length || 0) +
+                          (product.serial_number_image ? 1 : 0) +
+                          (product.warranty_card_image ? 1 : 0) +
+                          (product.installation_image ? 1 : 0) +
+                          (product.customer_with_product_image ? 1 : 0)}{" "}
+                        Items
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                      {/* Product Images */}
+                      {product.product_images?.map((url, idx) => (
+                        <div
+                          key={`prod-img-${idx}`}
+                          onClick={() =>
+                            setSelectedImage({
+                              url,
+                              title: `Product Image ${idx + 1}`,
+                            })
+                          }
+                          className="group relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-subtle cursor-pointer hover:shadow-md transition-all duration-300"
+                        >
+                          <img
+                            src={url}
+                            alt={`Product ${idx + 1}`}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+                            <Maximize2
+                              className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                              size={20}
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Specialized Images */}
+                      {[
+                        {
+                          url: product.serial_number_image,
+                          label: "Serial Number",
+                        },
+                        {
+                          url: product.warranty_card_image,
+                          label: "Warranty Card",
+                        },
+                        {
+                          url: product.installation_image,
+                          label: "Installation",
+                        },
+                        {
+                          url: product.customer_with_product_image,
+                          label: "Customer/Product",
+                        },
+                      ]
+                        .filter((item) => item.url)
+                        .map((item, idx) => (
+                          <div
+                            key={`special-img-${idx}`}
+                            onClick={() =>
+                              setSelectedImage({
+                                url: item.url,
+                                title: item.label,
+                              })
+                            }
+                            className="group relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-subtle cursor-pointer hover:shadow-md transition-all duration-300"
+                          >
+                            <img
+                              src={item.url}
+                              alt={item.label}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors duration-300 flex flex-col items-center justify-center p-2 text-center">
+                              <Maximize2
+                                className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 mb-1"
+                                size={18}
+                              />
+                              <span className="text-[10px] text-white font-medium uppercase tracking-wider">
+                                {item.label}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1388,12 +1481,65 @@ const ProductView = () => {
           </DialogBody>
         </Modal>
       )}
-      <EditProductModal
-        open={showEditProductModal}
-        onClose={() => setShowEditProductModal(false)}
-        product={product}
-        productId={id}
-      />
+
+      {/* Full Image Preview Modal */}
+      <Modal
+        open={!!selectedImage}
+        onClose={() => setSelectedImage(null)}
+        maxWidth="lg"
+        className="!bg-transparent !border-none !shadow-none"
+      >
+        {selectedImage && (
+          <div className="relative flex flex-col h-full">
+            <DialogHeader
+              title={selectedImage.title}
+              onClose={() => setSelectedImage(null)}
+              className="!bg-white/90 dark:!bg-dark-card/90 backdrop-blur-md rounded-t-xl"
+            />
+            <DialogBody className="!p-0 bg-black/5 flex items-center justify-center min-h-[50vh]">
+              <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-4">
+                <img
+                  src={selectedImage.url}
+                  alt={selectedImage.title}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl transition-all duration-300"
+                />
+              </div>
+            </DialogBody>
+            <div className="bg-white/90 dark:bg-dark-card/90 backdrop-blur-md p-3 flex items-center justify-center gap-4 rounded-b-xl border-t border-gray-200 dark:border-dark-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(selectedImage.url, "_blank")}
+                className="flex items-center gap-2"
+              >
+                <ExternalLink size={14} />
+                Open Original
+              </Button>
+              <a
+                href={selectedImage.url}
+                download={selectedImage.title}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
+                onClick={(e) => {
+                  // Direct download might be blocked by CORS for Cloudinary URLs
+                  // Usually, it's safer to open in new tab if we can't force download
+                }}
+              >
+                <Download size={14} />
+                Download
+              </a>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {showEditProductModal && (
+        <EditProductModal
+          open={showEditProductModal}
+          onClose={() => setShowEditProductModal(false)}
+          product={product}
+          productId={id}
+        />
+      )}
     </>
   );
 };

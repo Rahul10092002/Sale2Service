@@ -1,5 +1,5 @@
 import React from "react";
-import { FileText, Clock } from "lucide-react";
+import { FileText, Clock, Wrench, Send, AlertTriangle, CheckCircle, Smartphone } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 /**
@@ -21,10 +21,23 @@ const RecentActivity = ({ data, limit = 5 }) => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "PAID":    return "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300";
-      case "PARTIAL": return "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300";
-      case "UNPAID":  return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
-      default:        return "bg-gray-100 dark:bg-dark-subtle text-gray-800 dark:text-slate-300";
+      case "PAID":
+      case "COMPLETED":
+      case "SENT":
+      case "DELIVERED":
+      case "READ":
+        return "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300";
+      case "PARTIAL":
+      case "SCHEDULED":
+      case "PENDING":
+        return "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300";
+      case "UNPAID":
+      case "CANCELLED":
+      case "MISSED":
+      case "FAILED":
+        return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
+      default:
+        return "bg-gray-100 dark:bg-dark-subtle text-gray-800 dark:text-slate-300";
     }
   };
 
@@ -70,8 +83,18 @@ const RecentActivity = ({ data, limit = 5 }) => {
             key={activity.id || index}
             className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-surface-hover dark:hover:bg-dark-hover transition-colors"
           >
-            <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-              <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <div className={`p-1.5 rounded-md shrink-0 ${
+              activity.type === 'service' ? 'bg-orange-50 dark:bg-orange-900/30' : 
+              activity.type === 'reminder' ? 'bg-green-50 dark:bg-green-900/30' :
+              'bg-blue-50 dark:bg-blue-900/30'
+            }`}>
+              {activity.type === 'service' ? (
+                <Wrench className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+              ) : activity.type === 'reminder' ? (
+                <Smartphone className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+              ) : (
+                <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              )}
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <div className="flex items-center justify-between gap-2">

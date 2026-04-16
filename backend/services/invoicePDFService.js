@@ -1,8 +1,10 @@
 import { PDFGenerator } from "./pdfGenerator.js";
 import path from "path";
+import QRCode from "qrcode";
 import { fileURLToPath } from "url";
 import {
   GST_RATE_PERCENT,
+  GST_RATE_DECIMAL,
   calculateInvoiceTotals,
   getInvoiceItemAmount,
   getInvoiceItemUnitPrice,
@@ -61,7 +63,7 @@ export class InvoicePDFService {
   }
 
   // Prepare invoice data for template
-  prepareInvoiceData(invoice, customer, invoiceItems, shop) {
+  async prepareInvoiceData(invoice, customer, invoiceItems, shop) {
     const totals = this.calculateTotals(invoice, invoiceItems);
 
     // Normalize addresses for template
@@ -108,7 +110,7 @@ export class InvoicePDFService {
         ? "Payment Due"
         : "Settled";
 
-    return {
+    const data = {
       // Invoice details
       invoice: {
         number: invoice.invoice_number,
@@ -149,19 +151,37 @@ export class InvoicePDFService {
         email: shop.email || shop.contact_email || shop.email_address || "",
         gstNumber: shop.gst_number,
         logo_url: shop.logo_url,
+        bank_details: shop.bank_details || {},
       },
+      upiQRCode: null,
 
       // Invoice items — do not compute amounts when invoice is UNPAID/PARTIAL;
       // show values as present on the item object. If an explicit `amount`
       // is provided on the item, display it; otherwise leave blank to avoid
       // performing backend arithmetic.
       items: invoiceItems.map((item, index) => {
-        const quantity = item.quantity !== undefined ? item.quantity : "";
+        const quantityNum = item.quantity !== undefined ? Number(item.quantity) : 1;
         const unitRaw = getInvoiceItemUnitPrice(item);
-        const amountRaw =
-          item.amount !== undefined
-            ? Number(item.amount)
-            : getInvoiceItemAmount(item);
+        const lineOriginal = unitRaw * quantityNum;
+
+        const isTaxInclusive = invoice.is_tax_inclusive !== false;
+        const taxRate = GST_RATE_DECIMAL;
+        
+        let lineTaxable = 0;
+        let lineTax = 0;
+        let lineTotal = 0;
+
+        if (isTaxInclusive) {
+          lineTotal = lineOriginal;
+          lineTaxable = lineOriginal / (1 + taxRate);
+          lineTax = lineOriginal - lineTaxable;
+        } else {
+          lineTaxable = lineOriginal;
+          lineTax = lineOriginal * taxRate;
+          lineTotal = lineOriginal + lineTax;
+        }
+
+        const unitTaxable = lineTaxable / quantityNum;
 
         let batteryLine = "";
         if (
@@ -191,9 +211,10 @@ export class InvoicePDFService {
           productName: item.product_name || "N/A",
           modelNumber: item.model_number || "N/A",
           serialNumber: item.serial_number || "N/A",
-          quantity: quantity,
-          unitPrice: this.formatCurrency(unitRaw),
-          amount: this.formatCurrency(amountRaw),
+          quantity: quantityNum,
+          unitPrice: this.formatCurrency(unitTaxable),
+          amount: this.formatCurrency(lineTotal),
+          taxAmount: this.formatCurrency(lineTax),
           warrantyPeriod: item.warranty_duration_months
             ? `${item.warranty_duration_months} months`
             : "N/A",
@@ -230,13 +251,28 @@ export class InvoicePDFService {
       // Generated timestamp
       generatedOn: this.formatDate(new Date()),
     };
+
+    // Generate QR Code if UPI ID and amount exists
+    const upiId = shop.bank_details?.upi_id;
+    const rawTotal = totals.total; // totals.total is numeric from calculateTotals
+
+    if (upiId && rawTotal > 0) {
+      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shop.shop_name)}&am=${rawTotal}&cu=INR`;
+      try {
+        data.upiQRCode = await QRCode.toDataURL(upiUrl);
+      } catch (err) {
+        console.error("Failed to generate UPI QR Code:", err);
+      }
+    }
+
+    return data;
   }
 
   // Generate invoice PDF
   async generateInvoicePDF(invoice, customer, invoiceItems, shop) {
     try {
       // Prepare data for template
-      const templateData = this.prepareInvoiceData(
+      const templateData = await this.prepareInvoiceData(
         invoice,
         customer,
         invoiceItems,

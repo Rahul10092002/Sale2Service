@@ -646,7 +646,13 @@ navigate(location.state?.from || "/invoices")
                               Warranty
                             </th>
                             <th className="text-right py-2 px-2 font-medium text-ink-secondary dark:text-slate-400">
-                              Price
+                              Rate
+                            </th>
+                            <th className="text-right py-2 px-2 font-medium text-ink-secondary dark:text-slate-400">
+                              Tax
+                            </th>
+                            <th className="text-right py-2 px-2 font-medium text-ink-secondary dark:text-slate-400">
+                              Amount
                             </th>
                           </tr>
                         </thead>
@@ -721,12 +727,50 @@ navigate(location.state?.from || "/invoices")
                                     );
                                   })()}
                                 </td>
-                                <td className="py-2 px-2 text-right text-ink-base dark:text-slate-100">
-                                  {formatCurrency(
-                                    item.selling_price || item.price || 0,
-                                  )}
-                                </td>
-                              </tr>
+                            <td className="py-2 px-2 text-right text-ink-secondary dark:text-slate-400">
+                              {(() => {
+                                const qty = Number(item.quantity) || 1;
+                                const originalUnit = Number(item.selling_price || item.price || 0);
+                                const originalLine = originalUnit * qty;
+                                const isTaxInclusive = invoiceObj.is_tax_inclusive !== false;
+                                const taxRate = 0.18;
+                                
+                                let taxableLine = isTaxInclusive 
+                                  ? originalLine / (1 + taxRate) 
+                                  : originalLine;
+                                
+                                return formatCurrency(taxableLine / qty);
+                              })()}
+                            </td>
+                            <td className="py-2 px-2 text-right text-ink-secondary dark:text-slate-400">
+                              {(() => {
+                                const qty = Number(item.quantity) || 1;
+                                const originalUnit = Number(item.selling_price || item.price || 0);
+                                const originalLine = originalUnit * qty;
+                                const isTaxInclusive = invoiceObj.is_tax_inclusive !== false;
+                                const taxRate = 0.18;
+                                
+                                let tax = isTaxInclusive 
+                                  ? originalLine - (originalLine / (1 + taxRate)) 
+                                  : originalLine * taxRate;
+                                return formatCurrency(tax);
+                              })()}
+                            </td>
+                            <td className="py-2 px-2 text-right text-ink-base dark:text-slate-100">
+                              {(() => {
+                                const qty = Number(item.quantity) || 1;
+                                const originalUnit = Number(item.selling_price || item.price || 0);
+                                const originalLine = originalUnit * qty;
+                                const isTaxInclusive = invoiceObj.is_tax_inclusive !== false;
+                                const taxRate = 0.18;
+                                
+                                let total = isTaxInclusive 
+                                  ? originalLine 
+                                  : originalLine * (1 + taxRate);
+                                return formatCurrency(total);
+                              })()}
+                            </td>
+                          </tr>
                             );
                           })}
                         </tbody>

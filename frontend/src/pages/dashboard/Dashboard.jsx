@@ -118,7 +118,7 @@ const Dashboard = () => {
                   <MetricCard
                     title="Total Revenue"
                     // round off to nearest 10 for cleaner display, can adjust as needed
-                    value={`₹${Math.round(summary.revenue?.total / 10) * 10 || 0}`}
+                    value={`₹${summary.revenue?.total || 0}`}
                     subtitle={`${summary.revenue?.count || 0} invoice${summary.revenue?.count !== 1 ? "s" : ""}`}
                     trend={summary.revenue?.changePercentage}
                     icon={IndianRupee}
@@ -183,6 +183,8 @@ const Dashboard = () => {
                 <UpcomingReminders
                   serviceReminders={serviceReminders}
                   warrantyReminders={warrantyReminders}
+                  wishes={summary?.wishes || []}
+                  festivals={summary?.festivals || []}
                   period={period}
                 />
               </div>

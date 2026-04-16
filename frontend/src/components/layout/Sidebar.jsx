@@ -7,6 +7,7 @@ import {
   Box,
   Wrench,
   Activity,
+  Table
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "../../utils/constants.js";
@@ -35,6 +36,12 @@ const navItems = [
     label: "Products",
     icon: <Box className="w-4 h-4" />,
     path: ROUTES.PRODUCTS,
+  },
+  {
+    key: "inventory",
+    label: "Inventory",
+    icon: <Table className="w-4 h-4" />,
+    path: ROUTES.INVENTORY,
   },
   {
     key: "customers",

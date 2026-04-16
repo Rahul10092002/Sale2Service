@@ -428,8 +428,7 @@ No DB changes required.
 Small schema additions and moderate code changes.
 
 - Add invoice line tax amount, line subtotal, and line total persistence
-- Add invoice type, GST treatment, place of supply, HSN/SAC, and currency fields
-- Add a draft invoice entity or draft flag
+- Add invoice type, GST treatment
 - Add PDF theme/style selection
 - Add audit entries for sent invoices, reminders, and regenerated PDFs
 - Add richer customer and shop tax identity fields for compliant output
@@ -444,9 +443,6 @@ Full architecture uplift based on the reference.
 - Amount in words and bank/payment blocks
 - Multi-tenant branding profiles
 - Queue-based PDF generation and outbound messaging
-- Google Drive or object-storage archiving
-- E-Way Bill / GST compliance exports
-- Analytics dashboards for outstanding invoices and collections
 
 ---
 

@@ -174,6 +174,23 @@ const AlertsPanel = ({ alerts }) => {
                     const daysOverdue = getDaysOverdue(
                       isServiceItem ? item.scheduled_date : item.due_date,
                     );
+                    if (alert.id === "failed_reminders") {
+                      return (
+                        <div key={item.id} className="bg-white dark:bg-dark-card rounded-lg border border-red-100 dark:border-red-900/50 p-3">
+                          <div className="flex justify-between items-start">
+                             <div>
+                                <p className="text-sm font-semibold text-ink-base dark:text-slate-100">{item.customer_name}</p>
+                                <p className="text-xs text-ink-secondary dark:text-slate-400">{item.phone}</p>
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1 italic">{item.error}</p>
+                             </div>
+                             <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded font-medium uppercase">
+                                {item.type} Failed
+                             </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return isServiceItem ? (
                       // Service schedule item
                       <div

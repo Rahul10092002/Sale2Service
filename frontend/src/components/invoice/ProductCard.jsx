@@ -96,14 +96,18 @@ const ProductCard = React.memo(function ProductCard({
   const cameraInputRef = React.useRef(null);
 
   const handleImageChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
     setImageError(null);
     setImageUploading(true);
     try {
-      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("product_image", compressed, "product.jpg");
+      // Compress and append all files
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        formData.append("product_images", compressed, "product.jpg");
+      }
 
       const token = getToken();
       const response = await fetch(`${API_BASE_URL}/files/product-image`, {
@@ -115,21 +119,35 @@ const ProductCard = React.memo(function ProductCard({
       if (!response.ok || !json.success) {
         throw new Error(json.message || "Upload failed");
       }
+
+      const newUrls = json.data.images.map((img) => img.image_url);
+      const currentImages =
+        item.product_images ||
+        (item.product_image_url ? [item.product_image_url] : []);
+
       updateItemImmediate(item.id, {
-        product_image_url: json.data.image_url,
+        product_images: [...currentImages, ...newUrls],
       });
     } catch (err) {
       console.error("Product image upload error:", err);
       setImageError(err.message || "Upload failed");
     } finally {
       setImageUploading(false);
-      // Reset the file input so the same file can be re-selected if needed
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
     }
   };
 
-  const removeImage = () => {
-    updateItemImmediate(item.id, { product_image_url: null });
+  const removeImage = (urlToRemove) => {
+    const currentImages =
+      item.product_images ||
+      (item.product_image_url ? [item.product_image_url] : []);
+    const updatedImages = currentImages.filter((url) => url !== urlToRemove);
+    updateItemImmediate(item.id, {
+      product_images: updatedImages,
+      // Clear legacy field if empty
+      ...(updatedImages.length === 0 && { product_image_url: null }),
+    });
     setImageError(null);
   };
   // ── End image upload state ──────────────────────────────────────
@@ -410,73 +428,70 @@ const ProductCard = React.memo(function ProductCard({
   
   <h4 className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
     <ImagePlus className="w-3.5 h-3.5 text-indigo-600" />
-    Product Image
+    Product Images
   </h4>
 
-  {item.product_image_url ? (
-    <div className="relative inline-block">
-      <img
-        src={item.product_image_url}
-        alt="Product"
-        className="w-20 h-20 object-cover rounded-md border border-gray-200"
+  <div className="flex flex-wrap gap-2">
+    {/* Display existing images */}
+    {(item.product_images || (item.product_image_url ? [item.product_image_url] : [])).map((url, idx) => (
+      <div key={idx} className="relative inline-block">
+        <img
+          src={url}
+          alt={`Product ${idx + 1}`}
+          className="w-20 h-20 object-cover rounded-md border border-gray-200"
+        />
+        <button
+          type="button"
+          onClick={() => removeImage(url)}
+          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-[2px]"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+    ))}
+
+    {/* Upload Button */}
+    <label className="flex flex-col items-center justify-center w-20 h-20 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition">
+      {imageUploading ? (
+        <span className="text-[10px] text-indigo-600">Uploading…</span>
+      ) : (
+        <>
+          <ImagePlus className="w-4 h-4 text-gray-400" />
+          <span className="text-[10px] text-gray-500">Upload</span>
+        </>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        disabled={imageUploading}
+        onChange={handleImageChange}
       />
+    </label>
 
-      <button
-        type="button"
-        onClick={removeImage}
-        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-[2px]"
-      >
-        <X className="w-3 h-3" />
-      </button>
-    </div>
-  ) : (
-    <div className="flex gap-2">
-
-      {/* Upload */}
-      <label className="flex flex-col items-center justify-center w-20 h-20 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition">
-        {imageUploading ? (
-          <span className="text-[10px] text-indigo-600">Uploading…</span>
-        ) : (
-          <>
-            <ImagePlus className="w-4 h-4 text-gray-400" />
-            <span className="text-[10px] text-gray-500">Upload</span>
-          </>
-        )}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          disabled={imageUploading}
-          onChange={handleImageChange}
-        />
-      </label>
-
-      {/* Camera */}
-      <label className="flex flex-col items-center justify-center w-20 h-20 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition">
-        {imageUploading ? (
-          <span className="text-[10px] text-green-600">Uploading…</span>
-        ) : (
-          <>
-            <Camera className="w-4 h-4 text-gray-400" />
-            <span className="text-[10px] text-gray-500">Camera</span>
-          </>
-        )}
-
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          capture="environment"
-          className="hidden"
-          disabled={imageUploading}
-          onChange={handleImageChange}
-        />
-      </label>
-
-    </div>
-  )}
+    {/* Camera Button */}
+    <label className="flex flex-col items-center justify-center w-20 h-20 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition">
+      {imageUploading ? (
+        <span className="text-[10px] text-green-600">Uploading…</span>
+      ) : (
+        <>
+          <Camera className="w-4 h-4 text-gray-400" />
+          <span className="text-[10px] text-gray-500">Camera</span>
+        </>
+      )}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        className="hidden"
+        disabled={imageUploading}
+        onChange={handleImageChange}
+      />
+    </label>
+  </div>
 
   {imageError && (
     <p className="text-[11px] text-red-600">{imageError}</p>

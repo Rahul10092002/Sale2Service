@@ -64,7 +64,7 @@ router.get(
 router.post(
   "/product-image",
   authorize("OWNER", "ADMIN", "STAFF"),
-  uploadImageMemory.single("product_image"),
+  uploadImageMemory.array("product_images", 10),
   handleMulterError,
   fileUploadController.uploadProductImage,
 );

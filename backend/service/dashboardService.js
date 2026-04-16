@@ -4,6 +4,9 @@ import ServiceVisit from "../models/ServiceVisit.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
 import ServicePlan from "../models/ServicePlan.js";
 import InvoiceItem from "../models/InvoiceItem.js";
+import ReminderLog from "../models/ReminderLog.js";
+import * as reminderUtils from "./reminderUtils.js";
+import { createDateRange } from "../scheduler/core/utils.js";
 
 /**
  * Dashboard Service
@@ -14,32 +17,23 @@ import InvoiceItem from "../models/InvoiceItem.js";
  * Get date range based on period
  */
 const getDateRange = (period) => {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
+  const todayRange = createDateRange(0);
+  
   switch (period) {
     case "today":
-      return {
-        start: today,
-        end: new Date(today.getTime() + 24 * 60 * 60 * 1000),
-      };
+      return todayRange;
     case "week":
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - today.getDay());
       return {
-        start: weekStart,
-        end: new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000),
+        start: todayRange.start,
+        end: createDateRange(7).end,
       };
     case "month":
       return {
-        start: new Date(now.getFullYear(), now.getMonth(), 1),
-        end: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+        start: todayRange.start,
+        end: createDateRange(30).end,
       };
     default:
-      return {
-        start: today,
-        end: new Date(today.getTime() + 24 * 60 * 60 * 1000),
-      };
+      return todayRange;
   }
 };
 
@@ -55,6 +49,7 @@ export const getRevenueStats = async (shopId, period = "today") => {
       $match: {
         shop_id: shopId,
         invoice_date: { $gte: start, $lt: end },
+        deleted_at: null,
       },
     },
     {
@@ -76,6 +71,7 @@ export const getRevenueStats = async (shopId, period = "today") => {
       $match: {
         shop_id: shopId,
         invoice_date: { $gte: prevStart, $lt: prevEnd },
+        deleted_at: null,
       },
     },
     {
@@ -113,6 +109,7 @@ export const getInvoiceStats = async (shopId, period = "today") => {
       $match: {
         shop_id: shopId,
         invoice_date: { $gte: start, $lt: end },
+        deleted_at: null,
       },
     },
     {
@@ -152,12 +149,16 @@ export const getCustomerStats = async (shopId, period = "today") => {
   const { start, end } = getDateRange(period);
 
   // Total customers
-  const totalCustomers = await Customer.countDocuments({ shop_id: shopId });
+  const totalCustomers = await Customer.countDocuments({ 
+    shop_id: shopId,
+    deleted_at: null 
+  });
 
   // New customers in period
   const newCustomers = await Customer.countDocuments({
     shop_id: shopId,
     createdAt: { $gte: start, $lt: end },
+    deleted_at: null
   });
 
   // Active customers (with invoices in last 30 days)
@@ -165,6 +166,7 @@ export const getCustomerStats = async (shopId, period = "today") => {
   const activeCustomerIds = await Invoice.distinct("customer_id", {
     shop_id: shopId,
     invoice_date: { $gte: thirtyDaysAgo },
+    deleted_at: null,
   });
 
   return {
@@ -180,18 +182,22 @@ export const getCustomerStats = async (shopId, period = "today") => {
 export const getServiceStats = async (shopId, period = "today") => {
   const { start, end } = getDateRange(period);
 
-  // Get service schedules for this shop
-  const schedules = await ServiceSchedule.find({ shop_id: shopId }).select(
-    "_id",
-  );
-  const scheduleIds = schedules.map((s) => s._id);
-
-  // Service visits in period
-  const visits = await ServiceVisit.aggregate([
+  const visits = await ServiceSchedule.aggregate([
+    {
+      $lookup: {
+        from: "serviceplans",
+        localField: "service_plan_id",
+        foreignField: "_id",
+        as: "plan",
+      },
+    },
+    { $unwind: "$plan" },
     {
       $match: {
-        service_schedule_id: { $in: scheduleIds },
-        visit_date: { $gte: start, $lt: end },
+        "plan.shop_id": shopId,
+        "plan.deleted_at": null,
+        deleted_at: null,
+        scheduled_date: { $gte: start, $lt: end },
       },
     },
     {
@@ -239,6 +245,7 @@ export const getServicePlanStats = async (shopId) => {
     shop_id: shopId,
     plan_status: "ACTIVE",
     end_date: { $gte: now, $lte: thirtyDaysLater },
+    deleted_at: null,
   });
 
   return {
@@ -263,6 +270,7 @@ export const getRevenueTrend = async (shopId, days = 30) => {
       $match: {
         shop_id: shopId,
         invoice_date: { $gte: startDate, $lte: endDate },
+        deleted_at: null,
       },
     },
     {
@@ -299,6 +307,7 @@ export const getTopProducts = async (shopId, limit = 5) => {
       $match: {
         shop_id: shopId,
         invoice_date: { $gte: thirtyDaysAgo },
+        deleted_at: null,
       },
     },
     {
@@ -341,20 +350,51 @@ export const getTopProducts = async (shopId, limit = 5) => {
  */
 export const getRecentActivity = async (shopId, limit = 10) => {
   console.log("Fetching recent activity for shop:", shopId);
-  const recentInvoices = await Invoice.find({ shop_id: shopId })
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .populate("customer_id", "full_name")
-    .select("invoice_number total_amount payment_status createdAt");
+  const [recentInvoices, recentVisits, recentReminders] = await Promise.all([
+    Invoice.find({ shop_id: shopId, deleted_at: null })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate("customer_id", "full_name")
+      .select("invoice_number total_amount payment_status createdAt"),
+      
+    ServiceVisit.find({ deleted_at: null })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate({
+        path: "service_schedule_id",
+        populate: {
+          path: "service_plan_id",
+          match: { shop_id: shopId },
+          populate: { path: "customer_id", select: "full_name" }
+        }
+      }),
+
+    reminderUtils.getRecentReminderActivity(shopId, limit)
+  ]);
+
+  const activities = [
+    ...recentInvoices.map((invoice) => ({
+      type: "invoice",
+      id: invoice._id,
+      title: `Invoice ${invoice.invoice_number}`,
+      description: `${invoice.customer_id?.full_name || "Customer"} - ₹${invoice.total_amount}`,
+      status: invoice.payment_status,
+      timestamp: invoice.createdAt,
+    })),
+    ...recentVisits
+      .filter(v => v.service_schedule_id?.service_plan_id) // Match successful
+      .map((visit) => ({
+        type: "service",
+        id: visit._id,
+        title: "Service Visit",
+        description: `${visit.service_schedule_id?.service_plan_id?.customer_id?.full_name || "Customer"} - ${visit.status}`,
+        status: visit.status,
+        timestamp: visit.createdAt,
+      })),
+    ...recentReminders
+  ];
   
-  return recentInvoices.map((invoice) => ({
-    type: "invoice",
-    id: invoice._id,
-    title: `Invoice ${invoice.invoice_number}`,
-    description: `${invoice.customer_id?.full_name || "Customer"} - ₹${invoice.total_amount}`,
-    status: invoice.payment_status,
-    timestamp: invoice.createdAt,
-  }));
+  return activities.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
 };
 
 /**
@@ -362,27 +402,28 @@ export const getRecentActivity = async (shopId, limit = 10) => {
  */
 export const getAlerts = async (shopId) => {
   const alerts = [];
+  const limit = 10;
+  const now = new Date();
 
-  // Overdue invoices
+  // 1. Overdue invoices
   const overdueInvoiceList = await Invoice.find({
     shop_id: shopId,
     payment_status: { $in: ["UNPAID", "PARTIAL"] },
-    due_date: { $lt: new Date() },
+    due_date: { $lt: now },
     deleted_at: null,
   })
     .populate("customer_id", "full_name whatsapp_number")
     .select("invoice_number total_amount due_date payment_status customer_id")
     .sort({ due_date: 1 })
-    .limit(10);
+    .limit(limit);
 
-  const overdueInvoices = overdueInvoiceList.length;
-
-  if (overdueInvoices > 0) {
+  if (overdueInvoiceList.length > 0) {
     alerts.push({
+      id: "overdue_invoices",
       type: "warning",
       category: "invoices",
-      message: `${overdueInvoices} invoice${overdueInvoices > 1 ? "s" : ""} with payment overdue — need follow-up`,
-      count: overdueInvoices,
+      message: `${overdueInvoiceList.length} invoice${overdueInvoiceList.length > 1 ? "s" : ""} overdue — need follow-up`,
+      count: overdueInvoiceList.length,
       items: overdueInvoiceList.map((inv) => ({
         id: inv._id,
         invoice_number: inv.invoice_number,
@@ -395,78 +436,126 @@ export const getAlerts = async (shopId) => {
     });
   }
 
-  // Missed or overdue service visits
-  const overdueServiceList = await ServiceSchedule.find({
-    deleted_at: null,
-    status: { $in: ["MISSED", "PENDING"] },
-    scheduled_date: { $lt: new Date() },
-  })
-    .populate({
-      path: "service_plan_id",
-      select: "invoice_item_id shop_id",
-      match: { shop_id: shopId, deleted_at: null },
-      populate: {
-        path: "invoice_item_id",
-        select: "_id product_name invoice_id",
-        populate: {
-          path: "invoice_id",
-          select: "invoice_number customer_id",
-          populate: {
-            path: "customer_id",
-            select: "full_name whatsapp_number",
-          },
-        },
+  // 2. Missed or overdue service visits
+  const overdueServiceList = await ServiceSchedule.aggregate([
+    {
+      $match: {
+        deleted_at: null,
+        status: { $in: ["MISSED", "PENDING"] },
+        scheduled_date: { $lt: now },
       },
-    })
-    .sort({ scheduled_date: 1 })
-    .limit(10);
+    },
+    {
+      $lookup: {
+        from: "serviceplans",
+        localField: "service_plan_id",
+        foreignField: "_id",
+        as: "plan",
+      },
+    },
+    { $unwind: "$plan" },
+    {
+      $match: {
+        "plan.shop_id": shopId,
+        "plan.deleted_at": null,
+      },
+    },
+    {
+      $lookup: {
+        from: "invoiceitems",
+        localField: "plan.invoice_item_id",
+        foreignField: "_id",
+        as: "invoiceItem",
+      },
+    },
+    { $unwind: "$invoiceItem" },
+    {
+      $lookup: {
+        from: "invoices",
+        localField: "invoiceItem.invoice_id",
+        foreignField: "_id",
+        as: "invoice",
+      },
+    },
+    { $unwind: "$invoice" },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "invoice.customer_id",
+        foreignField: "_id",
+        as: "customer",
+      },
+    },
+    { $unwind: "$customer" },
+    { $sort: { scheduled_date: 1 } },
+    { $limit: limit },
+    {
+      $project: {
+        _id: "$invoice._id",
+        product_id: "$invoiceItem._id",
+        invoice_number: "$invoice.invoice_number",
+        customer_name: "$customer.full_name",
+        phone: "$customer.whatsapp_number",
+        product_name: "$invoiceItem.product_name",
+        scheduled_date: 1,
+        service_number: 1,
+        status: 1,
+      },
+    },
+  ]);
 
-  // Filter to this shop only (match on populate doesn't exclude parent docs)
-  const shopServiceList = overdueServiceList.filter(
-    (s) => s.service_plan_id?.shop_id?.toString() === shopId.toString(),
-  );
-
-  if (shopServiceList.length > 0) {
+  if (overdueServiceList.length > 0) {
     alerts.push({
+      id: "missed_services",
       type: "error",
       category: "service",
-      message: `${shopServiceList.length} service visit${shopServiceList.length > 1 ? "s" : ""} missed or overdue`,
-      count: shopServiceList.length,
-      items: shopServiceList.map((s) => {
-        const invoiceItem = s.service_plan_id?.invoice_item_id;
-        const invoice = invoiceItem?.invoice_id;
-        const customer = invoice?.customer_id;
-        return {
-          id: invoice?._id,
-          product_id: invoiceItem?._id,
-          invoice_number: invoice?.invoice_number || "",
-          customer_name: customer?.full_name || "Unknown",
-          phone: customer?.whatsapp_number || "",
-          product_name: invoiceItem?.product_name || "Unknown product",
-          scheduled_date: s.scheduled_date,
-          service_number: s.service_number,
-          status: s.status,
-        };
-      }),
+      message: `${overdueServiceList.length} service visit${overdueServiceList.length > 1 ? "s" : ""} missed or overdue`,
+      count: overdueServiceList.length,
+      items: overdueServiceList,
     });
   }
 
-  // Service plans expiring soon
-  const expiringPlans = await ServicePlan.countDocuments({
+  // 3. Failed Reminder Messages
+  const failedReminders = await ReminderLog.find({
     shop_id: shopId,
-    plan_status: "ACTIVE",
-    end_date: {
-      $gte: new Date(),
-      $lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    },
+    message_status: "FAILED",
+    deleted_at: null,
+    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
+  })
+  .limit(limit);
+
+  if (failedReminders.length > 0) {
+    alerts.push({
+      id: "failed_reminders",
+      type: "error",
+      category: "reminder",
+      message: `${failedReminders.length} reminder message${failedReminders.length > 1 ? "s" : ""} failed to send today`,
+      count: failedReminders.length,
+      items: failedReminders.map(log => ({
+        id: log._id,
+        customer_name: log.recipient_name,
+        phone: log.recipient_number,
+        error: log.failure_reason,
+        type: log.entity_type
+      }))
+    });
+  }
+
+  // 4. Invoices missing due dates (if payment status is not PAID)
+  const missingDueDateCount = await Invoice.countDocuments({
+    shop_id: shopId,
+    payment_status: { $in: ["UNPAID", "PARTIAL"] },
+    due_date: null,
+    deleted_at: null
   });
 
-  if (expiringPlans > 0) {
+  if (missingDueDateCount > 0) {
     alerts.push({
+      id: "missing_due_dates",
       type: "info",
-      category: "service",
-      message: `${expiringPlans} service plan${expiringPlans > 1 ? "s" : ""} expiring this week`,
-      count: expiringPlans,
+      category: "invoices",
+      message: `${missingDueDateCount} invoice${missingDueDateCount > 1 ? "s" : ""} missing due dates — cannot schedule reminders`,
+      count: missingDueDateCount
     });
   }
 
@@ -484,6 +573,8 @@ export const getDashboardSummary = async (shopId, period = "today") => {
     serviceStats,
     servicePlanStats,
     alerts,
+    wishes,
+    festivals
   ] = await Promise.all([
     getRevenueStats(shopId, period),
     getInvoiceStats(shopId, period),
@@ -491,6 +582,8 @@ export const getDashboardSummary = async (shopId, period = "today") => {
     getServiceStats(shopId, period),
     getServicePlanStats(shopId),
     getAlerts(shopId),
+    reminderUtils.getUpcomingWishes(shopId, period),
+    reminderUtils.getUpcomingFestivals(shopId, period)
   ]);
 
   return {
@@ -501,6 +594,8 @@ export const getDashboardSummary = async (shopId, period = "today") => {
     services: serviceStats,
     servicePlans: servicePlanStats,
     alerts,
+    wishes,
+    festivals
   };
 };
 
@@ -516,6 +611,7 @@ export const getPaymentMethodStats = async (shopId, period = "month") => {
         shop_id: shopId,
         invoice_date: { $gte: start, $lt: end },
         payment_status: "PAID",
+        deleted_at: null,
       },
     },
     {
@@ -538,46 +634,7 @@ export const getPaymentMethodStats = async (shopId, period = "month") => {
  * Get upcoming service reminders
  */
 export const getUpcomingServiceReminders = async (shopId, period = "today") => {
-  const { start, end } = getDateRange(period);
-
-  // Get service plans for this shop
-  const servicePlans = await ServicePlan.find({
-    shop_id: shopId,
-    plan_status: "ACTIVE",
-    deleted_at: null,
-  }).populate("customer_id", "full_name whatsapp_number");
-
-  const servicePlanIds = servicePlans.map((p) => p._id);
-
-  // Get service schedules due in the period
-  const upcomingServices = await ServiceSchedule.find({
-    service_plan_id: { $in: servicePlanIds },
-    scheduled_date: { $gte: start, $lt: end },
-    status: { $in: ["PENDING", "RESCHEDULED"] },
-    deleted_at: null,
-  })
-    .populate({
-      path: "service_plan_id",
-      populate: {
-        path: "customer_id",
-        select: "full_name whatsapp_number",
-      },
-    })
-    .sort({ scheduled_date: 1 });
-
-  return upcomingServices.map((schedule) => ({
-    id: schedule._id,
-    type: "service",
-    serviceName: schedule.service_plan_id?.plan_name || "Service",
-    customerName: schedule.service_plan_id?.customer_id?.full_name || "Unknown",
-    customerPhone: schedule.service_plan_id?.customer_id?.whatsapp_number || "",
-    scheduledDate: schedule.scheduled_date,
-    serviceNumber: schedule.service_number,
-    status: schedule.status,
-    daysUntil: Math.ceil(
-      (schedule.scheduled_date - new Date()) / (1000 * 60 * 60 * 24),
-    ),
-  }));
+  return reminderUtils.getUpcomingServices(shopId, period);
 };
 
 /**
@@ -587,38 +644,7 @@ export const getUpcomingWarrantyReminders = async (
   shopId,
   period = "today",
 ) => {
-  const { start, end } = getDateRange(period);
-
-  // Get invoice items with warranties expiring in the period
-  const expiringWarranties = await InvoiceItem.find({
-    shop_id: shopId,
-    warranty_end_date: { $gte: start, $lt: end },
-    deleted_at: null,
-  })
-    .populate({
-      path: "invoice_id",
-      select: "customer_id invoice_number invoice_date",
-      populate: {
-        path: "customer_id",
-        select: "full_name whatsapp_number",
-      },
-    })
-    .sort({ warranty_end_date: 1 });
-
-  return expiringWarranties.map((item) => ({
-    id: item._id,
-    type: "warranty",
-    productName: item.product_name,
-    serialNumber: item.serial_number,
-    customerName: item.invoice_id?.customer_id?.full_name || "Unknown",
-    customerPhone: item.invoice_id?.customer_id?.whatsapp_number || "",
-    warrantyEndDate: item.warranty_end_date,
-    warrantyType: item.warranty_type,
-    invoiceNumber: item.invoice_id?.invoice_number || "",
-    daysUntil: Math.ceil(
-      (item.warranty_end_date - new Date()) / (1000 * 60 * 60 * 24),
-    ),
-  }));
+  return reminderUtils.getUpcomingWarranties(shopId, period);
 };
 
 /**

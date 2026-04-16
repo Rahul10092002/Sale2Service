@@ -26,6 +26,7 @@ import Products from "../pages/products/Products.jsx";
 import ProductView from "../pages/products/ProductView.jsx";
 import UserView from "../pages/users/UserView.jsx";
 import Settings from "../pages/settings/Settings.jsx";
+import Inventory from "../pages/inventory/Inventory.jsx";
 
 // Dynamic import for Logs component using React.lazy()
 import { lazy, Suspense } from "react";
@@ -168,6 +169,14 @@ const AppRoutes = () => {
         element={
           <PrivateRoute>
             <Products />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path={ROUTES.INVENTORY}
+        element={
+          <PrivateRoute>
+            <Inventory />
           </PrivateRoute>
         }
       />

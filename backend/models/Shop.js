@@ -41,6 +41,13 @@ const shopSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    bank_details: {
+      account_holder_name: { type: String, trim: true },
+      account_number: { type: String, trim: true },
+      bank_name: { type: String, trim: true },
+      ifsc_code: { type: String, trim: true },
+      upi_id: { type: String, trim: true },
+    },
     deleted_at: {
       type: Date,
       default: null,

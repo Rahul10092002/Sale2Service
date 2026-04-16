@@ -18,6 +18,7 @@ export const ROUTES = {
   SHOPS: "/shops",
   CUSTOMERS: "/customers",
   PRODUCTS: "/products",
+  INVENTORY: "/inventory",
   USERS: "/users",
   INVOICES: "/invoices",
   SALES: "/sales",
@@ -62,8 +63,13 @@ export const API_ENDPOINTS = {
   PRODUCTS: {
     LIST: "/products",
     CREATE: "/products",
-    UPDATE: (id) => `/products/${id}`,
     DELETE: (id) => `/products/${id}`,
+  },
+  INVENTORY: {
+    LIST: "/products/inventory",
+    SAVE: "/products/master-save",
+    UPDATE: (id) => `/products/inventory/${id}`,
+    DELETE: (id) => `/products/inventory/${id}`,
   },
   CUSTOMERS: {
     LIST: "/customers",
@@ -146,6 +152,7 @@ export const INVOICE_CONSTANTS = {
     BATTERY: "BATTERY",
     INVERTER: "INVERTER",
     UPS: "UPS",
+    ALTERNATOR: "ALTERNATOR",
   },
   BATTERY_TYPES: {
     INVERTER_BATTERY: "INVERTER_BATTERY",

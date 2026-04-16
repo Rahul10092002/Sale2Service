@@ -219,48 +219,54 @@ class FileUploadController {
    */
   async uploadProductImage(req, res) {
     try {
-      if (!req.file) {
+      if (!req.files || req.files.length === 0) {
         return res.status(400).json({
           success: false,
-          message: "No image uploaded",
+          message: "No images uploaded",
           error_code: "NO_FILE",
         });
       }
 
       const { user } = req;
-      const file = req.file;
-      const timestamp = Date.now();
-      const uniqueFileName = `product_${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
+      const uploadResults = [];
 
-      const uploadResult = await cloudinaryUpload.uploadImageFromBuffer(
-        file.buffer,
-        {
-          folder: "product-images",
-          fileName: uniqueFileName,
-          tags: ["product-image", `user_${user.userId}`, `shop_${user.shopId}`],
-          overwrite: false,
-          // Server-side quality optimisation as a safety net (client already compressed)
-          transformation: [{ quality: "auto:good", fetch_format: "auto" }],
-        },
-      );
+      for (const file of req.files) {
+        const timestamp = Date.now();
+        const uniqueFileName = `product_${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
 
-      return res.status(200).json({
-        success: true,
-        message: "Product image uploaded successfully",
-        data: {
+        const uploadResult = await cloudinaryUpload.uploadImageFromBuffer(
+          file.buffer,
+          {
+            folder: "product-images",
+            fileName: uniqueFileName,
+            tags: ["product-image", `user_${user.userId}`, `shop_${user.shopId}`],
+            overwrite: false,
+            transformation: [{ quality: "auto:good", fetch_format: "auto" }],
+          },
+        );
+
+        uploadResults.push({
           image_url: uploadResult.url,
           public_id: uploadResult.public_id,
           width: uploadResult.width,
           height: uploadResult.height,
           file_size: uploadResult.bytes,
           uploaded_at: uploadResult.created_at,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `${uploadResults.length} product image(s) uploaded successfully`,
+        data: {
+          images: uploadResults,
         },
       });
     } catch (error) {
       console.error("Upload product image error:", error);
       return res.status(500).json({
         success: false,
-        message: "Failed to upload product image",
+        message: "Failed to upload product images",
         error: error.message,
         error_code: "UPLOAD_FAILED",
       });

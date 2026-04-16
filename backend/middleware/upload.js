@@ -100,7 +100,7 @@ const uploadImageMemory = multer({
   fileFilter: imageFileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB max for images
-    files: 1,
+    files: 10,
   },
 });
 

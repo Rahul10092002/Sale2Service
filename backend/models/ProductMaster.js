@@ -29,9 +29,14 @@ const productMasterSchema = new mongoose.Schema(
         "OTHER",
       ],
     },
+    battery_type: {
+      type: String,
+      enum: ["INVERTER_BATTERY", "VEHICLE_BATTERY"],
+    },
     company: { type: String, trim: true },
     model_number: { type: String, trim: true },
     selling_price: { type: Number, min: 0 },
+    cost_price: { type: Number, min: 0 },
     capacity_rating: { type: String, trim: true },
     voltage: { type: String, trim: true },
     warranty_type: {
@@ -39,6 +44,11 @@ const productMasterSchema = new mongoose.Schema(
       enum: ["STANDARD", "PRO", "EXTENDED", "LIMITED", "NONE"],
     },
     warranty_duration_months: { type: Number, min: 0 },
+    product_images: [
+      {
+        type: String,
+      },
+    ],
     // true = auto-saved during invoice creation; false = manually created
     auto_saved: { type: Boolean, default: true },
     shop_id: {

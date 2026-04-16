@@ -214,13 +214,16 @@ const InvoiceGenerationPage = () => {
           saveMaster({
             product_name: item.product_name.trim(),
             product_category: item.product_category,
+            battery_type: item.battery_type,
             company: item.company,
             model_number: item.model_number,
             selling_price: item.selling_price,
+            cost_price: item.cost_price,
             capacity_rating: item.capacity_rating,
             voltage: item.voltage,
             warranty_type: item.warranty_type,
             warranty_duration_months: item.warranty_duration_months,
+            product_images: item.product_images,
           }).catch(() => {}); // silent fail — non-critical
         }
       });

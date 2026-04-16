@@ -1,7 +1,7 @@
 import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import Customer from "../../models/Customer.js";
-import FestivalSchedule from "../../models/festivalSchedule.js";
+import FestivalSchedule from "../../models/FestivalSchedule.js";
 import Shop from "../../models/Shop.js";
 import {
   getISTTodayParts,

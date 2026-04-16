@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import FestivalSchedule from "../models/festivalSchedule.js";
+import FestivalSchedule from "../models/FestivalSchedule.js";
 export default class FestivalScheduleController {
   /**
    * Create a new festival schedule

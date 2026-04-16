@@ -97,6 +97,8 @@ const MasterProductModal = ({ open, onClose, product }) => {
     voltage: "",
     warranty_type: "STANDARD",
     warranty_duration_months: "12",
+    stock_quantity: "0",
+    min_stock_alert: "5",
     product_images: [],
   });
 
@@ -117,6 +119,8 @@ const MasterProductModal = ({ open, onClose, product }) => {
         voltage: product.voltage || "",
         warranty_type: product.warranty_type || "STANDARD",
         warranty_duration_months: product.warranty_duration_months || "12",
+        stock_quantity: product.stock_quantity || "0",
+        min_stock_alert: product.min_stock_alert || "5",
         product_images: product.product_images || [],
       });
     } else {
@@ -132,6 +136,8 @@ const MasterProductModal = ({ open, onClose, product }) => {
             voltage: "",
             warranty_type: "STANDARD",
             warranty_duration_months: "12",
+            stock_quantity: "0",
+            min_stock_alert: "5",
             product_images: [],
         });
     }
@@ -194,6 +200,8 @@ const MasterProductModal = ({ open, onClose, product }) => {
         selling_price: parseFloat(form.selling_price) || 0,
         cost_price: parseFloat(form.cost_price) || 0,
         warranty_duration_months: parseInt(form.warranty_duration_months) || 0,
+        stock_quantity: parseInt(form.stock_quantity) || 0,
+        min_stock_alert: parseInt(form.min_stock_alert) || 0,
         auto_saved: false, // Manually created/modified
     };
 
@@ -329,6 +337,35 @@ const MasterProductModal = ({ open, onClose, product }) => {
                     className="w-full px-4 py-2 bg-red-50/30 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl focus:ring-2 focus:ring-red-500 transition-all text-red-600 dark:text-red-400 font-medium"
                   />
                   <p className="text-[10px] text-gray-400 mt-1">Hidden from customers</p>
+                </div>
+            </div>
+
+            <div className="md:col-span-2 grid grid-cols-2 gap-4 border-b border-gray-100 dark:border-dark-border pb-4 mb-2">
+                <div>
+                   <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                      Current Stock Quantity
+                   </label>
+                   <input
+                     type="number"
+                     name="stock_quantity"
+                     value={form.stock_quantity}
+                     onChange={handleChange}
+                     placeholder="0"
+                     className="w-full px-4 py-2 bg-gray-50 dark:bg-dark-input border border-gray-200 dark:border-dark-border rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
+                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                     Low Stock Alert at
+                  </label>
+                  <input
+                    type="number"
+                    name="min_stock_alert"
+                    value={form.min_stock_alert}
+                    onChange={handleChange}
+                    placeholder="5"
+                    className="w-full px-4 py-2 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl focus:ring-2 focus:ring-amber-500 transition-all font-medium text-amber-700 dark:text-amber-400"
+                  />
                 </div>
             </div>
 

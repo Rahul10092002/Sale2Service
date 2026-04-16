@@ -9,6 +9,7 @@ import ServiceSchedule from "../models/ServiceSchedule.js";
 import { sendWhatsappMessageViaMSG91 } from "../config/msg91.js";
 import { InvoiceDocumentService } from "../services/invoiceDocumentService.js";
 import InvoiceCounter from "../models/InvoiceCounter.js";
+import ProductMaster from "../models/ProductMaster.js";
 import {
   buildInvoiceNumberPreview,
   calculateInvoiceTotals,
@@ -265,6 +266,21 @@ export default class InvoiceController {
 
         await invoiceItem.save({ session });
         createdInvoiceItems.push(invoiceItem);
+
+        // Step 6b: Deduct stock from ProductMaster if template exists
+        try {
+          await ProductMaster.findOneAndUpdate(
+            { 
+              product_name: item.product_name.trim(), 
+              shop_id: user.shopId 
+            },
+            { $inc: { stock_quantity: -(item.quantity || 1) } },
+            { session }
+          );
+        } catch (stockErr) {
+          console.error("Stock deduction failed for", item.product_name, stockErr);
+          // Non-blocking for now, just log it
+        }
 
         // Step 7: Create service plan if enabled for this item
         if (item.service_plan_enabled && item.service_plan) {

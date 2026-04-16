@@ -56,6 +56,8 @@ const productMasterSchema = new mongoose.Schema(
       ref: "Shop",
       required: true,
     },
+    stock_quantity: { type: Number, default: 0 },
+    min_stock_alert: { type: Number, default: 5 },
   },
   { timestamps: true },
 );

@@ -510,12 +510,18 @@ export default class ProductController {
     const { user } = req;
     const {
       product_name,
+      product_category,
       battery_type,
+      company,
+      model_number,
+      selling_price,
       capacity_rating,
       voltage,
       warranty_type,
       warranty_duration_months,
       cost_price,
+      stock_quantity,
+      min_stock_alert,
       product_images,
     } = req.body;
 
@@ -545,6 +551,10 @@ export default class ProductController {
         setFields.selling_price = selling_price;
       if (cost_price != null)
         setFields.cost_price = cost_price;
+      if (stock_quantity != null)
+        setFields.stock_quantity = stock_quantity;
+      if (min_stock_alert != null)
+        setFields.min_stock_alert = min_stock_alert;
       if (capacity_rating) setFields.capacity_rating = capacity_rating;
       if (voltage) setFields.voltage = voltage;
       if (warranty_type) setFields.warranty_type = warranty_type;
@@ -572,12 +582,23 @@ export default class ProductController {
   async getMasterProducts(req, res) {
     try {
       const { user } = req;
-      const { page = 1, limit = 10, search, category } = req.query;
+      const { page = 1, limit = 10, search, category, stockStatus } = req.query;
 
       const query = { shop_id: user.shopId };
 
       if (category) {
         query.product_category = category;
+      }
+
+      if (stockStatus) {
+        if (stockStatus === "low") {
+          query.$expr = { $lte: ["$stock_quantity", "$min_stock_alert"] };
+          query.stock_quantity = { $gt: 0 }; // Low but not out
+        } else if (stockStatus === "out_of_stock") {
+          query.stock_quantity = { $lte: 0 };
+        } else if (stockStatus === "in_stock") {
+          query.stock_quantity = { $gt: 0 };
+        }
       }
 
       if (search) {

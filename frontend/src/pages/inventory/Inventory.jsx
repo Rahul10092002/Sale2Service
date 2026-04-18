@@ -17,6 +17,7 @@ import {
   useDeleteInventoryProductMutation,
 } from "../../features/products/productApi.js";
 import { ROUTES } from "../../utils/constants.js";
+import { usePermissions } from "../../hooks/usePermissions.js";
 import MasterProductModal from "./MasterProductModal.jsx";
 
 const Chip = ({ label, onRemove }) => {
@@ -47,6 +48,7 @@ const CATEGORY_OPTIONS = [
 const Inventory = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const { canCreate, canEdit, canDelete } = usePermissions();
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [category, setCategory] = useState(searchParams.get("category") || "");
   const [stockStatus, setStockStatus] = useState(searchParams.get("stockStatus") || "");
@@ -230,10 +232,12 @@ const Inventory = () => {
             </div>
           </div>
 
-          <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-bold hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 transition-all shadow-sm">
-            <Plus className="w-4 h-4" />
-            Add Product
-          </button>
+          {canCreate("inventory") && (
+            <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-bold hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 transition-all shadow-sm">
+              <Plus className="w-4 h-4" />
+              Add Product
+            </button>
+          )}
         </div>
 
         {/* Active Filter Chips */}
@@ -278,10 +282,12 @@ const Inventory = () => {
                 : "Get started by adding your first product to the catalog."}
             </p>
               <div className="flex items-center justify-center">
-                <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 hover:text-blue-600">
-                                <Plus className="w-4 h-4" />
-                                Add New Product
-                              </button>
+                {canCreate("inventory") && (
+                  <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 hover:text-blue-600">
+                    <Plus className="w-4 h-4" />
+                    Add New Product
+                  </button>
+                )}
             </div>
           </div>
         ) : (
@@ -360,18 +366,22 @@ const Inventory = () => {
                     </div>
 
                     <div className="flex gap-2">
-                      <button
-                        className="flex-1 bg-blue-500 text-white py-2 rounded-xl text-xs font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
-                        onClick={() => handleEdit(product)}
-                      >
-                        <Edit className="w-4 h-4" /> Edit Details
-                      </button>
-                      <button
-                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/20"
-                        onClick={() => handleDelete(product._id)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {canEdit("inventory") && (
+                        <button
+                          className="flex-1 bg-blue-500 text-white py-2 rounded-xl text-xs font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Edit className="w-4 h-4" /> Edit Details
+                        </button>
+                      )}
+                      {canDelete("inventory") && (
+                        <button
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/20"
+                          onClick={() => handleDelete(product._id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -430,20 +440,24 @@ const Inventory = () => {
                         <p className="text-[10px] text-gray-400 mt-1">Min: {product.min_stock_alert || 0}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                       <button
-                        onClick={() => handleEdit(product)}
-                        className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
-                        title="Edit Product"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product._id)}
-                        className="bg-red-50 dark:bg-red-900/20 text-red-500 p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
-                        title="Delete Product"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                       {canEdit("inventory") && (
+                        <button
+                          onClick={() => handleEdit(product)}
+                          className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                          title="Edit Product"
+                        >
+                          <Edit size={14} />
+                        </button>
+                      )}
+                      {canDelete("inventory") && (
+                        <button
+                          onClick={() => handleDelete(product._id)}
+                          className="bg-red-50 dark:bg-red-900/20 text-red-500 p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                          title="Delete Product"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

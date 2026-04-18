@@ -46,12 +46,14 @@ import {
 import { showToast } from "../../features/ui/uiSlice.js";
 import { ROUTES } from "../../utils/constants.js";
 import { LoadingSpinner } from "../../components/ui/index.js";
+import { usePermissions } from "../../hooks/usePermissions.js";
 import { ServiceIntegration } from "../../components/service/index.js";
 
 const ProductView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { canEdit } = usePermissions();
   const dispatch = useDispatch();
 
   const routeLabels = {
@@ -206,22 +208,6 @@ const ProductView = () => {
         return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-slate-800/80 dark:text-slate-200";
-    }
-  };
-
-  // Service schedule helpers
-  const getServiceStatusIcon = (status) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle className="text-green-600" size={16} />;
-      case "scheduled":
-        return <Calendar className="text-blue-600" size={16} />;
-      case "overdue":
-        return <AlertCircle className="text-red-600" size={16} />;
-      case "cancelled":
-        return <XCircle className="text-ink-secondary dark:text-slate-400" size={16} />;
-      default:
-        return <Clock className="text-ink-secondary dark:text-slate-400" size={16} />;
     }
   };
 
@@ -835,7 +821,7 @@ const ProductView = () => {
                         <Calendar className="w-5 h-5 text-indigo-500" />
                         Service Details
                       </h3>
-                      {serviceData?.plan && (
+                      {canEdit("products") && serviceData?.plan && (
                         <button
                           onClick={openEditPlanModal}
                           disabled={actionLoading || updatingPlan}
@@ -941,7 +927,7 @@ const ProductView = () => {
                                 </td>
                                 <td className="py-2 px-2 text-right">
                                   <div className="flex items-center justify-end gap-1.5">
-                                    {(schedule.status === "scheduled" || schedule.status === "overdue") && (
+                                    {canEdit("products") && (schedule.status === "scheduled" || schedule.status === "overdue") && (
                                       <>
                                         <button
                                           onClick={() => {
@@ -1064,17 +1050,19 @@ const ProductView = () => {
                       </button>
                     )}
 
-                    <button
-                      onClick={() => setShowEditProductModal(true)}
-                      className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
-                    >
-                      <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                        <Edit className="w-5 h-5 text-indigo-600" />
-                      </div>
-                      <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
-                        Edit Details
-                      </span>
-                    </button>
+                    {canEdit("products") && (
+                      <button
+                        onClick={() => setShowEditProductModal(true)}
+                        className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
+                      >
+                        <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                          <Edit className="w-5 h-5 text-indigo-600" />
+                        </div>
+                        <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
+                          Edit Details
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1519,7 +1507,7 @@ const ProductView = () => {
                 href={selectedImage.url}
                 download={selectedImage.title}
                 className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
-                onClick={(e) => {
+                onClick={() => {
                   // Direct download might be blocked by CORS for Cloudinary URLs
                   // Usually, it's safer to open in new tab if we can't force download
                 }}

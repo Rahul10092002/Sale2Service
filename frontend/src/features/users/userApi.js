@@ -47,6 +47,44 @@ export const userApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["User"],
     }),
+
+    // --- Role Endpoints ---
+
+    // Get all roles
+    getRoles: builder.query({
+      query: () => "/roles",
+      providesTags: ["Role"],
+      transformResponse: (response) => response.data,
+    }),
+
+    // Add new role
+    createRole: builder.mutation({
+      query: (roleData) => ({
+        url: "/roles",
+        method: "POST",
+        body: roleData,
+      }),
+      invalidatesTags: ["Role"],
+    }),
+
+    // Update role
+    updateRole: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/roles/${id}`,
+        method: "PUT",
+        body: data,
+      }),
+      invalidatesTags: ["Role"],
+    }),
+
+    // Delete role
+    deleteRole: builder.mutation({
+      query: (id) => ({
+        url: `/roles/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Role"],
+    }),
   }),
   overrideExisting: false,
 });
@@ -57,4 +95,8 @@ export const {
   useAddUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
+  useGetRolesQuery,
+  useCreateRoleMutation,
+  useUpdateRoleMutation,
+  useDeleteRoleMutation,
 } = userApi;

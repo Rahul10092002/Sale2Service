@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "../../utils/constants.js";
+import { usePermissions } from "../../hooks/usePermissions.js";
 
 const navItems = [
   {
@@ -18,65 +19,76 @@ const navItems = [
     label: "Dashboard",
     icon: <Home className="w-4 h-4" />,
     path: ROUTES.DASHBOARD,
+    permission: "dashboard_view",
   },
   {
     key: "New-Invoice",
     label: "Create Invoice",
     icon: <Receipt className="w-4 h-4" />,
     path: ROUTES.NEW_INVOICE,
+    permission: "invoices_create",
   },
   {
     key: "invoices",
     label: "Invoices",
     icon: <Receipt className="w-4 h-4" />,
     path: ROUTES.INVOICES,
+    permission: "invoices_view",
   },
   {
     key: "products",
     label: "Products",
     icon: <Box className="w-4 h-4" />,
     path: ROUTES.PRODUCTS,
+    permission: "products_view",
   },
   {
     key: "inventory",
     label: "Inventory",
     icon: <Table className="w-4 h-4" />,
     path: ROUTES.INVENTORY,
+    permission: "inventory_view",
   },
   {
     key: "customers",
     label: "Customers",
     icon: <User className="w-4 h-4" />,
     path: ROUTES.CUSTOMERS,
+    permission: "customers_view",
   },
   {
     key: "users",
     label: "Users",
     icon: <User className="w-4 h-4" />,
     path: ROUTES.USERS,
+    permission: "users_view",
   },
   {
     key: "logs",
     label: "Logs",
     icon: <Activity className="w-4 h-4" />,
     path: ROUTES.LOGS,
+    permission: "logs_view",
   },
   {
     key: "Schedules",
     label: "Schedules",
     icon: <Wrench className="w-4 h-4" />,
     path: ROUTES.FESTIVAL_SCHEDULE,
+    permission: "schedules_view",
   },
   {
     key: "settings",
     label: "Settings",
     icon: <Settings className="w-4 h-4" />,
     path: ROUTES.SETTINGS,
+    permission: "settings_view",
   },
 ];
 
 const Sidebar = () => {
   const location = useLocation();
+  const { hasPermission } = usePermissions();
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -114,7 +126,9 @@ const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto no-scrollbar">
-        {navItems.map((item) => (
+        {navItems
+          .filter(item => hasPermission(item.permission))
+          .map((item) => (
           <Link
             key={item.key}
             to={item.path}

@@ -37,11 +37,13 @@ import {
 } from "../../components/ui/Modal.jsx";
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 import { LoadingSpinner } from "../../components/ui/index.js";
+import { usePermissions } from "../../hooks/usePermissions.js";
 
 const InvoiceView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { canEdit, canDelete } = usePermissions();
 
   const routeLabels = {
     "/products": "Products",
@@ -50,7 +52,6 @@ const InvoiceView = () => {
     "/customers": "Customers",
   };
 
-  const from = location.state?.from || "/invoices";
   const label =
     location.state?.label || routeLabels[location.state?.from] || "Invoices";
 
@@ -860,17 +861,19 @@ navigate(location.state?.from || "/invoices")
                     Quick Actions
                   </h3>
                   <div className="space-y-2">
-                    <button
-                      onClick={handleEditInvoice}
-                      className="w-full flex items-center space-x-2 p-2 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
-                    >
-                      <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                        <Edit className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <span className="text-xs font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
-                        Edit Details
-                      </span>
-                    </button>
+                    {canEdit("invoices") && (
+                      <button
+                        onClick={handleEditInvoice}
+                        className="w-full flex items-center space-x-2 p-2 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
+                      >
+                        <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                          <Edit className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <span className="text-xs font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
+                          Edit Details
+                        </span>
+                      </button>
+                    )}
 
                     <button
                       onClick={handleDownloadPDF}
@@ -930,7 +933,7 @@ navigate(location.state?.from || "/invoices")
                       </button>
                     )}
 
-                    {["UNPAID", "PARTIAL"].includes(
+                    {canEdit("invoices") && ["UNPAID", "PARTIAL"].includes(
                       invoiceObj.payment_status,
                     ) && (
                       <button
@@ -953,17 +956,19 @@ navigate(location.state?.from || "/invoices")
                       </button>
                     )}
 
-                    <button
-                      onClick={openDeleteModal}
-                      className="w-full flex items-center space-x-2 p-2 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
-                    >
-                      <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </div>
-                      <span className="text-xs font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
-                        Delete Invoice
-                      </span>
-                    </button>
+                    {canDelete("invoices") && (
+                      <button
+                        onClick={openDeleteModal}
+                        className="w-full flex items-center space-x-2 p-2 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
+                      >
+                        <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </div>
+                        <span className="text-xs font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
+                          Delete Invoice
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

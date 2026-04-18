@@ -59,14 +59,6 @@ const InvoiceItemsForm = () => {
               Add products with serial number tracking and warranty details
             </p>
           </div>
-          <Button
-            type="button"
-            onClick={addItemWithRecalc}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto"
-          >
-            <Plus className="w-4 h-4" />
-            Add Product
-          </Button>
         </div>
 
         <div className="">

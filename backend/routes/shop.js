@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import ShopController from "../controllers/shopController.js";
-import { authenticate, authorize } from "../middleware/auth.js";
+import { authenticate, authorize, checkPermission } from "../middleware/auth.js";
 
 export const shopRouter = Router();
 const shopController = new ShopController();
@@ -26,23 +26,23 @@ const upload = multer({
 // All routes require authentication
 shopRouter.use(authenticate);
 
-// Get shop profile (All authenticated users)
-shopRouter.get("/profile", (req, res) => shopController.getProfile(req, res));
+// Get shop profile
+shopRouter.get("/profile", checkPermission("settings_view"), (req, res) => shopController.getProfile(req, res));
 
-// Update shop profile (Only OWNER)
-shopRouter.put("/profile", authorize("OWNER"), (req, res) =>
+// Update shop profile
+shopRouter.put("/profile", checkPermission("settings_edit"), (req, res) =>
   shopController.updateProfile(req, res),
 );
 
-// Upload shop logo (Only OWNER)
+// Upload shop logo
 shopRouter.post(
   "/upload-logo",
-  authorize("OWNER"),
+  checkPermission("settings_edit"),
   upload.single("logo"),
   (req, res) => shopController.uploadLogo(req, res),
 );
 
-// Delete shop logo (Only OWNER)
-shopRouter.delete("/delete-logo", authorize("OWNER"), (req, res) =>
+// Delete shop logo
+shopRouter.delete("/delete-logo", checkPermission("settings_edit"), (req, res) =>
   shopController.deleteLogo(req, res),
 );

@@ -25,8 +25,8 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
     role: {
-      type: String,
-      enum: ["OWNER", "ADMIN", "STAFF"],
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Role",
       required: true,
     },
     shop_id: {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { usePermissions } from "../../hooks/usePermissions.js";
 import { showToast } from "../../features/ui/uiSlice.js";
 import {
   ArrowLeft,
@@ -33,6 +34,7 @@ const CustomerView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { canCreate, canEdit, canDelete } = usePermissions();
 
   const routeLabels = {
     "/products": "Products",
@@ -101,6 +103,7 @@ const CustomerView = () => {
       bgColor: "bg-blue-50",
       hoverColor: "hover:bg-blue-100",
       action: () => navigate(`${ROUTES.CUSTOMERS}/${id}/edit`),
+      show: canEdit("customers"),
     },
     {
       icon: FileText,
@@ -109,6 +112,7 @@ const CustomerView = () => {
       bgColor: "bg-green-50",
       hoverColor: "hover:bg-green-100",
       action: () => navigate(`${ROUTES.INVOICES}/create?customer_id=${id}`),
+      show: canCreate("invoices"),
     },
     {
       icon: MessageSquare,
@@ -122,6 +126,7 @@ const CustomerView = () => {
           window.open(`https://wa.me/${phone}`, "_blank");
         }
       },
+      show: true,
     },
     {
       icon: Trash2,
@@ -130,6 +135,7 @@ const CustomerView = () => {
       bgColor: "bg-red-50",
       hoverColor: "hover:bg-red-100",
       action: handleDeleteCustomer,
+      show: canDelete("customers"),
     },
   ];
 
@@ -506,39 +512,43 @@ const CustomerView = () => {
                                   >
                                     <FileText className="w-3.5 h-3.5" />
                                   </button>
-                                  <button
-                                    onClick={() => navigate(`${ROUTES.INVOICES}/${inv._id}/edit`)}
-                                    className="p-1.5 text-blue-600 hover:text-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors"
-                                    title="Edit Invoice"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={async () => {
-                                      if (
-                                        window.confirm(
-                                          "Delete this invoice? This action cannot be undone.",
-                                        )
-                                      ) {
-                                        try {
-                                          await deleteInvoice(inv._id).unwrap();
-                                          refetchInvoices();
-                                        } catch (err) {
-                                          console.error(err);
-                                          dispatch(
-                                            showToast({
-                                              message: "Failed to delete invoice",
-                                              type: "error",
-                                            }),
-                                          );
+                                  {canEdit("invoices") && (
+                                    <button
+                                      onClick={() => navigate(`${ROUTES.INVOICES}/${inv._id}/edit`)}
+                                      className="p-1.5 text-blue-600 hover:text-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors"
+                                      title="Edit Invoice"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  {canDelete("invoices") && (
+                                    <button
+                                      onClick={async () => {
+                                        if (
+                                          window.confirm(
+                                            "Delete this invoice? This action cannot be undone.",
+                                          )
+                                        ) {
+                                          try {
+                                            await deleteInvoice(inv._id).unwrap();
+                                            refetchInvoices();
+                                          } catch (err) {
+                                            console.error(err);
+                                            dispatch(
+                                              showToast({
+                                                message: "Failed to delete invoice",
+                                                type: "error",
+                                              }),
+                                            );
+                                          }
                                         }
-                                      }
-                                    }}
-                                    className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
-                                    title="Delete Invoice"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                      }}
+                                      className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
+                                      title="Delete Invoice"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -594,7 +604,7 @@ const CustomerView = () => {
                   Quick Actions
                 </h3>
                 <div className="space-y-3">
-                  {quickActions.map((action, index) => (
+                  {quickActions.filter(a => a.show).map((action, index) => (
                     <button
                       key={index}
                       onClick={action.action}

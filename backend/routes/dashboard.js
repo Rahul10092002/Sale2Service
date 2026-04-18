@@ -1,6 +1,6 @@
 import express from "express";
 import * as dashboardController from "../controllers/dashboardController.js";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate, checkPermission } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -9,50 +9,47 @@ const router = express.Router();
  * All routes require authentication
  */
 
+router.use(authenticate, checkPermission("dashboard_view"));
+
 // Get dashboard summary (all key metrics)
-router.get("/summary", authenticate, dashboardController.getDashboardSummary);
+router.get("/summary", dashboardController.getDashboardSummary);
 
 // Get revenue trend data
-router.get("/revenue-trend", authenticate, dashboardController.getRevenueTrend);
+router.get("/revenue-trend", dashboardController.getRevenueTrend);
 
 // Get top products
-router.get("/top-products", authenticate, dashboardController.getTopProducts);
+router.get("/top-products", dashboardController.getTopProducts);
 
 // Get recent activity
 router.get(
   "/recent-activity",
-  authenticate,
   dashboardController.getRecentActivity,
 );
 
 // Get payment method statistics
 router.get(
   "/payment-methods",
-  authenticate,
   dashboardController.getPaymentMethodStats,
 );
 
 // Get invoice statistics
-router.get("/invoice-stats", authenticate, dashboardController.getInvoiceStats);
+router.get("/invoice-stats", dashboardController.getInvoiceStats);
 
 // Get upcoming service reminders
 router.get(
   "/service-reminders",
-  authenticate,
   dashboardController.getUpcomingServiceReminders,
 );
 
 // Get upcoming warranty reminders
 router.get(
   "/warranty-reminders",
-  authenticate,
   dashboardController.getUpcomingWarrantyReminders,
 );
 
 // Get warranty statistics
 router.get(
   "/warranty-stats",
-  authenticate,
   dashboardController.getWarrantyStats,
 );
 

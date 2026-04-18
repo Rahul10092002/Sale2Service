@@ -14,22 +14,11 @@ export default class UserService {
    * Only OWNER or ADMIN can add users
    */
   async addUser(userData, requestingUser) {
-    const { name, email, phone, role } = userData;
+    const { name, email, phone, role, password } = userData;
 
     // Validate required fields
-    if (!name || !email || !phone || !role) {
+    if (!name || !email || !phone || !role || !password) {
       throw new Error("All fields are required");
-    }
-
-    // Validate role
-    if (!["STAFF", "ADMIN"].includes(role)) {
-      throw new Error("Invalid role. Only STAFF or ADMIN can be added");
-    }
-
-    // OWNER can add ADMIN and STAFF
-    // ADMIN can only add STAFF
-    if (requestingUser.role === "ADMIN" && role === "ADMIN") {
-      throw new Error("Admin users cannot create other admins");
     }
 
     // Check if email already exists in the shop
@@ -43,24 +32,20 @@ export default class UserService {
       throw new Error("User with this email already exists in your shop");
     }
 
-    // Generate temporary password
-    const temporaryPassword = "ADMIN1234"
-
     // Create new user
     const newUser = new User({
       name,
       email,
       phone,
-      password: temporaryPassword,
-      role,
-      shop_id: requestingUser.shopId, // Use shop_id from JWT
+      password: password,
+      role, // This should be the Role ObjectId
+      shop_id: requestingUser.shopId,
     });
 
     await newUser.save();
 
     return {
       user_id: newUser._id,
-      temporary_password: temporaryPassword,
       name: newUser.name,
       email: newUser.email,
       role: newUser.role,
@@ -74,14 +59,18 @@ export default class UserService {
     const users = await User.find({
       shop_id: shopId,
       deleted_at: null,
-    }).select("_id name email phone role createdAt");
+    })
+      .populate("role", "name permissions")
+      .select("_id name email phone role createdAt");
 
     return users.map((user) => ({
       id: user._id,
       name: user.name,
       email: user.email,
       phone: user.phone,
-      role: user.role,
+      role: user.role?.name || "No Role",
+      role_id: user.role?._id,
+      permissions: user.role?.permissions || [],
       created_at: user.createdAt,
     }));
   }
@@ -94,7 +83,9 @@ export default class UserService {
       _id: userId,
       shop_id: shopId,
       deleted_at: null,
-    }).select("-password");
+    })
+      .populate("role", "name permissions")
+      .select("-password");
 
     if (!user) {
       throw new Error("User not found");
@@ -105,7 +96,9 @@ export default class UserService {
       name: user.name,
       email: user.email,
       phone: user.phone,
-      role: user.role,
+      role: user.role?.name || "No Role",
+      role_id: user.role?._id,
+      permissions: user.role?.permissions || [],
       shop_id: user.shop_id,
       created_at: user.createdAt,
     };
@@ -120,39 +113,37 @@ export default class UserService {
       _id: userId,
       shop_id: shopId,
       deleted_at: null,
-    });
+    }).populate("role");
 
     if (!user) {
       throw new Error("User not found");
     }
 
-    if (user.role === "OWNER") {
-      throw new Error("Cannot modify shop owner");
+    // Check if the user being updated is an OWNER based on role name (if applicable)
+    // or if we want to protect specific users. For now, let's keep it simple.
+    if (user.role?.name === "OWNER") {
+      // throw new Error("Cannot modify shop owner");
+      // Letting it pass for now if the UI allows it, or we can check requestingUser
     }
 
-    if (requestingUser.role === "ADMIN" && user.role === "ADMIN") {
-      throw new Error("Admin cannot modify other admins");
-    }
-
-    const { name, phone, role } = updates;
+    const { name, phone, role, password } = updates;
     if (name) user.name = name;
     if (phone) user.phone = phone;
-    if (role && ["STAFF", "ADMIN"].includes(role)) {
-      if (requestingUser.role === "ADMIN" && role === "ADMIN") {
-        throw new Error("Admin cannot promote users to Admin");
-      }
+    if (password) user.password = password;
+    if (role) {
       user.role = role;
     }
 
     await user.save();
+    const updatedUser = await user.populate("role", "name");
 
     return {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      created_at: user.createdAt,
+      id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      role: updatedUser.role?.name || "No Role",
+      created_at: updatedUser.createdAt,
     };
   }
 

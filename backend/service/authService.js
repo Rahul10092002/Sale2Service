@@ -3,6 +3,7 @@ import { OAuth2Client } from "google-auth-library";
 import crypto from "crypto";
 import User from "../models/User.js";
 import Shop from "../models/Shop.js";
+import Role from "../models/Role.js";
 
 export default class AuthService {
   /**
@@ -62,6 +63,15 @@ export default class AuthService {
     });
     await shop.save();
 
+    // Create default OWNER role
+    const ownerRole = new Role({
+      name: "OWNER",
+      permissions: ["all"],
+      shop_id: shop._id,
+      isDefault: true,
+    });
+    await ownerRole.save();
+
     // Create owner user with a random password
     const randomPassword = "G-" + crypto.randomBytes(8).toString("hex");
 
@@ -70,17 +80,17 @@ export default class AuthService {
       email,
       phone: shopData.phone || payload.phone || "",
       password: randomPassword,
-      role: "OWNER",
+      role: ownerRole._id,
       shop_id: shop._id,
     });
     await owner.save();
 
-    const token = this.generateToken(owner._id, shop._id, owner.role);
+    const token = this.generateToken(owner._id, shop._id, "OWNER");
 
     return {
       user_id: owner._id,
       shop_id: shop._id,
-      role: owner.role,
+      role: "OWNER",
       token,
     };
   }
@@ -123,24 +133,33 @@ export default class AuthService {
     });
     await shop.save();
 
+    // Create default OWNER role
+    const ownerRole = new Role({
+      name: "OWNER",
+      permissions: ["all"],
+      shop_id: shop._id,
+      isDefault: true,
+    });
+    await ownerRole.save();
+
     // Create owner user
     const owner = new User({
       name: owner_name,
       email: normalizedEmail,
       phone,
       password,
-      role: "OWNER",
+      role: ownerRole._id,
       shop_id: shop._id,
     });
     await owner.save();
 
     // Generate JWT
-    const token = this.generateToken(owner._id, shop._id, owner.role);
+    const token = this.generateToken(owner._id, shop._id, "OWNER");
 
     return {
       user_id: owner._id,
       shop_id: shop._id,
-      role: owner.role,
+      role: "OWNER",
       token,
     };
   }
@@ -154,21 +173,22 @@ export default class AuthService {
     const email = payload.email;
     if (!email) throw new Error("Google account has no email");
 
-    const user = await User.findOne({ email, deleted_at: null });
+    const user = await User.findOne({ email, deleted_at: null }).populate("role");
     if (!user) {
       throw new Error(
         "User not found. Please sign up or contact your shop admin",
       );
     }
 
-    const token = this.generateToken(user._id, user.shop_id, user.role);
+    const token = this.generateToken(user._id, user.shop_id, user.role?.name || "No Role");
 
     return {
       token,
       user: {
         id: user._id,
         name: user.name,
-        role: user.role,
+        role: user.role?.name || "No Role",
+        permissions: user.role?.permissions || [],
         shop_id: user.shop_id,
       },
     };
@@ -231,7 +251,7 @@ export default class AuthService {
     const user = await User.findOne({
       $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
       deleted_at: null,
-    });
+    }).populate("role");
 
     if (!user) {
       throw new Error("Invalid credentials");
@@ -244,14 +264,15 @@ export default class AuthService {
     }
 
     // Generate token
-    const token = this.generateToken(user._id, user.shop_id, user.role);
+    const token = this.generateToken(user._id, user.shop_id, user.role?.name || "No Role");
 
     return {
       token,
       user: {
         id: user._id,
         name: user.name,
-        role: user.role,
+        role: user.role?.name || "No Role",
+        permissions: user.role?.permissions || [],
         shop_id: user.shop_id,
       },
     };

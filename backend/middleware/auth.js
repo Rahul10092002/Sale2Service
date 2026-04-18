@@ -68,6 +68,57 @@ export const authorize = (...allowedRoles) => {
 };
 
 /**
+ * Granular Permission-based Authorization Middleware
+ * @param {string} requiredPermission - Permission string to check (e.g., "manage_users")
+ */
+export const checkPermission = (requiredPermission) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+          error_code: "UNAUTHORIZED",
+        });
+      }
+
+      // Fetch user with populated role to check permissions
+      const user = await User.findById(req.user.userId).populate("role");
+
+      if (!user || !user.role) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. No role assigned",
+          error_code: "FORBIDDEN",
+        });
+      }
+
+      // If user is OWNER, grant all permissions
+      const isOwner = user.role.name?.toUpperCase() === "OWNER";
+      if (isOwner || user.role.permissions.includes("all")) {
+        return next();
+      }
+
+      if (!user.role.permissions.includes(requiredPermission)) {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. Requires permission: ${requiredPermission}`,
+          error_code: "FORBIDDEN",
+        });
+      }
+
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Error verifying permissions",
+        error_code: "SERVER_ERROR",
+      });
+    }
+  };
+};
+
+/**
  * Verify user exists and is active
  */
 export const verifyActiveUser = async (req, res, next) => {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, authorize } from "../middleware/auth.js";
+import { authenticate, authorize, checkPermission } from "../middleware/auth.js";
 import FestivalScheduleController from "../controllers/festivalScheduleController.js";
 
 export const festivalScheduleRouter = Router();
@@ -11,26 +11,26 @@ festivalScheduleRouter.use(authenticate);
 // POST - Create festival schedule
 festivalScheduleRouter.post(
   "/",
-  authorize("OWNER", "ADMIN", "STAFF"),
+  checkPermission("schedules_create"),
   (req, res) => {
     return festivalScheduleController.createSchedule(req, res);
   },
 );
 
 // GET - Get all festival schedules with pagination and search
-festivalScheduleRouter.get("/", (req, res) => {
+festivalScheduleRouter.get("/", checkPermission("schedules_view"), (req, res) => {
   return festivalScheduleController.getSchedules(req, res);
 });
 
 // GET - Get festival schedule by ID
-festivalScheduleRouter.get("/:id", (req, res) => {
+festivalScheduleRouter.get("/:id", checkPermission("schedules_view"), (req, res) => {
   return festivalScheduleController.getScheduleById(req, res);
 });
 
 // PUT - Update festival schedule
 festivalScheduleRouter.put(
   "/:id",
-  authorize("OWNER", "ADMIN", "STAFF"),
+  checkPermission("schedules_edit"),
   (req, res) => {
     return festivalScheduleController.updateSchedule(req, res);
   },
@@ -39,7 +39,7 @@ festivalScheduleRouter.put(
 // DELETE - Delete festival schedule
 festivalScheduleRouter.delete(
   "/:id",
-  authorize("OWNER", "ADMIN"),
+  checkPermission("schedules_delete"),
   (req, res) => {
     return festivalScheduleController.deleteSchedule(req, res);
   },

@@ -55,7 +55,9 @@ export default class AuthController {
         })
       }
 
-      const user = await User.findOne({ _id: userId, deleted_at: null }).select('-password')
+      const user = await User.findOne({ _id: userId, deleted_at: null })
+        .select("-password")
+        .populate("role");
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -68,12 +70,16 @@ export default class AuthController {
 
       return res.status(200).json({
         success: true,
-        message: 'User fetched',
+        message: "User fetched",
         data: {
-          user: user.toJSON ? user.toJSON() : user,
+          user: {
+            ...user.toObject(),
+            role: user.role?.name || "No Role",
+            permissions: user.role?.permissions || [],
+          },
           shop: shop ? { id: shop._id, name: shop.shop_name } : null,
         },
-      })
+      });
     } catch (error) {
       console.error('Get current user error:', error)
       return res.status(500).json({

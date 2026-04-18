@@ -398,7 +398,7 @@ const getWarrantyInfo = (product) => {
             ) : (
               <div className="">
                 {/* Desktop Header */}
-                <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-2 text-gray-500 dark:text-slate-400 text-xs font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
+                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 text-gray-500 dark:text-slate-400 text-xs font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
                   <div>#</div>
                   <div>Product</div>
                   <div>Warranty & Service</div>
@@ -453,116 +453,7 @@ const getWarrantyInfo = (product) => {
                         </span>
                       </div>
 
-                      {/* Price + Warranty chips */}
-                      <div className="grid grid-cols-2 gap-2 mb-3">
-                        <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
-                          <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">Price</p>
-                          <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
-                            {formatCurrency(product.selling_price)}
-                          </p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-2">
-                          <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
-                            Warranty
-                          </p>
-                          <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
-                            {(() => {
-                              const w = getWarrantyInfo(product);
-                              if (!w)
-                                return (
-                                  <p className="text-xs text-gray-400 dark:text-slate-500">
-                                    No Warranty
-                                  </p>
-                                );
-
-                              return (
-                                <div className="flex flex-col gap-1">
-                                  {/* Duration + Type */}
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-xs font-semibold text-gray-800 dark:text-slate-100">
-                                      {product.warranty_duration_months}M
-                                    </span>
-
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300">
-                                      {product.warranty_type}
-                                    </span>
-
-                                    {/* Status badge */}
-                                    <span
-                                      className={`text-[10px] px-2 py-0.5 rounded-full ${
-                                        w.isExpired
-                                          ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                                          : w.isExpiringSoon
-                                            ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                            : "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                                      }`}
-                                    >
-                                      {w.isExpired
-                                        ? "Expired"
-                                        : w.isExpiringSoon
-                                          ? "Expiring Soon"
-                                          : "Active"}
-                                    </span>
-                                  </div>
-
-                                  {/* Dates */}
-                                  <div className="text-[11px] text-gray-500 dark:text-slate-400">
-                                    {w.start.toLocaleDateString("en-IN")} →{" "}
-                                    {w.end.toLocaleDateString("en-IN")}
-                                  </div>
-
-                                  {/* Remaining */}
-                                  <div
-                                    className={`text-[11px] font-medium ${
-                                      w.isExpired
-                                        ? "text-red-500 dark:text-red-400"
-                                        : "text-green-600 dark:text-green-400"
-                                    }`}
-                                  >
-                                    {w.isExpired
-                                      ? `Expired ${Math.abs(w.diffDays)} days ago`
-                                      : `${w.diffDays} days left`}
-                                  </div>
-
-                                  {/* Pro warranty */}
-                                  {product.pro_warranty_end_date && (
-                                    <div className="text-[10px] text-indigo-600 dark:text-indigo-300">
-                                      Pro till{" "}
-                                      {new Date(
-                                        product.pro_warranty_end_date,
-                                      ).toLocaleDateString("en-IN")}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Service badge */}
-                      <div className="flex items-center gap-2 mb-3">
-                        <ServiceBadge
-                          itemId={product._id}
-                          invoiceId={product.invoice_id}
-                          product={product}
-                          hasService={product.hasServicePlan}
-                          nextServiceDate={product.nextServiceDate}
-                        />
-                        {product.hasServicePlan && (
-                          <button
-                            onClick={() => setShowServiceTable(product)}
-                            className="p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                            title="View Service Table"
-                          >
-                            <span className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400">
-                              View Services
-                            </span>
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Customer + Invoice */}
+                      {/* Customer & Billing (Simplified) */}
                       {product.customer ? (
                         <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg px-3 py-2 mb-3">
                           <div className="flex items-center justify-between gap-2">
@@ -616,11 +507,6 @@ const getWarrantyInfo = (product) => {
                                 {product.invoice.invoice_number}
                               </span>
                               <span className="text-xs text-gray-400 dark:text-slate-500">·</span>
-                              <span className="text-xs text-gray-400 dark:text-slate-500">
-                                {new Date(
-                                  product.invoice.invoice_date,
-                                ).toLocaleDateString("en-IN")}
-                              </span>
                               <span
                                 className={`ml-auto text-xs font-semibold ${
                                   product.invoice.payment_status === "PAID"
@@ -631,29 +517,50 @@ const getWarrantyInfo = (product) => {
                                       : "text-red-500 dark:text-red-400"
                                 }`}
                               >
-                                {product.invoice.payment_status}
+                                {product.invoice.payment_status} · ₹{product.invoice.amount_due}
                               </span>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-400 dark:text-slate-500 mb-3">
+                        <p className="text-xs text-gray-400 dark:text-slate-500 mb-3 text-center">
                           No customer data
                         </p>
                       )}
 
-                      {/* Action button */}
-                      <button
-                        className="w-full bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors"
-                        onClick={() => handleViewProduct(product._id)}
-                      >
-                        View Details
-                      </button>
+                      {/* Consolidated Action Row */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex-1">
+                          <button
+                            className="w-full bg-blue-500 text-white py-2 rounded-xl text-xs font-medium hover:bg-blue-600 transition-colors shadow-sm"
+                            onClick={() => handleViewProduct(product._id)}
+                          >
+                            View Details
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-dark-subtle p-1 px-2 rounded-xl border border-gray-100 dark:border-dark-border">
+                          <ServiceBadge
+                            itemId={product._id}
+                            invoiceId={product.invoice_id}
+                            product={product}
+                            hasService={product.hasServicePlan}
+                            nextServiceDate={product.nextServiceDate}
+                          />
+                          {product.hasServicePlan && (
+                             <button
+                              onClick={() => setShowServiceTable(product)}
+                              className="text-[10px] text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                            >
+                              Services
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     {/* ── Desktop Row ── */}
-                    <div className="hidden md:grid grid-cols-[60px_2.5fr_1.5fr_1.5fr_120px] gap-2 items-center p-4">
-                      <div className="text-gray-600 dark:text-slate-400 pt-1">
+                    <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 items-center p-4">
+                      <div className="text-ink-secondary dark:text-slate-400">
                         {(page - 1) * pagination.limit + index + 1}
                       </div>
                       <div className="flex gap-3 items-center">
@@ -661,23 +568,26 @@ const getWarrantyInfo = (product) => {
                           className="cursor-pointer"
                           onClick={() => handleViewProduct(product._id)}
                         >
-                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                          <div className="w-10 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
                             <Package className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                           </div>
                         </div>
                         <div>
-                          <div className="font-semibold text-gray-900 dark:text-slate-100">
+                          <div
+                            className="font-bold text-sm text-ink-base dark:text-slate-100 cursor-pointer hover:underline"
+                            onClick={() => handleViewProduct(product._id)}
+                          >
                             {product.product_name}
                           </div>
 
-                          <div className="text-xs text-ink-muted dark:text-slate-500">
+                          <div className="text-xs text-ink-secondary dark:text-slate-400">
                             S/N:{" "}
                             <span className="font-medium">
                               {product.serial_number}
                             </span>
                           </div>
 
-                          <div className="text-xs text-gray-400 dark:text-slate-500">
+                          <div className="text-xs text-ink-secondary dark:text-slate-400">
                             {product.company} · {product.model_number}
                           </div>
                           {batteryLine && (
@@ -687,37 +597,35 @@ const getWarrantyInfo = (product) => {
                           )}
                         </div>
                       </div>
-                      <div className="text-sm text-ink-secondary dark:text-slate-400">
+                      <div className="text-xs text-ink-secondary dark:text-slate-400">
                         {/* Price */}
                         <p className="font-medium">₹{product.selling_price}</p>
 
-                        {/* Warranty */}
                         {(() => {
                           const w = getWarrantyInfo(product);
-                          if (!w) return <p className="text-xs">No Warranty</p>;
+                          if (!w) return <p className="text-xs text-ink-muted">No Warranty</p>;
 
                           return (
-                            <div className="mt-1 text-xs">
-                              <p>
-                                {product.warranty_duration_months}M ·
-                                <span
-                                  className={`ml-1 font-medium ${
-                                    w.isExpired
-                                      ? "text-red-500 dark:text-red-400"
-                                      : "text-green-600 dark:text-green-400"
-                                  }`}
-                                >
-                                  {w.isExpired
-                                    ? "Expired"
-                                    : `${w.diffDays}d left`}
-                                </span>
-                              </p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                  w.isExpired
+                                    ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                    : w.isExpiringSoon
+                                      ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                      : "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+                                }`}
+                              >
+                                {w.isExpired ? "Expired" : "Active"}
+                              </span>
+                              <span className="text-[11px] text-ink-secondary dark:text-slate-400">
+                                {w.isExpired ? `${Math.abs(w.diffDays)}d ago` : `${w.diffDays}d left`} · {product.warranty_duration_months}M
+                              </span>
                             </div>
                           );
                         })()}
 
-                        {/* Service */}
-                        <div className="mt-1">
+                        <div className="mt-1.5">
                           <ServiceBadge
                             itemId={product._id}
                             invoiceId={product.invoice_id}
@@ -725,59 +633,67 @@ const getWarrantyInfo = (product) => {
                             hasService={product.hasServicePlan}
                             nextServiceDate={product.nextServiceDate}
                           />
-
-                          {product.hasServicePlan && (
-                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                              Next:{" "}
-                              {new Date(
-                                product.nextServiceDate,
-                              ).toLocaleDateString("en-IN")}
-                            </p>
-                          )}
                         </div>
                       </div>
-                      <div className="text-sm">
-                        <p className="font-medium dark:text-slate-200">
+                      <div className="text-xs text-ink-secondary dark:text-slate-400">
+                        <p
+                          className="font-bold text-sm text-ink-base dark:text-slate-100 cursor-pointer hover:underline"
+                          onClick={() => {
+                            if (product.customer?._id) {
+                              navigate(
+                                `${ROUTES.CUSTOMERS}/${product.customer._id}`,
+                                {
+                                  state: {
+                                    from: location.pathname,
+                                    label: "Products",
+                                  },
+                                },
+                              );
+                            }
+                          }}
+                        >
                           {product.customer?.full_name}
                         </p>
-                        <p className="text-xs text-ink-muted dark:text-slate-500">
+                        <p className="text-xs text-ink-secondary dark:text-slate-400">
                           {product.customer?.whatsapp_number}
                         </p>
 
                         {product.invoice && (
-                          <>
-                            <p className="text-xs font-mono text-indigo-600 dark:text-indigo-400 mt-1">
-                              {product.invoice.invoice_number}
+                          <div className="mt-1 flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400">
+                                {product.invoice.invoice_number}
+                              </span>
+                              <span className="text-gray-300 dark:text-slate-600">·</span>
+                              <span
+                                className={`text-[11px] font-semibold ${
+                                  product.invoice.payment_status === "PAID"
+                                    ? "text-green-600 dark:text-green-400"
+                                    : "text-red-500 dark:text-red-400"
+                                }`}
+                              >
+                                {product.invoice.payment_status}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-ink-muted dark:text-slate-500">
+                              Amount Due: ₹{product.invoice.amount_due}
                             </p>
-
-                            <p
-                              className={`text-xs font-medium ${
-                                product.invoice.payment_status === "PAID"
-                                  ? "text-green-600 dark:text-green-400"
-                                  : "text-red-500 dark:text-red-400"
-                              }`}
-                            >
-                              {product.invoice.payment_status} · ₹
-                              {product.invoice.amount_due}
-                            </p>
-                          </>
+                          </div>
                         )}
                       </div>
-                      <div>
+                      <div className="flex flex-col gap-1.5">
                         <button
-                          className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
+                          className="w-full bg-blue-500 text-white px-2.5 py-1.5 rounded-md text-[11px] font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-1"
                           onClick={() => handleViewProduct(product._id)}
-                          title="View Details"
                         >
                           View Details
                         </button>
                         {product.hasServicePlan && (
                           <button
                             onClick={() => setShowServiceTable(product)}
-                            className="mt-2 bg-green-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-600 transition-colors"
-                            title="View Service Table"
+                            className="w-full bg-white dark:bg-dark-input border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-md text-[10px] font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center"
                           >
-                            <span className="text-xs">View Services</span>
+                            View Services
                           </button>
                         )}
                       </div>

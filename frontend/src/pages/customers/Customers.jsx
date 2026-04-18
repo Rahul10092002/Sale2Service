@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
+import { usePermissions } from "../../hooks/usePermissions.js";
 import { showToast } from "../../features/ui/uiSlice.js";
 import {
   Plus,
@@ -43,6 +44,7 @@ const selectCls =
 const Customers = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { canCreate } = usePermissions();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -160,7 +162,9 @@ const Customers = () => {
             ? "No customers match your search criteria."
             : "Get started by adding your first customer."}
         </p>
-        <Button onClick={() => setShowAddModal(true)}>Add Customer</Button>
+        {canCreate("customers") && (
+          <Button onClick={() => setShowAddModal(true)}>Add Customer</Button>
+        )}
       </div>
     );
   } else {
@@ -391,13 +395,15 @@ const Customers = () => {
               </div>
             </div>
 
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-xs font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600"
-            >
-              <Plus className="w-4 h-4" />
-              Create Customer
-            </button>
+            {canCreate("customers") && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-xs font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600"
+              >
+                <Plus className="w-4 h-4" />
+                Create Customer
+              </button>
+            )}
           </div>
           <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
             {customersSection}

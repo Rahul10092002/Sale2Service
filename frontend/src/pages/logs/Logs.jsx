@@ -107,7 +107,7 @@ function Logs() {
 
     return (
       <span
-        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${badgeClasses[entityType] || badgeClasses.INVOICE}`}
+        className={`inline-flex px-2 py-1 text-xs rounded-full ${badgeClasses[entityType] || badgeClasses.INVOICE}`}
       >
         {entityType}
       </span>
@@ -383,10 +383,10 @@ function Logs() {
                         Recipient & Entity Details
                       </th>
                       <th className="w-1/3 text-left px-4 py-3">
-                        Message & Status Details
+                        Message Status Details
                       </th>
                       <th className="w-1/3 text-left px-4 py-3">
-                        Timing & Retry Details
+                        Timing Details
                       </th>
                     </tr>
                   </thead>
@@ -399,8 +399,12 @@ function Logs() {
                         } border-b border-gray-100 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-subtle transition-colors`}
                       >
                         {/* Recipient & Entity Details */}
-                        <td className="w-1/3 px-4 py-4 align-top">
-                          <div className="flex gap-3 items-start">
+                        <td className="w-1/3 px-4 py-2 align-middle">
+                          
+                          <div className="flex gap-3 items-center justify-center">
+                            <p className="text-xs text-ink-secondary flex items-center justify-center flex-shrink-0 dark:text-slate-400">
+                            {(currentPage - 1) * 10 + index + 1}
+                            </p>
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                               <MessageSquare className="w-5 h-5 text-blue-600" />
                             </div>
@@ -413,80 +417,42 @@ function Logs() {
                                   <span className="font-medium">Phone:</span>{" "}
                                   {log.recipient_number}
                                 </p>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium">Entity:</span>
-                                  {getEntityTypeBadge(log.entity_type)}
-                                </div>
+                               
                               </div>
                             </div>
                           </div>
                         </td>
 
                         {/* Message & Status Details */}
-                        <td className="w-1/3 px-4 py-4 align-top">
+                        <td className="w-1/3 px-4 py-2 align-middle">
                           <div className="space-y-2">
+                             <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-medium text-ink-secondary dark:text-slate-400">Entity:</span>
+                                  {getEntityTypeBadge(log.entity_type)}
+                                </div>
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-xs font-medium text-ink-secondary dark:text-slate-400">
                                 Status:
                               </span>
                               {getStatusBadge(log.message_status)}
                             </div>
-                            <div className="text-xs text-ink-secondary dark:text-slate-400 space-y-2">
-                              <p className="break-words">
-                                <span className="font-medium">Template:</span>{" "}
-                                {log.template_name || "N/A"}
-                              </p>
-                              {log.message_content && (
-                                <div>
-                                  <p className="font-medium mb-1">Message:</p>
-                                  <div className="text-xs bg-gray-100 dark:bg-dark-subtle p-2 rounded border dark:border-dark-border italic max-h-16 overflow-y-auto ">
-                                    "{log.message_content}"
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                           
                           </div>
                         </td>
 
                         {/* Timing & Retry Details */}
-                        <td className="w-1/3 px-4 py-4 align-top">
+                        <td className="w-1/3 px-4 py-2 align-middle">
                           <div className="text-xs space-y-2">
                             <div className="space-y-1">
-                              <p className="font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                                Timing:
-                              </p>
+                             
                               <p className="text-ink-secondary dark:text-slate-400 break-words">
-                                <span className="font-medium">Created:</span>
+                                <span className="font-medium">Send At:</span>
                                 &nbsp;
                                 {formatDate(log.createdAt)}
                               </p>
-                              <p className="text-ink-secondary dark:text-slate-400 break-words">
-                                <span className="font-medium">Sent:</span>&nbsp;
-                                {log.sent_at
-                                  ? formatDate(log.sent_at)
-                                  : "Not sent"}
-                              </p>
-                              {log.updatedAt &&
-                                log.updatedAt !== log.createdAt && (
-                                  <p className="text-ink-secondary dark:text-slate-400 break-words">
-                                    <span className="font-medium">
-                                      Updated:
-                                    </span>
-                                    &nbsp;
-                                    {formatDate(log.updatedAt)}
-                                  </p>
-                                )}
+                             
                             </div>
-                            <div className="pt-1 border-t border-gray-200 dark:border-dark-border">
-                              <p className="font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                                Retry Info:
-                              </p>
-                              <p className="text-ink-secondary dark:text-slate-400">
-                                <span className="font-medium">Attempts:</span>
-                                &nbsp;
-                                {log.retry_count}/{log.max_retries}
-                              </p>
-                            </div>
+                           
                           </div>
                         </td>
                       </tr>
@@ -546,67 +512,29 @@ function Logs() {
 
                     {/* Message & Status Details */}
                     <div className="mb-4">
-                      <h4 className="font-medium text-ink-base dark:text-slate-100 text-sm mb-2">
-                        Message & Status Details
-                      </h4>
+                     
                       <div className="text-sm space-y-1">
-                        <p>
-                          <span className="font-medium text-ink-secondary dark:text-slate-400">
-                            Template:
-                          </span>{" "}
-                          {log.template_name || "N/A"}
-                        </p>
                         <p>
                           <span className="font-medium text-ink-secondary dark:text-slate-400">
                             Status:
                           </span>{" "}
                           {log.message_status}
                         </p>
-                        {log.message_content && (
-                          <div>
-                            <p className="font-medium text-ink-secondary dark:text-slate-400 mb-1">
-                              Message:
-                            </p>
-                            <p className="text-xs bg-gray-50 dark:bg-dark-input p-2 rounded border dark:border-dark-border italic">
-                              "{log.message_content}"
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </div>
 
                     {/* Timing & Retry Details */}
                     <div>
-                      <h4 className="font-medium text-ink-base dark:text-slate-100 text-sm mb-2">
-                        Timing & Retry Details
-                      </h4>
+                     
                       <div className="text-sm space-y-1">
-                        <p>
-                          <span className="font-medium text-ink-secondary dark:text-slate-400">
-                            Created:
-                          </span>{" "}
-                          {formatDate(log.createdAt)}
-                        </p>
+                       
                         <p>
                           <span className="font-medium text-ink-secondary dark:text-slate-400">
                             Sent:
                           </span>{" "}
                           {log.sent_at ? formatDate(log.sent_at) : "Not sent"}
                         </p>
-                        {log.updatedAt && log.updatedAt !== log.createdAt && (
-                          <p>
-                            <span className="font-medium text-ink-secondary dark:text-slate-400">
-                              Updated:
-                            </span>{" "}
-                            {formatDate(log.updatedAt)}
-                          </p>
-                        )}
-                        <p>
-                          <span className="font-medium text-ink-secondary dark:text-slate-400">
-                            Retry Attempts:
-                          </span>{" "}
-                          {log.retry_count}/{log.max_retries}
-                        </p>
+                        
                       </div>
                     </div>
                   </div>

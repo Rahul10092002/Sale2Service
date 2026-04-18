@@ -13,6 +13,7 @@ import {
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button, Input, SelectField } from "../../components/ui/index.js";
 import { useGetInvoicesQuery } from "../../features/invoices/invoiceApi.js";
+import { usePermissions } from "../../hooks/usePermissions.js";
 import { ROUTES } from "../../utils/constants.js";
 import { useSearchParams } from "react-router-dom";
 
@@ -32,6 +33,7 @@ const Chip = ({ label, onRemove }) => {
 const InvoiceList = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { canCreate, canEdit, canDelete } = usePermissions();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchTerm, setSearchTerm] = useState(
@@ -572,12 +574,14 @@ const updateURL = (newState) => {
                 />
               </div>
             </div>
-            <Link to={`${ROUTES.INVOICES}/new`}>
-              <button className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 hover:text-blue-600">
-                <Plus className="w-4 h-4" />
-                Create Invoice
-              </button>
-            </Link>
+            {canCreate("invoices") && (
+              <Link to={`${ROUTES.INVOICES}/new`}>
+                <button className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 hover:text-blue-600">
+                  <Plus className="w-4 h-4" />
+                  Create Invoice
+                </button>
+              </Link>
+            )}
           </div>
           {/* Active Filter Chips */}
           <div className="flex flex-wrap gap-2 mb-4 px-1">
@@ -669,9 +673,11 @@ const updateURL = (newState) => {
                     : "Get started by creating your first invoice."}
                 </p>
                 <div className="flex items-center justify-center">
-                  <Link to={`${ROUTES.INVOICES}/new`}>
-                    <Button>Create First Invoice</Button>
-                  </Link>
+                  {canCreate("invoices") && (
+                    <Link to={`${ROUTES.INVOICES}/new`}>
+                      <Button>Create First Invoice</Button>
+                    </Link>
+                  )}
                 </div>
               </div>
             ) : (
@@ -706,48 +712,62 @@ const updateURL = (newState) => {
                           : "bg-gray-50 dark:bg-dark-subtle"
                       }
                     >
-                      {/* ── Mobile Card ── */}
+                      {(() => {
+                        const isOverdue =
+                          invoice.due_date &&
+                          new Date(invoice.due_date) < new Date() &&
+                          invoice.payment_status !== "PAID";
+                        const overdueDays = isOverdue
+                          ? Math.ceil(
+                              (new Date() - new Date(invoice.due_date)) /
+                                (1000 * 60 * 60 * 24),
+                            )
+                          : 0;
+                        return (
+                          <>
+                            {/* ── Mobile Card ── */}
                       <div className="md:hidden p-4 border-b border-gray-100 dark:border-dark-border">
                         {/* Header: icon + invoice number + status pill */}
-                        <div className="flex items-start gap-3 mb-3">
+                        <div className="flex items-start gap-3 mb-2">
                           <div className="shrink-0 ">
-                            <div className="w-11 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                              <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                            <div className="w-10 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p
-                              className="font-bold text-ink-base dark:text-slate-100 leading-tight truncate cursor-pointer hover:underline"
-                              onClick={() => {
-                                if (invoice.customer_id?._id) {
-                                  navigate(
-                                    `${ROUTES.CUSTOMERS}/${invoice.customer_id._id}`,
-                                    {
-                                      state: {
-                                        from: location.pathname,
-                                        label: "Invoices",
+                            <div className="flex items-center justify-between gap-2">
+                              <p
+                                className="font-bold text-sm text-ink-base dark:text-slate-100 leading-tight truncate cursor-pointer hover:underline"
+                                onClick={() => {
+                                  if (invoice.customer_id?._id) {
+                                    navigate(
+                                      `${ROUTES.CUSTOMERS}/${invoice.customer_id._id}`,
+                                      {
+                                        state: {
+                                          from: location.pathname,
+                                          label: "Invoices",
+                                        },
                                       },
-                                    },
-                                  );
-                                }
-                              }}
-                            >
-                              {customerName}
-                            </p>
-                            {invoice.customer_id?.whatsapp_number && (
-                              <span className="text-xs font-mono text-gray-600 dark:text-slate-400 mt-0.5">
-                                {invoice.customer_id.whatsapp_number}
+                                    );
+                                  }
+                                }}
+                              >
+                                {customerName}
+                              </p>
+                              <span className="text-sm font-bold text-ink-base dark:text-slate-100">
+                                {formatCurrency(invoice.total_amount)}
                               </span>
-                            )}
-                            <p className="text-xs font-mono text-indigo-600 mt-0.5">
-                              {invoice.invoice_number}
-                            </p>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 text-[11px] flex-wrap">
+                              <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                                {invoice.invoice_number}
+                              </span>
+                              <span className="text-gray-300">·</span>
+                              <span className="text-gray-500 dark:text-slate-400">
+                                {invoice.customer_id?.whatsapp_number}
+                              </span>
+                            </div>
                           </div>
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full font-medium shrink-0 mt-0.5 ${getPaymentStatusColor(invoice.payment_status)}`}
-                          >
-                            {invoice.payment_status || "UNPAID"}
-                          </span>
                         </div>
 
                         {/* Items list */}
@@ -789,43 +809,28 @@ const updateURL = (newState) => {
                           </div>
                         )}
 
-                        {/* Amount + Date chips */}
-                        <div className="grid grid-cols-3 gap-2 mb-3">
-                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-1.5">
-                            <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
-                              Total Amount
-                            </p>
-                            <p className="text-xs font-semibold text-gray-800 dark:text-slate-100">
-                              {formatCurrency(invoice.total_amount)}
-                            </p>
+                        {/* Footer Action Row */}
+                        <div className="flex items-center justify-between gap-3 pt-2 border-t border-gray-50 dark:border-dark-border/50">
+                          <div className="flex flex-col">
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-medium w-fit ${getPaymentStatusColor(invoice.payment_status)}`}
+                            >
+                              {invoice.payment_status || "UNPAID"}
+                            </span>
+                            {isOverdue && (
+                              <span className="text-[10px] text-red-600 dark:text-red-400 font-medium mt-0.5">
+                                Overdue {overdueDays}d
+                              </span>
+                            )}
                           </div>
-                          <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-1.5">
-                            <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
-                              Invoice Date
-                            </p>
-                            <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
-                              {formatDate(invoice.invoice_date)}
-                            </p>
-                          </div>
-                          {invoice.payment_status != "PAID" && (
-                            <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg px-3 py-1.5">
-                              <p className="text-xs text-ink-muted dark:text-slate-500 mb-0.5">
-                                Due Date
-                              </p>
-                              <p className="text-xs font-medium text-ink-secondary dark:text-slate-300">
-                                {formatDate(invoice.due_date)}
-                              </p>
-                            </div>
-                          )}
+                          <button
+                            className="bg-blue-500 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors flex items-center gap-1.5 shadow-sm"
+                            onClick={() => handleViewInvoice(invoice._id)}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            View
+                          </button>
                         </div>
-
-                        <button
-                          className="w-full bg-blue-500 text-white py-2 rounded-xl text-xs font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
-                          onClick={() => handleViewInvoice(invoice._id)}
-                        >
-                          <Eye className="w-4 h-4" />
-                          View Details
-                        </button>
                       </div>
 
                       {/* ── Desktop Row ── */}
@@ -861,25 +866,23 @@ const updateURL = (newState) => {
                             >
                               {customerName}
                             </div>
-                            <div className="text-xs text-ink-secondary dark:text-slate-400">
-                              <p>
-                                Mobile No.:{" "}
+                            <div className="flex items-center gap-2 text-[11px] text-ink-secondary dark:text-slate-400 mt-0.5 flex-wrap">
+                              <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                                {invoice.invoice_number}
+                              </span>
+                              <span>·</span>
+                              <span>
                                 {invoice.customer_id?.whatsapp_number || "N/A"}
-                              </p>
-                              <p>
-                                Invoice Number: {invoice.invoice_number || ""}
-                              </p>
-                              <p>
-                                Invoice Date:{" "}
-                                {formatDate(invoice.invoice_date) || ""}
-                              </p>
+                              </span>
+                              <span>·</span>
+                              <span>{formatDate(invoice.invoice_date)}</span>
                             </div>
                           </div>
                         </div>
                         {/* Items column */}
                         <div className="text-xs text-ink-secondary dark:text-slate-400">
                           {invoice.invoice_items?.length > 0 ? (
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                               {invoice.invoice_items
                                 .slice(0, 3)
                                 .map((item, i) => (
@@ -933,30 +936,25 @@ const updateURL = (newState) => {
                         </div>
                         {/* Payment Details column */}
                         <div className="text-ink-secondary dark:text-slate-400">
-                          <div className="text-xs">
-                            <p>
-                              Total Amount:{" "}
-                              {formatCurrency(invoice.total_amount)}
-                            </p>
-                            <p>
-                              Status:{" "}
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm dark:text-slate-100">
+                                {formatCurrency(invoice.total_amount)}
+                              </span>
                               <span
-                                className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(invoice.payment_status)}`}
+                                className={`text-[10px] px-2 py-0.5 font-medium rounded-full ${getPaymentStatusColor(invoice.payment_status)}`}
                               >
                                 {invoice.payment_status || "UNPAID"}
                               </span>
-                            </p>
-                            {invoice.due_date &&
-                              invoice.payment_status != "PAID" && (
-                                <p
-                                  className={`text-xs ${new Date(invoice.due_date) < new Date() ? "text-red-600 dark:text-red-400 font-semibold" : "font-medium"} ${invoice.payment_status !== "PAID" ? (new Date(invoice.due_date) < new Date() ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-slate-400") : "text-gray-600 dark:text-slate-400"}`}
-                                >
-                                  Due Date:{" "}
-                                  {new Date(
-                                    invoice.due_date,
-                                  ).toLocaleDateString("en-IN") || "N/A"}
-                                </p>
-                              )}
+                            </div>
+                            {invoice.due_date && invoice.payment_status !== "PAID" && (
+                              <p
+                                className={`text-[11px] ${isOverdue ? "text-red-600 dark:text-red-400 font-semibold" : "text-gray-500 dark:text-slate-500"}`}
+                              >
+                                Due {formatDate(invoice.due_date)}
+                                {isOverdue && ` · overdue ${overdueDays}d`}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div>
@@ -969,9 +967,12 @@ const updateURL = (newState) => {
                           </button>
                         </div>
                       </div>
-                    </div>
+                    </>
                   );
-                })}
+                })()}
+                </div>
+              );
+            })}
 
                 {invoices.length === 0 && (
                   <div className="text-center py-8">

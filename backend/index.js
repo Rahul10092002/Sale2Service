@@ -15,6 +15,7 @@ import fileUploadRouter from "./routes/fileUpload.js";
 import logsRouter from "./routes/logs.js";
 import SchedulerService from "./scheduler/index.js";
 import { festivalScheduleRouter } from "./routes/festivalSchedule.js";
+import { roleRouter } from "./routes/role.js";
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ app.get("/health", (req, res) => {
 app.use("/v1/auth", authRouter);
 app.use("/v1/shop", shopRouter);
 app.use("/v1/users", userRouter);
+app.use("/v1/roles", roleRouter);
 app.use("/v1/invoices", invoiceRouter);
 app.use("/v1/customers", customerRouter);
 app.use("/v1/products", productRouter);

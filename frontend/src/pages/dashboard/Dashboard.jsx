@@ -123,7 +123,6 @@ const Dashboard = () => {
                     trend={summary.revenue?.changePercentage}
                     icon={IndianRupee}
                     color="blue"
-                    onClick={() => navigate("/invoices")}
                   />
                   <MetricCard
                     title="Invoices"
@@ -131,7 +130,6 @@ const Dashboard = () => {
                     subtitle={`${summary.invoices?.paid?.count || 0} paid, ${summary.invoices?.unpaid?.count || 0} unpaid`}
                     icon={FileText}
                     color="purple"
-                    onClick={() => navigate("/invoices")}
                   />
                   <MetricCard
                     title="Customers"
@@ -139,7 +137,6 @@ const Dashboard = () => {
                     subtitle={`${summary.customers?.new || 0} new, ${summary.customers?.active || 0} active`}
                     icon={Users}
                     color="green"
-                    onClick={() => navigate("/customers")}
                   />
                    <MetricCard
                     title="Service Visits"
@@ -147,7 +144,6 @@ const Dashboard = () => {
                     subtitle={`${summary.services?.completed || 0} completed, ${summary.services?.scheduled || 0} scheduled`}
                     icon={Wrench}
                     color="orange"
-                    onClick={() => navigate("/services")}
                   />
                 </div>
                  

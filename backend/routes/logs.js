@@ -5,12 +5,12 @@ import {
   getMessageLogs,
   getRecentActivity,
 } from "../controllers/logsController.js";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate, checkPermission } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Apply authentication to all routes
-router.use(authenticate);
+// Apply authentication and permission check to all routes
+router.use(authenticate, checkPermission("logs_view"));
 
 /**
  * @route GET /v1/logs/reminders

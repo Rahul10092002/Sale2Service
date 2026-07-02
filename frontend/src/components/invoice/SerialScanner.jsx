@@ -652,4 +652,5 @@ const SerialScanner = ({ onScan, onClose }) => {
   );
 };
 
+
 export default SerialScanner;

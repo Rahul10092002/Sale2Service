@@ -187,58 +187,79 @@ const SerialScanner = ({ onScan, onClose }) => {
         });
         scannerRef.current = html5Qrcode;
 
-        await html5Qrcode.start(
-          {
+        const runStart = (cameraConfig) =>
+          html5Qrcode.start(
+            cameraConfig,
+            {
+              // Lower than a "smooth video" fps on purpose. On weaker phone
+              // CPUs, especially without native BarcodeDetector support, a
+              // blurry/noisy frame takes real decode time; requesting
+              // frames faster than the decoder can finish just causes
+              // drops and wasted work. 10 leaves more budget per frame for
+              // the binarizer to actually resolve blurred bar edges.
+              fps: 10,
+              // Computed from the ACTUAL rendered viewfinder size rather
+              // than fixed pixels. html5-qrcode throws if a fixed qrbox
+              // ends up larger than the real video area (which varies by
+              // device/orientation/aspect ratio) — a function form is
+              // guaranteed to always fit and still gives extra vertical
+              // room for handheld tilt.
+              qrbox: (viewfinderWidth, viewfinderHeight) => {
+                const edge = Math.min(viewfinderWidth, viewfinderHeight);
+                return {
+                  width: Math.floor(Math.min(viewfinderWidth * 0.85, 320)),
+                  height: Math.floor(Math.min(edge * 0.5, 140)),
+                };
+              },
+              aspectRatio: 1.7777778, // 16:9 — higher camera resolution
+              // Rear camera footage never needs a mirrored decode pass —
+              // skipping it roughly halves decode attempts per frame.
+              disableFlip: true,
+            },
+            (decodedText) => {
+              if (unmounted || hasScannedRef.current) return;
+              hasScannedRef.current = true;
+
+              // Freeze the last good frame immediately so the UI doesn't
+              // keep "re-scanning" while the parent reacts to onScan.
+              try {
+                html5Qrcode.pause(true);
+              } catch {
+                // ignore pause errors
+              }
+
+              if (navigator.vibrate) navigator.vibrate(80);
+              playBeep();
+
+              onScanRef.current(decodedText.trim());
+            },
+            () => {
+              // per-frame decode errors are expected; suppress them
+            },
+          );
+
+        try {
+          // Explicitly ask for the sensor's max usable resolution first.
+          // Without this, many browsers default the preview stream to a
+          // modest resolution (often 640x480) chosen for smooth video, not
+          // decode accuracy — on an already low-megapixel camera that
+          // leaves almost no pixels across the barcode's bars.
+          await runStart({
             facingMode: "environment",
-            // Explicitly ask for the sensor's max usable resolution.
-            // Without this, many browsers default the preview stream to a
-            // modest resolution (often 640x480) chosen for smooth video,
-            // not for decode accuracy — on an already low-megapixel camera
-            // that default leaves almost no pixels across the barcode's
-            // bars. Requesting "ideal" high values lets the browser give
-            // us whatever its real ceiling is, which is always >= default.
             width: { ideal: 1920 },
             height: { ideal: 1080 },
-          },
-          {
-            // Lower than a "smooth video" fps on purpose. On weaker phone
-            // CPUs, especially without native BarcodeDetector support, a
-            // blurry/noisy frame takes real decode time; requesting frames
-            // faster than the decoder can finish just causes drops and
-            // wasted work. 10 leaves more budget per frame for the
-            // binarizer to actually resolve blurred bar edges.
-            fps: 10,
-            // Slightly taller than a pure 1D aspect ratio strip. Blurry
-            // shots are usually also slightly tilted/handheld; extra
-            // vertical room increases the odds that at least one scan row
-            // crosses the barcode without bars merging together.
-            qrbox: { width: 300, height: 120 },
-            aspectRatio: 1.7777778, // 16:9 — higher camera resolution
-            // Rear camera footage never needs a mirrored decode pass —
-            // skipping it roughly halves decode attempts per frame.
-            disableFlip: true,
-          },
-          (decodedText) => {
-            if (unmounted || hasScannedRef.current) return;
-            hasScannedRef.current = true;
-
-            // Freeze the last good frame immediately so the UI doesn't
-            // keep "re-scanning" while the parent reacts to onScan.
-            try {
-              html5Qrcode.pause(true);
-            } catch {
-              // ignore pause errors
-            }
-
-            if (navigator.vibrate) navigator.vibrate(80);
-            playBeep();
-
-            onScanRef.current(decodedText.trim());
-          },
-          () => {
-            // per-frame decode errors are expected; suppress them
-          },
-        );
+          });
+        } catch (highResErr) {
+          // Some devices/browsers reject the resolution hint outright
+          // (OverconstrainedError) rather than just downgrading it. Fall
+          // back to a bare constraint so scanning still works — lower
+          // resolution beats a scanner that refuses to open at all.
+          console.warn(
+            "SerialScanner: high-res camera request failed, retrying with default constraints",
+            highResErr,
+          );
+          await runStart({ facingMode: "environment" });
+        }
 
         if (unmounted) return;
         setScanning(true);
@@ -279,6 +300,11 @@ const SerialScanner = ({ onScan, onClose }) => {
           // ignore — camera still works without these refinements
         }
       } catch (err) {
+        // Always log the real error — the UI message below is
+        // intentionally generic, but you need this in devtools to know
+        // what actually failed (permission, OverconstrainedError, qrbox
+        // sizing, camera already in use, etc).
+        console.error("SerialScanner: camera start failed", err);
         if (!unmounted) {
           setError(
             err?.message?.includes("Permission")

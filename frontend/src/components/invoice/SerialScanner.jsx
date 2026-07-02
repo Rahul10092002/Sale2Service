@@ -178,17 +178,35 @@ const SerialScanner = ({ onScan, onClose }) => {
       if (container) container.innerHTML = "";
 
       try {
-        const html5Qrcode = new Html5Qrcode(readerId, {
-          formatsToSupport: SERIAL_FORMATS,
-          // Use Chrome/Edge native BarcodeDetector API when available —
-          // dramatically more accurate and faster than the JS fallback.
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-          verbose: false,
-        });
-        scannerRef.current = html5Qrcode;
+        const buildScanner = () =>
+          new Html5Qrcode(readerId, {
+            formatsToSupport: SERIAL_FORMATS,
+            // Use Chrome/Edge native BarcodeDetector API when available —
+            // dramatically more accurate and faster than the JS fallback.
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            verbose: false,
+          });
 
-        const runStart = (cameraConfig) =>
-          html5Qrcode.start(
+        const onDecodeSuccess = (scanner) => (decodedText) => {
+          if (unmounted || hasScannedRef.current) return;
+          hasScannedRef.current = true;
+
+          // Freeze the last good frame immediately so the UI doesn't
+          // keep "re-scanning" while the parent reacts to onScan.
+          try {
+            scanner.pause(true);
+          } catch {
+            // ignore pause errors
+          }
+
+          if (navigator.vibrate) navigator.vibrate(80);
+          playBeep();
+
+          onScanRef.current(decodedText.trim());
+        };
+
+        const runStart = (scanner, cameraConfig) =>
+          scanner.start(
             cameraConfig,
             {
               // Lower than a "smooth video" fps on purpose. On weaker phone
@@ -216,27 +234,14 @@ const SerialScanner = ({ onScan, onClose }) => {
               // skipping it roughly halves decode attempts per frame.
               disableFlip: true,
             },
-            (decodedText) => {
-              if (unmounted || hasScannedRef.current) return;
-              hasScannedRef.current = true;
-
-              // Freeze the last good frame immediately so the UI doesn't
-              // keep "re-scanning" while the parent reacts to onScan.
-              try {
-                html5Qrcode.pause(true);
-              } catch {
-                // ignore pause errors
-              }
-
-              if (navigator.vibrate) navigator.vibrate(80);
-              playBeep();
-
-              onScanRef.current(decodedText.trim());
-            },
+            onDecodeSuccess(scanner),
             () => {
               // per-frame decode errors are expected; suppress them
             },
           );
+
+        let html5Qrcode = buildScanner();
+        scannerRef.current = html5Qrcode;
 
         try {
           // Explicitly ask for the sensor's max usable resolution first.
@@ -244,21 +249,32 @@ const SerialScanner = ({ onScan, onClose }) => {
           // modest resolution (often 640x480) chosen for smooth video, not
           // decode accuracy — on an already low-megapixel camera that
           // leaves almost no pixels across the barcode's bars.
-          await runStart({
+          await runStart(html5Qrcode, {
             facingMode: "environment",
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           });
         } catch (highResErr) {
-          // Some devices/browsers reject the resolution hint outright
-          // (OverconstrainedError) rather than just downgrading it. Fall
-          // back to a bare constraint so scanning still works — lower
-          // resolution beats a scanner that refuses to open at all.
+          // A failed start can leave this instance mid-transition —
+          // html5-qrcode's own state guard rejects a second start() call
+          // on the same instance with "Cannot transition to a new state,
+          // already under transition". Tear it down and build a fresh
+          // instance for the retry instead of reusing it.
           console.warn(
             "SerialScanner: high-res camera request failed, retrying with default constraints",
             highResErr,
           );
-          await runStart({ facingMode: "environment" });
+          try {
+            await html5Qrcode.clear();
+          } catch {
+            // ignore — instance may not have reached a clearable state
+          }
+          const container = document.getElementById(readerId);
+          if (container) container.innerHTML = "";
+
+          html5Qrcode = buildScanner();
+          scannerRef.current = html5Qrcode;
+          await runStart(html5Qrcode, { facingMode: "environment" });
         }
 
         if (unmounted) return;
@@ -651,6 +667,5 @@ const SerialScanner = ({ onScan, onClose }) => {
     </div>
   );
 };
-
 
 export default SerialScanner;

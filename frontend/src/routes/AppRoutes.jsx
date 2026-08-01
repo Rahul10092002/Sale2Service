@@ -32,6 +32,7 @@ import Inventory from "../pages/inventory/Inventory.jsx";
 import { lazy, Suspense } from "react";
 import FestivalSchedule from "../pages/festival/Festival.jsx";
 import LandingPage from "../pages/landingpage/LandingPage.jsx";
+import PrivacyPolicy from "../pages/legal/PrivacyPolicy.jsx";
 
 // Lazy load the Logs component to avoid build issues
 const LogsPage = lazy(() => import("../pages/logs/Logs.jsx"));
@@ -81,10 +82,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public routes */}
-      <Route
-        path={ROUTES.HOME}
-        element={<LandingPage/>}
-      />
+      <Route path={ROUTES.HOME} element={<LandingPage />} />
       <Route
         path={ROUTES.LOGIN}
         element={
@@ -236,6 +234,7 @@ const AppRoutes = () => {
           </PrivateRoute>
         }
       />
+      <Route path={ROUTES.PRIVACY_POLICY} element={<PrivacyPolicy />} />
       {/* Default redirect */}
       <Route
         path={ROUTES.HOME}

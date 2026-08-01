@@ -27,6 +27,7 @@ export const ROUTES = {
   LOGS: "/logs",
   FESTIVAL_SCHEDULE: "/festival-schedule",
   SETTINGS: "/settings",
+  PRIVACY_POLICY: "/privacy-policy",
   NEW_INVOICE: "/invoices/new",
 };
 

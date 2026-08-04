@@ -71,11 +71,11 @@ function Testimonials() {
         <div className="mt-12 text-center">
           <div className="inline-block bg-blue-50 border border-blue-200 px-6 py-4 rounded-xl">
             <p className="text-sm text-gray-700">
-              <span className="font-bold text-gray-900">
-                10+ shops already using WarrantyDesk with 1000+ customers registered
+              <span className="font-bold text-gray-900 text-lg">
+                Pehle 5 shop owners ka trust — ab aapki baari
               </span>
               <br />
-              Ek baar use karo → register wapas nahi khulega
+              <span className="mt-1 inline-block">Ek baar use karo → register wapas nahi khulega</span>
             </p>
           </div>
         </div>

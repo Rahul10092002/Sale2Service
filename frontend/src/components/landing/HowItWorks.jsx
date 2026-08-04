@@ -35,8 +35,8 @@ function HowItWorks() {
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
             Kaise Kaam Karta Hai?
           </h2>
-          <p className="text-gray-600 mt-3">
-            4 simple steps. Bas ek baar use karo, phir habit ban jaayega.
+          <p className="text-gray-600 mt-3 text-lg">
+            Sirf 4 simple steps. 5 minute mein seekhein aur register ko hamesha ke liye bye bolein.
           </p>
         </div>
 

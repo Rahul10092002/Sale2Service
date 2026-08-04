@@ -9,3 +9,4 @@ export { default as PricingSection } from './PricingSection';
 export { default as FinalCTA } from './FinalCTA';
 export { default as Footer } from './Footer';
 export { default as ContactFormModal } from './ContactFormModal';
+export { default as FounderStory } from './FounderStory';

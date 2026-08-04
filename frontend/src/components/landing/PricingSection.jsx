@@ -70,10 +70,17 @@ function PricingSection({ openContactForm }) {
                 variant={plan.highlight ? 'default' : 'outline'}
                 onClick={() => openContactForm(plan.name.toLowerCase())}
               >
-                Get Started
+                🚀 Book Free Demo
               </Button>
             </Card>
           ))}
+        </div>
+        
+        {/* Risk Reversal Microcopy */}
+        <div className="mt-10 flex flex-wrap justify-center items-center gap-6 text-sm font-medium text-gray-600">
+          <div className="flex items-center gap-2"><Check className="w-5 h-5 text-green-500 bg-green-50 rounded-full p-0.5" /> 100% Safe Cloud Backup</div>
+          <div className="flex items-center gap-2"><Check className="w-5 h-5 text-green-500 bg-green-50 rounded-full p-0.5" /> 5-minute learning curve</div>
+          <div className="flex items-center gap-2"><Check className="w-5 h-5 text-green-500 bg-green-50 rounded-full p-0.5" /> Cancel anytime</div>
         </div>
       </div>
     </section>

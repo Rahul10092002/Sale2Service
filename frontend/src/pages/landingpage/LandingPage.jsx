@@ -7,6 +7,7 @@ import {
   WhyChooseUs,
   Testimonials,
   PricingSection,
+  FounderStory,
   FinalCTA,
   Footer,
   ContactFormModal,
@@ -139,6 +140,7 @@ function LandingPage() {
         <HowItWorks />
         <WhyChooseUs />
         <Testimonials />
+        <FounderStory />
         {/* <PricingSection openContactForm={openContactForm} /> */}
         <FinalCTA openContactForm={openContactForm} />
       </main>

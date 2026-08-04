@@ -30,10 +30,10 @@ function FinalCTA({ openContactForm }) {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
           <Button
             size="lg"
-            className=" text-blue-600 hover:bg-gray-100 hover:text-white rounded-full px-8 font-semibold shadow-lg"
-            onClick={() => openContactForm("trial")}
+            className=" text-blue-600 hover:bg-gray-100 rounded-full px-8 font-semibold shadow-lg"
+            onClick={() => openContactForm("demo")}
           >
-            🚀 Free Trial Start Karein
+            🚀 Book Free Demo
           </Button>
 
           <Button

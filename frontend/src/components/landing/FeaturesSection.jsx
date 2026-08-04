@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 function FeaturesSection() {
   const features = [
@@ -72,13 +73,16 @@ function FeaturesSection() {
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
           {features.map((feature, index) => (
-            <div
+            <motion.div
               key={index}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
               className="bg-surface-card dark:bg-dark-card rounded-2xl shadow-glass overflow-hidden border border-gray-100 dark:border-dark-border hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-2"
-              style={{ animation: `slideIn 0.4s ease-out ${index * 0.15}s both` }}
             >
               {/* Feature Header */}
-              <div className={`gradient-${feature.color} p-6 text-white`}>
+              <div className={`bg-gradient-to-r ${feature.color} p-6 text-white`}>
                 <div className="flex items-center gap-4">
                   <span className="text-5xl">{feature.icon}</span>
                   <div>
@@ -101,7 +105,7 @@ function FeaturesSection() {
                   ))}
                 </ul>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

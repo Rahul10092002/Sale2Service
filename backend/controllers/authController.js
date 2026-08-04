@@ -45,14 +45,14 @@ export default class AuthController {
   async me(req, res) {
     try {
       // `authenticate` middleware must set req.user
-      const { userId } = req.user || {}
+      const { userId } = req.user || {};
 
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: 'Authentication required',
-          error_code: 'UNAUTHORIZED',
-        })
+          message: "Authentication required",
+          error_code: "UNAUTHORIZED",
+        });
       }
 
       const user = await User.findOne({ _id: userId, deleted_at: null })
@@ -61,12 +61,14 @@ export default class AuthController {
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'User not found',
-          error_code: 'USER_NOT_FOUND',
-        })
+          message: "User not found",
+          error_code: "USER_NOT_FOUND",
+        });
       }
 
-      const shop = user.shop_id ? await Shop.findById(user.shop_id).select('shop_name') : null
+      const shop = user.shop_id
+        ? await Shop.findById(user.shop_id).select("shop_name")
+        : null;
 
       return res.status(200).json({
         success: true,
@@ -81,12 +83,12 @@ export default class AuthController {
         },
       });
     } catch (error) {
-      console.error('Get current user error:', error)
+      console.error("Get current user error:", error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to fetch user',
-        error_code: 'SERVER_ERROR',
-      })
+        message: "Failed to fetch user",
+        error_code: "SERVER_ERROR",
+      });
     }
   }
 
@@ -96,17 +98,18 @@ export default class AuthController {
    */
   async login(req, res) {
     try {
-      const { email_or_phone, password } = req.body;
+      const { email_or_phone, phone, mobile_number, password } = req.body;
+      const loginIdentifier = phone || mobile_number || email_or_phone;
 
-      if (!email_or_phone || !password) {
+      if (!loginIdentifier || !password) {
         return res.status(400).json({
           success: false,
-          message: "Email/Phone and Password are required",
+          message: "Mobile number/Email and Password are required",
           error_code: "INVALID_REQUEST",
         });
       }
 
-      const result = await authService.login(email_or_phone, password);
+      const result = await authService.login(loginIdentifier, password);
 
       return res.status(200).json({
         success: true,
@@ -131,13 +134,11 @@ export default class AuthController {
     try {
       const { id_token } = req.body;
       if (!id_token) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "id_token is required",
-            error_code: "INVALID_REQUEST",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "id_token is required",
+          error_code: "INVALID_REQUEST",
+        });
       }
 
       const result = await authService.loginWithGoogle(id_token);
@@ -146,13 +147,11 @@ export default class AuthController {
         .status(200)
         .json({ success: true, message: "Login successful", data: result });
     } catch (error) {
-      return res
-        .status(401)
-        .json({
-          success: false,
-          message: error.message,
-          error_code: "GOOGLE_LOGIN_FAILED",
-        });
+      return res.status(401).json({
+        success: false,
+        message: error.message,
+        error_code: "GOOGLE_LOGIN_FAILED",
+      });
     }
   }
 
@@ -165,13 +164,11 @@ export default class AuthController {
     try {
       const { id_token, shop_name, business_type, phone } = req.body;
       if (!id_token || !shop_name) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "id_token and shop_name are required",
-            error_code: "INVALID_REQUEST",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "id_token and shop_name are required",
+          error_code: "INVALID_REQUEST",
+        });
       }
 
       const result = await authService.signupOwnerWithGoogle(id_token, {
@@ -180,21 +177,17 @@ export default class AuthController {
         phone,
       });
 
-      return res
-        .status(201)
-        .json({
-          success: true,
-          message: "Shop created successfully",
-          data: result,
-        });
+      return res.status(201).json({
+        success: true,
+        message: "Shop created successfully",
+        data: result,
+      });
     } catch (error) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: error.message,
-          error_code: "GOOGLE_SIGNUP_FAILED",
-        });
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        error_code: "GOOGLE_SIGNUP_FAILED",
+      });
     }
   }
 
@@ -207,13 +200,11 @@ export default class AuthController {
     try {
       const { id_token, shop_id, role } = req.body;
       if (!id_token || !shop_id) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "id_token and shop_id are required",
-            error_code: "INVALID_REQUEST",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "id_token and shop_id are required",
+          error_code: "INVALID_REQUEST",
+        });
       }
 
       const result = await authService.signupUserWithGoogle(
@@ -221,21 +212,17 @@ export default class AuthController {
         shop_id,
         role,
       );
-      return res
-        .status(201)
-        .json({
-          success: true,
-          message: "User created successfully",
-          data: result,
-        });
+      return res.status(201).json({
+        success: true,
+        message: "User created successfully",
+        data: result,
+      });
     } catch (error) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: error.message,
-          error_code: "GOOGLE_SIGNUP_USER_FAILED",
-        });
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        error_code: "GOOGLE_SIGNUP_USER_FAILED",
+      });
     }
   }
 }

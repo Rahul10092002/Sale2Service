@@ -19,7 +19,7 @@ const Login = () => {
   }, [isAuthenticated]);
 
   const [formData, setFormData] = useState({
-    emailOrMobile: "",
+    mobileNumber: "",
     password: "",
   });
 
@@ -33,14 +33,33 @@ const Login = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "mobileNumber") {
+      const cleanedValue = value.replace(/[^\d+]/g, "");
+      const hasPlusPrefix = cleanedValue.startsWith("+");
+      const digitsOnly = cleanedValue.replace(/\+/g, "");
+      const limitedValue = hasPlusPrefix
+        ? `+${digitsOnly.slice(0, 12)}`
+        : digitsOnly.slice(0, 10);
+
+      setFormData((prev) => ({ ...prev, [name]: limitedValue }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.emailOrMobile.trim())
-      newErrors.emailOrMobile = VALIDATION_MESSAGES.REQUIRED;
+    const mobileNumber = formData.mobileNumber.trim();
+
+    if (!mobileNumber) {
+      newErrors.mobileNumber = VALIDATION_MESSAGES.REQUIRED;
+    } else if (!/^(?:\+91)?\d{10}$/.test(mobileNumber)) {
+      newErrors.mobileNumber = VALIDATION_MESSAGES.MOBILE_INVALID;
+    }
+
     if (!formData.password) newErrors.password = VALIDATION_MESSAGES.REQUIRED;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -124,13 +143,13 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <Input
-                type="text"
-                name="emailOrMobile"
-                label="Email or Mobile"
-                placeholder="Enter email or mobile"
-                value={formData.emailOrMobile}
+                type="tel"
+                name="mobileNumber"
+                label="Mobile Number"
+                placeholder="Enter mobile number"
+                value={formData.mobileNumber}
                 onChange={handleInputChange}
-                error={errors.emailOrMobile}
+                error={errors.mobileNumber}
               />
 
               <Input

@@ -46,7 +46,10 @@ export const useAuth = () => {
     try {
       // Map frontend fields to backend expected keys
       const payload = {
-        email_or_phone:
+        phone:
+          credentials.mobileNumber ||
+          credentials.mobile_number ||
+          credentials.phone ||
           credentials.emailOrMobile ||
           credentials.email_or_phone ||
           credentials.email,

@@ -173,14 +173,20 @@ export default class AuthService {
     const email = payload.email;
     if (!email) throw new Error("Google account has no email");
 
-    const user = await User.findOne({ email, deleted_at: null }).populate("role");
+    const user = await User.findOne({ email, deleted_at: null }).populate(
+      "role",
+    );
     if (!user) {
       throw new Error(
         "User not found. Please sign up or contact your shop admin",
       );
     }
 
-    const token = this.generateToken(user._id, user.shop_id, user.role?.name || "No Role");
+    const token = this.generateToken(
+      user._id,
+      user.shop_id,
+      user.role?.name || "No Role",
+    );
 
     return {
       token,
@@ -238,6 +244,52 @@ export default class AuthService {
     };
   }
 
+  normalizePhoneNumber(value) {
+    if (!value) return "";
+
+    const rawValue = String(value).trim();
+    if (!rawValue) return "";
+
+    const digitsOnly = rawValue.replace(/\D/g, "");
+    if (!digitsOnly) return "";
+
+    if (digitsOnly.length === 12 && digitsOnly.startsWith("91")) {
+      return digitsOnly.slice(2);
+    }
+
+    if (digitsOnly.length === 11 && digitsOnly.startsWith("0")) {
+      return digitsOnly.slice(1);
+    }
+
+    return digitsOnly;
+  }
+
+  getPhoneCandidates(value) {
+    const candidates = [];
+    const trimmedValue = String(value || "").trim();
+
+    if (!trimmedValue) return candidates;
+
+    const normalized = this.normalizePhoneNumber(trimmedValue);
+
+    candidates.push(trimmedValue);
+    if (normalized) {
+      candidates.push(normalized);
+      if (normalized.length === 10) {
+        candidates.push(`+91${normalized}`);
+        candidates.push(`91${normalized}`);
+      }
+    }
+
+    const digitsOnly = trimmedValue.replace(/\D/g, "");
+    if (digitsOnly.length === 10) {
+      candidates.push(`+91${digitsOnly}`);
+      candidates.push(`91${digitsOnly}`);
+    }
+
+    return [...new Set(candidates.filter(Boolean))];
+  }
+
   /**
    * Login - Support email or phone
    */
@@ -247,9 +299,11 @@ export default class AuthService {
       throw new Error("Email/Phone and password are required");
     }
 
+    const phoneCandidates = this.getPhoneCandidates(emailOrPhone);
+
     // Find user by email or phone
     const user = await User.findOne({
-      $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+      $or: [{ email: emailOrPhone }, { phone: { $in: phoneCandidates } }],
       deleted_at: null,
     }).populate("role");
 
@@ -264,7 +318,11 @@ export default class AuthService {
     }
 
     // Generate token
-    const token = this.generateToken(user._id, user.shop_id, user.role?.name || "No Role");
+    const token = this.generateToken(
+      user._id,
+      user.shop_id,
+      user.role?.name || "No Role",
+    );
 
     return {
       token,

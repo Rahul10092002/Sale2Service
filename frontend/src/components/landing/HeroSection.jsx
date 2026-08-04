@@ -26,7 +26,7 @@ function HeroSection({ openContactForm }) {
             animate={{ opacity: 1, y: 0 }}
             className="inline-flex items-center gap-2 mb-6 px-4 py-2 bg-white border border-blue-100 rounded-full text-sm font-semibold text-blue-700 shadow-sm"
           >
-            🚀 Register Bandh, Search Shuru
+            🚀 Register Band, Search Shuru
           </motion.div>
 
           {/* Heading */}

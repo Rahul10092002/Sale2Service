@@ -86,7 +86,7 @@ const Login = () => {
           <h1 className="text-2xl font-bold mb-6">WarrantyDesk</h1>
 
           <h2 className="text-3xl font-bold leading-tight mb-4">
-            Register Bandh. Business Smart.
+            Register Band. Business Smart.
           </h2>
 
           <p className="text-blue-100 mb-8">

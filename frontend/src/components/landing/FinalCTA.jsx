@@ -10,7 +10,7 @@ function FinalCTA({ openContactForm }) {
       <div className="relative max-w-3xl mx-auto text-center px-4">
         {/* Headline */}
         <h2 className="text-3xl md:text-4xl font-bold mb-5 leading-tight">
-          Register Bandh. Business Smart. 🚀
+          Register Band. Business Smart. 🚀
         </h2>
 
         {/* Subtext */}
@@ -30,7 +30,7 @@ function FinalCTA({ openContactForm }) {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
           <Button
             size="lg"
-            className="bg-white text-blue-600 hover:bg-gray-100 rounded-full px-8 font-semibold shadow-lg"
+            className=" text-blue-600 hover:bg-gray-100 hover:text-white rounded-full px-8 font-semibold shadow-lg"
             onClick={() => openContactForm("trial")}
           >
             🚀 Free Trial Start Karein

@@ -235,17 +235,6 @@ const AppRoutes = () => {
         }
       />
       <Route path={ROUTES.PRIVACY_POLICY} element={<PrivacyPolicy />} />
-      {/* Default redirect */}
-      <Route
-        path={ROUTES.HOME}
-        element={
-          <Navigate
-            to={isAuthenticated ? ROUTES.DASHBOARD : ROUTES.LOGIN}
-            replace
-          />
-        }
-      />
-
       {/* Catch all route - redirect to home */}
       <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
     </Routes>

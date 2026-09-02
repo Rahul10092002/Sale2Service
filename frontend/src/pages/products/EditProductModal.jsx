@@ -429,7 +429,14 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
                 />
               </div>
               <div>
-                <label className={labelCls}>Serial Number *</label>
+                <label className={`${labelCls} flex items-center justify-between`}>
+                  <span>Serial Number *</span>
+                  {product?.is_serial_replaced && (
+                    <span className="text-xs text-amber-600 font-semibold">
+                      (Replaced Under Warranty)
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
                   value={form.serial_number}

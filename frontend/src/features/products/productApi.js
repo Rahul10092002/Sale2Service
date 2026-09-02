@@ -46,6 +46,20 @@ export const productApi = baseApi.injectEndpoints({
       transformResponse: (response) => response.data,
     }),
 
+    replaceSerialNumber: builder.mutation({
+      query: ({ id, ...payload }) => ({
+        url: `/products/${id}/replace-serial`,
+        method: "PUT",
+        body: payload,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Product", id },
+        { type: "Product", id: "LIST" },
+        "TopProducts",
+      ],
+      transformResponse: (response) => response.data,
+    }),
+
     deleteProduct: builder.mutation({
       query: (id) => ({ url: `/products/${id}`, method: "DELETE" }),
       // Invalidate deleted product, list, and dashboard
@@ -122,6 +136,7 @@ export const {
   useGetProductByIdQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
+  useReplaceSerialNumberMutation,
   useDeleteProductMutation,
   useLazyProductAutocompleteQuery,
   useSaveMasterProductMutation,

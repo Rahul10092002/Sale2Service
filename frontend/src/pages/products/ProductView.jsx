@@ -32,7 +32,10 @@ import {
   DialogHeader,
   DialogBody,
 } from "../../components/ui/Modal.jsx";
-import { useGetProductByIdQuery } from "../../features/products/productApi.js";
+import {
+  useGetProductByIdQuery,
+  useReplaceSerialNumberMutation,
+} from "../../features/products/productApi.js";
 import EditProductModal from "./EditProductModal.jsx";
 import {
   useGetInvoiceItemServicesQuery,
@@ -111,6 +114,53 @@ const ProductView = () => {
 
   // Edit product modal
   const [showEditProductModal, setShowEditProductModal] = useState(false);
+
+  // Replace serial number state & mutation
+  const [showReplaceSerialModal, setShowReplaceSerialModal] = useState(false);
+  const [newSerialNumber, setNewSerialNumber] = useState("");
+  const [replacementReason, setReplacementReason] = useState("");
+  const [replaceSerialNumber, { isLoading: replacingSerial }] =
+    useReplaceSerialNumberMutation();
+
+  const handleReplaceSerialNumberSubmit = async () => {
+    if (!newSerialNumber.trim()) {
+      dispatch(
+        showToast({
+          message: "New serial number is required",
+          type: "error",
+        }),
+      );
+      return;
+    }
+
+    try {
+      await replaceSerialNumber({
+        id,
+        new_serial_number: newSerialNumber.trim().toUpperCase(),
+        replacement_reason: replacementReason.trim(),
+      }).unwrap();
+
+      dispatch(
+        showToast({
+          message: "Serial number replaced successfully!",
+          type: "success",
+        }),
+      );
+      setShowReplaceSerialModal(false);
+      setNewSerialNumber("");
+      setReplacementReason("");
+    } catch (err) {
+      dispatch(
+        showToast({
+          message:
+            err?.data?.message ||
+            err?.message ||
+            "Failed to replace serial number",
+          type: "error",
+        }),
+      );
+    }
+  };
 
   // Service plan edit modal state
   const [showEditPlanModal, setShowEditPlanModal] = useState(false);
@@ -458,6 +508,12 @@ const ProductView = () => {
                         >
                           {product.status || "Unknown"}
                         </span>
+                        {product.is_serial_replaced && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                            <RotateCcw className="w-3 h-3 mr-1" />
+                            Serial Replaced
+                          </span>
+                        )}
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white dark:bg-slate-800 text-purple-800 dark:text-purple-200">
                           {formatCurrency(product.selling_price)}
                         </span>
@@ -602,13 +658,48 @@ const ProductView = () => {
                       </p>
                     </div>
                     <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
-                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
-                        Serial Number
+                      <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1 flex items-center justify-between">
+                        <span>Serial Number</span>
+                        {product.is_serial_replaced && (
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                            (Replaced)
+                          </span>
+                        )}
                       </label>
                       <p className="text-xs font-medium text-ink-base dark:text-slate-100 font-mono">
                         {product.serial_number || "—"}
                       </p>
                     </div>
+                    {product.previous_serial_number && (
+                      <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-lg p-2">
+                        <label className="block text-xs font-medium text-amber-800 dark:text-amber-300 mb-1">
+                          Previous Serial Number
+                        </label>
+                        <p className="text-xs font-medium text-amber-900 dark:text-amber-200 font-mono">
+                          {product.previous_serial_number}
+                        </p>
+                      </div>
+                    )}
+                    {product.replacement_date && (
+                      <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-lg p-2">
+                        <label className="block text-xs font-medium text-amber-800 dark:text-amber-300 mb-1">
+                          Replacement Date
+                        </label>
+                        <p className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                          {formatDate(product.replacement_date)}
+                        </p>
+                      </div>
+                    )}
+                    {product.replacement_reason && (
+                      <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-lg p-2 md:col-span-3">
+                        <label className="block text-xs font-medium text-amber-800 dark:text-amber-300 mb-1">
+                          Replacement Reason / Notes
+                        </label>
+                        <p className="text-xs text-amber-950 dark:text-amber-100">
+                          {product.replacement_reason}
+                        </p>
+                      </div>
+                    )}
                     <div className="bg-gray-50 dark:bg-dark-subtle rounded-lg p-2">
                       <label className="block text-xs font-medium text-ink-secondary dark:text-slate-400 mb-1">
                         Category
@@ -1051,17 +1142,40 @@ const ProductView = () => {
                     )}
 
                     {canEdit("products") && (
-                      <button
-                        onClick={() => setShowEditProductModal(true)}
-                        className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
-                      >
-                        <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                          <Edit className="w-5 h-5 text-indigo-600" />
-                        </div>
-                        <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
-                          Edit Details
-                        </span>
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            setNewSerialNumber("");
+                            setReplacementReason("");
+                            setShowReplaceSerialModal(true);
+                          }}
+                          className="w-full flex items-center space-x-3 p-3 text-left border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg hover:bg-amber-100/50 dark:hover:bg-amber-950/40 transition-all duration-200 group"
+                        >
+                          <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                            <RotateCcw className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                              Replace Serial Number
+                            </span>
+                            <p className="text-xs text-amber-700/70 dark:text-amber-400/70">
+                              Warranty product replacement
+                            </p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => setShowEditProductModal(true)}
+                          className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-subtle hover:border-gray-300 dark:hover:border-dark-border transition-all duration-200 group"
+                        >
+                          <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                            <Edit className="w-5 h-5 text-indigo-600" />
+                          </div>
+                          <span className="text-sm font-medium text-ink-secondary dark:text-slate-300 group-hover:text-ink-base dark:group-hover:text-slate-100">
+                            Edit Details
+                          </span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1527,6 +1641,83 @@ const ProductView = () => {
           product={product}
           productId={id}
         />
+      )}
+
+      {/* Replace Serial Number Modal */}
+      {showReplaceSerialModal && (
+        <Modal
+          open={showReplaceSerialModal}
+          onClose={() => setShowReplaceSerialModal(false)}
+          maxWidth="md"
+        >
+          <DialogHeader
+            title={
+              <div className="flex items-center space-x-2 text-amber-700 dark:text-amber-400">
+                <RotateCcw size={20} />
+                <span>Replace Product Serial Number</span>
+              </div>
+            }
+            onClose={() => setShowReplaceSerialModal(false)}
+          />
+          <DialogBody>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  Current Serial Number
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={product?.serial_number || "N/A"}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-sm bg-gray-100 dark:bg-slate-800 font-mono text-gray-600 dark:text-slate-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  New Serial Number *
+                </label>
+                <input
+                  type="text"
+                  value={newSerialNumber}
+                  onChange={(e) => setNewSerialNumber(e.target.value.toUpperCase())}
+                  placeholder="Enter new product serial number"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-card font-mono text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  Replacement Reason / Claim Notes
+                </label>
+                <textarea
+                  rows={3}
+                  value={replacementReason}
+                  onChange={(e) => setReplacementReason(e.target.value)}
+                  placeholder="Reason for replacement (e.g. Battery cell defect under warranty claim)"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-card text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200 dark:border-dark-border">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReplaceSerialModal(false)}
+                  disabled={replacingSerial}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleReplaceSerialNumberSubmit}
+                  disabled={replacingSerial || !newSerialNumber.trim()}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {replacingSerial ? <LoadingSpinner size="sm" /> : "Confirm & Replace Serial"}
+                </Button>
+              </div>
+            </div>
+          </DialogBody>
+        </Modal>
       )}
     </>
   );

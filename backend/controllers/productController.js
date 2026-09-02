@@ -391,8 +391,45 @@ export default class ProductController {
           .status(404)
           .json({ success: false, message: "Product not found" });
 
-      if (payload.serial_number)
-        product.serial_number = payload.serial_number.toUpperCase();
+      if (payload.serial_number) {
+        const newSerial = payload.serial_number.trim().toUpperCase();
+        if (product.serial_number && product.serial_number !== newSerial) {
+          const existingProduct = await InvoiceItem.findOne({
+            shop_id: user.shopId,
+            serial_number: newSerial,
+            _id: { $ne: id },
+            deleted_at: null,
+          });
+
+          if (existingProduct) {
+            return res.status(400).json({
+              success: false,
+              message: `Serial number '${newSerial}' is already in use by another product in your shop`,
+            });
+          }
+
+          const oldSerial = product.serial_number;
+          const replacementDate = new Date();
+          product.previous_serial_number = oldSerial;
+          product.is_serial_replaced = true;
+          product.replacement_date = replacementDate;
+          if (payload.replacement_reason) {
+            product.replacement_reason = payload.replacement_reason.trim();
+          }
+          if (!product.replacement_history) {
+            product.replacement_history = [];
+          }
+          product.replacement_history.push({
+            previous_serial_number: oldSerial,
+            new_serial_number: newSerial,
+            replacement_date: replacementDate,
+            replacement_reason:
+              payload.replacement_reason || "Updated via product edit",
+          });
+        }
+        product.serial_number = newSerial;
+      }
+
       Object.assign(product, payload);
       product.updated_at = new Date();
 
@@ -401,9 +438,107 @@ export default class ProductController {
       res.json({ success: true, data: { product } });
     } catch (error) {
       console.error("Update product error:", error);
+      if (error.code === 11000) {
+        return res.status(400).json({
+          success: false,
+          message: "Serial number already exists in system",
+        });
+      }
       res
         .status(500)
         .json({ success: false, message: "Failed to update product" });
+    }
+  }
+
+  // Replace product serial number during warranty
+  async replaceSerialNumber(req, res) {
+    try {
+      const { user } = req;
+      const { id } = req.params;
+      const { new_serial_number, replacement_reason = "" } = req.body;
+
+      if (!new_serial_number || !new_serial_number.trim()) {
+        return res
+          .status(400)
+          .json({ success: false, message: "New serial number is required" });
+      }
+
+      const formattedNewSerial = new_serial_number.trim().toUpperCase();
+
+      const product = await InvoiceItem.findOne({
+        _id: id,
+        shop_id: user.shopId,
+        deleted_at: null,
+      });
+
+      if (!product) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Product not found" });
+      }
+
+      if (product.serial_number === formattedNewSerial) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "New serial number is identical to the current serial number",
+        });
+      }
+
+      // Check if new serial number is already in use in this shop
+      const existingProduct = await InvoiceItem.findOne({
+        shop_id: user.shopId,
+        serial_number: formattedNewSerial,
+        _id: { $ne: id },
+        deleted_at: null,
+      });
+
+      if (existingProduct) {
+        return res.status(400).json({
+          success: false,
+          message: `Serial number '${formattedNewSerial}' is already in use by another product in your shop`,
+        });
+      }
+
+      const oldSerial = product.serial_number || "UNKNOWN";
+      const replacementDate = new Date();
+
+      // Track replacement details
+      product.previous_serial_number = oldSerial;
+      product.serial_number = formattedNewSerial;
+      product.is_serial_replaced = true;
+      product.replacement_date = replacementDate;
+      product.replacement_reason = replacement_reason.trim();
+
+      if (!product.replacement_history) {
+        product.replacement_history = [];
+      }
+      product.replacement_history.push({
+        previous_serial_number: oldSerial,
+        new_serial_number: formattedNewSerial,
+        replacement_date: replacementDate,
+        replacement_reason: replacement_reason.trim(),
+      });
+
+      await product.save();
+
+      res.json({
+        success: true,
+        message: "Serial number replaced successfully",
+        data: { product },
+      });
+    } catch (error) {
+      console.error("Replace serial number error:", error);
+      if (error.code === 11000) {
+        return res.status(400).json({
+          success: false,
+          message: "Serial number already exists in system",
+        });
+      }
+      res.status(500).json({
+        success: false,
+        message: "Failed to replace serial number",
+      });
     }
   }
 

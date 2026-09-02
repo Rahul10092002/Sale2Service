@@ -158,6 +158,48 @@ const invoiceItemSchema = new mongoose.Schema(
       enum: ["ACTIVE", "REPLACED", "RETURNED", "UNDER_SERVICE"],
       default: "ACTIVE",
     },
+    // Serial Number Replacement Tracking
+    is_serial_replaced: {
+      type: Boolean,
+      default: false,
+    },
+    previous_serial_number: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: null,
+    },
+    replacement_date: {
+      type: Date,
+      default: null,
+    },
+    replacement_reason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    replacement_history: [
+      {
+        previous_serial_number: {
+          type: String,
+          uppercase: true,
+          trim: true,
+        },
+        new_serial_number: {
+          type: String,
+          uppercase: true,
+          trim: true,
+        },
+        replacement_date: {
+          type: Date,
+          default: Date.now,
+        },
+        replacement_reason: {
+          type: String,
+          trim: true,
+        },
+      },
+    ],
     // Attachments
     product_images: [
       {
@@ -211,6 +253,7 @@ invoiceItemSchema.index({ company: 1, deleted_at: 1 });
 invoiceItemSchema.index({ warranty_end_date: 1, deleted_at: 1 });
 invoiceItemSchema.index({ warranty_start_date: 1, deleted_at: 1 });
 invoiceItemSchema.index({ status: 1, deleted_at: 1 });
+invoiceItemSchema.index({ is_serial_replaced: 1, shop_id: 1, deleted_at: 1 });
 
 // Virtual for active invoice items
 invoiceItemSchema.virtual("isActive").get(function () {

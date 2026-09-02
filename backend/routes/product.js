@@ -43,6 +43,11 @@ productRouter.delete(
 productRouter.get("/:id", checkPermission("products_view"), (req, res) =>
   productController.getProductById(req, res),
 );
+productRouter.put(
+  "/:id/replace-serial",
+  checkPermission("products_edit"),
+  (req, res) => productController.replaceSerialNumber(req, res),
+);
 productRouter.put("/:id", checkPermission("products_edit"), (req, res) =>
   productController.updateProduct(req, res),
 );

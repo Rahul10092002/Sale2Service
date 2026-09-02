@@ -53,9 +53,6 @@ const calculateInvoiceTotals = (state) => {
     items: state.currentInvoice.invoice_items,
   });
   state.currentInvoice.invoice.subtotal = totals.subtotal;
-
-    // ✅ Correct GST calculation for inclusive tax
-
   state.currentInvoice.invoice.discount = totals.discount;
   state.currentInvoice.invoice.tax = totals.tax;
   state.currentInvoice.invoice.total_amount = totals.total_amount;
@@ -115,6 +112,7 @@ const invoiceSlice = createSlice({
     addInvoiceItem: (state, action) => {
       const newItem = {
         id: Date.now() + Math.random(),
+        item_type: "PRODUCT",
         serial_number: "",
         product_name: "",
         product_category: "BATTERY",
@@ -141,8 +139,30 @@ const invoiceSlice = createSlice({
         ...action.payload,
       };
       state.currentInvoice.invoice_items.push(newItem);
+      calculateInvoiceTotals(state);
+    },
 
-      // Auto-recalculate totals after adding item
+    addServiceItem: (state, action) => {
+      const newItem = {
+        id: Date.now() + Math.random(),
+        item_type: "SERVICE",
+        service_category: "REPAIR",
+        serial_number: "",
+        product_name: "",
+        product_category: "OTHER",
+        selling_price: 0,
+        quantity: 1,
+        warranty_type: "STANDARD",
+        warranty_duration_months: 0,
+        warranty_start_date: new Date().toISOString().split("T")[0],
+        warranty_end_date: "",
+        notes: "",
+        cost_price: 0,
+        margin: 0,
+        status: "ACTIVE",
+        ...action.payload,
+      };
+      state.currentInvoice.invoice_items.push(newItem);
       calculateInvoiceTotals(state);
     },
 
@@ -150,10 +170,8 @@ const invoiceSlice = createSlice({
       const { id, data } = action.payload;
       const item = state.currentInvoice.invoice_items.find((i) => i.id === id);
       if (item) {
-        // Mutate existing item directly to preserve array and object identity
         Object.assign(item, data);
 
-        // Auto-calculate margin if cost_price and selling_price are available
         if (item.cost_price && item.selling_price) {
           item.margin = (
             ((item.selling_price - item.cost_price) / item.cost_price) *
@@ -161,7 +179,6 @@ const invoiceSlice = createSlice({
           ).toFixed(2);
         }
 
-        // Auto-calculate warranty end date
         if (item.warranty_start_date && item.warranty_duration_months) {
           const startDate = new Date(item.warranty_start_date);
           const endDate = new Date(startDate);
@@ -172,7 +189,6 @@ const invoiceSlice = createSlice({
         }
       }
 
-      // Clear item-specific errors
       Object.keys(data).forEach((key) => {
         delete state.errors[`item.${id}.${key}`];
       });
@@ -183,7 +199,6 @@ const invoiceSlice = createSlice({
       state.currentInvoice.invoice_items =
         state.currentInvoice.invoice_items.filter((item) => item.id !== itemId);
 
-      // Clear item-specific errors
       Object.keys(state.errors).forEach((key) => {
         if (key.startsWith(`item.${itemId}.`)) {
           delete state.errors[key];
@@ -191,8 +206,6 @@ const invoiceSlice = createSlice({
       });
 
       delete state.expandedSections.productMetadata[itemId];
-
-      // Auto-recalculate totals after removing item
       calculateInvoiceTotals(state);
     },
 
@@ -240,17 +253,14 @@ const invoiceSlice = createSlice({
       };
     },
 
-    // Set complete invoice data (for editing)
     setInvoiceData: (state, action) => {
       state.currentInvoice = {
         ...state.currentInvoice,
         ...action.payload,
       };
-      // Recalculate totals after setting data
       calculateInvoiceTotals(state);
     },
 
-    // Load existing customer data
     loadCustomerData: (state, action) => {
       state.currentInvoice.customer = {
         ...state.currentInvoice.customer,
@@ -266,6 +276,7 @@ export const {
   updateInvoice,
   setInvoiceNumber,
   addInvoiceItem,
+  addServiceItem,
   updateInvoiceItem,
   removeInvoiceItem,
   recalculateInvoice,
@@ -280,7 +291,6 @@ export const {
   loadCustomerData,
 } = invoiceSlice.actions;
 
-// Selectors
 export const selectCurrentInvoice = (state) => state.invoice.currentInvoice;
 export const selectInvoiceErrors = (state) => state.invoice.errors;
 export const selectIsSubmitting = (state) => state.invoice.isSubmitting;

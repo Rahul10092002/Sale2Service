@@ -45,10 +45,13 @@ const CATEGORY_OPTIONS = [
   { value: "OTHER", label: "Other" },
 ];
 
+import { useDeleteGuard } from "../../context/DeleteGuardContext.jsx";
+
 const Inventory = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const { canCreate, canEdit, canDelete } = usePermissions();
+  const { confirmDelete } = useDeleteGuard();
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [category, setCategory] = useState(searchParams.get("category") || "");
   const [stockStatus, setStockStatus] = useState(searchParams.get("stockStatus") || "");
@@ -117,14 +120,18 @@ const Inventory = () => {
 
   const toggleFilter = () => setShowFilters(!showFilters);
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to remove this product from inventory?")) {
-      try {
-        await deleteProduct(id).unwrap();
-      } catch (err) {
-        console.error("Delete error:", err);
-      }
-    }
+  const handleDelete = async (id, productName = "Inventory Product") => {
+    confirmDelete({
+      itemName: productName,
+      itemType: "Inventory Item",
+      onConfirm: async () => {
+        try {
+          await deleteProduct(id).unwrap();
+        } catch (err) {
+          console.error("Delete error:", err);
+        }
+      },
+    });
   };
 
   const handleEdit = (product) => {
@@ -377,7 +384,7 @@ const Inventory = () => {
                       {canDelete("inventory") && (
                         <button
                           className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/20"
-                          onClick={() => handleDelete(product._id)}
+                          onClick={() => handleDelete(product._id, product.product_name)}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -451,7 +458,7 @@ const Inventory = () => {
                       )}
                       {canDelete("inventory") && (
                         <button
-                          onClick={() => handleDelete(product._id)}
+                          onClick={() => handleDelete(product._id, product.product_name)}
                           className="bg-red-50 dark:bg-red-900/20 text-red-500 p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                           title="Delete Product"
                         >

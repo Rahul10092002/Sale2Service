@@ -449,6 +449,9 @@ const Settings = () => {
           />
         </SectionCard>
 
+        {/* Delete Protection Password Section */}
+        <DeleteProtectionCard />
+
         {/* Save Bar */}
         <div className="flex items-center justify-between pt-1">
           {saved ? (
@@ -479,6 +482,192 @@ const Settings = () => {
         </div>
       </form>
     </div>
+  );
+};
+
+const DeleteProtectionCard = () => {
+  const dispatch = useDispatch();
+  const [currentOwnerPassword, setCurrentOwnerPassword] = useState("");
+  const [newDeletePassword, setNewDeletePassword] = useState("");
+  const [confirmDeletePassword, setConfirmDeletePassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState({ isConfigured: false });
+
+  const API_BASE_URL =
+    import.meta.env.VITE_ENVIRONMENT === "production"
+      ? import.meta.env.VITE_PROD_API_URL
+      : import.meta.env.VITE_LOCAL_API_URL;
+
+  // Check current status on mount
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE_URL}/auth/delete-password-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          setStatus(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch delete password status:", err);
+      }
+    };
+    fetchStatus();
+  }, [API_BASE_URL]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!currentOwnerPassword || !newDeletePassword) {
+      dispatch(
+        showToast({
+          message: "Please fill out both password fields",
+          type: "error",
+        }),
+      );
+      return;
+    }
+
+    if (newDeletePassword !== confirmDeletePassword) {
+      dispatch(
+        showToast({
+          message: "New delete security password and confirmation do not match",
+          type: "error",
+        }),
+      );
+      return;
+    }
+
+    if (newDeletePassword.length < 4) {
+      dispatch(
+        showToast({
+          message: "Delete password must be at least 4 characters long",
+          type: "error",
+        }),
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE_URL}/auth/set-delete-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_owner_password: currentOwnerPassword,
+          new_delete_password: newDeletePassword,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || "Failed to update delete password");
+      }
+
+      dispatch(
+        showToast({
+          message: "Delete protection password updated successfully!",
+          type: "success",
+        }),
+      );
+
+      setCurrentOwnerPassword("");
+      setNewDeletePassword("");
+      setConfirmDeletePassword("");
+      setStatus({ isConfigured: true });
+    } catch (err) {
+      dispatch(
+        showToast({
+          message: err.message || "Update failed",
+          type: "error",
+        }),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SectionCard
+      title="Delete Security Protection"
+      description="Configure a dedicated security password required to delete invoices, customers, products, or shop data."
+    >
+      <div className="space-y-4">
+        {/* Status Banner */}
+        <div
+          className={`p-3 rounded-xl flex items-center justify-between text-xs font-medium ${
+            status.isConfigured
+              ? "bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900"
+              : "bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900"
+          }`}
+        >
+          <span>
+            {status.isConfigured
+              ? "✅ Dedicated Delete Security Password is ACTIVE"
+              : "⚠️ Using Default (Owner Login Password). Set a dedicated delete password below for enhanced security."}
+          </span>
+        </div>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+              Current Owner Login Password *
+            </label>
+            <input
+              type="password"
+              value={currentOwnerPassword}
+              onChange={(e) => setCurrentOwnerPassword(e.target.value)}
+              placeholder="Your account login password"
+              className={inputCls}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+              New Delete Security Password *
+            </label>
+            <input
+              type="password"
+              value={newDeletePassword}
+              onChange={(e) => setNewDeletePassword(e.target.value)}
+              placeholder="Dedicated delete PIN / password"
+              className={inputCls}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+              Confirm Delete Password *
+            </label>
+            <input
+              type="password"
+              value={confirmDeletePassword}
+              onChange={(e) => setConfirmDeletePassword(e.target.value)}
+              placeholder="Re-type delete password"
+              className={inputCls}
+              required
+            />
+          </div>
+
+          <div className="md:col-span-3 flex justify-end">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-all shadow-xs"
+            >
+              {loading ? "Updating..." : "Update Delete Protection Password"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </SectionCard>
   );
 };
 

@@ -128,16 +128,20 @@ export default class InvoiceController {
         customerId = newCustomer._id;
       }
 
-      // Step 2: Validate serial numbers are unique
+      // Step 2: Validate serial numbers are unique (for PRODUCT items)
       for (const item of invoice_items) {
-        const existingItem = await InvoiceItem.findOne({
-          serial_number: item.serial_number.toUpperCase(),
-          shop_id: user.shopId,
-          deleted_at: null,
-        }).session(session);
+        const itemType = String(item.item_type || "PRODUCT").toUpperCase();
+        if (itemType === "PRODUCT" && item.serial_number) {
+          const existingItem = await InvoiceItem.findOne({
+            serial_number: item.serial_number.toUpperCase(),
+            shop_id: user.shopId,
+            deleted_at: null,
+            item_type: "PRODUCT",
+          }).session(session);
 
-        if (existingItem) {
-          throw new Error(`Serial number ${item.serial_number} already exists`);
+          if (existingItem) {
+            throw new Error(`Serial number ${item.serial_number} already exists`);
+          }
         }
       }
 
@@ -193,20 +197,35 @@ export default class InvoiceController {
 
       await newInvoice.save({ session });
 
-      // Step 6: Create invoice items (products)
+      // Step 6: Create invoice items (products & services)
       const createdInvoiceItems = [];
 
       for (const item of invoice_items) {
+        const itemType = String(item.item_type || "PRODUCT").toUpperCase();
+
         // Calculate warranty end date
-        const warrantyStartDate = new Date(item.warranty_start_date);
-        const warrantyEndDate = new Date(warrantyStartDate);
-        warrantyEndDate.setMonth(
-          warrantyEndDate.getMonth() + item.warranty_duration_months,
-        );
+        const warrantyStartDate = item.warranty_start_date
+          ? new Date(item.warranty_start_date)
+          : null;
+        let warrantyEndDate = item.warranty_end_date
+          ? new Date(item.warranty_end_date)
+          : null;
+
+        if (
+          !warrantyEndDate &&
+          warrantyStartDate &&
+          Number(item.warranty_duration_months || 0) > 0
+        ) {
+          warrantyEndDate = new Date(warrantyStartDate);
+          warrantyEndDate.setMonth(
+            warrantyEndDate.getMonth() +
+              parseInt(item.warranty_duration_months),
+          );
+        }
 
         // Pro warranty if provided
         let proWarrantyEndDate = null;
-        if (item.pro_warranty_duration_months) {
+        if (item.pro_warranty_duration_months && warrantyStartDate) {
           proWarrantyEndDate = new Date(warrantyStartDate);
           proWarrantyEndDate.setMonth(
             proWarrantyEndDate.getMonth() + item.pro_warranty_duration_months,
@@ -214,6 +233,7 @@ export default class InvoiceController {
         }
 
         const isBattery =
+          itemType === "PRODUCT" &&
           item.product_category === "BATTERY" &&
           item.battery_type &&
           ["INVERTER_BATTERY", "VEHICLE_BATTERY"].includes(item.battery_type);
@@ -235,9 +255,13 @@ export default class InvoiceController {
         const invoiceItem = new InvoiceItem({
           invoice_id: newInvoice._id,
           shop_id: user.shopId,
-          serial_number: item.serial_number.toUpperCase(),
+          item_type: itemType,
+          service_category:
+            itemType === "SERVICE" ? item.service_category || "REPAIR" : undefined,
+          serial_number: (item.serial_number || "").toUpperCase(),
           product_name: item.product_name,
-          product_category: item.product_category,
+          product_category:
+            item.product_category || (itemType === "SERVICE" ? "OTHER" : "BATTERY"),
           ...batteryPayload,
           company: item.company,
           model_number: item.model_number,
@@ -248,7 +272,7 @@ export default class InvoiceController {
           warranty_end_date: warrantyEndDate,
           pro_warranty_end_date: proWarrantyEndDate,
           warranty_type: item.warranty_type || "STANDARD",
-          warranty_duration_months: item.warranty_duration_months,
+          warranty_duration_months: Number(item.warranty_duration_months || 0),
           manufacturing_date: item.manufacturing_date,
           capacity_rating: item.capacity_rating,
           voltage: item.voltage,
@@ -267,19 +291,20 @@ export default class InvoiceController {
         await invoiceItem.save({ session });
         createdInvoiceItems.push(invoiceItem);
 
-        // Step 6b: Deduct stock from ProductMaster if template exists
-        try {
-          await ProductMaster.findOneAndUpdate(
-            { 
-              product_name: item.product_name.trim(), 
-              shop_id: user.shopId 
-            },
-            { $inc: { stock_quantity: -(item.quantity || 1) } },
-            { session }
-          );
-        } catch (stockErr) {
-          console.error("Stock deduction failed for", item.product_name, stockErr);
-          // Non-blocking for now, just log it
+        // Step 6b: Deduct stock from ProductMaster if item is a PRODUCT and template exists
+        if (itemType === "PRODUCT" && item.product_name?.trim()) {
+          try {
+            await ProductMaster.findOneAndUpdate(
+              { 
+                product_name: item.product_name.trim(), 
+                shop_id: user.shopId 
+              },
+              { $inc: { stock_quantity: -(item.quantity || 1) } },
+              { session }
+            );
+          } catch (stockErr) {
+            console.error("Stock deduction failed for", item.product_name, stockErr);
+          }
         }
 
         // Step 7: Create service plan if enabled for this item
@@ -1255,6 +1280,13 @@ export default class InvoiceController {
     try {
       const { user } = req;
       const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid invoice ID format",
+        });
+      }
 
       const invoice = await Invoice.findOne({
         _id: id,

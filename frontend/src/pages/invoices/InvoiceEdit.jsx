@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Save, X, ArrowLeft } from "lucide-react";
 import { Button, LoadingSpinner } from "../../components/ui/index.js";
@@ -93,11 +93,13 @@ const InvoiceEdit = () => {
         invoice_items:
           items.map((item, index) => ({
             id: Date.now() + Math.random() + index,
+            item_type: item.item_type || "PRODUCT",
+            service_category: item.service_category || "REPAIR",
             product_name: item.product_name || "",
             serial_number: item.serial_number || "",
             selling_price: item.selling_price ?? item.price ?? 0,
             quantity: item.quantity || 1,
-            product_category: item.product_category || "BATTERY",
+            product_category: item.product_category || (item.item_type === "SERVICE" ? "OTHER" : "BATTERY"),
             battery_type:
               item.product_category === "BATTERY" && !item.battery_type
                 ? INVOICE_CONSTANTS.BATTERY_TYPES.INVERTER_BATTERY
@@ -110,118 +112,109 @@ const InvoiceEdit = () => {
             warranty_start_date: item.warranty_start_date
               ? new Date(item.warranty_start_date).toISOString().split("T")[0]
               : new Date().toISOString().split("T")[0],
-            warranty_duration_months: item.warranty_duration_months || 12,
+            warranty_duration_months: item.warranty_duration_months || 0,
             warranty_end_date: item.warranty_end_date || "",
             pro_warranty_end_date: item.pro_warranty_end_date || "",
-            manufacturing_date: item.manufacturing_date || "",
-            capacity_rating: item.capacity_rating || "",
-            voltage: item.voltage || "",
-            batch_number: item.batch_number || "",
-            purchase_source: item.purchase_source || "",
-            cost_price: item.cost_price || 0,
-            // Include service plan data
-            service_plan_enabled: item.service_plan_enabled || false,
-            service_plan: item.service_plan || null,
-          })) || [],
+            notes: item.notes || "",
+            product_images: item.product_images || [],
+          })),
       };
 
       setInvoiceData(formattedInvoice);
     }
   }, [existingInvoice, isLoadingInvoice, setInvoiceData]);
 
-  // Comprehensive validation for all sections
+  // Validation function
   const validateAllSections = useCallback(() => {
     const newErrors = {};
-    const { customer, invoice, invoice_items } = currentInvoice;
 
     // Customer validation
-    if (!customer.full_name?.trim()) {
+    if (!currentInvoice.customer.full_name?.trim()) {
       newErrors["customer.full_name"] = "Full name is required";
     }
 
-    if (!customer.whatsapp_number?.trim()) {
+    if (!currentInvoice.customer.whatsapp_number?.trim()) {
       newErrors["customer.whatsapp_number"] = "WhatsApp number is required";
-    } else if (!/^\+?[\d\s-()]{10,15}$/.test(customer.whatsapp_number)) {
-      newErrors["customer.whatsapp_number"] = "Enter a valid WhatsApp number";
     }
 
-    if (!customer.address.line1?.trim()) {
+    if (!currentInvoice.customer.address.line1?.trim()) {
       newErrors["customer.address.line1"] = "Address is required";
     }
 
-    // Invoice validation
-    if (!invoice.invoice_number?.trim()) {
-      newErrors["invoice.invoice_number"] = "Invoice number is required";
+    if (!currentInvoice.customer.address.city?.trim()) {
+      newErrors["customer.address.city"] = "City is required";
     }
 
-    if (!invoice.invoice_date) {
-      newErrors["invoice.invoice_date"] = "Invoice date is required";
+    if (!currentInvoice.customer.address.state?.trim()) {
+      newErrors["customer.address.state"] = "State is required";
     }
 
-    if (!invoice.payment_mode) {
-      newErrors["invoice.payment_mode"] = "Payment mode is required";
-    }
-
-    if (!invoice.payment_status) {
-      newErrors["invoice.payment_status"] = "Payment status is required";
-    }
-
-    if (invoice.payment_status === INVOICE_CONSTANTS.PAYMENT_STATUSES.UNPAID) {
-      if (!invoice.due_date) {
-        newErrors["invoice.due_date"] =
-          "Due date is required for unpaid invoices";
-      }
-    }
-
-    if (invoice.payment_status === INVOICE_CONSTANTS.PAYMENT_STATUSES.PARTIAL) {
-      if (!invoice.due_date) {
-        newErrors["invoice.due_date"] =
-          "Due date is required for partial invoices";
-      }
-
-      if (!invoice.amount_paid || invoice.amount_paid <= 0) {
-        newErrors["invoice.amount_paid"] =
-          "Amount paid must be greater than 0 for partial invoices";
-      } else if (invoice.amount_paid >= invoice.total_amount) {
-        newErrors["invoice.amount_paid"] =
-          "Amount paid must be less than total amount for partial invoices";
-      }
+    if (!currentInvoice.customer.address.pincode?.trim()) {
+      newErrors["customer.address.pincode"] = "Pincode is required";
     }
 
     // Invoice items validation
-    if (!invoice_items || invoice_items.length === 0) {
-      newErrors["invoice_items"] = "At least one invoice item is required";
+    if (currentInvoice.invoice_items.length === 0) {
+      newErrors["general"] = "At least one product or service item is required";
     } else {
-      invoice_items.forEach((item, index) => {
-        if (!item.product_name?.trim()) {
-          newErrors[`item.${item.id}.product_name`] =
-            "Product name is required";
-        }
-        if (!item.serial_number?.trim()) {
-          newErrors[`item.${item.id}.serial_number`] =
-            "Serial number is required";
-        }
-        if (!item.selling_price || item.selling_price <= 0) {
-          newErrors[`item.${item.id}.selling_price`] =
-            "Price must be greater than 0";
-        }
-
-        if (item.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY) {
-          if (!item.battery_type) {
-            newErrors[`item.${item.id}.battery_type`] =
-              "Battery type is required";
+      currentInvoice.invoice_items.forEach((item) => {
+        if (item.item_type === "SERVICE") {
+          if (!item.product_name?.trim()) {
+            newErrors[`item.${item.id}.product_name`] =
+              "Service title / description is required";
           }
-          if (
-            item.battery_type ===
-            INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY
-          ) {
-            if (!item.vehicle_name?.trim()) {
-              newErrors[`item.${item.id}.vehicle_name`] =
-                "Vehicle name is required";
+          if (!item.selling_price || item.selling_price <= 0) {
+            newErrors[`item.${item.id}.selling_price`] =
+              "Valid service price is required";
+          }
+        } else {
+          // PRODUCT validation
+          if (!item.serial_number?.trim()) {
+            newErrors[`item.${item.id}.serial_number`] =
+              "Serial number is required";
+          }
+
+          if (!item.product_name?.trim()) {
+            newErrors[`item.${item.id}.product_name`] =
+              "Product name is required";
+          }
+
+          if (!item.company?.trim()) {
+            newErrors[`item.${item.id}.company`] = "Company/Brand is required";
+          }
+
+          if (!item.model_number?.trim()) {
+            newErrors[`item.${item.id}.model_number`] =
+              "Model number is required";
+          }
+
+          if (!item.selling_price || item.selling_price <= 0) {
+            newErrors[`item.${item.id}.selling_price`] =
+              "Valid selling price is required";
+          }
+
+          if (!item.warranty_start_date) {
+            newErrors[`item.${item.id}.warranty_start_date`] =
+              "Warranty start date is required";
+          }
+
+          if (item.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY) {
+            if (!item.battery_type) {
+              newErrors[`item.${item.id}.battery_type`] =
+                "Battery type is required";
             }
-            if (!item.vehicle_number_plate?.trim()) {
-              newErrors[`item.${item.id}.vehicle_number_plate`] =
-                "Number plate is required";
+            if (
+              item.battery_type ===
+              INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY
+            ) {
+              if (!item.vehicle_name?.trim()) {
+                newErrors[`item.${item.id}.vehicle_name`] =
+                  "Vehicle name is required";
+              }
+              if (!item.vehicle_number_plate?.trim()) {
+                newErrors[`item.${item.id}.vehicle_number_plate`] =
+                  "Number plate is required";
+              }
             }
           }
         }

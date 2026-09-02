@@ -323,15 +323,28 @@
                 <tr>
                     <td><%= i + 1 %></td>
                     <td>
-                        <div class="item-main"><%= item.productName %></div>
+                        <div class="item-main">
+                            <%= item.productName %>
+                            <% if (item.isService) { %>
+                                <span style="font-size: 8px; background: #e0e7ff; color: #3730a3; padding: 1px 4px; border-radius: 3px; font-weight: 700; margin-left: 4px;">
+                                    [<%= item.serviceCategory || 'SERVICE' %>]
+                                </span>
+                            <% } %>
+                        </div>
                         <% if (item.modelNumber && item.modelNumber !== 'N/A') { %>
                             <span class="item-sub">Model: <%= item.modelNumber %></span>
                         <% } %>
-                        <% if (item.serialNumber && item.serialNumber !== 'N/A') { %>
+                        <% if (item.serialNumber && item.serialNumber !== 'N/A' && !item.serialNumber.startsWith('SRV-')) { %>
                             <span class="item-sub"> | S/N: <%= item.serialNumber %></span>
                         <% } %>
                         <% if (item.batteryLine) { %>
                             <div class="item-sub"><%= item.batteryLine %></div>
+                        <% } %>
+                        <% if (item.notes) { %>
+                            <div class="item-sub" style="font-style: italic; color: #4b5563;">Notes: <%= item.notes %></div>
+                        <% } %>
+                        <% if (item.isService && item.warrantyPeriod && item.warrantyPeriod !== 'N/A') { %>
+                            <div class="item-sub" style="color: #059669; font-weight: 600;">Repair Warranty: <%= item.warrantyPeriod %></div>
                         <% } %>
                     </td>
                     <td style="text-align: center;"><%= item.quantity %></td>

@@ -133,6 +133,37 @@ export const PAGINATION = {
 
 // Invoice constants
 export const INVOICE_CONSTANTS = {
+  ITEM_TYPES: {
+    PRODUCT: "PRODUCT",
+    SERVICE: "SERVICE",
+  },
+  SERVICE_CATEGORIES: {
+    REPAIR: "REPAIR",
+    MAINTENANCE: "MAINTENANCE",
+    INSTALLATION: "INSTALLATION",
+    ACID_REFILL: "ACID_REFILL",
+    LABOR: "LABOR",
+    WIRING: "WIRING",
+    OTHER: "OTHER",
+  },
+  SERVICE_CATEGORY_LABELS: {
+    REPAIR: "Repair Service",
+    MAINTENANCE: "Maintenance & Checkup",
+    INSTALLATION: "Installation",
+    ACID_REFILL: "Acid Refilling & Charging",
+    LABOR: "Labor Fee",
+    WIRING: "Wiring & Setup",
+    OTHER: "Other Service",
+  },
+  SERVICE_PRESETS: [
+    "Inverter PCB Repair",
+    "Battery Acid Refill & Equalization",
+    "Solar Panel Wiring & Setup",
+    "Labor / Installation Charge",
+    "Battery Health Testing & Charging",
+    "General Maintenance Service",
+    "Inverter Repair & Component Replacement",
+  ],
   PAYMENT_STATUSES: {
     PAID: "PAID",
     PARTIAL: "PARTIAL",

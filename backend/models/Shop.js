@@ -48,6 +48,10 @@ const shopSchema = new mongoose.Schema(
       ifsc_code: { type: String, trim: true },
       upi_id: { type: String, trim: true },
     },
+    delete_security_password: {
+      type: String,
+      select: false,
+    },
     deleted_at: {
       type: Date,
       default: null,

@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import Shop from "../models/Shop.js";
 import Role from "../models/Role.js";
@@ -333,6 +334,91 @@ export default class AuthService {
         permissions: user.role?.permissions || [],
         shop_id: user.shop_id,
       },
+    };
+  }
+
+  /**
+   * Verify Delete Security Password for shop or fallback to owner password
+   */
+  async verifyDeletePassword({ userId, shopId, deletePassword }) {
+    if (!deletePassword) {
+      throw new Error("Delete security password is required");
+    }
+
+    const shop = await Shop.findById(shopId).select("+delete_security_password");
+    if (!shop) {
+      throw new Error("Shop not found");
+    }
+
+    // If custom delete password is configured on Shop
+    if (shop.delete_security_password) {
+      const isValid = await bcrypt.compare(
+        deletePassword,
+        shop.delete_security_password,
+      );
+      return { isValid, isCustom: true };
+    }
+
+    // Fallback: Verify against user's login password
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const isValid = await user.comparePassword(deletePassword);
+    return { isValid, isCustom: false };
+  }
+
+  /**
+   * Update or set Delete Security Password (Owner only)
+   */
+  async updateDeletePassword({
+    userId,
+    shopId,
+    currentOwnerPassword,
+    newDeletePassword,
+  }) {
+    if (!currentOwnerPassword || !newDeletePassword) {
+      throw new Error(
+        "Current owner password and new delete security password are required",
+      );
+    }
+
+    if (newDeletePassword.length < 4) {
+      throw new Error("Delete security password must be at least 4 characters long");
+    }
+
+    const user = await User.findById(userId).populate("role");
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Verify current owner password
+    const isOwnerPasswordValid = await user.comparePassword(
+      currentOwnerPassword,
+    );
+    if (!isOwnerPasswordValid) {
+      throw new Error("Incorrect owner login password");
+    }
+
+    // Hash new delete security password
+    const hashedPassword = await bcrypt.hash(newDeletePassword, 10);
+
+    // Save to Shop
+    await Shop.findByIdAndUpdate(shopId, {
+      delete_security_password: hashedPassword,
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * Check if shop has custom delete security password configured
+   */
+  async getDeletePasswordStatus(shopId) {
+    const shop = await Shop.findById(shopId).select("+delete_security_password");
+    return {
+      isConfigured: !!(shop && shop.delete_security_password),
     };
   }
 }

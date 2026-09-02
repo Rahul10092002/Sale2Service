@@ -19,5 +19,14 @@ authRouter.post("/signup-google-user", (req, res) =>
   authController.signupUserWithGoogle(req, res),
 );
 
-// Protected route: get current user
-authRouter.get('/me', authenticate, (req, res) => authController.me(req, res))
+// Protected routes
+authRouter.get("/me", authenticate, (req, res) => authController.me(req, res));
+authRouter.post("/verify-delete-password", authenticate, (req, res) =>
+  authController.verifyDeletePassword(req, res),
+);
+authRouter.post("/set-delete-password", authenticate, (req, res) =>
+  authController.setDeletePassword(req, res),
+);
+authRouter.get("/delete-password-status", authenticate, (req, res) =>
+  authController.getDeletePasswordStatus(req, res),
+);

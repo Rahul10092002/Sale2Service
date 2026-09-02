@@ -18,10 +18,20 @@ const invoiceItemSchema = new mongoose.Schema(
       ref: "Shop",
       required: true,
     },
+    item_type: {
+      type: String,
+      enum: ["PRODUCT", "SERVICE"],
+      default: "PRODUCT",
+      required: true,
+    },
+    service_category: {
+      type: String,
+      trim: true,
+      default: "REPAIR",
+    },
     // Product Information
     serial_number: {
       type: String,
-      required: true,
       trim: true,
       uppercase: true,
     },
@@ -41,7 +51,7 @@ const invoiceItemSchema = new mongoose.Schema(
         "ACCESSORIES",
         "OTHER",
       ],
-      required: true,
+      default: "OTHER",
     },
     battery_type: {
       type: String,
@@ -58,12 +68,10 @@ const invoiceItemSchema = new mongoose.Schema(
     },
     company: {
       type: String,
-      required: true,
       trim: true,
     },
     model_number: {
       type: String,
-      required: true,
       trim: true,
     },
     // Pricing
@@ -108,11 +116,9 @@ const invoiceItemSchema = new mongoose.Schema(
     // Warranty Information
     warranty_start_date: {
       type: Date,
-      required: true,
     },
     warranty_end_date: {
       type: Date,
-      required: true,
     },
     pro_warranty_end_date: {
       type: Date,
@@ -124,8 +130,8 @@ const invoiceItemSchema = new mongoose.Schema(
     },
     warranty_duration_months: {
       type: Number,
-      required: true,
-      min: 1,
+      min: 0,
+      default: 0,
     },
     // Product Metadata (Future-Safe)
     manufacturing_date: {
@@ -192,7 +198,10 @@ const invoiceItemSchema = new mongoose.Schema(
 // Indexes
 invoiceItemSchema.index(
   { serial_number: 1, shop_id: 1, deleted_at: 1 },
-  { unique: true },
+  {
+    unique: true,
+    partialFilterExpression: { item_type: "PRODUCT" },
+  },
 );
 invoiceItemSchema.index({ invoice_item_id: 1, deleted_at: 1 });
 invoiceItemSchema.index({ invoice_id: 1, deleted_at: 1 });

@@ -10,6 +10,7 @@ import {
   toggleCustomerOptional,
   toggleProductMetadata,
   addInvoiceItem,
+  addServiceItem,
   updateInvoiceItem,
   removeInvoiceItem,
   recalculateInvoice,
@@ -55,11 +56,7 @@ export const useInvoiceForm = () => {
 
   const updateInvoiceData = useCallback(
     (fieldOrData, data) => {
-      // Support two-call styles:
-      // 1) updateInvoiceData('invoice', { ... })
-      // 2) updateInvoiceData({ ... })  // direct invoice data
       if (typeof fieldOrData === "object" && data === undefined) {
-        // treat as direct invoice update
         dispatch(updateInvoice(fieldOrData));
         return;
       }
@@ -70,12 +67,10 @@ export const useInvoiceForm = () => {
       } else if (field === "invoice") {
         dispatch(updateInvoice(data));
       } else if (field === "invoice_items") {
-        // For invoice_items, update the entire array
         const currentData = { ...currentInvoice };
         currentData.invoice_items = data;
         dispatch(setInvoiceData(currentData));
       } else {
-        // For direct invoice fields
         dispatch(updateInvoice(data));
       }
     },
@@ -84,7 +79,11 @@ export const useInvoiceForm = () => {
 
   const addItem = useCallback(() => {
     dispatch(addInvoiceItem());
-    // Recalculate totals immediately after adding an item
+    dispatch(recalculateInvoice());
+  }, [dispatch]);
+
+  const addService = useCallback(() => {
+    dispatch(addServiceItem());
     dispatch(recalculateInvoice());
   }, [dispatch]);
 
@@ -101,8 +100,6 @@ export const useInvoiceForm = () => {
 
   const updateItem = useCallback(
     (id, data) => {
-      // Update single item; do not trigger full recalculation here to avoid
-      // triggering re-renders on every keystroke for text inputs.
       dispatch(updateInvoiceItem({ id, data }));
     },
     [dispatch],
@@ -111,7 +108,6 @@ export const useInvoiceForm = () => {
   const removeItem = useCallback(
     (id) => {
       dispatch(removeInvoiceItem(id));
-      // Recalculate totals immediately after removing an item
       dispatch(recalculateInvoice());
     },
     [dispatch],
@@ -158,6 +154,7 @@ export const useInvoiceForm = () => {
     updateCustomerAddressData,
     updateInvoiceData,
     addItem,
+    addService,
     updateItem,
     removeItem,
     toggleCustomerOptional: toggleCustomerOptionalSection,

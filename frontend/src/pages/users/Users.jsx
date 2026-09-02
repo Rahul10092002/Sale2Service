@@ -86,9 +86,12 @@ const AVAILABLE_PERMISSIONS = [
   { id: "settings_edit", label: "Modify Settings", module: "Settings" },
 ];
 
+import { useDeleteGuard } from "../../context/DeleteGuardContext.jsx";
+
 const Users = () => {
   const dispatch = useDispatch();
   const { hasPermission, canCreate, canEdit, canDelete } = usePermissions();
+  const { confirmDelete } = useDeleteGuard();
   
   // Tabs State
   const [activeTab, setActiveTab] = useState("users"); // "users" or "roles"
@@ -205,28 +208,36 @@ const Users = () => {
     }
   };
 
-  const handleDeleteUser = async (id) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      try {
-        await deleteUser(id).unwrap();
-        showAlert("User deleted successfully", "success");
-        refetchUsers();
-      } catch (error) {
-        showAlert(error?.data?.message || "Failed to delete user", "error");
-      }
-    }
+  const handleDeleteUser = async (id, userName = "User") => {
+    confirmDelete({
+      itemName: userName,
+      itemType: "User",
+      onConfirm: async () => {
+        try {
+          await deleteUser(id).unwrap();
+          showAlert("User deleted successfully", "success");
+          refetchUsers();
+        } catch (error) {
+          showAlert(error?.data?.message || "Failed to delete user", "error");
+        }
+      },
+    });
   };
 
-  const handleDeleteRole = async (id) => {
-    if (window.confirm("Are you sure you want to delete this role? Any users assigned to this role might lose access.")) {
-      try {
-        await deleteRole(id).unwrap();
-        showAlert("Role deleted successfully", "success");
-        refetchRoles();
-      } catch (error) {
-        showAlert(error?.data?.message || "Failed to delete role", "error");
-      }
-    }
+  const handleDeleteRole = async (id, roleName = "Role") => {
+    confirmDelete({
+      itemName: roleName,
+      itemType: "Role",
+      onConfirm: async () => {
+        try {
+          await deleteRole(id).unwrap();
+          showAlert("Role deleted successfully", "success");
+          refetchRoles();
+        } catch (error) {
+          showAlert(error?.data?.message || "Failed to delete role", "error");
+        }
+      },
+    });
   };
 
   const resetUserForm = () => {
@@ -376,7 +387,7 @@ const Users = () => {
                     )}
                     {canDelete("users") && (
                       <button 
-                        onClick={() => handleDeleteUser(user.id)}
+                        onClick={() => handleDeleteUser(user.id, user.name)}
                         className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
                         title="Delete User"
                       >
@@ -427,7 +438,7 @@ const Users = () => {
                     )}
                     {hasPermission("roles_create") && !role.isDefault && (
                       <button 
-                        onClick={() => handleDeleteRole(role._id)}
+                        onClick={() => handleDeleteRole(role._id, role.name)}
                         className="p-1 text-ink-muted hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />

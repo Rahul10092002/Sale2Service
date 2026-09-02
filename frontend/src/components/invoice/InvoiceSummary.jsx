@@ -20,6 +20,8 @@ const InvoiceSummary = ({ className = "" }) => {
   };
 
   const itemsCount = invoice_items.length;
+  const productItems = invoice_items.filter((i) => i.item_type !== "SERVICE");
+  const serviceItems = invoice_items.filter((i) => i.item_type === "SERVICE");
   const totalQuantity = invoice_items.reduce(
     (sum, item) => sum + (parseInt(item.quantity) || 1),
     0,
@@ -41,9 +43,19 @@ const InvoiceSummary = ({ className = "" }) => {
         <div className="flex justify-between items-center text-sm">
           <span className="text-ink-secondary dark:text-slate-100">Products</span>
           <span className="font-medium text-gray-900 dark:text-slate-100">
-            {itemsCount} items ({totalQuantity} qty)
+            {productItems.length} items ({totalQuantity} qty)
           </span>
         </div>
+        {serviceItems.length > 0 && (
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+              Services & Repairs
+            </span>
+            <span className="font-medium text-emerald-800 dark:text-emerald-300">
+              {serviceItems.length} charges
+            </span>
+          </div>
+        )}
 
         {/* Amount Breakdown */}
         <div className="space-y-2 border-t border-gray-200 pt-3">

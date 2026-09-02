@@ -160,6 +160,8 @@ export class InvoicePDFService {
       // is provided on the item, display it; otherwise leave blank to avoid
       // performing backend arithmetic.
       items: invoiceItems.map((item, index) => {
+        const itemType = String(item.item_type || "PRODUCT").toUpperCase();
+        const isService = itemType === "SERVICE";
         const quantityNum = item.quantity !== undefined ? Number(item.quantity) : 1;
         const unitRaw = getInvoiceItemUnitPrice(item);
         const lineOriginal = unitRaw * quantityNum;
@@ -185,6 +187,7 @@ export class InvoicePDFService {
 
         let batteryLine = "";
         if (
+          !isService &&
           item.product_category === "BATTERY" &&
           item.battery_type &&
           ["INVERTER_BATTERY", "VEHICLE_BATTERY"].includes(item.battery_type)
@@ -208,8 +211,11 @@ export class InvoicePDFService {
 
         return {
           sno: index + 1,
+          itemType,
+          isService,
+          serviceCategory: item.service_category || "REPAIR",
           productName: item.product_name || "N/A",
-          modelNumber: item.model_number || "N/A",
+          modelNumber: isService ? "N/A" : item.model_number || "N/A",
           serialNumber: item.serial_number || "N/A",
           quantity: quantityNum,
           unitPrice: this.formatCurrency(unitTaxable),
@@ -220,6 +226,7 @@ export class InvoicePDFService {
             : "N/A",
           hasServicePlan: item.service_plan_enabled || false,
           batteryLine,
+          notes: item.notes || "",
         };
       }),
 

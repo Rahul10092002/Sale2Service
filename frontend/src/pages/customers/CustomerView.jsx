@@ -28,6 +28,7 @@ import {
 import Button from "../../components/ui/Button.jsx";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 import Alert from "../../components/ui/Alert.jsx";
+import { useDeleteGuard } from "../../context/DeleteGuardContext.jsx";
 import { ROUTES } from "../../utils/constants.js";
 
 const CustomerView = () => {
@@ -35,6 +36,7 @@ const CustomerView = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { canCreate, canEdit, canDelete } = usePermissions();
+  const { confirmDelete } = useDeleteGuard();
 
   const routeLabels = {
     "/products": "Products",
@@ -78,21 +80,21 @@ const CustomerView = () => {
     };
 
   const handleDeleteCustomer = async () => {
-    if (
-      window.confirm(
-        "Delete this customer? This will remove related invoices as well.",
-      )
-    ) {
-      try {
-        await deleteCustomer(id).unwrap();
-        navigate(ROUTES.CUSTOMERS);
-      } catch (err) {
-        console.error(err);
-        dispatch(
-          showToast({ message: "Failed to delete customer", type: "error" }),
-        );
-      }
-    }
+    confirmDelete({
+      itemName: customer?.full_name || "Customer",
+      itemType: "Customer",
+      onConfirm: async () => {
+        try {
+          await deleteCustomer(id).unwrap();
+          navigate(ROUTES.CUSTOMERS);
+        } catch (err) {
+          console.error(err);
+          dispatch(
+            showToast({ message: "Failed to delete customer", type: "error" }),
+          );
+        }
+      },
+    });
   };
 
   const quickActions = [
@@ -523,25 +525,25 @@ const CustomerView = () => {
                                   )}
                                   {canDelete("invoices") && (
                                     <button
-                                      onClick={async () => {
-                                        if (
-                                          window.confirm(
-                                            "Delete this invoice? This action cannot be undone.",
-                                          )
-                                        ) {
-                                          try {
-                                            await deleteInvoice(inv._id).unwrap();
-                                            refetchInvoices();
-                                          } catch (err) {
-                                            console.error(err);
-                                            dispatch(
-                                              showToast({
-                                                message: "Failed to delete invoice",
-                                                type: "error",
-                                              }),
-                                            );
-                                          }
-                                        }
+                                      onClick={() => {
+                                        confirmDelete({
+                                          itemName: inv.invoice_number || `Invoice #${inv._id}`,
+                                          itemType: "Invoice",
+                                          onConfirm: async () => {
+                                            try {
+                                              await deleteInvoice(inv._id).unwrap();
+                                              refetchInvoices();
+                                            } catch (err) {
+                                              console.error(err);
+                                              dispatch(
+                                                showToast({
+                                                  message: "Failed to delete invoice",
+                                                  type: "error",
+                                                }),
+                                              );
+                                            }
+                                          },
+                                        });
                                       }}
                                       className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
                                       title="Delete Invoice"

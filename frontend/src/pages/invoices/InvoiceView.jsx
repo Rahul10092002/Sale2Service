@@ -38,12 +38,15 @@ import {
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 import { LoadingSpinner } from "../../components/ui/index.js";
 import { usePermissions } from "../../hooks/usePermissions.js";
+import { ServiceIntegration } from "../../components/service/index.js";
+import { useDeleteGuard } from "../../context/DeleteGuardContext.jsx";
 
 const InvoiceView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { canEdit, canDelete } = usePermissions();
+  const { confirmDelete: confirmDeleteGuard } = useDeleteGuard();
 
   const routeLabels = {
     "/products": "Products",
@@ -86,7 +89,13 @@ const InvoiceView = () => {
     navigate(`${ROUTES.INVOICES}/${id}/edit`);
   };
 
-  const openDeleteModal = () => setShowDeleteModal(true);
+  const openDeleteModal = () => {
+    confirmDeleteGuard({
+      itemName: invoiceObj?.invoice_number || `Invoice #${id}`,
+      itemType: "Invoice",
+      onConfirm: confirmDelete,
+    });
+  };
 
   const confirmDelete = async () => {
     setIsDeleting(true);
@@ -659,31 +668,70 @@ navigate(location.state?.from || "/invoices")
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
                           {items.map((item, index) => {
-                            const batteryLine = invoiceBatteryLine(item);
+                            const isService = item.item_type === "SERVICE";
+                            const batteryLine = !isService ? invoiceBatteryLine(item) : "";
                             return (
                               <tr key={index}>
                                 <td
-                                  className="py-2 px-2 text-ink-base dark:text-slate-100 underline cursor-pointer"
+                                  className={`py-2 px-2 text-ink-base dark:text-slate-100 ${
+                                    !isService ? "underline cursor-pointer" : ""
+                                  }`}
                                   onClick={() => {
-                                    navigate(`${ROUTES.PRODUCTS}/${item._id}`, {
-                                      state: {
-                                        from: location.pathname,
-                                        label: "Invoices",
-                                      },
-                                    });
+                                    if (!isService && item._id) {
+                                      navigate(`${ROUTES.PRODUCTS}/${item._id}`, {
+                                        state: {
+                                          from: location.pathname,
+                                          label: "Invoices",
+                                        },
+                                      });
+                                    }
                                   }}
                                 >
-                                  <span className="block">
-                                    {item.product_name}
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-medium">
+                                      {item.product_name}
+                                    </span>
+                                    {isService && (
+                                      <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                        {item.service_category || "SERVICE"}
+                                      </span>
+                                    )}
+                                  </div>
                                   {batteryLine && (
                                     <span className="block text-[10px] font-normal text-ink-muted dark:text-slate-500 no-underline mt-[2px] cursor-default">
                                       {batteryLine}
                                     </span>
                                   )}
+                                  {item.notes && (
+                                    <span className="block text-[11px] font-normal italic text-gray-500 dark:text-slate-400 no-underline mt-[1px]">
+                                      Notes: {item.notes}
+                                    </span>
+                                  )}
+                                  {item.product_images && item.product_images.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1.5 no-underline">
+                                      {item.product_images.map((imgUrl, imgIdx) => (
+                                        <a
+                                          key={imgIdx}
+                                          href={imgUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="w-8 h-8 rounded border border-gray-200 dark:border-dark-border overflow-hidden block"
+                                        >
+                                          <img
+                                            src={imgUrl}
+                                            alt={`Item photo ${imgIdx + 1}`}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
                                 </td>
-                                <td className="py-2 px-2 text-ink-secondary dark:text-slate-400">
-                                  {item.serial_number}
+                                <td className="py-2 px-2 text-ink-secondary dark:text-slate-400 text-xs">
+                                  {isService && (!item.serial_number || item.serial_number.startsWith("SRV-"))
+                                    ? "N/A"
+                                    : item.serial_number || "N/A"}
                                 </td>
                                 <td className="py-2 px-2 text-ink-secondary dark:text-slate-400">
                                   {(() => {

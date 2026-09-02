@@ -108,56 +108,68 @@ const InvoiceGenerationPage = () => {
       }
     }
 
-    // Products validation
+    // Products / Services validation
     if (invoice_items.length === 0) {
-      newErrors["general"] = "At least one product is required";
+      newErrors["general"] = "At least one product or service item is required";
     } else {
       invoice_items.forEach((item) => {
-        if (!item.serial_number?.trim()) {
-          newErrors[`item.${item.id}.serial_number`] =
-            "Serial number is required";
-        }
-
-        if (!item.product_name?.trim()) {
-          newErrors[`item.${item.id}.product_name`] =
-            "Product name is required";
-        }
-
-        if (!item.company?.trim()) {
-          newErrors[`item.${item.id}.company`] = "Company/Brand is required";
-        }
-
-        if (!item.model_number?.trim()) {
-          newErrors[`item.${item.id}.model_number`] =
-            "Model number is required";
-        }
-
-        if (!item.selling_price || item.selling_price <= 0) {
-          newErrors[`item.${item.id}.selling_price`] =
-            "Valid selling price is required";
-        }
-
-        if (!item.warranty_start_date) {
-          newErrors[`item.${item.id}.warranty_start_date`] =
-            "Warranty start date is required";
-        }
-
-        if (item.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY) {
-          if (!item.battery_type) {
-            newErrors[`item.${item.id}.battery_type`] =
-              "Battery type is required";
+        if (item.item_type === "SERVICE") {
+          if (!item.product_name?.trim()) {
+            newErrors[`item.${item.id}.product_name`] =
+              "Service title / description is required";
           }
-          if (
-            item.battery_type ===
-            INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY
-          ) {
-            if (!item.vehicle_name?.trim()) {
-              newErrors[`item.${item.id}.vehicle_name`] =
-                "Vehicle name is required";
+          if (!item.selling_price || item.selling_price <= 0) {
+            newErrors[`item.${item.id}.selling_price`] =
+              "Valid service price is required";
+          }
+        } else {
+          // PRODUCT validation
+          if (!item.serial_number?.trim()) {
+            newErrors[`item.${item.id}.serial_number`] =
+              "Serial number is required";
+          }
+
+          if (!item.product_name?.trim()) {
+            newErrors[`item.${item.id}.product_name`] =
+              "Product name is required";
+          }
+
+          if (!item.company?.trim()) {
+            newErrors[`item.${item.id}.company`] = "Company/Brand is required";
+          }
+
+          if (!item.model_number?.trim()) {
+            newErrors[`item.${item.id}.model_number`] =
+              "Model number is required";
+          }
+
+          if (!item.selling_price || item.selling_price <= 0) {
+            newErrors[`item.${item.id}.selling_price`] =
+              "Valid selling price is required";
+          }
+
+          if (!item.warranty_start_date) {
+            newErrors[`item.${item.id}.warranty_start_date`] =
+              "Warranty start date is required";
+          }
+
+          if (item.product_category === INVOICE_CONSTANTS.PRODUCT_CATEGORIES.BATTERY) {
+            if (!item.battery_type) {
+              newErrors[`item.${item.id}.battery_type`] =
+                "Battery type is required";
             }
-            if (!item.vehicle_number_plate?.trim()) {
-              newErrors[`item.${item.id}.vehicle_number_plate`] =
-                "Number plate is required";
+            if (
+              item.battery_type ===
+              INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY
+            ) {
+              if (!item.vehicle_name?.trim()) {
+                newErrors[`item.${item.id}.vehicle_name`] =
+                  "Vehicle name is required";
+              }
+              if (!item.vehicle_number_plate?.trim()) {
+                newErrors[`item.${item.id}.vehicle_number_plate`] =
+                  "Number plate is required";
+              }
             }
           }
         }
@@ -183,16 +195,12 @@ const InvoiceGenerationPage = () => {
         customer: currentInvoice.customer,
         invoice: {
           ...currentInvoice.invoice,
-          // Ensure correct amounts are sent for each payment status.
-          // For PAID, we send full amount so backend sets amount_due=0 and due_date=null.
           amount_paid: isPaid
             ? Number(currentInvoice.invoice.total_amount || 0)
             : currentInvoice.invoice.payment_status === "PARTIAL"
             ? Number(currentInvoice.invoice.amount_paid || 0)
             : 0,
-          // PAID invoices should not have due date
           due_date: isPaid ? null : currentInvoice.invoice.due_date,
-          // Send computed fields so backend doesn't recalculate incorrectly
           subtotal: Number(currentInvoice.invoice.subtotal || 0),
           tax: Number(currentInvoice.invoice.tax || 0),
           total_amount: Number(currentInvoice.invoice.total_amount || 0),
@@ -207,10 +215,9 @@ const InvoiceGenerationPage = () => {
       const result = await createInvoice(payload).unwrap();
       setSubmitResult({ success: true, data: result });
 
-      // Save all submitted items to ProductMaster with their final values.
-      // Fire-and-forget: don't block success flow on these background saves.
+      // Save only PRODUCT items to ProductMaster
       currentInvoice.invoice_items.forEach((item) => {
-        if (item.product_name?.trim()) {
+        if (item.item_type !== "SERVICE" && item.product_name?.trim()) {
           saveMaster({
             product_name: item.product_name.trim(),
             product_category: item.product_category,
@@ -224,7 +231,7 @@ const InvoiceGenerationPage = () => {
             warranty_type: item.warranty_type,
             warranty_duration_months: item.warranty_duration_months,
             product_images: item.product_images,
-          }).catch(() => {}); // silent fail — non-critical
+          }).catch(() => {});
         }
       });
 

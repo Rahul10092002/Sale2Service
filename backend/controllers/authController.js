@@ -225,4 +225,105 @@ export default class AuthController {
       });
     }
   }
+
+  /**
+   * Verify Delete Security Password
+   * POST /auth/verify-delete-password
+   */
+  async verifyDeletePassword(req, res) {
+    try {
+      const { delete_password } = req.body;
+      const { userId, shopId } = req.user || {};
+
+      if (!delete_password) {
+        return res.status(400).json({
+          success: false,
+          message: "Delete password is required",
+        });
+      }
+
+      const result = await authService.verifyDeletePassword({
+        userId,
+        shopId,
+        deletePassword: delete_password,
+      });
+
+      if (!result.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: "Incorrect delete security password. Access denied.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Delete password verified successfully",
+        is_custom: result.isCustom,
+      });
+    } catch (error) {
+      console.error("Verify Delete Password Error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to verify delete password",
+      });
+    }
+  }
+
+  /**
+   * Set or Update Delete Security Password (Shop Owner only)
+   * POST /auth/set-delete-password
+   */
+  async setDeletePassword(req, res) {
+    try {
+      const { current_owner_password, new_delete_password } = req.body;
+      const { userId, shopId, role } = req.user || {};
+
+      // Ensure user is shop owner / admin
+      if (role !== "OWNER" && role !== "ADMIN") {
+        return res.status(403).json({
+          success: false,
+          message: "Only shop owners can configure the delete security password.",
+        });
+      }
+
+      await authService.updateDeletePassword({
+        userId,
+        shopId,
+        currentOwnerPassword: current_owner_password,
+        newDeletePassword: new_delete_password,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Delete security password updated successfully",
+      });
+    } catch (error) {
+      console.error("Set Delete Password Error:", error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Failed to update delete security password",
+      });
+    }
+  }
+
+  /**
+   * Get Delete Password Configuration Status
+   * GET /auth/delete-password-status
+   */
+  async getDeletePasswordStatus(req, res) {
+    try {
+      const { shopId } = req.user || {};
+      const status = await authService.getDeletePasswordStatus(shopId);
+
+      return res.status(200).json({
+        success: true,
+        data: status,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch delete security password status",
+      });
+    }
+  }
 }

@@ -24,9 +24,11 @@ invoiceRouter.get("/", checkPermission("invoices_view"), (req, res) =>
   invoiceController.getInvoices(req, res),
 );
 
-// Get single invoice by ID
-invoiceRouter.get("/:id", checkPermission("invoices_view"), (req, res) =>
-  invoiceController.getInvoiceById(req, res),
+// Get next invoice number
+invoiceRouter.get(
+  "/next-number",
+  checkPermission("invoices_view"),
+  (req, res) => invoiceController.getNextInvoiceNumber(req, res),
 );
 
 // Search product by serial number
@@ -36,11 +38,9 @@ invoiceRouter.get(
   (req, res) => invoiceController.searchBySerialNumber(req, res),
 );
 
-// Get next invoice number
-invoiceRouter.get(
-  "/next-number",
-  checkPermission("invoices_view"),
-  (req, res) => invoiceController.getNextInvoiceNumber(req, res),
+// Get single invoice by ID
+invoiceRouter.get("/:id", checkPermission("invoices_view"), (req, res) =>
+  invoiceController.getInvoiceById(req, res),
 );
 
 // Check if serial number exists

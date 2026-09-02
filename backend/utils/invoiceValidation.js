@@ -113,55 +113,91 @@ export const validateInvoicePayload = ({
     const label = `Item ${index + 1}`;
     const quantity = Number(item.quantity);
     const unitPrice = Number(item.selling_price ?? item.price);
+    const itemType = String(item.item_type || "PRODUCT").toUpperCase();
+    item.item_type = itemType;
 
-    if (isBlank(item.serial_number)) {
-      errors.push(`${label}: serial number is required`);
+    if (itemType === "SERVICE") {
+      if (isBlank(item.product_name)) {
+        errors.push(`${label}: service description is required`);
+      }
+
+      if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+        errors.push(`${label}: service price must be greater than 0`);
+      }
+
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        errors.push(`${label}: quantity must be greater than 0`);
+      }
+
+      // Auto-generate service reference ID if blank
+      if (isBlank(item.serial_number)) {
+        item.serial_number = `SRV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      }
+
+      // Handle service warranty dates if duration > 0
+      const duration = Number(item.warranty_duration_months || 0);
+      if (duration > 0) {
+        const startDate = item.warranty_start_date
+          ? new Date(item.warranty_start_date)
+          : invoice.invoice_date
+          ? new Date(invoice.invoice_date)
+          : new Date();
+        item.warranty_start_date = startDate;
+        const endDate = new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + duration);
+        item.warranty_end_date = endDate;
+      }
     } else {
-      const normalizedSerial = String(item.serial_number).trim().toUpperCase();
-      if (seenSerialNumbers.has(normalizedSerial)) {
-        errors.push(`${label}: duplicate serial number ${normalizedSerial}`);
-      }
-      seenSerialNumbers.add(normalizedSerial);
-    }
-
-    if (isBlank(item.product_name)) {
-      errors.push(`${label}: product name is required`);
-    }
-
-    if (isBlank(item.company)) {
-      errors.push(`${label}: company or brand is required`);
-    }
-
-    if (isBlank(item.model_number)) {
-      errors.push(`${label}: model number is required`);
-    }
-
-    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-      errors.push(`${label}: selling price must be greater than 0`);
-    }
-
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      errors.push(`${label}: quantity must be greater than 0`);
-    }
-
-    if (!item.warranty_start_date) {
-      errors.push(`${label}: warranty start date is required`);
-    }
-
-    if (
-      item.product_category === "BATTERY" &&
-      !String(item.battery_type || "").trim()
-    ) {
-      errors.push(`${label}: battery type is required`);
-    }
-
-    if (item.battery_type === "VEHICLE_BATTERY") {
-      if (isBlank(item.vehicle_name)) {
-        errors.push(`${label}: vehicle name is required`);
+      // PRODUCT validation
+      if (isBlank(item.serial_number)) {
+        errors.push(`${label}: serial number is required`);
+      } else {
+        const normalizedSerial = String(item.serial_number).trim().toUpperCase();
+        if (seenSerialNumbers.has(normalizedSerial)) {
+          errors.push(`${label}: duplicate serial number ${normalizedSerial}`);
+        }
+        seenSerialNumbers.add(normalizedSerial);
       }
 
-      if (isBlank(item.vehicle_number_plate)) {
-        errors.push(`${label}: number plate is required`);
+      if (isBlank(item.product_name)) {
+        errors.push(`${label}: product name is required`);
+      }
+
+      if (isBlank(item.company)) {
+        errors.push(`${label}: company or brand is required`);
+      }
+
+      if (isBlank(item.model_number)) {
+        errors.push(`${label}: model number is required`);
+      }
+
+      if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+        errors.push(`${label}: selling price must be greater than 0`);
+      }
+
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        errors.push(`${label}: quantity must be greater than 0`);
+      }
+
+      if (!item.warranty_start_date) {
+        errors.push(`${label}: warranty start date is required`);
+      }
+
+      if (
+        item.product_category === "BATTERY" &&
+        !String(item.battery_type || "").trim()
+      ) {
+        errors.push(`${label}: battery type is required`);
+      }
+
+      if (item.battery_type === "VEHICLE_BATTERY") {
+        if (isBlank(item.vehicle_name)) {
+          errors.push(`${label}: vehicle name is required`);
+        }
+
+        if (isBlank(item.vehicle_number_plate)) {
+          errors.push(`${label}: number plate is required`);
+        }
       }
     }
   });

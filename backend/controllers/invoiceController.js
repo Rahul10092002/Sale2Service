@@ -10,6 +10,8 @@ import { sendWhatsappMessageViaMSG91 } from "../config/msg91.js";
 import { InvoiceDocumentService } from "../services/invoiceDocumentService.js";
 import InvoiceCounter from "../models/InvoiceCounter.js";
 import ProductMaster from "../models/ProductMaster.js";
+import InventoryItem from "../models/InventoryItem.js";
+import Dealer from "../models/Dealer.js";
 import {
   buildInvoiceNumberPreview,
   calculateInvoiceTotals,
@@ -291,7 +293,7 @@ export default class InvoiceController {
         await invoiceItem.save({ session });
         createdInvoiceItems.push(invoiceItem);
 
-        // Step 6b: Deduct stock from ProductMaster if item is a PRODUCT and template exists
+        // Step 6b: Deduct stock from ProductMaster & update/create InventoryItem status to SOLD
         if (itemType === "PRODUCT" && item.product_name?.trim()) {
           try {
             await ProductMaster.findOneAndUpdate(
@@ -302,8 +304,57 @@ export default class InvoiceController {
               { $inc: { stock_quantity: -(item.quantity || 1) } },
               { session }
             );
+
+            const serialUpper = (item.serial_number || "").toUpperCase().trim();
+            let invItem = null;
+
+            if (serialUpper) {
+              invItem = await InventoryItem.findOne({
+                shop_id: user.shopId,
+                serial_number: serialUpper,
+                deleted_at: null,
+              }).session(session);
+            }
+
+            if (invItem) {
+              invItem.status = "SOLD";
+              invItem.sold_at = new Date();
+              invItem.invoice_id = newInvoice._id;
+              invItem.invoice_item_id = invoiceItem._id;
+              await invItem.save({ session });
+
+              invoiceItem.inventory_item_id = invItem._id;
+              if (invItem.dealer_id) {
+                invoiceItem.dealer_id = invItem.dealer_id;
+                const d = await Dealer.findById(invItem.dealer_id).session(session);
+                if (d) invoiceItem.purchase_source = d.name;
+              }
+              await invoiceItem.save({ session });
+            } else {
+              const pm = await ProductMaster.findOne({
+                product_name: item.product_name.trim(),
+                shop_id: user.shopId,
+              }).session(session);
+
+              if (pm) {
+                invItem = new InventoryItem({
+                  shop_id: user.shopId,
+                  product_id: pm._id,
+                  product_name: item.product_name,
+                  serial_number: serialUpper,
+                  status: "SOLD",
+                  sold_at: new Date(),
+                  invoice_id: newInvoice._id,
+                  invoice_item_id: invoiceItem._id,
+                  purchase_source: item.purchase_source || "",
+                });
+                await invItem.save({ session });
+                invoiceItem.inventory_item_id = invItem._id;
+                await invoiceItem.save({ session });
+              }
+            }
           } catch (stockErr) {
-            console.error("Stock deduction failed for", item.product_name, stockErr);
+            console.error("Stock deduction / inventory link failed for", item.product_name, stockErr);
           }
         }
 
@@ -1303,22 +1354,57 @@ export default class InvoiceController {
         });
       }
 
-      // Get invoice items
+      // Get invoice items with populated dealer_id
       const invoiceItems = await InvoiceItem.find({
         invoice_id: invoice._id,
         deleted_at: null,
-      });
+      }).populate("dealer_id");
 
-      // Get service plans for each invoice item and transform data
+      // Get service plans & inventory origin details for each item
       const itemsWithServicePlans = await Promise.all(
         invoiceItems.map(async (item) => {
+          const itemData = item.toObject();
+
+          // 1. Fetch InventoryItem origin details by serial_number or inventory_item_id
+          if (item.serial_number || item.inventory_item_id) {
+            const query = item.inventory_item_id
+              ? { _id: item.inventory_item_id, shop_id: user.shopId }
+              : { serial_number: item.serial_number.toUpperCase(), shop_id: user.shopId, deleted_at: null };
+
+            const invItem = await InventoryItem.findOne(query)
+              .populate("dealer_id")
+              .populate("purchase_order_id");
+
+            if (invItem) {
+              itemData.inventory_item_id = invItem._id;
+              if (invItem.dealer_id) {
+                itemData.dealer_id = invItem.dealer_id;
+              }
+              if (invItem.purchase_invoice_ref) {
+                itemData.purchase_invoice_ref = invItem.purchase_invoice_ref;
+              }
+              if (invItem.purchase_date) {
+                itemData.purchase_date = invItem.purchase_date;
+              }
+              if (invItem.purchase_order_id) {
+                if (invItem.purchase_order_id.purchase_bill_image) {
+                  itemData.purchase_bill_image = invItem.purchase_order_id.purchase_bill_image;
+                }
+                if (invItem.purchase_order_id.dealer_invoice_no && !itemData.purchase_invoice_ref) {
+                  itemData.purchase_invoice_ref = invItem.purchase_order_id.dealer_invoice_no;
+                }
+                if (invItem.purchase_order_id.purchase_date && !itemData.purchase_date) {
+                  itemData.purchase_date = invItem.purchase_order_id.purchase_date;
+                }
+              }
+            }
+          }
+
+          // 2. Fetch service plan
           const servicePlan = await ServicePlan.findOne({
             invoice_item_id: item._id,
             deleted_at: null,
           });
-
-          // Transform item to include service plan data as frontend expects
-          const itemData = item.toObject();
 
           if (servicePlan) {
             itemData.service_plan_enabled = servicePlan.is_active;
@@ -1333,7 +1419,7 @@ export default class InvoiceController {
                 ?.toISOString()
                 ?.split("T")[0],
               service_description: servicePlan.notes || "",
-              service_charge: 0, // Default since not in ServicePlan model
+              service_charge: 0,
               is_active: servicePlan.is_active,
             };
           } else {

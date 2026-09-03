@@ -58,6 +58,7 @@ const productMasterSchema = new mongoose.Schema(
     },
     stock_quantity: { type: Number, default: 0 },
     min_stock_alert: { type: Number, default: 5 },
+    require_serial_tracking: { type: Boolean, default: true },
   },
   { timestamps: true },
 );

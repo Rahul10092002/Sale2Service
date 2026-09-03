@@ -153,6 +153,16 @@ const invoiceItemSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    dealer_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Dealer",
+      default: null,
+    },
+    inventory_item_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "InventoryItem",
+      default: null,
+    },
     status: {
       type: String,
       enum: ["ACTIVE", "REPLACED", "RETURNED", "UNDER_SERVICE"],

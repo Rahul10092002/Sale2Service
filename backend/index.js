@@ -16,6 +16,9 @@ import logsRouter from "./routes/logs.js";
 import SchedulerService from "./scheduler/index.js";
 import { festivalScheduleRouter } from "./routes/festivalSchedule.js";
 import { roleRouter } from "./routes/role.js";
+import dealerRouter from "./routes/dealer.js";
+import inventoryRouter from "./routes/inventory.js";
+import warrantyRouter from "./routes/warranty.js";
 
 dotenv.config();
 
@@ -50,6 +53,9 @@ app.use("/v1/roles", roleRouter);
 app.use("/v1/invoices", invoiceRouter);
 app.use("/v1/customers", customerRouter);
 app.use("/v1/products", productRouter);
+app.use("/v1/dealers", dealerRouter);
+app.use("/v1/inventory", inventoryRouter);
+app.use("/v1/warranty", warrantyRouter);
 app.use("/v1/services", serviceRouter);
 // Removed unused service plan routes
 app.use("/v1/dashboard", dashboardRouter);

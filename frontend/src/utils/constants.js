@@ -23,6 +23,9 @@ export const ROUTES = {
   INVOICES: "/invoices",
   SALES: "/sales",
   WARRANTY: "/warranty",
+  DEALERS: "/dealers",
+  PURCHASE_INTAKE: "/purchases/new",
+  PURCHASES: "/purchases",
   SERVICES: "/services",
   LOGS: "/logs",
   FESTIVAL_SCHEDULE: "/festival-schedule",
@@ -52,6 +55,23 @@ export const API_ENDPOINTS = {
     UPDATE: (id) => `/users/${id}`,
     DELETE: (id) => `/users/${id}`,
   },
+  DEALERS: {
+    LIST: "/dealers",
+    ALL_HISTORY: "/dealers/all-history",
+    CREATE: "/dealers",
+    UPDATE: (id) => `/dealers/${id}`,
+    DELETE: (id) => `/dealers/${id}`,
+  },
+  INVENTORY: {
+    LIST: "/inventory/items",
+    RECEIVING_SLIP: "/inventory/receiving-slip",
+    LINK_DEALER: (itemId) => `/inventory/items/${itemId}/link-dealer`,
+    UPDATE_STATUS: (itemId) => `/inventory/items/${itemId}/status`,
+    LOGS: (itemId) => `/inventory/items/${itemId}/logs`,
+  },
+  WARRANTY: {
+    LOOKUP: (query) => `/warranty/lookup?query=${encodeURIComponent(query)}`,
+  },
   INVOICES: {
     LIST: "/invoices",
     CREATE: "/invoices",
@@ -65,12 +85,6 @@ export const API_ENDPOINTS = {
     LIST: "/products",
     CREATE: "/products",
     DELETE: (id) => `/products/${id}`,
-  },
-  INVENTORY: {
-    LIST: "/products/inventory",
-    SAVE: "/products/master-save",
-    UPDATE: (id) => `/products/inventory/${id}`,
-    DELETE: (id) => `/products/inventory/${id}`,
   },
   CUSTOMERS: {
     LIST: "/customers",

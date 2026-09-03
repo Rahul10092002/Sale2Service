@@ -61,7 +61,9 @@ export const baseApi = createApi({
     "PaymentMethodStats",
     "ServiceReminders",
     "WarrantyReminders",
-    "WarrantyStats",
+    "Dealer",
+    "Inventory",
+    "Warranty",
   ],
 
   // Prevent unnecessary API calls on focus/navigation

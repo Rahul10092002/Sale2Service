@@ -7,7 +7,8 @@ import {
   Box,
   Wrench,
   Activity,
-  Table
+  Table,
+  ShieldCheck,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "../../utils/constants.js";
@@ -47,6 +48,13 @@ const navItems = [
     label: "Inventory",
     icon: <Table className="w-4 h-4" />,
     path: ROUTES.INVENTORY,
+    permission: "inventory_view",
+  },
+  {
+    key: "warranty",
+    label: "Warranty Lookup",
+    icon: <ShieldCheck className="w-4 h-4 text-blue-500" />,
+    path: ROUTES.WARRANTY,
     permission: "inventory_view",
   },
   {

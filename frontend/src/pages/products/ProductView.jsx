@@ -25,6 +25,7 @@ import {
   Maximize2,
   ExternalLink,
   Download,
+  ScanLine,
 } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import {
@@ -37,6 +38,7 @@ import {
   useReplaceSerialNumberMutation,
 } from "../../features/products/productApi.js";
 import EditProductModal from "./EditProductModal.jsx";
+import SerialScanner from "../../components/invoice/SerialScanner.jsx";
 import {
   useGetInvoiceItemServicesQuery,
   useUpdateServicePlanMutation,
@@ -117,6 +119,7 @@ const ProductView = () => {
 
   // Replace serial number state & mutation
   const [showReplaceSerialModal, setShowReplaceSerialModal] = useState(false);
+  const [showReplaceScanner, setShowReplaceScanner] = useState(false);
   const [newSerialNumber, setNewSerialNumber] = useState("");
   const [replacementReason, setReplacementReason] = useState("");
   const [replaceSerialNumber, { isLoading: replacingSerial }] =
@@ -1677,13 +1680,23 @@ const ProductView = () => {
                 <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
                   New Serial Number *
                 </label>
-                <input
-                  type="text"
-                  value={newSerialNumber}
-                  onChange={(e) => setNewSerialNumber(e.target.value.toUpperCase())}
-                  placeholder="Enter new product serial number"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-card font-mono text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                />
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={newSerialNumber}
+                    onChange={(e) => setNewSerialNumber(e.target.value.toUpperCase())}
+                    placeholder="Enter or scan new product serial number"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-card font-mono text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 uppercase"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowReplaceScanner(true)}
+                    className="px-3 py-2 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 rounded-lg text-xs font-bold hover:bg-amber-200 dark:hover:bg-amber-900/60 flex items-center gap-1.5 shrink-0 border border-amber-200 dark:border-amber-800"
+                    title="Scan serial barcode with camera"
+                  >
+                    <ScanLine className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Scan
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -1718,6 +1731,17 @@ const ProductView = () => {
             </div>
           </DialogBody>
         </Modal>
+      )}
+
+      {/* Camera Serial Scanner for Replacement */}
+      {showReplaceScanner && (
+        <SerialScanner
+          onScan={(scannedCode) => {
+            setNewSerialNumber(scannedCode.toUpperCase());
+            setShowReplaceScanner(false);
+          }}
+          onClose={() => setShowReplaceScanner(false)}
+        />
       )}
     </>
   );

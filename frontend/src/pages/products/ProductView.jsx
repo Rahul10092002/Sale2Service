@@ -450,17 +450,37 @@ const ProductView = () => {
       <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg p-2">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-3">
-            <button
-              onClick={() => navigate(from)}
-              className="inline-flex items-center px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors duration-200"
-            >
-              <ArrowLeft size={16} className="mr-2" />
-              Back to {label}
-            </button>
-            <h1 className="text-lg font-bold text-ink-base dark:text-slate-100 mt-1">
-              Product Details
-            </h1>
+          <div className="bg-white dark:bg-dark-card p-3.5 sm:p-4 rounded-xl shadow-xs border border-gray-200 dark:border-dark-border mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate(from)}
+                className="inline-flex items-center px-2.5 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+              >
+                <ArrowLeft size={14} className="mr-1.5" />
+                Back to {label}
+              </button>
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                Product Details
+              </h1>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {product?.invoice?._id && (
+                <Link
+                  to={`${ROUTES.INVOICES}/${product.invoice._id}`}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                >
+                  <Receipt className="w-3.5 h-3.5" /> View Invoice
+                </Link>
+              )}
+              {canEdit("products") && (
+                <button
+                  onClick={() => setShowEditProductModal(true)}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-2xs transition-colors"
+                >
+                  <Edit className="w-3.5 h-3.5" /> Edit Product
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Main Content Grid */}
@@ -468,59 +488,57 @@ const ProductView = () => {
             {/* Left Column - Product Info */}
             <div className="xl:col-span-2 space-y-3">
               {/* Product Header Card */}
-              <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-500 to-indigo-600 px-3 py-2 rounded-xl">
-                  <div className="flex items-center space-x-4">
-                    {/* Product Icon */}
-                    <div className="flex-shrink-0">
-                      <div className="w-14 h-14 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center">
-                        <Package size={24} className="text-purple-500" />
-                      </div>
+              <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-xl p-3.5 sm:p-5 text-white shadow-sm border border-purple-500">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+                      <Package className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    {/* Product Info */}
-                    <div className="text-white">
-                      <h2 className="text-base font-bold capitalize">
+                    <div className="min-w-0">
+                      <h2 className="text-base sm:text-lg font-bold capitalize leading-tight truncate">
                         {product.product_name || "Unknown Product"}
                       </h2>
-                      <p className="text-purple-100">
-                        Serial #{product.serial_number || "N/A"}
-                      </p>
-                      <p className="text-purple-100">
-                        Invoice #{product?.invoice?.invoice_number}
-                      </p>
-                      <p className="text-purple-100">
-                        Invoice Date: {formatDate(product?.invoice?.invoice_date)}
-                      </p>
-
-                      <div className="flex items-center space-x-4 mt-2">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            product.status
-                              ? {
-                                  active:
-                                    "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300",
-                                  inactive:
-                                    "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300",
-                                  warranty:
-                                    "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
-                                }[product.status.toLowerCase()] ||
-                                "bg-gray-100 text-gray-800 dark:bg-slate-800/80 dark:text-slate-200"
-                              : "bg-gray-100 text-gray-800 dark:bg-slate-800/80 dark:text-slate-200"
-                          }`}
-                        >
-                          {product.status || "Unknown"}
-                        </span>
-                        {product.is_serial_replaced && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                            <RotateCcw className="w-3 h-3 mr-1" />
-                            Serial Replaced
-                          </span>
+                      <div className="flex items-center gap-3 text-xs text-purple-100 flex-wrap mt-0.5 font-mono">
+                        <span>SN: {product.serial_number || "N/A"}</span>
+                        {product?.invoice?.invoice_number && (
+                          <span>Inv: #{product.invoice.invoice_number}</span>
                         )}
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white dark:bg-slate-800 text-purple-800 dark:text-purple-200">
-                          {formatCurrency(product.selling_price)}
-                        </span>
                       </div>
+                      {product?.invoice?.invoice_date && (
+                        <p className="text-[11px] text-purple-200 mt-0.5">
+                          Issued: {formatDate(product.invoice.invoice_date)}
+                        </p>
+                      )}
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-2 pt-2.5 sm:pt-0 border-t border-purple-500/40 sm:border-0 w-full sm:w-auto flex-wrap">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                        product.status
+                          ? {
+                              active:
+                                "bg-emerald-100 text-emerald-900",
+                              inactive:
+                                "bg-red-100 text-red-900",
+                              warranty:
+                                "bg-blue-100 text-blue-900",
+                            }[product.status.toLowerCase()] ||
+                            "bg-gray-100 text-gray-900"
+                          : "bg-gray-100 text-gray-900"
+                      }`}
+                    >
+                      {product.status || "Unknown"}
+                    </span>
+                    {product.is_serial_replaced && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-900">
+                        <RotateCcw className="w-3 h-3 mr-1" />
+                        Replaced
+                      </span>
+                    )}
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-white text-purple-900 shadow-2xs">
+                      {formatCurrency(product.selling_price)}
+                    </span>
                   </div>
                 </div>
               </div>

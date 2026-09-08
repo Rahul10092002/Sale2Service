@@ -114,7 +114,7 @@ const CustomerView = () => {
       color: "text-green-600",
       bgColor: "bg-green-50",
       hoverColor: "hover:bg-green-100",
-      action: () => navigate(`${ROUTES.INVOICES}/create?customer_id=${id}`),
+      action: () => navigate(`${ROUTES.NEW_INVOICE}?customer_id=${id}`),
       show: canCreate("invoices"),
     },
     {
@@ -177,45 +177,84 @@ const CustomerView = () => {
       <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg">
         <div className="max-w-7xl mx-auto px-2 py-3">
           {/* Header */}
-          <div className="mb-3">
-            <Button
-              onClick={() => navigate(from)}
-              variant="outline"
-              className="mb-4 flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to {label}
-            </Button>
+          {/* Header */}
+          <div className="bg-white dark:bg-dark-card p-3.5 sm:p-4 rounded-xl shadow-xs border border-gray-200 dark:border-dark-border mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate(from)}
+                className="inline-flex items-center px-2.5 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+              >
+                <ArrowLeft size={14} className="mr-1.5" />
+                Back to {label}
+              </button>
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                Customer Details
+              </h1>
+            </div>
+            {/* Quick Action buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {canCreate("invoices") && (
+                <button
+                  onClick={() => navigate(`${ROUTES.NEW_INVOICE}?customer_id=${id}`)}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 shadow-2xs transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5" /> Create Invoice
+                </button>
+              )}
+              {customer?.whatsapp_number && (
+                <button
+                  onClick={() => {
+                    const phone = customer?.whatsapp_number?.replace(/[^\d]/g, "");
+                    if (phone) window.open(`https://wa.me/${phone}`, "_blank");
+                  }}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
+                </button>
+              )}
+              {canEdit("customers") && (
+                <button
+                  onClick={() => navigate(`${ROUTES.CUSTOMERS}/${id}/edit`)}
+                  className="inline-flex items-center justify-center p-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  title="Edit Customer"
+                >
+                  <Edit3 className="w-4 h-4 text-blue-600" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
             {/* Main Content */}
             <div className="lg:col-span-3 space-y-3">
               {/* Customer Header Card */}
-              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl px-3 py-2 text-white">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h1 className="text-lg font-bold mb-1">
-                      {customer.full_name}
-                    </h1>
-                    <div className="flex items-center gap-4 text-blue-100">
-                      <span className="flex items-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        {customer.whatsapp_number}
-                      </span>
-                      {customer.email && (
-                        <span className="flex items-center gap-2">
-                          <Mail className="w-4 h-4" />
-                          {customer.email}
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-3.5 sm:p-5 text-white shadow-sm border border-blue-500">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                      <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <h1 className="text-base sm:text-lg font-bold leading-tight truncate">
+                        {customer.full_name}
+                      </h1>
+                      <div className="flex items-center gap-3 text-xs text-blue-100 flex-wrap mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          <span className="font-mono">{customer.whatsapp_number}</span>
                         </span>
-                      )}
+                        {customer.email && (
+                          <span className="flex items-center gap-1 truncate max-w-[200px]">
+                            <Mail className="w-3 h-3" />
+                            <span>{customer.email}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <span className="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">
+                  <div className="self-start sm:self-auto pt-2 sm:pt-0 border-t border-blue-500/40 sm:border-0 w-full sm:w-auto flex justify-between sm:justify-end items-center">
+                    <span className="text-[11px] text-blue-100 sm:hidden">Customer Type</span>
+                    <span className="inline-flex px-2.5 py-1 text-xs font-bold rounded-full bg-white/90 text-blue-900 shadow-2xs">
                       {customer.customer_type || "RETAIL"}
                     </span>
                   </div>
@@ -434,7 +473,7 @@ const CustomerView = () => {
                     </div>
                     <Button
                       onClick={() =>
-                        navigate(`${ROUTES.INVOICES}/create?customer_id=${id}`)
+                        navigate(`${ROUTES.NEW_INVOICE}?customer_id=${id}`)
                       }
                       className="mt-4 flex items-center gap-2"
                     >
@@ -444,27 +483,113 @@ const CustomerView = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="overflow-x-auto w-full">
-                      <table className="w-full">
+                    {/* MOBILE CARD VIEW (< md screens) – ZERO horizontal scroll */}
+                    <div className="block md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                      {invoices.map((inv) => (
+                        <div key={inv._id} className="p-3 space-y-2 hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition-colors">
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className="font-bold text-xs text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline"
+                              onClick={() =>
+                                navigate(`${ROUTES.INVOICES}/${inv._id}`, {
+                                  state: { from: location.pathname, label: "Customers" },
+                                })
+                              }
+                            >
+                              {inv.invoice_number}
+                            </span>
+                            <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                              ₹{inv.total_amount}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
+                            <span>{formatDate(inv.invoice_date)}</span>
+                            <span className="font-medium text-gray-700 dark:text-gray-300">{inv.payment_mode || "CASH"}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-gray-800">
+                            <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full ${inv.payment_status === "PAID" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" : inv.payment_status === "PARTIAL" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200" : "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300"}`}>
+                              {inv.payment_status}
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() =>
+                                  navigate(`${ROUTES.INVOICES}/${inv._id}`, {
+                                    state: { from: location.pathname, label: "Customers" },
+                                  })
+                                }
+                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors"
+                                title="View Invoice"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </button>
+                              {canEdit("invoices") && (
+                                <button
+                                  onClick={() => navigate(`${ROUTES.INVOICES}/${inv._id}/edit`)}
+                                  className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors"
+                                  title="Edit Invoice"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {canDelete("invoices") && (
+                                <button
+                                  onClick={() => {
+                                    confirmDelete({
+                                      itemName: inv.invoice_number || `Invoice #${inv._id}`,
+                                      itemType: "Invoice",
+                                      onConfirm: async () => {
+                                        try {
+                                          await deleteInvoice(inv._id).unwrap();
+                                          refetchInvoices();
+                                        } catch (err) {
+                                          console.error(err);
+                                          dispatch(
+                                            showToast({
+                                              message: "Failed to delete invoice",
+                                              type: "error",
+                                            }),
+                                          );
+                                        }
+                                      },
+                                    });
+                                  }}
+                                  className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
+                                  title="Delete Invoice"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* DESKTOP TABLE VIEW (≥ md screens) */}
+                    <div className="hidden md:block overflow-x-auto w-full">
+                      <table className="w-full text-xs text-gray-700 dark:text-gray-200">
                         <thead>
-                          <tr className="border-b border-gray-200 dark:border-dark-border">
-                            <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">Invoice No</th>
-                            <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">Date</th>
-                            <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">Total</th>
-                            <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">Payment</th>
-                            <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">Status</th>
-                            <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">Created By</th>
-                            <th className="text-right py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">Actions</th>
+                          <tr className="border-b border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-gray-900/50">
+                            <th className="text-left py-2.5 px-3 font-semibold text-xs text-gray-600 dark:text-slate-400">Invoice No</th>
+                            <th className="text-left py-2.5 px-3 font-semibold text-xs text-gray-600 dark:text-slate-400">Date</th>
+                            <th className="text-left py-2.5 px-3 font-semibold text-xs text-gray-600 dark:text-slate-400">Total</th>
+                            <th className="text-left py-2.5 px-3 font-semibold text-xs text-gray-600 dark:text-slate-400">Payment</th>
+                            <th className="text-left py-2.5 px-3 font-semibold text-xs text-gray-600 dark:text-slate-400">Status</th>
+                            <th className="text-left py-2.5 px-3 font-semibold text-xs text-gray-600 dark:text-slate-400">Created By</th>
+                            <th className="text-right py-2.5 px-3 font-semibold text-xs text-gray-600 dark:text-slate-400">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {invoices.map((inv) => (
                             <tr
                               key={inv._id}
-                              className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle"
+                              className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle transition-colors"
                             >
                               <td
-                                className="py-2 px-2 text-xs font-semibold text-ink-base dark:text-slate-200 whitespace-nowrap cursor-pointer hover:underline"
+                                className="py-2.5 px-3 font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline"
                                 onClick={() =>
                                   navigate(`${ROUTES.INVOICES}/${inv._id}`, {
                                     state: {
@@ -476,25 +601,25 @@ const CustomerView = () => {
                               >
                                 {inv.invoice_number}
                               </td>
-                              <td className="py-2 px-2 text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">
+                              <td className="py-2.5 px-3 text-gray-600 dark:text-slate-400">
                                 {formatDate(inv.invoice_date)}
                               </td>
-                              <td className="py-2 px-2 text-xs font-bold text-ink-base dark:text-slate-100 whitespace-nowrap">
+                              <td className="py-2.5 px-3 font-bold text-emerald-600 dark:text-emerald-400">
                                 ₹{inv.total_amount}
                               </td>
-                              <td className="py-2 px-2 text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">
+                              <td className="py-2.5 px-3 text-gray-600 dark:text-slate-400">
                                 {inv.payment_mode}
                               </td>
-                              <td className="py-2 px-2 whitespace-nowrap">
-                                <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded-full ${inv.payment_status === "PAID" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" : inv.payment_status === "PARTIAL" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200" : "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300"}`}>
+                              <td className="py-2.5 px-3">
+                                <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full ${inv.payment_status === "PAID" ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" : inv.payment_status === "PARTIAL" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200" : "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300"}`}>
                                   {inv.payment_status}
                                 </span>
                               </td>
-                              <td className="py-2 px-2 text-[10px] text-ink-muted dark:text-slate-500 whitespace-nowrap">
+                              <td className="py-2.5 px-3 text-[11px] text-gray-500 dark:text-slate-500">
                                 {inv.created_by?.name || inv.created_by || "-"}
                               </td>
-                              <td className="py-2 px-2 text-right">
-                                <div className="flex items-center justify-end gap-1 min-w-[max-content]">
+                              <td className="py-2.5 px-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() =>
                                       navigate(`${ROUTES.INVOICES}/${inv._id}`, {
@@ -504,7 +629,7 @@ const CustomerView = () => {
                                         },
                                       })
                                     }
-                                    className="p-1.5 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors"
+                                    className="p-1 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors"
                                     title="View Invoice"
                                   >
                                     <FileText className="w-3.5 h-3.5" />
@@ -512,7 +637,7 @@ const CustomerView = () => {
                                   {canEdit("invoices") && (
                                     <button
                                       onClick={() => navigate(`${ROUTES.INVOICES}/${inv._id}/edit`)}
-                                      className="p-1.5 text-blue-600 hover:text-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors"
+                                      className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors"
                                       title="Edit Invoice"
                                     >
                                       <Edit3 className="w-3.5 h-3.5" />
@@ -540,7 +665,7 @@ const CustomerView = () => {
                                           },
                                         });
                                       }}
-                                      className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
+                                      className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
                                       title="Delete Invoice"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />

@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useCallback, useEffect } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Save, X, ChevronDown, ChevronUp, Calculator } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
@@ -9,6 +9,7 @@ import {
 } from "../../features/invoices/hooks.js";
 import { useSaveMasterProductMutation } from "../../features/products/productApi.js";
 import { useGetNextInvoiceNumberQuery } from "../../features/invoices/invoiceApi.js";
+import { useGetCustomerByIdQuery } from "../../features/customers/customerApi.js";
 import CustomerInformationForm from "../../components/invoice/CustomerInformationForm.jsx";
 import InvoiceDetailsForm from "../../components/invoice/InvoiceDetailsForm.jsx";
 import InvoiceItemsForm from "../../components/invoice/InvoiceItemsForm.jsx";
@@ -17,6 +18,10 @@ import MobileInvoiceSummaryBar from "../../components/invoice/MobileInvoiceSumma
 
 const InvoiceGenerationPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const customerId = searchParams.get("customer_id") || location.state?.customer_id;
+
   const {
     currentInvoice,
     errors,
@@ -25,7 +30,41 @@ const InvoiceGenerationPage = () => {
     setErrors,
     setSubmitting,
     updateInvoiceData,
+    updateCustomerData,
+    updateCustomerAddressData,
   } = useInvoiceForm();
+
+  const { data: customerResp } = useGetCustomerByIdQuery(customerId, {
+    skip: !customerId,
+  });
+
+  useEffect(() => {
+    if (customerResp?.customer) {
+      const c = customerResp.customer;
+      updateCustomerData({
+        _id: c._id,
+        full_name: c.full_name || "",
+        whatsapp_number: c.whatsapp_number || "",
+        email: c.email || "",
+        alternate_phone: c.alternate_phone || "",
+        customer_type: c.customer_type || "RETAIL",
+        gst_number: c.gst_number || "",
+        date_of_birth: c.date_of_birth || "",
+        anniversary_date: c.anniversary_date || "",
+        notes: c.notes || "",
+      });
+      if (c.address) {
+        updateCustomerAddressData({
+          line1: c.address.line1 || "",
+          line2: c.address.line2 || "",
+          city: c.address.city || "",
+          state: c.address.state || "",
+          pincode: c.address.pincode || "",
+        });
+      }
+    }
+  }, [customerResp, updateCustomerData, updateCustomerAddressData]);
+
   const { createInvoice } = useInvoiceActions();
   const [saveMaster] = useSaveMasterProductMutation();
   const [submitResult, setSubmitResult] = useState(null);

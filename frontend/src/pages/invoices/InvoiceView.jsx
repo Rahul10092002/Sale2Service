@@ -349,43 +349,43 @@ const InvoiceView = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-dark-bg p-3 sm:p-6 transition-colors">
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Top Navigation & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-dark-card p-4 rounded-xl shadow-xs border border-gray-200 dark:border-dark-border">
-          <div className="flex items-center gap-3">
+        <div className="bg-white dark:bg-dark-card p-3.5 sm:p-4 rounded-xl shadow-xs border border-gray-200 dark:border-dark-border space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
             <button
               onClick={() => navigate(location.state?.from || "/invoices")}
-              className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 transition-colors"
+              className="inline-flex items-center self-start px-2.5 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
             >
-              <ArrowLeft size={16} className="mr-1.5" />
+              <ArrowLeft size={14} className="mr-1.5" />
               Back to {label}
             </button>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white leading-tight">
                 Invoice #{invoiceObj.invoice_number}
               </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 Issued on {formatDate(invoiceObj.invoice_date || Date.now())}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <div className="flex items-center gap-2 pt-1 sm:pt-0 border-t border-gray-100 dark:border-gray-800 sm:border-0">
             <Button
               variant="outline"
               size="sm"
               onClick={handlePreviewPDF}
               disabled={isPreviewingPDF}
-              className="flex items-center gap-1.5 text-xs"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs py-2 sm:py-1.5"
             >
-              <Eye className="w-4 h-4 text-purple-600" /> Preview PDF
+              <Eye className="w-3.5 h-3.5 text-purple-600" /> Preview PDF
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleDownloadPDF}
               disabled={isDownloadingPDF}
-              className="flex items-center gap-1.5 text-xs"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs py-2 sm:py-1.5"
             >
-              <Download className="w-4 h-4 text-indigo-600" /> Download PDF
+              <Download className="w-3.5 h-3.5 text-indigo-600" /> Download PDF
             </Button>
           </div>
         </div>
@@ -411,14 +411,14 @@ const InvoiceView = () => {
           <div className="lg:col-span-2 space-y-4">
             {/* Customer & Payment Banner */}
             <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-xl p-4 sm:p-5 text-white shadow-sm border border-emerald-500">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
-                    <FileText className="w-6 h-6 text-white" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h2
-                      className="text-base sm:text-lg font-bold cursor-pointer hover:underline"
+                      className="text-base sm:text-lg font-bold truncate cursor-pointer hover:underline"
                       onClick={() => {
                         if (invoiceObj.customer_id?._id) {
                           navigate(`${ROUTES.CUSTOMERS}/${invoiceObj.customer_id._id}`, {
@@ -429,17 +429,18 @@ const InvoiceView = () => {
                     >
                       {invoiceObj.customer_id?.full_name || "Unknown Customer"}
                     </h2>
-                    <p className="text-xs text-emerald-100 flex items-center gap-2 mt-0.5">
-                      {invoiceObj.customer_id?.whatsapp_number && (
-                        <span><Phone className="w-3 h-3 inline mr-0.5" />{invoiceObj.customer_id.whatsapp_number}</span>
-                      )}
-                    </p>
+                    {invoiceObj.customer_id?.whatsapp_number && (
+                      <p className="text-xs text-emerald-100 flex items-center gap-1.5 mt-0.5">
+                        <Phone className="w-3 h-3 shrink-0" />
+                        <span className="font-mono">{invoiceObj.customer_id.whatsapp_number}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 self-start sm:self-auto">
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2.5 sm:pt-0 border-t border-emerald-500/40 sm:border-0">
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-black uppercase ${
+                    className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
                       getPaymentStatus() === "PAID"
                         ? "bg-emerald-100 text-emerald-900"
                         : getPaymentStatus() === "PARTIAL"
@@ -450,8 +451,8 @@ const InvoiceView = () => {
                     {getPaymentStatus()}
                   </span>
                   <div className="text-right">
-                    <span className="text-xs text-emerald-100 block">Total Amount</span>
-                    <strong className="text-base sm:text-lg font-bold">₹{invoiceObj.total_amount || "0"}</strong>
+                    <span className="text-[11px] text-emerald-100 block font-medium">Total Amount</span>
+                    <strong className="text-base sm:text-xl font-bold">₹{invoiceObj.total_amount || "0"}</strong>
                   </div>
                 </div>
               </div>

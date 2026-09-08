@@ -140,6 +140,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path={`${ROUTES.INVOICES}/create`}
+        element={
+          <PrivateRoute>
+            <InvoiceGeneration />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path={`${ROUTES.INVOICES}/:id/edit`}
         element={
           <PrivateRoute>

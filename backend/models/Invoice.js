@@ -47,6 +47,11 @@ const invoiceSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    old_item_exchange_price: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     tax: {
       type: Number,
       default: 0,

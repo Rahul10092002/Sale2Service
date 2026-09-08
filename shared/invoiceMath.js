@@ -35,7 +35,7 @@ export const derivePaymentStatus = ({
   const normalizedPaid = roundCurrency(Math.max(0, amountPaid));
   const normalizedFallback = String(fallbackStatus || "UNPAID").toUpperCase();
 
-  if (normalizedTotal === 0 || normalizedPaid >= normalizedTotal) {
+  if (normalizedTotal > 0 && normalizedPaid >= normalizedTotal) {
     return "PAID";
   }
 
@@ -58,6 +58,15 @@ export const calculateInvoiceTotals = ({
   );
 
   const discount = roundCurrency(Math.max(0, toNumber(invoice.discount, 0)));
+  const oldItemExchangePrice = roundCurrency(
+    Math.max(
+      0,
+      toNumber(
+        invoice.old_item_exchange_price ?? invoice.exchange_price,
+        0,
+      ),
+    ),
+  );
   const isTaxInclusive = invoice.is_tax_inclusive !== false;
 
   let subtotal = grossItemTotal;
@@ -74,7 +83,8 @@ export const calculateInvoiceTotals = ({
     totalBeforeDiscount = subtotal + tax;
   }
 
-  const totalAmount = Math.max(0, totalBeforeDiscount - discount);
+  const totalDeductions = discount + oldItemExchangePrice;
+  const totalAmount = Math.max(0, totalBeforeDiscount - totalDeductions);
   const amountPaid = roundCurrency(Math.max(0, toNumber(invoice.amount_paid, 0)));
   const amountDue = Math.max(0, totalAmount - amountPaid);
   const paymentStatus = derivePaymentStatus({
@@ -89,6 +99,7 @@ export const calculateInvoiceTotals = ({
     gross_item_total: roundCurrency(grossItemTotal),
     subtotal: roundCurrency(subtotal),
     discount,
+    old_item_exchange_price: oldItemExchangePrice,
     tax: roundCurrency(tax),
     total_amount: roundCurrency(totalAmount),
     amount_paid: amountPaid,

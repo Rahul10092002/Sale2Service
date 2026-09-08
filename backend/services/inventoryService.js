@@ -33,6 +33,22 @@ export const createReceivingSlipIntakeService = async ({
       throw new Error("Selected Dealer not found.");
     }
 
+    // 1b. Check duplicate dealer invoice number for this dealer & shop
+    if (dealerInvoiceNo && dealerInvoiceNo.trim()) {
+      const formattedInvoiceNo = dealerInvoiceNo.trim().toUpperCase();
+      const existingPO = await PurchaseOrder.findOne({
+        shop_id: shopId,
+        dealer_id: dealerId,
+        dealer_invoice_no: formattedInvoiceNo,
+      }).session(session);
+
+      if (existingPO) {
+        throw new Error(
+          `A receiving slip with invoice number '${formattedInvoiceNo}' already exists for supplier '${dealer.name}'.`
+        );
+      }
+    }
+
     // 2. Collect all non-empty serial numbers for batch duplicate validation
     const allSerials = [];
     items.forEach((item) => {
@@ -220,18 +236,119 @@ export const linkRetroactiveDealerService = async ({
   session.startTransaction();
 
   try {
-    // 1. Fetch InventoryItem
-    const inventoryItem = await InventoryItem.findOne({
-      _id: itemId,
-      shop_id: shopId,
-      deleted_at: null,
-    }).session(session);
+    // 1. Fetch dealer if provided
+    let dealer = null;
+    if (dealerId) {
+      dealer = await Dealer.findOne({
+        _id: dealerId,
+        shop_id: shopId,
+      }).session(session);
 
-    if (!inventoryItem) {
-      throw new Error("Inventory item not found.");
+      if (!dealer) {
+        throw new Error("Selected Dealer / Supplier not found.");
+      }
     }
 
-    // CRITICAL FLAW #1 FIX: Lock serial_number if item status is SOLD or UNDER_SERVICE
+    // 2. Resolve target InventoryItem (itemId could be an InventoryItem ID or an InvoiceItem ID)
+    let inventoryItem = null;
+    let invoiceItem = null;
+
+    if (mongoose.Types.ObjectId.isValid(itemId)) {
+      inventoryItem = await InventoryItem.findOne({
+        _id: itemId,
+        shop_id: shopId,
+        deleted_at: null,
+      }).session(session);
+    }
+
+    // If not found directly as InventoryItem, check if itemId is an InvoiceItem
+    if (!inventoryItem) {
+      if (mongoose.Types.ObjectId.isValid(itemId)) {
+        invoiceItem = await InvoiceItem.findOne({
+          _id: itemId,
+          shop_id: shopId,
+        }).session(session);
+      }
+      if (!invoiceItem) {
+        invoiceItem = await InvoiceItem.findOne({
+          invoice_item_id: itemId,
+          shop_id: shopId,
+        }).session(session);
+      }
+
+      if (invoiceItem) {
+        // Check if invoiceItem already has an inventory_item_id
+        if (invoiceItem.inventory_item_id) {
+          inventoryItem = await InventoryItem.findOne({
+            _id: invoiceItem.inventory_item_id,
+            shop_id: shopId,
+            deleted_at: null,
+          }).session(session);
+        }
+
+        // Check if an inventory item exists with matching serial number
+        if (!inventoryItem && invoiceItem.serial_number) {
+          inventoryItem = await InventoryItem.findOne({
+            serial_number: invoiceItem.serial_number.trim().toUpperCase(),
+            shop_id: shopId,
+            deleted_at: null,
+          }).session(session);
+        }
+
+        // If no InventoryItem exists yet (e.g. direct invoice sale without pre-existing stock), create one
+        if (!inventoryItem) {
+          let productMaster = await ProductMaster.findOne({
+            shop_id: shopId,
+            product_name: invoiceItem.product_name,
+          }).session(session);
+
+          if (!productMaster) {
+            productMaster = new ProductMaster({
+              shop_id: shopId,
+              product_name: invoiceItem.product_name || "Product",
+              product_category: invoiceItem.product_category || "OTHER",
+              company: invoiceItem.company || "",
+              model_number: invoiceItem.model_number || "",
+              selling_price: invoiceItem.selling_price || 0,
+              cost_price: invoiceItem.cost_price || 0,
+            });
+            await productMaster.save({ session });
+          }
+
+          inventoryItem = new InventoryItem({
+            shop_id: shopId,
+            product_id: productMaster._id,
+            product_name: invoiceItem.product_name || productMaster.product_name,
+            serial_number: (invoiceItem.serial_number || "").trim().toUpperCase(),
+            dealer_id: dealerId,
+            purchase_date: purchaseDate
+              ? new Date(purchaseDate)
+              : invoiceItem.warranty_start_date || new Date(),
+            purchase_invoice_ref: purchaseInvoiceRef || "",
+            purchase_price: invoiceItem.cost_price || 0,
+            status: "SOLD",
+            invoice_id: invoiceItem.invoice_id,
+            invoice_item_id: invoiceItem._id,
+            sold_at: invoiceItem.createdAt || new Date(),
+          });
+          await inventoryItem.save({ session });
+        }
+
+        // Link back to invoice item
+        invoiceItem.inventory_item_id = inventoryItem._id;
+        invoiceItem.dealer_id = dealerId;
+        if (dealer) {
+          invoiceItem.purchase_source = dealer.name;
+        }
+        await invoiceItem.save({ session });
+      }
+    }
+
+    if (!inventoryItem) {
+      throw new Error("Inventory item or invoice record not found.");
+    }
+
+    // Lock serial_number if item status is SOLD or UNDER_SERVICE
     const isSoldOrInService = ["SOLD", "UNDER_SERVICE"].includes(inventoryItem.status);
     const newSerialUpper = (serialNumber || "").trim().toUpperCase();
 
@@ -244,19 +361,6 @@ export const linkRetroactiveDealerService = async ({
       throw new Error(
         "Serial Number cannot be altered for an item that is already sold or under service. Only origin dealer details can be updated."
       );
-    }
-
-    // MISSING SCENARIO C FIX: Fetch dealer including soft-deleted ones for historical edits
-    let dealer = null;
-    if (dealerId) {
-      dealer = await Dealer.findOne({
-        _id: dealerId,
-        shop_id: shopId,
-      }).session(session);
-
-      if (!dealer) {
-        throw new Error("Selected Dealer not found.");
-      }
     }
 
     const previousState = {
@@ -276,13 +380,27 @@ export const linkRetroactiveDealerService = async ({
 
     await inventoryItem.save({ session });
 
-    // Synchronize linked InvoiceItem cached dealer details (does NOT alter invoice financials)
+    // Synchronize linked InvoiceItem cached dealer details
     if (inventoryItem.invoice_item_id) {
       await InvoiceItem.findByIdAndUpdate(
         inventoryItem.invoice_item_id,
         {
           ...(dealer && { purchase_source: dealer.name }),
           ...(dealerId && { dealer_id: dealerId }),
+          inventory_item_id: inventoryItem._id,
+        },
+        { session }
+      );
+    } else if (inventoryItem.serial_number) {
+      await InvoiceItem.findOneAndUpdate(
+        {
+          serial_number: inventoryItem.serial_number,
+          shop_id: shopId,
+        },
+        {
+          ...(dealer && { purchase_source: dealer.name }),
+          ...(dealerId && { dealer_id: dealerId }),
+          inventory_item_id: inventoryItem._id,
         },
         { session }
       );

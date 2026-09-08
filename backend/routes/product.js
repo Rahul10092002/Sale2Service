@@ -1,13 +1,14 @@
 import { Router } from "express";
 import ProductController from "../controllers/productController.js";
 import { authenticate, authorize, checkPermission } from "../middleware/auth.js";
+import { strictMutationRateLimiter } from "../middleware/rateLimiter.js";
 
 export const productRouter = Router();
 const productController = new ProductController();
 
 productRouter.use(authenticate);
 
-productRouter.post("/", checkPermission("products_create"), (req, res) =>
+productRouter.post("/", strictMutationRateLimiter, checkPermission("products_create"), (req, res) =>
   productController.createProduct(req, res),
 );
 productRouter.get("/", checkPermission("products_view"), (req, res) =>
@@ -20,6 +21,7 @@ productRouter.get(
 );
 productRouter.post(
   "/master-save",
+  strictMutationRateLimiter,
   checkPermission("inventory_create"),
   (req, res) => productController.saveMaster(req, res),
 );
@@ -31,11 +33,13 @@ productRouter.get(
 );
 productRouter.put(
   "/inventory/:id",
+  strictMutationRateLimiter,
   checkPermission("inventory_edit"),
   (req, res) => productController.updateMasterProduct(req, res),
 );
 productRouter.delete(
   "/inventory/:id",
+  strictMutationRateLimiter,
   checkPermission("inventory_delete"),
   (req, res) => productController.deleteMasterProduct(req, res),
 );
@@ -45,12 +49,13 @@ productRouter.get("/:id", checkPermission("products_view"), (req, res) =>
 );
 productRouter.put(
   "/:id/replace-serial",
+  strictMutationRateLimiter,
   checkPermission("products_edit"),
   (req, res) => productController.replaceSerialNumber(req, res),
 );
-productRouter.put("/:id", checkPermission("products_edit"), (req, res) =>
+productRouter.put("/:id", strictMutationRateLimiter, checkPermission("products_edit"), (req, res) =>
   productController.updateProduct(req, res),
 );
-productRouter.delete("/:id", checkPermission("products_delete"), (req, res) =>
+productRouter.delete("/:id", strictMutationRateLimiter, checkPermission("products_delete"), (req, res) =>
   productController.deleteProduct(req, res),
 );

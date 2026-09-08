@@ -169,6 +169,7 @@ export default class InvoiceController {
         items: invoice_items,
       });
       const discount = totals.discount;
+      const oldItemExchangePrice = totals.old_item_exchange_price;
       const subtotal = totals.subtotal;
       const tax = totals.tax;
       const totalAmount = totals.total_amount;
@@ -188,6 +189,7 @@ export default class InvoiceController {
         payment_mode: invoice.payment_mode || "CASH",
         subtotal,
         discount,
+        old_item_exchange_price: oldItemExchangePrice,
         tax,
         total_amount: totalAmount,
         amount_paid: amountPaid,
@@ -1780,7 +1782,10 @@ export default class InvoiceController {
           serial_number: item.serial_number
             ? item.serial_number.toUpperCase()
             : undefined,
-          product_name: item.product_name || "Unknown Product",
+          product_name:
+            item.product_name ||
+            [item.company, item.model_number].filter(Boolean).join(" ").trim() ||
+            "Product",
           product_category: item.product_category || "OTHER",
           ...batteryPayload,
           company: item.company || "UNKNOWN",
@@ -1859,6 +1864,7 @@ export default class InvoiceController {
       existingInvoice.payment_status = totals.payment_status;
       existingInvoice.subtotal = totals.subtotal;
       existingInvoice.discount = totals.discount;
+      existingInvoice.old_item_exchange_price = totals.old_item_exchange_price;
       existingInvoice.tax = totals.tax;
       existingInvoice.total_amount = totals.total_amount;
       existingInvoice.amount_paid = totals.amount_paid;

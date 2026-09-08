@@ -392,6 +392,12 @@
                     <span style="color: #dc2626;">-<%= totals.discount %></span>
                 </div>
                 <% } %>
+                <% if (totals.oldItemExchangePriceRaw > 0) { %>
+                <div class="total-row">
+                    <span class="shop-meta">Old Item / Exchange</span>
+                    <span style="color: #d97706;">-<%= totals.oldItemExchangePrice %></span>
+                </div>
+                <% } %>
                 <div class="total-row">
                     <span class="shop-meta">Tax (<%= totals.gstRate %>%)</span>
                     <span><%= totals.gstAmount %></span>

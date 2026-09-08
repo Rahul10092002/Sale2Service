@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { X, Plus, Trash2, FileSpreadsheet, Building2, Package, ScanLine, Upload, Image as ImageIcon } from "lucide-react";
+import { X, Plus, Trash2, FileSpreadsheet, Building2, Package, ScanLine, Upload, Image as ImageIcon, Camera } from "lucide-react";
 import { useGetDealersQuery } from "../../features/dealers/dealerApi.js";
 import { useGetProductsQuery, useGetInventoryProductsQuery } from "../../features/products/productApi.js";
 import { useCreateReceivingSlipMutation } from "../../features/inventory/inventoryApi.js";
@@ -38,6 +38,7 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
   const [activeScannerRowIndex, setActiveScannerRowIndex] = useState(null);
 
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const [rows, setRows] = useState([
     { product_id: "", purchase_price: "", raw_serials: "" },
@@ -195,47 +196,47 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col border border-gray-200 dark:border-gray-700">
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-5xl max-h-[94vh] sm:max-h-[92vh] flex flex-col border border-gray-200 dark:border-gray-700">
           {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-t-xl">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                <FileSpreadsheet className="w-6 h-6" />
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-t-2xl sm:rounded-t-2xl">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  Receiving Slip & Purchase Intake
+                <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  Receiving Slip Intake
                 </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Log supplier shipments, upload purchase bill, & scan serial numbers
+                <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+                  Log supplier shipments & barcode serial numbers
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg"
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
           {/* Content */}
-          <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 sm:space-y-6">
             {errorMsg && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-lg border border-red-200 dark:border-red-800">
+              <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-xl border border-red-200 dark:border-red-800">
                 {errorMsg}
               </div>
             )}
 
             {successMsg && (
-              <div className="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-lg border border-green-200 dark:border-green-800">
+              <div className="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-xl border border-green-200 dark:border-green-800">
                 {successMsg}
               </div>
             )}
 
             {/* Supplier & Header Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 dark:bg-gray-900/40 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-gray-50 dark:bg-gray-900/40 p-3.5 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700">
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
@@ -244,16 +245,16 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                   <button
                     type="button"
                     onClick={onOpenDealers}
-                    className="text-xs text-blue-600 hover:underline flex items-center gap-0.5"
+                    className="text-xs text-blue-600 font-semibold hover:underline flex items-center gap-0.5"
                   >
-                    <Plus className="w-3 h-3" /> Add Dealer
+                    <Plus className="w-3 h-3" /> Add Supplier
                   </button>
                 </div>
                 <select
                   required
                   value={dealerId}
                   onChange={(e) => setDealerId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
                 >
                   <option value="">-- Select Supplier --</option>
                   {dealers.map((d) => (
@@ -273,7 +274,7 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                   value={dealerInvoiceNo}
                   onChange={(e) => setDealerInvoiceNo(e.target.value)}
                   placeholder="e.g. INV-DEALER-9921"
-                  className="w-full px-3 py-2 text-sm border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white uppercase"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white uppercase font-medium"
                 />
               </div>
 
@@ -285,17 +286,18 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                   type="date"
                   value={purchaseDate}
                   onChange={(e) => setPurchaseDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
                 />
               </div>
             </div>
 
-            {/* Purchase Bill Image Upload Option */}
-            <div className="bg-gray-50 dark:bg-gray-900/40 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+            {/* Purchase Bill Image / Camera Upload Option */}
+            <div className="bg-gray-50 dark:bg-gray-900/40 p-3.5 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700">
               <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-indigo-600" /> Purchase Bill / Invoice Attachment
               </label>
 
+              {/* File input for browsing gallery/files */}
               <input
                 type="file"
                 ref={fileInputRef}
@@ -304,9 +306,19 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                 className="hidden"
               />
 
+              {/* Camera input for capturing directly with device camera */}
+              <input
+                type="file"
+                ref={cameraInputRef}
+                accept="image/*"
+                capture="environment"
+                onChange={handleBillImageUpload}
+                className="hidden"
+              />
+
               {purchaseBillImage ? (
                 <div className="flex items-center gap-4">
-                  <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 group">
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600 group">
                     <img
                       src={purchaseBillImage}
                       alt="Purchase Bill"
@@ -321,50 +333,178 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                       <X className="w-3 h-3" />
                     </button>
                   </div>
-                  <div>
-                    <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                  <div className="space-y-1">
+                    <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
                       ✓ Bill Photo Attached
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-xs text-blue-600 hover:underline block mt-1"
-                    >
-                      Change Photo
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-xs text-blue-600 font-semibold hover:underline"
+                      >
+                        Upload File
+                      </button>
+                      <span className="text-gray-300 dark:text-gray-600">•</span>
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5"
+                      >
+                        <Camera className="w-3 h-3" /> Retake Photo
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    isLoading={isUploadingBill}
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-bold min-h-[44px]"
+                  >
+                    <Camera className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Take Photo with Camera
+                  </Button>
+
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     isLoading={isUploadingBill}
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 text-xs border-dashed border-gray-300 dark:border-gray-600"
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs border-dashed border-gray-300 dark:border-gray-600 min-h-[44px]"
                   >
-                    <Upload className="w-4 h-4 text-indigo-600" /> Upload Purchase Bill Photo
+                    <Upload className="w-4 h-4 text-gray-500" /> Choose File from Device
                   </Button>
-                  <span className="text-xs text-gray-400">
-                    Upload physical invoice image/photo for audit records
+
+                  <span className="text-[11px] text-gray-400 text-center sm:text-left sm:ml-2">
+                    Capture photo or upload document for audit records
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Dynamic Receiving Items Table with Camera Serial Scanner */}
+            {/* Dynamic Receiving Items Table / Mobile Cards */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <Package className="w-4 h-4 text-indigo-600" /> Received Items List
                 </h3>
-                <span className="text-xs text-gray-500">
-                  Scan barcode with camera or paste comma-separated serials
+                <span className="text-[11px] text-gray-500 hidden sm:inline">
+                  Scan barcode with camera or paste serials
                 </span>
               </div>
 
-              <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-2xs">
+              {/* MOBILE ITEM CARDS (< md screens) */}
+              <div className="block md:hidden space-y-3">
+                {rows.map((row, idx) => {
+                  const parsedCount = parseSerials(row.raw_serials).length;
+                  return (
+                    <div
+                      key={idx}
+                      className="bg-white dark:bg-gray-900 p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3"
+                    >
+                      <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-800 pb-2">
+                        <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                          Item #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRow(idx)}
+                          disabled={rows.length === 1}
+                          className="text-xs text-red-500 hover:text-red-600 font-semibold disabled:opacity-30 flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remove
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                          Product Catalog Item *
+                        </label>
+                        <select
+                          required
+                          value={row.product_id}
+                          onChange={(e) => handleRowChange(idx, "product_id", e.target.value)}
+                          className="w-full px-2.5 py-2 border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs text-gray-900 dark:text-white font-medium"
+                        >
+                          <option value="">-- Select Product --</option>
+                          {products.map((p) => (
+                            <option key={p._id} value={p._id}>
+                              {p.product_name} ({p.company || "Generic"})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                          Cost Price (₹)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.purchase_price}
+                          onChange={(e) => handleRowChange(idx, "purchase_price", e.target.value)}
+                          placeholder="Cost Price"
+                          className="w-full px-2.5 py-2 border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs text-gray-900 dark:text-white font-medium"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                            Serial Numbers
+                          </label>
+                          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                            Count: {parsedCount || 1}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <textarea
+                            rows={2}
+                            value={row.raw_serials}
+                            onChange={(e) => handleRowChange(idx, "raw_serials", e.target.value)}
+                            placeholder="e.g. SN-1001, SN-1002"
+                            className="w-full px-2.5 py-2 border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs text-gray-900 dark:text-white font-mono uppercase"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setActiveScannerRowIndex(idx)}
+                            className="w-full min-h-[42px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold hover:bg-indigo-200 dark:hover:bg-indigo-900/60 flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 active:scale-98 transition-transform"
+                          >
+                            <ScanLine className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Scan Barcode with Camera
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddRow}
+                    className="w-full min-h-[42px] flex items-center justify-center gap-1 font-bold text-xs"
+                  >
+                    <Plus className="w-4 h-4" /> Add Item Row
+                  </Button>
+
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-800">
+                    <span>Total Units: <strong className="text-indigo-600 dark:text-indigo-400">{totals.totalItems}</strong></span>
+                    <span>Total Cost: <strong className="text-emerald-600 dark:text-emerald-400">₹{totals.totalCost.toLocaleString("en-IN")}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DESKTOP ITEMS TABLE (≥ md screens) */}
+              <div className="hidden md:block border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-2xs">
                 <table className="w-full text-left text-xs text-gray-700 dark:text-gray-200">
                   <thead className="bg-gray-100 dark:bg-gray-900/80 uppercase font-semibold text-gray-600 dark:text-gray-400">
                     <tr>
@@ -475,18 +615,19 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="e.g. Received 1 box via Express Cargo shipment"
-                className="w-full px-3 py-2 text-sm border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto min-h-[44px]">
                 Cancel
               </Button>
               <Button
                 type="submit"
                 isLoading={isSubmitting}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6"
+                disabled={isSubmitting}
+                className="w-full sm:w-auto min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6"
               >
                 Submit Receiving Slip
               </Button>

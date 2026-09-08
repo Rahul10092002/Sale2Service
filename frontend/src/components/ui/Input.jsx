@@ -13,6 +13,7 @@ const Input = forwardRef(
       required = false,
       disabled = false,
       className = "",
+      inputClassName = "",
       ...props
     },
     ref
@@ -34,9 +35,11 @@ const Input = forwardRef(
           onChange={onChange}
           disabled={disabled}
           required={required}
+          data-error={Boolean(error)}
+          aria-invalid={Boolean(error)}
           className={clsx(
             // ✅ MATCH SELECT FIELD EXACTLY
-            "w-full h-8 px-3 rounded-lg text-xs",
+            "w-full h-9 sm:h-8 px-3 rounded-lg text-sm sm:text-xs",
             "border border-gray-300 dark:border-dark-border",
             "bg-white dark:bg-dark-input",
             "text-ink-base dark:text-slate-100",
@@ -49,7 +52,8 @@ const Input = forwardRef(
             // states
             error && "border-danger focus:ring-danger/20 focus:border-danger",
             disabled &&
-              "bg-surface-subtle dark:bg-dark-subtle opacity-70 cursor-not-allowed"
+              "bg-surface-subtle dark:bg-dark-subtle opacity-70 cursor-not-allowed",
+            inputClassName
           )}
           {...props}
         />

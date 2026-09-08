@@ -173,8 +173,11 @@ const updateURL = (newState) => {
     if (isNaN(date.getTime())) return "Invalid date";
 
     try {
-      const options = { year: "numeric", month: "short", day: "numeric" };
-      return date.toLocaleDateString(undefined, options);
+      return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
     } catch (error) {
       console.warn("Date formatting error:", error, dateString);
       return "Invalid date";

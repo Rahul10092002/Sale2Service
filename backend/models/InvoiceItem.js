@@ -37,7 +37,7 @@ const invoiceItemSchema = new mongoose.Schema(
     },
     product_name: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     product_category: {
@@ -270,8 +270,14 @@ invoiceItemSchema.virtual("isActive").get(function () {
   return this.deleted_at === null;
 });
 
-// Pre-save middleware to calculate margin
+// Pre-save middleware to calculate margin and ensure product_name fallback
 invoiceItemSchema.pre("save", async function () {
+  if (!this.product_name || !this.product_name.trim()) {
+    this.product_name =
+      [this.company, this.model_number].filter(Boolean).join(" ").trim() ||
+      this.product_category ||
+      "Product";
+  }
   if (this.cost_price && this.selling_price) {
     this.margin = this.selling_price - this.cost_price;
   }

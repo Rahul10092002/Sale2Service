@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useLazyLookupWarrantyQuery } from "../../features/warranty/warrantyApi.js";
 import { Button, LoadingSpinner } from "../../components/ui/index.js";
+import { formatDate } from "../../utils/date.js";
 
 const WarrantyLookup = () => {
   const [query, setQuery] = useState("");
@@ -153,14 +154,14 @@ const WarrantyLookup = () => {
                     {res.warranty?.start_date && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Coverage Start:</span>
-                        <span>{new Date(res.warranty.start_date).toLocaleDateString()}</span>
+                        <span>{formatDate(res.warranty.start_date)}</span>
                       </div>
                     )}
                     {res.warranty?.end_date && (
                       <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-gray-700">
                         <span className="text-gray-500">Coverage End:</span>
                         <strong className={isExpired ? "text-amber-600" : "text-emerald-600"}>
-                          {new Date(res.warranty.end_date).toLocaleDateString()}
+                          {formatDate(res.warranty.end_date)}
                         </strong>
                       </div>
                     )}
@@ -192,7 +193,7 @@ const WarrantyLookup = () => {
                         </div>
                         <div className="flex justify-between pt-1 border-t border-indigo-100 dark:border-indigo-900/40">
                           <span className="text-gray-500">Invoice Date:</span>
-                          <span>{new Date(invoice.invoice_date).toLocaleDateString()}</span>
+                          <span>{formatDate(invoice.invoice_date)}</span>
                         </div>
                       </div>
                     </div>
@@ -281,7 +282,7 @@ const WarrantyLookup = () => {
                 <div className="bg-gray-50 dark:bg-gray-900/60 px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2 text-xs text-gray-500">
                   <History className="w-4 h-4 text-gray-400" />
                   <span>
-                    Audit Trail: <strong className="text-gray-700 dark:text-gray-300">{res.audit_logs.length} Logged Action(s)</strong> (Latest: {res.audit_logs[0]?.action} on {new Date(res.audit_logs[0]?.createdAt).toLocaleDateString()})
+                    Audit Trail: <strong className="text-gray-700 dark:text-gray-300">{res.audit_logs.length} Logged Action(s)</strong> (Latest: {res.audit_logs[0]?.action} on {formatDate(res.audit_logs[0]?.createdAt)})
                   </span>
                 </div>
               )}

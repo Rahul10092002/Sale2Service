@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Plus, Calendar, Wrench, AlertCircle } from "lucide-react";
 import { Dialog as Modal, DialogHeader, DialogBody } from "../ui/Modal.jsx";
 import Button from "../ui/Button.jsx";
@@ -268,7 +268,7 @@ export const ScheduleServiceModal = ({
               <strong>Schedule:</strong> Every {formData.service_interval_value}{" "}
               {formatIntervalType(formData.service_interval_type)}(s), starting{" "}
               {formData.service_start_date
-                ? new Date(formData.service_start_date).toLocaleDateString()
+                ? new Date(formData.service_start_date).toLocaleDateString("en-IN")
                 : "TBD"}
             </p>
             <p>

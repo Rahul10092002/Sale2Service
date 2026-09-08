@@ -30,6 +30,7 @@ const initialState = {
       is_tax_inclusive: true,
       subtotal: 0,
       discount: 0,
+      old_item_exchange_price: 0,
       tax: 0,
       total_amount: 0,
       amount_paid: 0,
@@ -54,6 +55,8 @@ const calculateInvoiceTotals = (state) => {
   });
   state.currentInvoice.invoice.subtotal = totals.subtotal;
   state.currentInvoice.invoice.discount = totals.discount;
+  state.currentInvoice.invoice.old_item_exchange_price =
+    totals.old_item_exchange_price;
   state.currentInvoice.invoice.tax = totals.tax;
   state.currentInvoice.invoice.total_amount = totals.total_amount;
   state.currentInvoice.invoice.amount_paid = totals.amount_paid;

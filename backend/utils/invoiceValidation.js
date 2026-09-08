@@ -160,7 +160,10 @@ export const validateInvoicePayload = ({
       }
 
       if (isBlank(item.product_name)) {
-        errors.push(`${label}: product name is required`);
+        item.product_name =
+          [item.company, item.model_number].filter(Boolean).join(" ").trim() ||
+          item.product_category ||
+          "Product";
       }
 
       if (isBlank(item.company)) {

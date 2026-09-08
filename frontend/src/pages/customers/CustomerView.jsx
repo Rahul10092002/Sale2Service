@@ -30,6 +30,7 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 import Alert from "../../components/ui/Alert.jsx";
 import { useDeleteGuard } from "../../context/DeleteGuardContext.jsx";
 import { ROUTES } from "../../utils/constants.js";
+import { formatDate } from "../../utils/date.js";
 
 const CustomerView = () => {
   const { id } = useParams();
@@ -269,9 +270,7 @@ const CustomerView = () => {
                         </label>
                         <p className="text-xs text-gray-900 flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          {new Date(
-                            customer.date_of_birth,
-                          ).toLocaleDateString()}
+                          {formatDate(customer.date_of_birth)}
                         </p>
                       </div>
                     )}
@@ -282,9 +281,7 @@ const CustomerView = () => {
                         </label>
                         <p className="text-xs text-gray-900 flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          {new Date(
-                            customer.anniversary_date,
-                          ).toLocaleDateString()}
+                          {formatDate(customer.anniversary_date)}
                         </p>
                       </div>
                     )}
@@ -399,9 +396,7 @@ const CustomerView = () => {
                         Created At
                       </label>
                       <p className="text-xs text-ink-base dark:text-slate-100">
-                        {customer.createdAt
-                          ? new Date(customer.createdAt).toLocaleDateString()
-                          : "N/A"}
+                        {formatDate(customer.createdAt)}
                       </p>
                     </div>
                   </div>
@@ -482,7 +477,7 @@ const CustomerView = () => {
                                 {inv.invoice_number}
                               </td>
                               <td className="py-2 px-2 text-xs text-ink-secondary dark:text-slate-400 whitespace-nowrap">
-                                {new Date(inv.invoice_date).toLocaleDateString()}
+                                {formatDate(inv.invoice_date)}
                               </td>
                               <td className="py-2 px-2 text-xs font-bold text-ink-base dark:text-slate-100 whitespace-nowrap">
                                 ₹{inv.total_amount}

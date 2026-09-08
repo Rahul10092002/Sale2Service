@@ -40,76 +40,95 @@ const InvoiceItemsForm = () => {
     [removeItem],
   );
 
+  const duplicateProduct = useCallback(
+    (item) => {
+      const { id, ...itemData } = item;
+      addItem({
+        ...itemData,
+        serial_number: "", // Fresh serial required for duplicated physical product
+      });
+    },
+    [addItem],
+  );
+
+  const duplicateService = useCallback(
+    (item) => {
+      const { id, ...itemData } = item;
+      addService(itemData);
+    },
+    [addService],
+  );
+
   const { invoice_items } = currentInvoice;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden">
-        <div className="px-2 sm:px-4 py-4 border-b border-gray-200 dark:border-dark-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-3">
+      <div className="bg-transparent sm:bg-white sm:dark:bg-dark-card sm:rounded-xl sm:border sm:border-gray-200/80 sm:dark:border-dark-border sm:shadow-xs overflow-visible sm:overflow-hidden">
+        <div className="px-1 sm:px-4 py-1.5 sm:py-3 border-b-0 sm:border-b sm:border-gray-100 sm:dark:border-dark-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2 sm:mb-0">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
-              <Package className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+              <Package className="w-4 h-4 text-indigo-600 shrink-0" />
               Invoice Items & Services
             </h2>
-            <p className="text-sm text-ink-muted dark:text-slate-400 mt-1">
+            <p className="text-xs text-ink-muted dark:text-slate-400 mt-0.5">
               Add products with warranty tracking or service/repair charges
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={addItemWithRecalc}
-              size="sm"
-              className="inline-flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              <Plus className="w-4 h-4" />
-              Add Product
-            </Button>
-            <Button
-              type="button"
-              onClick={addServiceWithRecalc}
-              size="sm"
-              variant="outline"
-              className="inline-flex items-center gap-1.5 text-xs border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-            >
-              <Wrench className="w-4 h-4 text-emerald-600" />
-              Add Service / Repair
-            </Button>
-          </div>
+          {invoice_items.length > 0 && (
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                onClick={addItemWithRecalc}
+                className="inline-flex items-center justify-center gap-1.5 text-xs h-9 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Product</span>
+              </Button>
+              <Button
+                type="button"
+                onClick={addServiceWithRecalc}
+                variant="outline"
+                className="inline-flex items-center justify-center gap-1.5 text-xs h-9 px-3 border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg bg-white dark:bg-dark-card"
+              >
+                <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Add Service</span>
+              </Button>
+            </div>
+          )}
         </div>
 
-        <div className="p-4 sm:p-6">
+        <div className="p-0 sm:p-3.5">
           {invoice_items.length === 0 ? (
-            <div className="text-center py-8 sm:py-12 border-2 border-dashed border-gray-300 dark:border-dark-border rounded-lg">
-              <Package className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">
+            <div className="text-center py-8 sm:py-10 border border-dashed border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-card p-4">
+              <Package className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100 mb-1">
                 No Items Added
               </h3>
-              <p className="text-sm sm:text-base text-gray-500 dark:text-slate-400 mb-6 px-4">
+              <p className="text-xs text-gray-500 dark:text-slate-400 mb-4 px-4 max-w-sm mx-auto">
                 Add a product sale or a service/repair charge to build the invoice
               </p>
-              <div className="flex flex-wrap justify-center gap-3">
+              <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   type="button"
                   onClick={addItemWithRecalc}
-                  className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="inline-flex items-center justify-center gap-1.5 text-xs h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5" />
                   Add Product
                 </Button>
                 <Button
                   type="button"
                   onClick={addServiceWithRecalc}
                   variant="outline"
-                  className="inline-flex items-center justify-center gap-2 border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                  className="inline-flex items-center justify-center gap-1.5 text-xs h-8 px-3 border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg"
                 >
-                  <Wrench className="w-4 h-4 text-emerald-600" />
-                  Add Service / Repair
+                  <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+                  Add Service
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-3">
               {invoice_items.map((item, index) =>
                 item.item_type === "SERVICE" ? (
                   <ServiceCard
@@ -119,6 +138,7 @@ const InvoiceItemsForm = () => {
                     updateItem={updateItem}
                     updateItemImmediate={updateItemImmediate}
                     removeItem={removeItemWithRecalc}
+                    duplicateItem={duplicateService}
                     errors={errors}
                     recalculateInvoice={recalculateInvoice}
                   />
@@ -127,34 +147,33 @@ const InvoiceItemsForm = () => {
                     key={item.id}
                     item={item}
                     index={index}
-                    expandedSections={expandedSections}
                     updateItem={updateItem}
                     updateItemImmediate={updateItemImmediate}
                     removeItem={removeItemWithRecalc}
-                    toggleProductMetadata={toggleMetadata}
+                    duplicateItem={duplicateProduct}
                     errors={errors}
                     recalculateInvoice={recalculateInvoice}
                   />
                 ),
               )}
 
-              <div className="pt-3 sm:pt-4 border-t border-gray-200 dark:border-dark-border flex flex-col sm:flex-row gap-3">
+              <div className="pt-2 flex flex-col sm:flex-row gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={addItemWithRecalc}
-                  className="flex-1 flex items-center justify-center gap-2 h-11"
+                  className="flex-1 flex items-center justify-center gap-1.5 h-9 text-xs font-medium border-dashed border-gray-300 dark:border-dark-border text-gray-700 dark:text-slate-200 hover:bg-white dark:hover:bg-dark-card rounded-lg bg-white dark:bg-dark-card"
                 >
-                  <Plus className="w-4 h-4 text-indigo-600" />
+                  <Plus className="w-3.5 h-3.5 text-indigo-600" />
                   Add Another Product
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={addServiceWithRecalc}
-                  className="flex-1 flex items-center justify-center gap-2 h-11 border-emerald-300 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                  className="flex-1 flex items-center justify-center gap-1.5 h-9 text-xs font-medium border-dashed border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg bg-white dark:bg-dark-card"
                 >
-                  <Wrench className="w-4 h-4 text-emerald-600" />
+                  <Wrench className="w-3.5 h-3.5 text-emerald-600" />
                   Add Service / Repair Charge
                 </Button>
               </div>

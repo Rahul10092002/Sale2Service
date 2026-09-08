@@ -466,11 +466,11 @@ const MasterProductModal = ({ open, onClose, product }) => {
              </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button variant="outline" type="button" onClick={onClose} disabled={loading}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-gray-100 dark:border-dark-border">
+            <Button variant="outline" type="button" onClick={onClose} disabled={loading} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="min-w-[120px] bg-indigo-600 hover:bg-indigo-700 font-bold">
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto min-h-[44px] min-w-[120px] bg-indigo-600 hover:bg-indigo-700 font-bold">
               {loading ? <LoadingSpinner size="xs" /> : (product ? "Save Changes" : "Save Product")}
             </Button>
           </div>

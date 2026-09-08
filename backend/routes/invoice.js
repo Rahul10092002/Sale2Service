@@ -1,6 +1,7 @@
 import { Router } from "express";
 import InvoiceController from "../controllers/invoiceController.js";
 import { authenticate, authorize, checkPermission } from "../middleware/auth.js";
+import { strictMutationRateLimiter } from "../middleware/rateLimiter.js";
 
 export const invoiceRouter = Router();
 const invoiceController = new InvoiceController();
@@ -15,7 +16,7 @@ invoiceRouter.get("/public-pdf/:token", (req, res) =>
 invoiceRouter.use(authenticate);
 
 // Create new invoice
-invoiceRouter.post("/", checkPermission("invoices_create"), (req, res) => {
+invoiceRouter.post("/", strictMutationRateLimiter, checkPermission("invoices_create"), (req, res) => {
   return invoiceController.createInvoice(req, res);
 });
 
@@ -58,12 +59,12 @@ invoiceRouter.post(
 );
 
 // Update invoice by ID
-invoiceRouter.put("/:id", checkPermission("invoices_edit"), (req, res) =>
+invoiceRouter.put("/:id", strictMutationRateLimiter, checkPermission("invoices_edit"), (req, res) =>
   invoiceController.updateInvoice(req, res),
 );
 
 // Delete invoice by ID
-invoiceRouter.delete("/:id", checkPermission("invoices_delete"), (req, res) =>
+invoiceRouter.delete("/:id", strictMutationRateLimiter, checkPermission("invoices_delete"), (req, res) =>
   invoiceController.deleteInvoice(req, res),
 );
 
@@ -77,6 +78,7 @@ invoiceRouter.get(
 // Create service plan for a specific invoice item
 invoiceRouter.post(
   "/items/:itemId/services",
+  strictMutationRateLimiter,
   authorize("OWNER", "ADMIN", "STAFF"),
   (req, res) => invoiceController.createServiceForProduct(req, res),
 );
@@ -84,6 +86,7 @@ invoiceRouter.post(
 // Update service plan charges for a specific invoice item
 invoiceRouter.put(
   "/items/:itemId/services/charges",
+  strictMutationRateLimiter,
   authorize("OWNER", "ADMIN", "STAFF"),
   (req, res) => invoiceController.updateServicePlanCharges(req, res),
 );
@@ -91,6 +94,7 @@ invoiceRouter.put(
 // Update full service plan details for a specific invoice item
 invoiceRouter.put(
   "/items/:itemId/services",
+  strictMutationRateLimiter,
   authorize("OWNER", "ADMIN", "STAFF"),
   (req, res) => invoiceController.updateServicePlan(req, res),
 );
@@ -112,6 +116,7 @@ invoiceRouter.post(
 // Record a payment (full or partial) against an invoice
 invoiceRouter.post(
   "/:id/record-payment",
+  strictMutationRateLimiter,
   checkPermission("invoices_edit"),
   (req, res) => invoiceController.recordPayment(req, res),
 );

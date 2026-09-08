@@ -77,15 +77,21 @@ export const useInvoiceForm = () => {
     [dispatch, currentInvoice],
   );
 
-  const addItem = useCallback(() => {
-    dispatch(addInvoiceItem());
-    dispatch(recalculateInvoice());
-  }, [dispatch]);
+  const addItem = useCallback(
+    (payload) => {
+      dispatch(addInvoiceItem(payload));
+      dispatch(recalculateInvoice());
+    },
+    [dispatch],
+  );
 
-  const addService = useCallback(() => {
-    dispatch(addServiceItem());
-    dispatch(recalculateInvoice());
-  }, [dispatch]);
+  const addService = useCallback(
+    (payload) => {
+      dispatch(addServiceItem(payload));
+      dispatch(recalculateInvoice());
+    },
+    [dispatch],
+  );
 
   const toggleCustomerOptionalSection = useCallback(() => {
     dispatch(toggleCustomerOptional());

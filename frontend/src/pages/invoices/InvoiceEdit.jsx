@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Save, X, ArrowLeft } from "lucide-react";
+import { Save, X, ArrowLeft, ChevronDown, ChevronUp, Calculator } from "lucide-react";
 import { Button, LoadingSpinner } from "../../components/ui/index.js";
 import { useInvoiceForm } from "../../features/invoices/hooks.js";
 import {
@@ -11,6 +11,7 @@ import CustomerInformationForm from "../../components/invoice/CustomerInformatio
 import InvoiceDetailsForm from "../../components/invoice/InvoiceDetailsForm.jsx";
 import InvoiceItemsForm from "../../components/invoice/InvoiceItemsForm.jsx";
 import InvoiceSummary from "../../components/invoice/InvoiceSummary.jsx";
+import MobileInvoiceSummaryBar from "../../components/invoice/MobileInvoiceSummaryBar.jsx";
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 
 const InvoiceEdit = () => {
@@ -44,6 +45,7 @@ const InvoiceEdit = () => {
 
   const [updateInvoice] = useUpdateInvoiceMutation();
   const [submitResult, setSubmitResult] = useState(null);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
 
   // Load existing invoice data into form when available
   useEffect(() => {
@@ -80,6 +82,7 @@ const InvoiceEdit = () => {
           is_tax_inclusive: source.is_tax_inclusive !== false,
           subtotal: source.subtotal || 0,
           discount: source.discount || 0,
+          old_item_exchange_price: source.old_item_exchange_price || 0,
           tax: source.tax || 0,
           total_amount: source.total_amount || 0,
           amount_paid: source.amount_paid || 0,
@@ -174,11 +177,6 @@ const InvoiceEdit = () => {
               "Serial number is required";
           }
 
-          if (!item.product_name?.trim()) {
-            newErrors[`item.${item.id}.product_name`] =
-              "Product name is required";
-          }
-
           if (!item.company?.trim()) {
             newErrors[`item.${item.id}.company`] = "Company/Brand is required";
           }
@@ -238,6 +236,56 @@ const InvoiceEdit = () => {
           success: false,
           message: "Please fix the validation errors before saving",
         });
+        setTimeout(() => {
+          const errorSelector = [
+            "[data-error='true']",
+            "[aria-invalid='true']",
+            ".border-danger",
+            "p.text-danger",
+            ".border-red-500",
+          ].join(", ");
+
+          const errorElements = Array.from(document.querySelectorAll(errorSelector));
+          const visibleErrorEl =
+            errorElements.find((el) => {
+              const rect = el.getBoundingClientRect();
+              return (
+                rect.width > 0 ||
+                rect.height > 0 ||
+                (typeof el.getClientRects === "function" &&
+                  el.getClientRects().length > 0)
+              );
+            }) || errorElements[0];
+
+          if (visibleErrorEl) {
+            const focusTarget =
+              visibleErrorEl.matches("input, select, textarea, button")
+                ? visibleErrorEl
+                : visibleErrorEl.querySelector("input, select, textarea, button") ||
+                  visibleErrorEl
+                    .closest("div")
+                    ?.querySelector("input, select, textarea, button") ||
+                  visibleErrorEl;
+
+            focusTarget.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+
+            if (typeof focusTarget.focus === "function") {
+              try {
+                focusTarget.focus({ preventScroll: true });
+              } catch {
+                focusTarget.focus();
+              }
+            }
+
+            focusTarget.classList.add("ring-2", "ring-danger", "ring-offset-2");
+            setTimeout(() => {
+              focusTarget.classList.remove("ring-2", "ring-danger", "ring-offset-2");
+            }, 2000);
+          }
+        }, 120);
         return;
       }
 
@@ -259,6 +307,9 @@ const InvoiceEdit = () => {
           is_tax_inclusive: currentInvoice.invoice.is_tax_inclusive !== false,
           subtotal: Number(currentInvoice.invoice.subtotal || 0),
           discount: parseFloat(currentInvoice.invoice.discount || 0),
+          old_item_exchange_price: parseFloat(
+            currentInvoice.invoice.old_item_exchange_price || 0,
+          ),
           tax: Number(currentInvoice.invoice.tax || 0),
           total_amount: Number(currentInvoice.invoice.total_amount || 0),
           amount_paid: Number(currentInvoice.invoice.amount_paid || 0),
@@ -398,36 +449,43 @@ const InvoiceEdit = () => {
       </>
     );
   }
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+    }).format(amount || 0);
+
   return (
     <>
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-4 pb-36 lg:pb-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4 bg-white dark:bg-dark-card p-4 rounded-2xl border border-gray-200 dark:border-dark-border shadow-xs">
+            <div className="flex items-center gap-3">
               <Link to={`${ROUTES.INVOICES}/${id}`}>
-                <Button variant="outline" size="sm" className="p-2">
+                <Button variant="outline" size="sm" className="p-2 min-h-[40px] rounded-xl">
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                   Edit Invoice{" "}
                   {source.invoice_number ||
                     currentInvoice.invoice.invoice_number}
                 </h1>
-                <p className="text-gray-600 mt-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                   Update invoice details and customer information
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 self-start sm:self-auto">
               <Button
                 variant="outline"
                 onClick={handleCancel}
                 disabled={isSubmitting}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1.5 text-xs min-h-[42px]"
               >
                 <X className="w-4 h-4" />
                 Cancel
@@ -435,7 +493,7 @@ const InvoiceEdit = () => {
               <Button
                 onClick={handleSaveInvoice}
                 disabled={isSubmitting}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-xs min-h-[42px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5"
               >
                 {isSubmitting ? (
                   <LoadingSpinner className="w-4 h-4" />
@@ -451,15 +509,15 @@ const InvoiceEdit = () => {
           {submitResult && (
             <div className="mb-6">
               <div
-                className={`p-4 rounded-lg ${
+                className={`p-4 rounded-xl ${
                   submitResult.success
-                    ? "bg-green-50 border border-green-200 text-green-800"
-                    : "bg-red-50 border border-red-200 text-red-800"
+                    ? "bg-green-50 border border-green-200 text-green-800 dark:bg-green-950/40 dark:text-green-300"
+                    : "bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:text-red-300"
                 }`}
               >
-                <p className="font-medium">{submitResult.message}</p>
+                <p className="font-semibold text-sm">{submitResult.message}</p>
                 {submitResult.error && (
-                  <p className="text-sm mt-1 opacity-75">
+                  <p className="text-xs mt-1 opacity-80">
                     {submitResult.error?.data?.message || "Please try again."}
                   </p>
                 )}
@@ -468,7 +526,7 @@ const InvoiceEdit = () => {
           )}
 
           {/* Form Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Form */}
             <div className="lg:col-span-2 space-y-6">
               {/* Customer Information */}
@@ -483,7 +541,7 @@ const InvoiceEdit = () => {
               {/* Invoice Details */}
               <InvoiceDetailsForm
                 invoiceData={currentInvoice.invoice}
-                updateInvoiceData={(updates) =>
+                updateCustomerData={(updates) =>
                   updateInvoiceData("invoice", updates)
                 }
                 errors={errors}
@@ -512,6 +570,29 @@ const InvoiceEdit = () => {
             </div>
           </div>
         </div>
+
+        {/* Mobile Sticky Bottom Action Bar (< lg screens) */}
+        <MobileInvoiceSummaryBar
+          invoice={currentInvoice.invoice}
+          items={currentInvoice.invoice_items}
+          rawDiscount={currentInvoice.invoice.discount}
+          setRawDiscount={(val) => {
+            const discount = parseFloat(val) || 0;
+            updateInvoiceData("invoice", { discount });
+          }}
+          rawOldItemPrice={currentInvoice.invoice.old_item_exchange_price}
+          setRawOldItemPrice={(val) => {
+            const old_item_exchange_price = parseFloat(val) || 0;
+            updateInvoiceData("invoice", { old_item_exchange_price });
+          }}
+          updateInvoiceData={(updates) => updateInvoiceData("invoice", updates)}
+          onSubmit={handleSaveInvoice}
+          isSubmitting={isSubmitting}
+          errors={errors}
+          submitError={submitResult?.error?.data?.message || submitResult?.message}
+          submitLabel="Update Invoice"
+          loadingLabel="Updating Invoice..."
+        />
       </div>
     </>
   );

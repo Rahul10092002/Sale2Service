@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Trash2,
+  Copy,
   ChevronDown,
   ChevronUp,
   Package,
@@ -10,8 +11,9 @@ import {
   Camera,
   X,
   ScanLine,
+  Sliders,
 } from "lucide-react";
-import { Button, Input, SelectField } from "../ui/index.js";
+import { Input, SelectField } from "../ui/index.js";
 import { INVOICE_CONSTANTS } from "../../utils/constants.js";
 import { getToken } from "../../utils/token.js";
 import SerialScanner from "./SerialScanner.jsx";
@@ -21,7 +23,6 @@ const API_BASE_URL =
   import.meta.env.VITE_ENVIRONMENT === "production"
     ? import.meta.env.VITE_PROD_API_URL
     : import.meta.env.VITE_LOCAL_API_URL;
-
 
 const compressImage = (file) =>
   new Promise((resolve, reject) => {
@@ -56,18 +57,50 @@ const compressImage = (file) =>
 const ProductCard = React.memo(function ProductCard({
   item,
   index,
-  expandedSections,
   updateItem,
   updateItemImmediate,
   removeItem,
-  toggleProductMetadata,
-  errors,
+  duplicateItem,
+  errors = {},
   recalculateInvoice,
 }) {
-  const isExpanded = expandedSections.productMetadata[item.id] || false;
+  // Local tray open/close state for progressive disclosure
+  const [openTrays, setOpenTrays] = useState({
+    warranty: false,
+    photos: false,
+    servicePlan: !!item.service_plan_enabled,
+    metadata: false,
+  });
 
+  const toggleTray = useCallback((trayKey) => {
+    setOpenTrays((prev) => ({
+      ...prev,
+      [trayKey]: !prev[trayKey],
+    }));
+  }, []);
 
-  const [rawNumbers, setRawNumbers] = React.useState({});
+  // Auto-expand trays when relevant validation errors appear
+  useEffect(() => {
+    if (
+      errors[`item.${item.id}.warranty_start_date`] ||
+      errors[`item.${item.id}.warranty_duration_months`] ||
+      errors[`item.${item.id}.pro_warranty_duration_months`] ||
+      errors[`item.${item.id}.warranty_type`]
+    ) {
+      setOpenTrays((prev) => ({ ...prev, warranty: true }));
+    }
+    if (
+      errors[`item.${item.id}.manufacturing_date`] ||
+      errors[`item.${item.id}.capacity_rating`] ||
+      errors[`item.${item.id}.voltage`] ||
+      errors[`item.${item.id}.batch_number`] ||
+      errors[`item.${item.id}.purchase_source`]
+    ) {
+      setOpenTrays((prev) => ({ ...prev, metadata: true }));
+    }
+  }, [errors, item.id]);
+
+  const [rawNumbers, setRawNumbers] = useState({});
 
   const setRaw = (key, value) =>
     setRawNumbers((prev) => ({ ...prev, [key]: value }));
@@ -79,7 +112,7 @@ const ProductCard = React.memo(function ProductCard({
       return next;
     });
 
-  // Returns the raw string if the user is editing, otherwise the stored value.
+  // Returns raw string while actively typing, otherwise the stored numeric value.
   const numVal = (key, itemValue, fallback) =>
     key in rawNumbers
       ? rawNumbers[key]
@@ -88,12 +121,13 @@ const ProductCard = React.memo(function ProductCard({
         : fallback;
 
   // ── Serial scanner state ────────────────────────────────────────
-  const [showScanner, setShowScanner] = React.useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+
   // ── Image upload state ──────────────────────────────────────────
-  const [imageUploading, setImageUploading] = React.useState(false);
-  const [imageError, setImageError] = React.useState(null);
-  const fileInputRef = React.useRef(null);
-  const cameraInputRef = React.useRef(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState(null);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -103,7 +137,6 @@ const ProductCard = React.memo(function ProductCard({
     setImageUploading(true);
     try {
       const formData = new FormData();
-      // Compress and append all files
       for (const file of files) {
         const compressed = await compressImage(file);
         formData.append("product_images", compressed, "product.jpg");
@@ -145,41 +178,116 @@ const ProductCard = React.memo(function ProductCard({
     const updatedImages = currentImages.filter((url) => url !== urlToRemove);
     updateItemImmediate(item.id, {
       product_images: updatedImages,
-      // Clear legacy field if empty
       ...(updatedImages.length === 0 && { product_image_url: null }),
     });
     setImageError(null);
   };
-  // ── End image upload state ──────────────────────────────────────
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Summary badge derivations
+  const images =
+    item.product_images ||
+    (item.product_image_url ? [item.product_image_url] : []);
+  const photoCount = images.length;
+  const warrantySummary = `${item.warranty_type || "STANDARD"} · ${item.warranty_duration_months || 12}M`;
+  const servicePlanSummary = item.service_plan_enabled
+    ? `Active · ${item.service_plan?.service_interval_type || "MONTHLY"}`
+    : "Off";
+  const metadataFilledCount = [
+    item.capacity_rating,
+    item.voltage,
+    item.batch_number,
+    item.manufacturing_date,
+    item.cost_price,
+  ].filter(Boolean).length;
+  const metadataSummary =
+    metadataFilledCount > 0
+      ? `${metadataFilledCount} spec${metadataFilledCount > 1 ? "s" : ""} set`
+      : "Specs & Margin";
 
   return (
-    <div className="bg-white dark:bg-dark-card  overflow-hidden">
-      <div className="bg-gray-50 dark:bg-dark-card  py-2 flex items-center justify-between border-b border-gray-200 dark:border-dark-border">
-        <h3 className="font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
-          <Package className="w-4 h-4 text-indigo-600" />
-          Product {index + 1}
-          {item.product_name && (
-            <span className="text-sm text-ink-muted dark:text-slate-500">- {item.product_name}</span>
+    <div className="bg-white dark:bg-dark-card border border-gray-200/90 dark:border-dark-border rounded-xl p-3 sm:p-4 shadow-xs relative transition-all">
+      {/* Card Header & Actions */}
+      <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-gray-100 dark:border-dark-border/60">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Package className="w-3.5 h-3.5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-slate-100 truncate">
+                Product #{index + 1}
+              </h3>
+              {item.product_category && (
+                <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/40">
+                  {item.product_category}
+                </span>
+              )}
+            </div>
+            {item.product_name && (
+              <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate mt-0.5">
+                {item.product_name}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Action Toolbar */}
+        <div className="flex items-center gap-1">
+          {duplicateItem && (
+            <button
+              type="button"
+              onClick={() => duplicateItem(item)}
+              className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+              title="Duplicate product"
+              aria-label={`Duplicate product ${index + 1}`}
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
           )}
-        </h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => removeItem(item.id)}
-          className="text-red-600 hover:text-red-700"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+
+          {confirmDelete ? (
+            <div className="flex items-center gap-1.5 animate-in fade-in">
+              <span className="text-xs font-semibold text-rose-600">Delete?</span>
+              <button
+                type="button"
+                onClick={() => removeItem(item.id)}
+                className="px-2 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg min-h-[32px]"
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-dark-hover text-gray-700 dark:text-slate-300 rounded-lg min-h-[32px]"
+              >
+                No
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+              title="Remove product"
+              aria-label={`Remove product ${index + 1}`}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className=" space-y-3">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-          <div className="lg:col-span-1">
-            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+      {/* Primary Permanent Core Fields */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+          {/* Serial Number & Quick Scan */}
+          <div className="col-span-1">
+            <label className="block text-xs font-bold text-ink-secondary dark:text-slate-200 mb-1">
               Serial Number *
             </label>
-            <div className="flex gap-2 items-start">
+            <div className="flex gap-1.5 items-center">
               <div className="flex-1">
                 <Input
                   type="text"
@@ -187,17 +295,19 @@ const ProductCard = React.memo(function ProductCard({
                   onChange={(e) =>
                     updateItem(item.id, { serial_number: e.target.value })
                   }
-                  placeholder="Enter or scan serial number"
+                  placeholder="Enter or scan serial"
                   error={errors[`item.${item.id}.serial_number`]}
+                  inputClassName="h-9 sm:h-8 text-xs font-semibold"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => setShowScanner(true)}
                 title="Scan barcode / QR code"
-                className="shrink-0 flex items-center gap-1.5 px-2 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-medium rounded-lg transition-colors"
+                className="shrink-0 h-9 sm:h-8 px-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-lg flex items-center gap-1 shadow-2xs transition-transform active:scale-95"
+                aria-label="Scan barcode with camera"
               >
-                <ScanLine className="w-4 h-4" />
+                <ScanLine className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Scan</span>
               </button>
             </div>
@@ -212,16 +322,45 @@ const ProductCard = React.memo(function ProductCard({
             )}
           </div>
 
+          {/* Company / Brand */}
           <div>
             <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-              Product Name *
+              Company/Brand *
+            </label>
+            <Input
+              type="text"
+              value={item.company || ""}
+              onChange={(e) => updateItem(item.id, { company: e.target.value })}
+              placeholder="Brand name"
+              error={errors[`item.${item.id}.company`]}
+            />
+          </div>
+
+          {/* Model Number */}
+          <div>
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+              Model Number *
+            </label>
+            <Input
+              type="text"
+              value={item.model_number || ""}
+              onChange={(e) =>
+                updateItem(item.id, { model_number: e.target.value })
+              }
+              placeholder="Model number"
+              error={errors[`item.${item.id}.model_number`]}
+            />
+          </div>
+
+          {/* Product Name Autocomplete (Optional) */}
+          <div>
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+              Product Name (Optional)
             </label>
             <ProductNameAutocomplete
               value={item.product_name || ""}
               onChange={(text) => updateItem(item.id, { product_name: text })}
               onSelect={(suggestion) => {
-                // Clear stale rawNumber display for any numeric field that
-                // might be auto-filled so the new Redux value renders immediately.
                 clearRaw("selling_price");
                 clearRaw("warranty_duration_months");
                 updateItemImmediate(item.id, {
@@ -248,13 +387,13 @@ const ProductCard = React.memo(function ProductCard({
                       suggestion.warranty_duration_months,
                   }),
                 });
-                // Update invoice totals if selling_price was auto-filled
                 if (suggestion.selling_price > 0) recalculateInvoice();
               }}
               error={errors[`item.${item.id}.product_name`]}
             />
           </div>
 
+          {/* Product Category */}
           <div>
             <SelectField
               id={`product-category-${item.id}`}
@@ -281,6 +420,7 @@ const ProductCard = React.memo(function ProductCard({
             />
           </div>
 
+          {/* Battery-Specific Fields */}
           {item.product_category === "BATTERY" && (
             <>
               <div className="lg:col-span-1">
@@ -292,7 +432,8 @@ const ProductCard = React.memo(function ProductCard({
                     const v = e.target.value;
                     updateItemImmediate(item.id, {
                       battery_type: v,
-                      ...(v !== INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY && {
+                      ...(v !==
+                        INVOICE_CONSTANTS.BATTERY_TYPES.VEHICLE_BATTERY && {
                         vehicle_name: "",
                         vehicle_number_plate: "",
                       }),
@@ -352,40 +493,15 @@ const ProductCard = React.memo(function ProductCard({
             </>
           )}
 
+          {/* Selling Price */}
           <div>
             <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-              Company/Brand *
-            </label>
-            <Input
-              type="text"
-              value={item.company || ""}
-              onChange={(e) => updateItem(item.id, { company: e.target.value })}
-              placeholder="Brand name"
-              error={errors[`item.${item.id}.company`]}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-              Model Number *
-            </label>
-            <Input
-              type="text"
-              value={item.model_number || ""}
-              onChange={(e) =>
-                updateItem(item.id, { model_number: e.target.value })
-              }
-              placeholder="Model number"
-              error={errors[`item.${item.id}.model_number`]}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-              Selling Price *
+              Selling Price (₹) *
             </label>
             <Input
               type="number"
+              inputMode="decimal"
+              step="any"
               value={numVal("selling_price", item.selling_price, "")}
               onChange={(e) => {
                 setRaw("selling_price", e.target.value);
@@ -397,17 +513,19 @@ const ProductCard = React.memo(function ProductCard({
               onBlur={() => clearRaw("selling_price")}
               placeholder="0.00"
               min="0"
-              step="1"
               error={errors[`item.${item.id}.selling_price`]}
+              inputClassName="h-9 sm:h-8 text-xs font-semibold"
             />
           </div>
 
+          {/* Quantity */}
           <div>
             <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
               Quantity
             </label>
             <Input
               type="number"
+              inputMode="numeric"
               value={numVal("quantity", item.quantity, 1)}
               onChange={(e) => {
                 setRaw("quantity", e.target.value);
@@ -419,346 +537,620 @@ const ProductCard = React.memo(function ProductCard({
               onBlur={() => clearRaw("quantity")}
               placeholder="1"
               min="1"
+              inputClassName="h-9 sm:h-8 text-xs font-semibold"
             />
           </div>
         </div>
 
-        {/* Product Image Upload */}
-      <div className="border-t border-gray-200 pt-2 space-y-2">
-  
-  <h4 className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
-    <ImagePlus className="w-3.5 h-3.5 text-indigo-600" />
-    Product Images
-  </h4>
-
-  <div className="flex flex-wrap gap-2">
-    {/* Display existing images */}
-    {(item.product_images || (item.product_image_url ? [item.product_image_url] : [])).map((url, idx) => (
-      <div key={idx} className="relative inline-block">
-        <img
-          src={url}
-          alt={`Product ${idx + 1}`}
-          className="w-20 h-20 object-cover rounded-md border border-gray-200"
-        />
-        <button
-          type="button"
-          onClick={() => removeImage(url)}
-          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-[2px]"
-        >
-          <X className="w-3 h-3" />
-        </button>
-      </div>
-    ))}
-
-    {/* Upload Button */}
-    <label className="flex flex-col items-center justify-center w-20 h-20 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition">
-      {imageUploading ? (
-        <span className="text-[10px] text-indigo-600">Uploading…</span>
-      ) : (
-        <>
-          <ImagePlus className="w-4 h-4 text-gray-400" />
-          <span className="text-[10px] text-gray-500">Upload</span>
-        </>
-      )}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        disabled={imageUploading}
-        onChange={handleImageChange}
-      />
-    </label>
-
-    {/* Camera Button */}
-    <label className="flex flex-col items-center justify-center w-20 h-20 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition">
-      {imageUploading ? (
-        <span className="text-[10px] text-green-600">Uploading…</span>
-      ) : (
-        <>
-          <Camera className="w-4 h-4 text-gray-400" />
-          <span className="text-[10px] text-gray-500">Camera</span>
-        </>
-      )}
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        capture="environment"
-        className="hidden"
-        disabled={imageUploading}
-        onChange={handleImageChange}
-      />
-    </label>
-  </div>
-
-  {imageError && (
-    <p className="text-[11px] text-red-600">{imageError}</p>
-  )}
-</div>
-
-        <div className="border-t border-gray-200 pt-2">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2 mb-3">
-            <Shield className="w-4 h-4 text-indigo-600" />
-            Warranty Information
-          </h4>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-            <div>
-              <SelectField
-                id={`warranty-type-${item.id}`}
-                label="Warranty Type"
-                value={item.warranty_type || "STANDARD"}
-                onChange={(e) =>
-                  updateItemImmediate(item.id, {
-                    warranty_type: e.target.value,
-                  })
-                }
-                options={Object.entries(INVOICE_CONSTANTS.WARRANTY_TYPES).map(
-                  ([, value]) => ({
-                    value: value,
-                    label: value,
-                  }),
+        {/* ── Progressive Disclosure Accordion Trays ── */}
+        <div className="space-y-2 pt-1 border-t border-gray-100 dark:border-dark-border/60">
+          {/* 1. Warranty Tray */}
+          <div className="rounded-lg border border-gray-100 dark:border-dark-border/70 overflow-hidden bg-gray-50/50 dark:bg-dark-bg/40">
+            <button
+              type="button"
+              id={`tray-btn-${item.id}-warranty`}
+              aria-controls={`tray-panel-${item.id}-warranty`}
+              aria-expanded={openTrays.warranty}
+              onClick={() => toggleTray("warranty")}
+              className="w-full flex items-center justify-between p-2.5 sm:px-3 text-left hover:bg-gray-100/50 dark:hover:bg-dark-hover/50 transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus:outline-none"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Shield className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="text-xs font-semibold text-gray-800 dark:text-slate-200">
+                  Warranty Details
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100/80 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300">
+                  {warrantySummary}
+                </span>
+                {errors[`item.${item.id}.warranty_start_date`] && (
+                  <span className="text-[10px] text-red-500 font-bold">
+                    • Error
+                  </span>
                 )}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                Warranty Duration (Months) *
-              </label>
-              <Input
-                type="number"
-                value={numVal(
-                  "warranty_duration_months",
-                  item.warranty_duration_months,
-                  12,
-                )}
-                onChange={(e) => {
-                  setRaw("warranty_duration_months", e.target.value);
-                  updateItem(item.id, {
-                    warranty_duration_months: parseInt(e.target.value) || 12,
-                  });
-                  recalculateInvoice();
-                }}
-                onBlur={() => clearRaw("warranty_duration_months")}
-                placeholder="12"
-                min="1"
-                max="120"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                Warranty Start Date *
-              </label>
-              <Input
-                type="date"
-                value={item.warranty_start_date || ""}
-                onChange={(e) =>
-                  updateItemImmediate(item.id, {
-                    warranty_start_date: e.target.value,
-                  })
-                }
-                error={errors[`item.${item.id}.warranty_start_date`]}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300  mb-1">
-                Warranty End Date
-              </label>
-              <Input
-                type="date"
-                value={item.warranty_end_date || ""}
-                readOnly
-                className=" cursor-not-allowed"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Auto-calculated from start date and duration
-              </p>
-            </div>
-
-            {item.warranty_type === "PRO" && (
-              <div className="lg:col-span-1">
-                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                  Pro Warranty End Date
-                </label>
-                <Input
-                  type="date"
-                  value={item.pro_warranty_end_date || ""}
-                  onChange={(e) =>
-                    updateItemImmediate(item.id, {
-                      pro_warranty_end_date: e.target.value,
-                    })
-                  }
-                  placeholder="Extended warranty end date"
-                />
               </div>
-            )}
-          </div>
-        </div>
+              {openTrays.warranty ? (
+                <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+              )}
+            </button>
 
-        {/* Service Plan Configuration Section */}
-        <div className="border-t border-gray-200 pt-2">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
-              <Settings className="w-4 h-4 text-indigo-600" />
-              Service Plan Configuration
-            </h4>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={item.service_plan_enabled || false}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    // Check if service plan already exists (for editing scenarios)
-                    const existingServicePlan = item.service_plan;
-
-                    if (existingServicePlan) {
-                      // Preserve existing service plan data
-                      updateItemImmediate(item.id, {
-                        service_plan_enabled: true,
-                        service_plan: {
-                          ...existingServicePlan,
-                          is_active: true, // Ensure it's active
-                        },
-                      });
-                    } else {
-                      // Create new service plan with defaults
-                      const intervalType = "MONTHLY";
-                      const intervalValue = 1;
-                      const serviceStartDate = computeServiceStartDate(
-                        intervalType,
-                        intervalValue,
-                      );
-
-                      updateItemImmediate(item.id, {
-                        service_plan_enabled: true,
-                        service_plan: {
-                          service_interval_type: intervalType,
-                          service_interval_value: intervalValue,
-                          service_start_date: serviceStartDate,
-                          service_description: `Regular service for ${item.product_name || "Product"}`,
-                          service_charge: 0,
-                          total_services: 1,
-                          is_active: true,
-                        },
-                      });
-                    }
-                  } else {
-                    const {
-                      service_plan,
-                      service_plan_enabled,
-                      ...itemWithoutServicePlan
-                    } = item;
-                    updateItemImmediate(item.id, itemWithoutServicePlan);
-                  }
-                }}
-                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-sm text-ink-secondary dark:text-slate-300">Enable Service Plan</span>
-            </label>
-          </div>
-
-          {item.service_plan_enabled && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            {openTrays.warranty && (
+              <div
+                id={`tray-panel-${item.id}-warranty`}
+                role="region"
+                aria-labelledby={`tray-btn-${item.id}-warranty`}
+                className="p-2.5 sm:p-3 pt-1 border-t border-gray-100 dark:border-dark-border/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5"
+              >
                 <div>
                   <SelectField
-                    id={`service-interval-type-${item.id}`}
-                    label="Service Interval Type"
-                    value={
-                      item.service_plan?.service_interval_type || "MONTHLY"
-                    }
-                    onChange={(e) => {
-                      const newIntervalType = e.target.value;
-                      const intervalValue =
-                        item.service_plan?.service_interval_value || 1;
-                      const newServiceStartDate = computeServiceStartDate(
-                        newIntervalType,
-                        intervalValue,
-                      );
-
+                    id={`warranty-type-${item.id}`}
+                    label="Warranty Type"
+                    value={item.warranty_type || "STANDARD"}
+                    onChange={(e) =>
                       updateItemImmediate(item.id, {
-                        ...item,
-                        service_plan: {
-                          ...item.service_plan,
-                          service_interval_type: newIntervalType,
-                          service_start_date: newServiceStartDate,
-                        },
-                      });
-                    }}
-                    options={[
-                      { value: "MONTHLY", label: "Monthly" },
-                      { value: "QUARTERLY", label: "Quarterly (3 months)" },
-                      {
-                        value: "HALF_YEARLY",
-                        label: "Half-Yearly (6 months)",
-                      },
-                      { value: "YEARLY", label: "Yearly (12 months)" },
-                    ]}
+                        warranty_type: e.target.value,
+                      })
+                    }
+                    options={Object.entries(
+                      INVOICE_CONSTANTS.WARRANTY_TYPES,
+                    ).map(([, value]) => ({
+                      value: value,
+                      label: value,
+                    }))}
+                    required
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                    Service Interval Value
+                    Warranty Duration (Months) *
                   </label>
                   <Input
                     type="number"
+                    inputMode="numeric"
                     value={numVal(
-                      "sp_interval_value",
-                      item.service_plan?.service_interval_value,
-                      1,
+                      "warranty_duration_months",
+                      item.warranty_duration_months,
+                      12,
                     )}
                     onChange={(e) => {
-                      setRaw("sp_interval_value", e.target.value);
-                      const newIntervalValue = parseInt(e.target.value) || 1;
-                      const intervalType =
-                        item.service_plan?.service_interval_type || "MONTHLY";
-                      const newServiceStartDate = computeServiceStartDate(
-                        intervalType,
-                        newIntervalValue,
-                      );
-
+                      setRaw("warranty_duration_months", e.target.value);
                       updateItem(item.id, {
-                        ...item,
-                        service_plan: {
-                          ...item.service_plan,
-                          service_interval_value: newIntervalValue,
-                          service_start_date: newServiceStartDate,
-                        },
+                        warranty_duration_months:
+                          parseInt(e.target.value) || 12,
                       });
+                      recalculateInvoice();
                     }}
-                    onBlur={() => clearRaw("sp_interval_value")}
-                    placeholder="1"
+                    onBlur={() => clearRaw("warranty_duration_months")}
+                    placeholder="12"
                     min="1"
+                    max="120"
+                    inputClassName="h-9 sm:h-8 text-xs font-semibold"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Every {item.service_plan?.service_interval_value || 1}{" "}
-                    {item.service_plan?.service_interval_type
-                      ?.toLowerCase()
-                      .replace("_", " ") || "month(s)"}
-                  </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                    Service Start Date
+                    Warranty Start Date *
                   </label>
                   <Input
                     type="date"
-                    value={item.service_plan?.service_start_date || ""}
+                    value={item.warranty_start_date || ""}
                     onChange={(e) =>
                       updateItemImmediate(item.id, {
-                        ...item,
-                        service_plan: {
-                          ...item.service_plan,
-                          service_start_date: e.target.value,
-                        },
+                        warranty_start_date: e.target.value,
+                      })
+                    }
+                    error={errors[`item.${item.id}.warranty_start_date`]}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                    Warranty End Date
+                  </label>
+                  <Input
+                    type="date"
+                    value={item.warranty_end_date || ""}
+                    readOnly
+                    className="cursor-not-allowed bg-gray-50 dark:bg-dark-input/50 text-xs"
+                  />
+                </div>
+
+                {item.warranty_type === "PRO" && (
+                  <div className="lg:col-span-1">
+                    <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                      Pro Warranty End Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={item.pro_warranty_end_date || ""}
+                      onChange={(e) =>
+                        updateItemImmediate(item.id, {
+                          pro_warranty_end_date: e.target.value,
+                        })
+                      }
+                      placeholder="Extended warranty end date"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 2. Photos Tray */}
+          <div className="rounded-lg border border-gray-100 dark:border-dark-border/70 overflow-hidden bg-gray-50/50 dark:bg-dark-bg/40">
+            <button
+              type="button"
+              id={`tray-btn-${item.id}-photos`}
+              aria-controls={`tray-panel-${item.id}-photos`}
+              aria-expanded={openTrays.photos}
+              onClick={() => toggleTray("photos")}
+              className="w-full flex items-center justify-between p-2.5 sm:px-3 text-left hover:bg-gray-100/50 dark:hover:bg-dark-hover/50 transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus:outline-none"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <ImagePlus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="text-xs font-semibold text-gray-800 dark:text-slate-200">
+                  Product Photos
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200/80 dark:bg-dark-hover text-gray-700 dark:text-slate-300">
+                  Photos ({photoCount})
+                </span>
+              </div>
+              {openTrays.photos ? (
+                <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+              )}
+            </button>
+
+            {openTrays.photos && (
+              <div
+                id={`tray-panel-${item.id}-photos`}
+                role="region"
+                aria-labelledby={`tray-btn-${item.id}-photos`}
+                className="p-2.5 sm:p-3 pt-1 border-t border-gray-100 dark:border-dark-border/50 space-y-2"
+              >
+                <div className="flex flex-wrap gap-2">
+                  {images.map((url, idx) => (
+                    <div key={idx} className="relative inline-block">
+                      <img
+                        src={url}
+                        alt={`Product ${idx + 1}`}
+                        className="w-14 h-14 object-cover rounded-lg border border-gray-200 dark:border-dark-border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(url)}
+                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-xs hover:bg-red-600"
+                        title="Remove photo"
+                        aria-label={`Remove photo ${idx + 1}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Upload Button */}
+                  <label className="flex flex-col items-center justify-center min-w-[56px] h-14 px-2 border border-dashed border-gray-300 dark:border-dark-border rounded-lg cursor-pointer hover:bg-gray-100/60 dark:hover:bg-dark-hover active:scale-95 transition">
+                    {imageUploading ? (
+                      <span className="text-[9px] text-indigo-600 font-bold">Uploading…</span>
+                    ) : (
+                      <>
+                        <ImagePlus className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                        <span className="text-[10px] font-semibold text-gray-600 dark:text-slate-300 mt-0.5">Upload</span>
+                      </>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      disabled={imageUploading}
+                      onChange={handleImageChange}
+                    />
+                  </label>
+
+                  {/* Camera Button */}
+                  <label className="flex flex-col items-center justify-center min-w-[56px] h-14 px-2 border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-lg cursor-pointer hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30 active:scale-95 transition">
+                    {imageUploading ? (
+                      <span className="text-[9px] text-emerald-600 font-bold">Uploading…</span>
+                    ) : (
+                      <>
+                        <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 mt-0.5">Camera</span>
+                      </>
+                    )}
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
+                      className="hidden"
+                      disabled={imageUploading}
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                </div>
+
+                {imageError && (
+                  <p className="text-[11px] text-red-600">{imageError}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 3. Service Plan Tray */}
+          <div className="rounded-lg border border-gray-100 dark:border-dark-border/70 overflow-hidden bg-gray-50/50 dark:bg-dark-bg/40">
+            <button
+              type="button"
+              id={`tray-btn-${item.id}-serviceplan`}
+              aria-controls={`tray-panel-${item.id}-serviceplan`}
+              aria-expanded={openTrays.servicePlan}
+              onClick={() => toggleTray("servicePlan")}
+              className="w-full flex items-center justify-between p-2.5 sm:px-3 text-left hover:bg-gray-100/50 dark:hover:bg-dark-hover/50 transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus:outline-none"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Settings className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="text-xs font-semibold text-gray-800 dark:text-slate-200">
+                  Service Plan Configuration
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    item.service_plan_enabled
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-gray-200/80 dark:bg-dark-hover text-gray-600 dark:text-slate-400"
+                  }`}
+                >
+                  {servicePlanSummary}
+                </span>
+              </div>
+              {openTrays.servicePlan ? (
+                <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+              )}
+            </button>
+
+            {openTrays.servicePlan && (
+              <div
+                id={`tray-panel-${item.id}-serviceplan`}
+                role="region"
+                aria-labelledby={`tray-btn-${item.id}-serviceplan`}
+                className="p-2.5 sm:p-3 pt-1 border-t border-gray-100 dark:border-dark-border/50 space-y-3"
+              >
+                {/* Toggle Pill */}
+                <div className="flex items-center justify-between bg-white dark:bg-dark-card p-2.5 rounded-lg border border-gray-200/70 dark:border-dark-border">
+                  <div>
+                    <span className="text-xs font-bold text-gray-900 dark:text-slate-100 block">
+                      Enable Maintenance Service Plan
+                    </span>
+                    <span className="text-[11px] text-gray-500 dark:text-slate-400">
+                      Auto-schedules recurring maintenance visits
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(item.service_plan_enabled)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const existingServicePlan = item.service_plan;
+                          if (existingServicePlan) {
+                            updateItemImmediate(item.id, {
+                              service_plan_enabled: true,
+                              service_plan: {
+                                ...existingServicePlan,
+                                is_active: true,
+                              },
+                            });
+                          } else {
+                            const intervalType = "MONTHLY";
+                            const intervalValue = 1;
+                            const serviceStartDate = computeServiceStartDate(
+                              intervalType,
+                              intervalValue,
+                            );
+                            updateItemImmediate(item.id, {
+                              service_plan_enabled: true,
+                              service_plan: {
+                                service_interval_type: intervalType,
+                                service_interval_value: intervalValue,
+                                service_start_date: serviceStartDate,
+                                service_description: `Regular service for ${item.product_name || "Product"}`,
+                                service_charge: 0,
+                                total_services: 1,
+                                is_active: true,
+                              },
+                            });
+                          }
+                        } else {
+                          updateItemImmediate(item.id, {
+                            service_plan_enabled: false,
+                            service_plan: null,
+                          });
+                        }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-dark-border peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                {item.service_plan_enabled && (
+                  <div className="space-y-3 animate-in fade-in">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                      <div>
+                        <SelectField
+                          id={`service-interval-type-${item.id}`}
+                          label="Interval Type"
+                          value={
+                            item.service_plan?.service_interval_type || "MONTHLY"
+                          }
+                          onChange={(e) => {
+                            const newIntervalType = e.target.value;
+                            const intervalValue =
+                              item.service_plan?.service_interval_value || 1;
+                            const newServiceStartDate = computeServiceStartDate(
+                              newIntervalType,
+                              intervalValue,
+                            );
+
+                            updateItemImmediate(item.id, {
+                              ...item,
+                              service_plan: {
+                                ...item.service_plan,
+                                service_interval_type: newIntervalType,
+                                service_start_date: newServiceStartDate,
+                              },
+                            });
+                          }}
+                          options={[
+                            { value: "MONTHLY", label: "Monthly" },
+                            { value: "QUARTERLY", label: "Quarterly (3 months)" },
+                            {
+                              value: "HALF_YEARLY",
+                              label: "Half-Yearly (6 months)",
+                            },
+                            { value: "YEARLY", label: "Yearly (12 months)" },
+                          ]}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                          Interval Value
+                        </label>
+                        <Input
+                          type="number"
+                          value={numVal(
+                            "sp_interval_value",
+                            item.service_plan?.service_interval_value,
+                            1,
+                          )}
+                          onChange={(e) => {
+                            setRaw("sp_interval_value", e.target.value);
+                            const newIntervalValue =
+                              parseInt(e.target.value) || 1;
+                            const intervalType =
+                              item.service_plan?.service_interval_type ||
+                              "MONTHLY";
+                            const newServiceStartDate = computeServiceStartDate(
+                              intervalType,
+                              newIntervalValue,
+                            );
+
+                            updateItem(item.id, {
+                              ...item,
+                              service_plan: {
+                                ...item.service_plan,
+                                service_interval_value: newIntervalValue,
+                                service_start_date: newServiceStartDate,
+                              },
+                            });
+                          }}
+                          onBlur={() => clearRaw("sp_interval_value")}
+                          placeholder="1"
+                          min="1"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                          Service Start Date
+                        </label>
+                        <Input
+                          type="date"
+                          value={item.service_plan?.service_start_date || ""}
+                          onChange={(e) =>
+                            updateItemImmediate(item.id, {
+                              ...item,
+                              service_plan: {
+                                ...item.service_plan,
+                                service_start_date: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                          Service Charge (₹)
+                        </label>
+                        <Input
+                          type="number"
+                          value={numVal(
+                            "sp_service_charge",
+                            item.service_plan?.service_charge,
+                            0,
+                          )}
+                          onChange={(e) => {
+                            setRaw("sp_service_charge", e.target.value);
+                            updateItem(item.id, {
+                              ...item,
+                              service_plan: {
+                                ...item.service_plan,
+                                service_charge: parseFloat(e.target.value) || 0,
+                              },
+                            });
+                          }}
+                          onBlur={() => clearRaw("sp_service_charge")}
+                          placeholder="0.00"
+                          min="0"
+                          step="1"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                          Total Services
+                        </label>
+                        <Input
+                          type="number"
+                          value={numVal(
+                            "sp_total_services",
+                            item.service_plan?.total_services,
+                            1,
+                          )}
+                          onChange={(e) => {
+                            setRaw("sp_total_services", e.target.value);
+                            const total = parseInt(e.target.value) || 1;
+                            const start =
+                              item.service_plan?.service_start_date ||
+                              new Date().toISOString().split("T")[0];
+                            const intervalType =
+                              item.service_plan?.service_interval_type ||
+                              "MONTHLY";
+                            const intervalValue =
+                              item.service_plan?.service_interval_value || 1;
+                            const endDate = computeServiceEndDate(
+                              start,
+                              intervalType,
+                              intervalValue,
+                              total,
+                            );
+
+                            updateItem(item.id, {
+                              ...item,
+                              service_plan: {
+                                ...item.service_plan,
+                                total_services: total,
+                                service_end_date: endDate,
+                              },
+                            });
+                          }}
+                          onBlur={() => clearRaw("sp_total_services")}
+                          placeholder="1"
+                          min="1"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                          Service End Date
+                        </label>
+                        <Input
+                          type="date"
+                          value={item.service_plan?.service_end_date || ""}
+                          readOnly
+                          className="bg-gray-50 dark:bg-dark-input/50 cursor-not-allowed"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2 lg:col-span-3">
+                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                          Service Description
+                        </label>
+                        <textarea
+                          value={item.service_plan?.service_description || ""}
+                          onChange={(e) =>
+                            updateItem(item.id, {
+                              ...item,
+                              service_plan: {
+                                ...item.service_plan,
+                                service_description: e.target.value,
+                              },
+                            })
+                          }
+                          placeholder="Describe the service to be performed..."
+                          rows={2}
+                          className="w-full px-3 py-1.5 text-xs border border-gray-300 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none dark:bg-dark-bg dark:text-slate-100"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 p-2.5 rounded-lg">
+                      <p className="text-xs text-indigo-900 dark:text-indigo-200">
+                        <strong>Service Plan Summary:</strong> First service scheduled{" "}
+                        {item.service_plan?.service_interval_value || 1}{" "}
+                        {item.service_plan?.service_interval_type
+                          ?.toLowerCase()
+                          .replace("_", " ") || "month(s)"}{" "}
+                        from today ({" "}
+                        {item.service_plan?.service_start_date
+                          ? new Date(
+                              item.service_plan.service_start_date,
+                            ).toLocaleDateString("en-IN")
+                          : "calculated date"}{" "}
+                        ), then every {item.service_plan?.service_interval_value || 1}{" "}
+                        {item.service_plan?.service_interval_type
+                          ?.toLowerCase()
+                          .replace("_", " ") || "month(s)"}{" "}
+                        at ₹{item.service_plan?.service_charge || 0} per service.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 4. Additional Specs & Metadata Tray */}
+          <div className="rounded-lg border border-gray-100 dark:border-dark-border/70 overflow-hidden bg-gray-50/50 dark:bg-dark-bg/40">
+            <button
+              type="button"
+              id={`tray-btn-${item.id}-metadata`}
+              aria-controls={`tray-panel-${item.id}-metadata`}
+              aria-expanded={openTrays.metadata}
+              onClick={() => toggleTray("metadata")}
+              className="w-full flex items-center justify-between p-2.5 sm:px-3 text-left hover:bg-gray-100/50 dark:hover:bg-dark-hover/50 transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus:outline-none"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Sliders className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="text-xs font-semibold text-gray-800 dark:text-slate-200">
+                  Additional Specs & Metadata
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200/80 dark:bg-dark-hover text-gray-700 dark:text-slate-300">
+                  {metadataSummary}
+                </span>
+              </div>
+              {openTrays.metadata ? (
+                <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+              )}
+            </button>
+
+            {openTrays.metadata && (
+              <div
+                id={`tray-panel-${item.id}-metadata`}
+                role="region"
+                aria-labelledby={`tray-btn-${item.id}-metadata`}
+                className="p-2.5 sm:p-3 pt-1 border-t border-gray-100 dark:border-dark-border/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5"
+              >
+                <div>
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                    Manufacturing Date
+                  </label>
+                  <Input
+                    type="date"
+                    value={item.manufacturing_date || ""}
+                    onChange={(e) =>
+                      updateItemImmediate(item.id, {
+                        manufacturing_date: e.target.value,
                       })
                     }
                   />
@@ -766,26 +1158,75 @@ const ProductCard = React.memo(function ProductCard({
 
                 <div>
                   <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                    Service Charge (₹)
+                    Capacity Rating
+                  </label>
+                  <Input
+                    type="text"
+                    value={item.capacity_rating || ""}
+                    onChange={(e) =>
+                      updateItem(item.id, { capacity_rating: e.target.value })
+                    }
+                    placeholder="e.g., 150Ah"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                    Voltage
+                  </label>
+                  <Input
+                    type="text"
+                    value={item.voltage || ""}
+                    onChange={(e) =>
+                      updateItem(item.id, { voltage: e.target.value })
+                    }
+                    placeholder="e.g., 12V"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                    Batch Number
+                  </label>
+                  <Input
+                    type="text"
+                    value={item.batch_number || ""}
+                    onChange={(e) =>
+                      updateItem(item.id, { batch_number: e.target.value })
+                    }
+                    placeholder="Batch number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                    Purchase Source
+                  </label>
+                  <Input
+                    type="text"
+                    value={item.purchase_source || ""}
+                    onChange={(e) =>
+                      updateItem(item.id, { purchase_source: e.target.value })
+                    }
+                    placeholder="Supplier name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                    Cost Price (₹)
                   </label>
                   <Input
                     type="number"
-                    value={numVal(
-                      "sp_service_charge",
-                      item.service_plan?.service_charge,
-                      0,
-                    )}
+                    value={numVal("cost_price", item.cost_price, "")}
                     onChange={(e) => {
-                      setRaw("sp_service_charge", e.target.value);
+                      setRaw("cost_price", e.target.value);
                       updateItem(item.id, {
-                        ...item,
-                        service_plan: {
-                          ...item.service_plan,
-                          service_charge: parseFloat(e.target.value) || 0,
-                        },
+                        cost_price: Number(e.target.value) || 0,
                       });
+                      recalculateInvoice();
                     }}
-                    onBlur={() => clearRaw("sp_service_charge")}
+                    onBlur={() => clearRaw("cost_price")}
                     placeholder="0.00"
                     min="0"
                     step="1"
@@ -794,243 +1235,33 @@ const ProductCard = React.memo(function ProductCard({
 
                 <div>
                   <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                    Total Services
+                    Margin (%)
                   </label>
                   <Input
-                    type="number"
-                    value={numVal(
-                      "sp_total_services",
-                      item.service_plan?.total_services,
-                      1,
-                    )}
-                    onChange={(e) => {
-                      setRaw("sp_total_services", e.target.value);
-                      const total = parseInt(e.target.value) || 1;
-                      const start =
-                        item.service_plan?.service_start_date ||
-                        new Date().toISOString().split("T")[0];
-                      const intervalType =
-                        item.service_plan?.service_interval_type || "MONTHLY";
-                      const intervalValue =
-                        item.service_plan?.service_interval_value || 1;
-                      const endDate = computeServiceEndDate(
-                        start,
-                        intervalType,
-                        intervalValue,
-                        total,
-                      );
-
-                      updateItem(item.id, {
-                        ...item,
-                        service_plan: {
-                          ...item.service_plan,
-                          total_services: total,
-                          service_end_date: endDate,
-                        },
-                      });
-                    }}
-                    onBlur={() => clearRaw("sp_total_services")}
-                    placeholder="1"
-                    min="1"
+                    type="text"
+                    value={item.margin || ""}
+                    readOnly
+                    className="cursor-not-allowed bg-gray-50 dark:bg-dark-input/50"
+                    placeholder="Auto-calculated"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                    Service End Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={item.service_plan?.service_end_date || ""}
-                    readOnly
-                    className="bg-gray-50 cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="lg:col-span-1">
-                  <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                    Service Description
-                  </label>
-                  <textarea
-                    value={item.service_plan?.service_description || ""}
+                  <SelectField
+                    id={`status-${item.id}`}
+                    label="Status"
+                    value={item.status}
                     onChange={(e) =>
-                      updateItem(item.id, {
-                        ...item,
-                        service_plan: {
-                          ...item.service_plan,
-                          service_description: e.target.value,
-                        },
-                      })
+                      updateItemImmediate(item.id, { status: e.target.value })
                     }
-                    placeholder="Describe the service to be performed..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                    options={Object.entries(
+                      INVOICE_CONSTANTS.PRODUCT_STATUSES,
+                    ).map(([, value]) => ({ value: value, label: value }))}
                   />
                 </div>
               </div>
-
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Service Plan Summary:</strong> First service will be
-                  scheduled {item.service_plan?.service_interval_value || 1}{" "}
-                  {item.service_plan?.service_interval_type
-                    ?.toLowerCase()
-                    .replace("_", " ") || "month(s)"}{" "}
-                  from today ({" "}
-                  {item.service_plan?.service_start_date
-                    ? new Date(
-                        item.service_plan.service_start_date,
-                      ).toLocaleDateString()
-                    : "calculated date"}{" "}
-                  ), then every {item.service_plan?.service_interval_value || 1}{" "}
-                  {item.service_plan?.service_interval_type
-                    ?.toLowerCase()
-                    .replace("_", " ") || "month(s)"}{" "}
-                  at ₹{item.service_plan?.service_charge || 0} per service.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-gray-200 pt-2">
-          <button
-            type="button"
-            onClick={() => toggleProductMetadata(item.id)}
-            className="flex items-center justify-between w-full text-left"
-          >
-            <h4 className="text-sm font-medium text-ink-base dark:text-slate-100">
-              Product Metadata & Details
-            </h4>
-            {isExpanded ? (
-              <ChevronUp className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
             )}
-          </button>
-
-          {isExpanded && (
-            <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                  Manufacturing Date
-                </label>
-                <Input
-                  type="date"
-                  value={item.manufacturing_date || ""}
-                  onChange={(e) =>
-                    updateItemImmediate(item.id, {
-                      manufacturing_date: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                  Capacity Rating
-                </label>
-                <Input
-                  type="text"
-                  value={item.capacity_rating || ""}
-                  onChange={(e) =>
-                    updateItem(item.id, { capacity_rating: e.target.value })
-                  }
-                  placeholder="e.g., 150Ah"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                  Voltage
-                </label>
-                <Input
-                  type="text"
-                  value={item.voltage || ""}
-                  onChange={(e) =>
-                    updateItem(item.id, { voltage: e.target.value })
-                  }
-                  placeholder="e.g., 12V"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                  Batch Number
-                </label>
-                <Input
-                  type="text"
-                  value={item.batch_number || ""}
-                  onChange={(e) =>
-                    updateItem(item.id, { batch_number: e.target.value })
-                  }
-                  placeholder="Batch number"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                  Purchase Source
-                </label>
-                <Input
-                  type="text"
-                  value={item.purchase_source || ""}
-                  onChange={(e) =>
-                    updateItem(item.id, { purchase_source: e.target.value })
-                  }
-                  placeholder="Supplier name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                  Cost Price
-                </label>
-                <Input
-                  type="number"
-                  value={numVal("cost_price", item.cost_price, "")}
-                  onChange={(e) => {
-                    setRaw("cost_price", e.target.value);
-                    updateItem(item.id, {
-                      cost_price: Number(e.target.value) || 0,
-                    });
-                    recalculateInvoice();
-                  }}
-                  onBlur={() => clearRaw("cost_price")}
-                  placeholder="0.00"
-                  min="0"
-                  step="1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                  Margin (%)
-                </label>
-                <Input
-                  type="text"
-                  value={item.margin || ""}
-                  readOnly
-                  className="cursor-not-allowed"
-                  placeholder="Auto-calculated"
-                />
-              </div>
-
-              <div>
-                <SelectField
-                  id={`status-${item.id}`}
-                  label="Status"
-                  value={item.status}
-                  onChange={(e) =>
-                    updateItemImmediate(item.id, { status: e.target.value })
-                  }
-                  options={Object.entries(
-                    INVOICE_CONSTANTS.PRODUCT_STATUSES,
-                  ).map(([, value]) => ({ value: value, label: value }))}
-                />
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
@@ -1039,7 +1270,7 @@ const ProductCard = React.memo(function ProductCard({
 
 export default ProductCard;
 
-// Helper: compute service start date based on interval type and value (first service after the interval)
+// Helper: compute service start date based on interval type and value
 function computeServiceStartDate(intervalType, intervalValue) {
   const today = new Date();
   let monthsToAdd = 0;

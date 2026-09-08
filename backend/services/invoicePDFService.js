@@ -56,6 +56,7 @@ export class InvoicePDFService {
     return {
       subtotal: totals.subtotal,
       discount: totals.discount,
+      oldItemExchangePrice: totals.old_item_exchange_price,
       gstRate: GST_RATE_PERCENT,
       gstAmount: totals.tax,
       total: totals.total_amount,
@@ -235,6 +236,8 @@ export class InvoicePDFService {
         subtotal: this.formatCurrency(totals.subtotal),
         discount: this.formatCurrency(totals.discount),
         discountRaw: totals.discount,
+        oldItemExchangePrice: this.formatCurrency(totals.oldItemExchangePrice),
+        oldItemExchangePriceRaw: totals.oldItemExchangePrice,
         gstRate: totals.gstRate,
         gstAmount: this.formatCurrency(totals.gstAmount),
         total: this.formatCurrency(totals.total),

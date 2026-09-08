@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Save, X } from "lucide-react";
+import { Save, X, ChevronDown, ChevronUp, Calculator } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 import {
@@ -13,6 +13,7 @@ import CustomerInformationForm from "../../components/invoice/CustomerInformatio
 import InvoiceDetailsForm from "../../components/invoice/InvoiceDetailsForm.jsx";
 import InvoiceItemsForm from "../../components/invoice/InvoiceItemsForm.jsx";
 import InvoiceSummary from "../../components/invoice/InvoiceSummary.jsx";
+import MobileInvoiceSummaryBar from "../../components/invoice/MobileInvoiceSummaryBar.jsx";
 
 const InvoiceGenerationPage = () => {
   const navigate = useNavigate();
@@ -25,11 +26,11 @@ const InvoiceGenerationPage = () => {
     setSubmitting,
     updateInvoiceData,
   } = useInvoiceForm();
-  console.log(errors);  
   const { createInvoice } = useInvoiceActions();
   const [saveMaster] = useSaveMasterProductMutation();
   const [submitResult, setSubmitResult] = useState(null);
   const [rawDiscount, setRawDiscount] = useState(null);
+  const [rawOldItemPrice, setRawOldItemPrice] = useState(null);
   const { data: nextInvoicePreview } = useGetNextInvoiceNumberQuery();
 
   const formatCurrency = (amount) =>
@@ -129,11 +130,6 @@ const InvoiceGenerationPage = () => {
               "Serial number is required";
           }
 
-          if (!item.product_name?.trim()) {
-            newErrors[`item.${item.id}.product_name`] =
-              "Product name is required";
-          }
-
           if (!item.company?.trim()) {
             newErrors[`item.${item.id}.company`] = "Company/Brand is required";
           }
@@ -177,7 +173,61 @@ const InvoiceGenerationPage = () => {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    if (!isValid) {
+      setTimeout(() => {
+        const errorSelector = [
+          "[data-error='true']",
+          "[aria-invalid='true']",
+          ".border-danger",
+          "p.text-danger",
+          ".border-red-500",
+        ].join(", ");
+
+        const errorElements = Array.from(document.querySelectorAll(errorSelector));
+        const visibleErrorEl =
+          errorElements.find((el) => {
+            const rect = el.getBoundingClientRect();
+            return (
+              rect.width > 0 ||
+              rect.height > 0 ||
+              (typeof el.getClientRects === "function" &&
+                el.getClientRects().length > 0)
+            );
+          }) || errorElements[0];
+
+        if (visibleErrorEl) {
+          const focusTarget =
+            visibleErrorEl.matches("input, select, textarea, button")
+              ? visibleErrorEl
+              : visibleErrorEl.querySelector("input, select, textarea, button") ||
+                visibleErrorEl
+                  .closest("div")
+                  ?.querySelector("input, select, textarea, button") ||
+                visibleErrorEl;
+
+          focusTarget.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          if (typeof focusTarget.focus === "function") {
+            try {
+              focusTarget.focus({ preventScroll: true });
+            } catch {
+              focusTarget.focus();
+            }
+          }
+
+          // Visual highlight ring effect
+          focusTarget.classList.add("ring-2", "ring-danger", "ring-offset-2");
+          setTimeout(() => {
+            focusTarget.classList.remove("ring-2", "ring-danger", "ring-offset-2");
+          }, 2000);
+        }
+      }, 120);
+    }
+    return isValid;
   }, [currentInvoice, setErrors]);
 
   // Submit invoice
@@ -201,6 +251,10 @@ const InvoiceGenerationPage = () => {
             ? Number(currentInvoice.invoice.amount_paid || 0)
             : 0,
           due_date: isPaid ? null : currentInvoice.invoice.due_date,
+          discount: Number(currentInvoice.invoice.discount || 0),
+          old_item_exchange_price: Number(
+            currentInvoice.invoice.old_item_exchange_price || 0,
+          ),
           subtotal: Number(currentInvoice.invoice.subtotal || 0),
           tax: Number(currentInvoice.invoice.tax || 0),
           total_amount: Number(currentInvoice.invoice.total_amount || 0),
@@ -217,9 +271,12 @@ const InvoiceGenerationPage = () => {
 
       // Save only PRODUCT items to ProductMaster
       currentInvoice.invoice_items.forEach((item) => {
-        if (item.item_type !== "SERVICE" && item.product_name?.trim()) {
+        const resolvedName =
+          item.product_name?.trim() ||
+          `${item.company || ""} ${item.model_number || ""}`.trim();
+        if (item.item_type !== "SERVICE" && resolvedName) {
           saveMaster({
-            product_name: item.product_name.trim(),
+            product_name: resolvedName,
             product_category: item.product_category,
             battery_type: item.battery_type,
             company: item.company,
@@ -317,66 +374,58 @@ const InvoiceGenerationPage = () => {
 
   return (
     <>
-      <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg py-3">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            {/* Form Content */}
-            <div className="lg:col-span-4 space-y-4">
-              {/* Customer Information Section */}
-              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
-                <div className="">
-                  <CustomerInformationForm />
-                </div>
-              </div>
+      <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg py-3 pb-36 lg:pb-8">
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8">
+          {/* Main Form Content */}
+          <div className="space-y-4">
+            {/* Customer Information Section */}
+            <CustomerInformationForm />
 
               {/* Invoice Items Section */}
-              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
-                <div className="">
-                  <InvoiceItemsForm />
-                </div>
-              </div>
+              <InvoiceItemsForm />
 
               {/* Invoice Details Section */}
-              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
-                <div className="">
-                  <InvoiceDetailsForm />
-                </div>
-              </div>
-              <InvoiceSummary />
+              <InvoiceDetailsForm />
 
-              {/* Submit Section */}
-              <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
-                <div className="px-3 py-2 border-b border-gray-200">
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-slate-100">
+              {/* Desktop Summary (lg screens only to avoid duplicate clutter on mobile) */}
+              <div className="hidden lg:block">
+                <InvoiceSummary />
+              </div>
+
+              {/* Review & Submit Section */}
+              <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200/90 dark:border-dark-border shadow-xs overflow-hidden">
+                <div className="px-3.5 py-2.5 border-b border-gray-100 dark:border-dark-border/60 bg-gray-50/60 dark:bg-dark-card">
+                  <h2 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-slate-100">
                     Review & Submit
                   </h2>
-                  <p className="text-xs text-gray-500 dark:text-slate-100 mt-1">
-                    Apply discount and create the invoice
+                  <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
+                    Apply discount, set tax inclusion, and create invoice
                   </p>
                 </div>
-                <div className="px-3 py-2">
+                <div className="px-3 py-3">
                   <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-slate-200">
                     {nextInvoicePreview?.invoice_number && (
-                      <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800">
+                      <span className="rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 font-bold px-3 py-1 border border-indigo-200 dark:border-indigo-800">
                         Next Invoice: {nextInvoicePreview.invoice_number}
                       </span>
                     )}
-                    <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800">
+                    <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800 font-semibold">
                       Current Total: {formatCurrency(currentInvoice.invoice.total_amount)}
                     </span>
-                    <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800">
+                    <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800 font-semibold">
                       Amount Due: {formatCurrency(currentInvoice.invoice.amount_due)}
                     </span>
                   </div>
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-                    <div className="flex flex-wrap gap-6 items-end flex-1">
+                    <div className="flex flex-wrap gap-4 sm:gap-6 items-end flex-1">
                       <div className="max-w-xs w-full sm:w-auto">
-                        <label className="block text-xs font-medium text-gray-700 dark:text-slate-100 mb-1">
-                          Discount Amount
+                        <label className="block text-xs font-bold text-gray-700 dark:text-slate-100 mb-1">
+                          Discount Amount (₹)
                         </label>
                         <input
                           type="number"
+                          inputMode="decimal"
+                          step="any"
                           value={
                             rawDiscount !== null
                               ? rawDiscount
@@ -390,47 +439,70 @@ const InvoiceGenerationPage = () => {
                           onBlur={() => setRawDiscount(null)}
                           placeholder="0.00"
                           min="0"
-                          step="0.01"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border dark:bg-dark-input rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
                         />
                       </div>
 
-                   <div className="flex items-center mb-2 sm:mb-0 h-[42px]">
-  <label className="flex items-center cursor-pointer gap-3">
+                      <div className="max-w-xs w-full sm:w-auto">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-slate-100 mb-1">
+                          Old Item / Battery Exchange (₹)
+                        </label>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          step="any"
+                          value={
+                            rawOldItemPrice !== null
+                              ? rawOldItemPrice
+                              : currentInvoice.invoice.old_item_exchange_price || 0
+                          }
+                          onChange={(e) => {
+                            setRawOldItemPrice(e.target.value);
+                            const old_item_exchange_price =
+                              parseFloat(e.target.value) || 0;
+                            updateInvoiceData({ old_item_exchange_price });
+                          }}
+                          onBlur={() => setRawOldItemPrice(null)}
+                          placeholder="0.00"
+                          min="0"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border dark:bg-dark-input rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                        />
+                      </div>
 
-    <span className="text-xs font-medium text-gray-700 dark:text-slate-100">
-      Tax {currentInvoice.invoice.is_tax_inclusive !== false ? "Inclusive" : "Exclusive"}
-    </span>
+                      <div className="flex items-center mb-2 sm:mb-0 h-[42px]">
+                        <label className="flex items-center cursor-pointer gap-3">
+                          <span className="text-xs font-bold text-gray-700 dark:text-slate-100">
+                            Tax {currentInvoice.invoice.is_tax_inclusive !== false ? "Inclusive" : "Exclusive"}
+                          </span>
 
-    <div className="relative w-10 h-6">
-      <input
-        type="checkbox"
-        className="sr-only peer"
-        checked={currentInvoice.invoice.is_tax_inclusive !== false}
-        onChange={(e) => {
-          updateInvoiceData({ is_tax_inclusive: e.target.checked });
-        }}
-      />
+                          <div className="relative w-10 h-6">
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={currentInvoice.invoice.is_tax_inclusive !== false}
+                              onChange={(e) => {
+                                updateInvoiceData({ is_tax_inclusive: e.target.checked });
+                              }}
+                            />
 
-      {/* Track */}
-      <div className="w-full h-full rounded-full bg-gray-300 dark:bg-slate-600 peer-checked:bg-indigo-600 transition-colors"></div>
+                            {/* Track */}
+                            <div className="w-full h-full rounded-full bg-gray-300 dark:bg-slate-600 peer-checked:bg-indigo-600 transition-colors"></div>
 
-      {/* Thumb */}
-      <div className="absolute top-1/2 left-[2px] -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ease-in-out peer-checked:translate-x-[18px]"></div>
-    </div>
-
-  </label>
-</div>
+                            {/* Thumb */}
+                            <div className="absolute top-1/2 left-[2px] -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-xs transition-transform duration-200 ease-in-out peer-checked:translate-x-[18px]"></div>
+                          </div>
+                        </label>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-2">
                       {Object.keys(errors).length > 0 && (
-                        <div className="text-sm text-red-600 flex items-center gap-2">
+                        <div className="text-sm text-red-600 flex items-center gap-2 font-medium">
                           <X className="w-4 h-4" />
-                          Please fix the errors below
+                          Please fix the errors above
                         </div>
                       )}
                       {errors.general && (
-                        <div className="text-sm text-red-600">
+                        <div className="text-sm text-red-600 font-medium">
                           {errors.general}
                         </div>
                       )}
@@ -452,7 +524,7 @@ const InvoiceGenerationPage = () => {
                         disabled={
                           isSubmitting || Object.keys(errors).length > 0
                         }
-                        className="flex items-center gap-2"
+                        className="flex items-center justify-center gap-2 min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 rounded-xl"
                       >
                         {isSubmitting ? (
                           <>
@@ -471,14 +543,24 @@ const InvoiceGenerationPage = () => {
                 </div>
               </div>
             </div>
-
-            {/* <div className="lg:col-span-1">
-              <div className="sticky top-6">
-                <InvoiceSummary />
-              </div>
-            </div> */}
           </div>
-        </div>
+
+        {/* Mobile Sticky Bottom Action Bar (< lg screens) */}
+        <MobileInvoiceSummaryBar
+          invoice={currentInvoice.invoice}
+          items={currentInvoice.invoice_items}
+          rawDiscount={rawDiscount}
+          setRawDiscount={setRawDiscount}
+          rawOldItemPrice={rawOldItemPrice}
+          setRawOldItemPrice={setRawOldItemPrice}
+          updateInvoiceData={updateInvoiceData}
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          errors={errors}
+          submitError={submitResult?.error}
+          submitLabel="Create Invoice"
+          loadingLabel="Creating Invoice..."
+        />
       </div>
     </>
   );

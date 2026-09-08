@@ -44,6 +44,7 @@ import {
   DialogFooter,
 } from "../../components/ui/Modal.jsx";
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
+import { formatDate } from "../../utils/date.js";
 import { usePermissions } from "../../hooks/usePermissions.js";
 import { useDeleteGuard } from "../../context/DeleteGuardContext.jsx";
 import RetroactiveDealerModal from "../inventory/RetroactiveDealerModal.jsx";
@@ -362,7 +363,7 @@ const InvoiceView = () => {
                 Invoice #{invoiceObj.invoice_number}
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Issued on {new Date(invoiceObj.invoice_date || Date.now()).toLocaleDateString("en-IN")}
+                Issued on {formatDate(invoiceObj.invoice_date || Date.now())}
               </p>
             </div>
           </div>
@@ -504,7 +505,7 @@ const InvoiceView = () => {
                   <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg">
                     <span className="text-[11px] text-gray-400 block">Due Date</span>
                     <strong className="text-gray-900 dark:text-white font-semibold">
-                      {invoiceObj.due_date ? new Date(invoiceObj.due_date).toLocaleDateString("en-IN") : "N/A"}
+                      {formatDate(invoiceObj.due_date)}
                     </strong>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg">
@@ -519,169 +520,302 @@ const InvoiceView = () => {
               </div>
             </div>
 
-            {/* Line Items Table with Responsive Wrapper & Red Alerts */}
+            {/* Line Items Container with Zero-Scroll Mobile Cards + Responsive Desktop Table */}
             <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border shadow-xs overflow-hidden">
-              <div className="p-4 border-b border-gray-200 dark:border-dark-border flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <div className="p-3.5 sm:p-4 border-b border-gray-200 dark:border-dark-border flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <FileText className="w-4 h-4 text-emerald-600" /> Invoice Line Items
                 </h3>
-                <span className="text-xs text-gray-500">
-                  {items.length} Item(s)
+                <span className="text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  {items.length} Item{items.length === 1 ? "" : "s"}
                 </span>
               </div>
 
               {items && items.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-gray-700 dark:text-gray-200 min-w-[700px]">
-                    <thead className="bg-gray-100 dark:bg-gray-900/80 uppercase font-semibold text-gray-600 dark:text-gray-400">
-                      <tr>
-                        <th className="p-3">Product / Service</th>
-                        <th className="p-3">Serial #</th>
-                        <th className="p-3">Purchase Supplier Origin</th>
-                        <th className="p-3">Warranty</th>
-                        <th className="p-3 text-right">Amount</th>
-                        <th className="p-3 text-center">Action Link</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {items.map((item, index) => {
-                        const isService = item.item_type === "SERVICE";
-                        const hasDealer = Boolean(item.dealer_id || item.purchase_source);
-                        const batteryLine = !isService ? invoiceBatteryLine(item) : "";
+                <div>
+                  {/* MOBILE CARD VIEW (< md screens) – ZERO horizontal scroll */}
+                  <div className="block md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                    {items.map((item, index) => {
+                      const isService = item.item_type === "SERVICE";
+                      const hasDealer = Boolean(item.dealer_id || item.purchase_source);
+                      const batteryLine = !isService ? invoiceBatteryLine(item) : "";
+                      const lineTotal = Number(item.selling_price || item.price || 0) * (Number(item.quantity) || 1);
 
-                        return (
-                          <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                            {/* Product Name & Alert Icon */}
-                            <td className="p-3">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-1.5">
-                                  {/* Red Alert Icon if missing purchase origin for physical product */}
-                                  {!isService && !hasDealer && (
-                                    <AlertCircle
-                                      className="w-4 h-4 text-red-500 shrink-0"
-                                      title="Missing Purchase Origin - Supplier Warranty RMA Unlinked"
-                                    />
-                                  )}
-                                  <span className="font-bold text-gray-900 dark:text-white">
-                                    {item.product_name}
+                      const endDate = item.warranty_end_date ? new Date(item.warranty_end_date) : null;
+                      const today = new Date();
+                      const diffDays = endDate ? Math.ceil((endDate - today) / (1000 * 60 * 60 * 24)) : null;
+                      const isExpired = diffDays !== null && diffDays < 0;
+
+                      return (
+                        <div key={index} className="p-3.5 space-y-2.5 hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition-colors">
+                          {/* Top: Product Name & Line Amount */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {!isService && !hasDealer && (
+                                  <AlertCircle
+                                    className="w-3.5 h-3.5 text-red-500 shrink-0"
+                                    title="Missing Purchase Origin"
+                                  />
+                                )}
+                                <span className="font-bold text-sm text-gray-900 dark:text-white leading-tight break-words">
+                                  {item.product_name}
+                                </span>
+                                {isService ? (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                    {item.service_category || "SERVICE"}
                                   </span>
-                                  {isService && (
-                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                      {item.service_category || "SERVICE"}
+                                ) : (
+                                  item.product_category && item.product_category !== "OTHER" && (
+                                    <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 uppercase">
+                                      {item.product_category}
                                     </span>
-                                  )}
-                                </div>
+                                  )
+                                )}
+                              </div>
+                              {batteryLine && (
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                  {batteryLine}
+                                </p>
+                              )}
+                            </div>
 
-                                {batteryLine && (
-                                  <span className="block text-[11px] text-gray-500 dark:text-gray-400">
-                                    {batteryLine}
+                            <div className="text-right shrink-0">
+                              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                {formatCurrency(lineTotal)}
+                              </span>
+                              {Number(item.quantity || 1) > 1 && (
+                                <span className="block text-[10px] text-gray-400">
+                                  Qty: {item.quantity}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Middle: Serial Number & Warranty Pills */}
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-gray-50 dark:bg-gray-800/80 p-2 rounded-lg border border-gray-100 dark:border-gray-700/60">
+                              <span className="text-[10px] text-gray-400 block font-medium">Serial Number</span>
+                              <span className="font-mono font-bold text-xs uppercase text-gray-800 dark:text-gray-200 truncate block">
+                                {isService && (!item.serial_number || item.serial_number.startsWith("SRV-"))
+                                  ? "N/A"
+                                  : item.serial_number || "N/A"}
+                              </span>
+                            </div>
+
+                            <div className="bg-gray-50 dark:bg-gray-800/80 p-2 rounded-lg border border-gray-100 dark:border-gray-700/60">
+                              <span className="text-[10px] text-gray-400 block font-medium">Warranty</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-xs text-gray-900 dark:text-white">
+                                  {item.warranty_duration_months || 0}M
+                                </span>
+                                {diffDays !== null && (
+                                  <span className={`text-[10px] font-bold ${isExpired ? "text-red-500" : "text-emerald-600"}`}>
+                                    ({isExpired ? `Expired` : `${diffDays}d left`})
                                   </span>
                                 )}
                               </div>
-                            </td>
+                            </div>
+                          </div>
 
-                            {/* Serial Number */}
-                            <td className="p-3 font-mono font-bold uppercase text-gray-800 dark:text-gray-200">
-                              {isService && (!item.serial_number || item.serial_number.startsWith("SRV-"))
-                                ? "N/A"
-                                : item.serial_number || "N/A"}
-                            </td>
-
-                            {/* Purchase Supplier Origin */}
-                            <td className="p-3">
-                              {!isService ? (
-                                hasDealer ? (
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-900">
+                          {/* Bottom: Supplier Origin & Product Link */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-gray-100 dark:border-gray-800 text-xs">
+                            {!isService && (
+                              <div className="min-w-0">
+                                {hasDealer ? (
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-900 truncate max-w-[160px]">
                                       {item.dealer_id?.name || item.purchase_source}
                                     </span>
-                                    {/* Direct Trace Origin Option */}
                                     <button
                                       type="button"
                                       onClick={() => setSelectedTraceItem(item)}
-                                      className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 rounded text-[11px] font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1"
-                                      title="Trace Purchase Supplier & Invoice Origin"
+                                      className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 rounded text-[10px] font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1"
                                     >
-                                      <Building2 className="w-3 h-3" /> Trace Origin
+                                      <Building2 className="w-3 h-3" /> Trace
                                     </button>
                                   </div>
                                 ) : (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-red-600 dark:text-red-400 font-bold text-[11px] flex items-center gap-1">
-                                      <AlertCircle className="w-3.5 h-3.5" /> No Origin Linked
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-red-600 dark:text-red-400 font-bold text-[10px] flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" /> No Origin
                                     </span>
-                                    {/* Add Purchase Origin Button when dealer is missing */}
                                     <button
                                       type="button"
                                       onClick={() => setSelectedRetroItem({ ...item, invoice: invoiceObj })}
-                                      className="px-2 py-1 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 rounded text-[11px] font-bold hover:bg-red-200 border border-red-300 dark:border-red-800 flex items-center gap-1"
+                                      className="px-2 py-0.5 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 rounded text-[10px] font-bold hover:bg-red-200 border border-red-300 dark:border-red-800 flex items-center gap-1"
                                     >
-                                      <Plus className="w-3 h-3" /> Add Purchase Origin
+                                      <Plus className="w-3 h-3" /> Add Origin
                                     </button>
                                   </div>
-                                )
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
+                                )}
+                              </div>
+                            )}
 
-                            {/* Warranty */}
-                            <td className="p-3">
-                              {(() => {
-                                const endDate = new Date(item.warranty_end_date);
-                                const today = new Date();
-                                const diffTime = endDate - today;
-                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                const isExpired = diffDays < 0;
+                            {!isService && (item.inventory_item_id || item._id) && (
+                              <Link
+                                to={`/products/${item._id}`}
+                                state={{ from: location.pathname, label: "Invoice" }}
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline self-end sm:self-auto"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" /> View Product
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
 
-                                return (
-                                  <div className="flex flex-col">
-                                    <span className="font-semibold text-gray-900 dark:text-white">
-                                      {item.warranty_duration_months || 0} Months
+                  {/* DESKTOP TABLE VIEW (≥ md screens) – fluid responsive table with fully visible columns */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left text-xs text-gray-700 dark:text-gray-200">
+                      <thead className="bg-gray-100 dark:bg-gray-900/80 uppercase font-semibold text-gray-600 dark:text-gray-400 text-[11px]">
+                        <tr>
+                          <th className="py-3 px-3 w-[28%]">Product / Service</th>
+                          <th className="py-3 px-2.5 w-[16%]">Serial #</th>
+                          <th className="py-3 px-2.5 w-[22%]">Purchase Origin</th>
+                          <th className="py-3 px-2.5 w-[14%]">Warranty</th>
+                          <th className="py-3 px-3 w-[15%] text-right">Amount</th>
+                          <th className="py-3 px-2 w-[5%] text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {items.map((item, index) => {
+                          const isService = item.item_type === "SERVICE";
+                          const hasDealer = Boolean(item.dealer_id || item.purchase_source);
+                          const batteryLine = !isService ? invoiceBatteryLine(item) : "";
+
+                          const endDate = item.warranty_end_date ? new Date(item.warranty_end_date) : null;
+                          const today = new Date();
+                          const diffDays = endDate ? Math.ceil((endDate - today) / (1000 * 60 * 60 * 24)) : null;
+                          const isExpired = diffDays !== null && diffDays < 0;
+
+                          return (
+                            <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                              {/* Product Name & Alert Icon */}
+                              <td className="py-3 px-3">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {!isService && !hasDealer && (
+                                      <AlertCircle
+                                        className="w-3.5 h-3.5 text-red-500 shrink-0"
+                                        title="Missing Purchase Origin - Supplier Warranty RMA Unlinked"
+                                      />
+                                    )}
+                                    <span className="font-bold text-gray-900 dark:text-white break-words">
+                                      {item.product_name}
                                     </span>
-                                    <span className={`text-[10px] font-bold ${isExpired ? "text-red-500" : "text-emerald-600"}`}>
-                                      {isExpired ? `Expired ${Math.abs(diffDays)}d ago` : `${diffDays} days left`}
-                                    </span>
+                                    {isService && (
+                                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
+                                        {item.service_category || "SERVICE"}
+                                      </span>
+                                    )}
                                   </div>
-                                );
-                              })()}
-                            </td>
 
-                            {/* Amount */}
-                            <td className="p-3 text-right font-bold text-gray-900 dark:text-white">
-                              {formatCurrency(Number(item.selling_price || item.price || 0) * (Number(item.quantity) || 1))}
-                            </td>
+                                  {batteryLine && (
+                                    <span className="block text-[11px] text-gray-500 dark:text-gray-400 break-words">
+                                      {batteryLine}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
 
-                            {/* Direct Product Link */}
-                            <td className="p-3 text-center">
-                              {!isService && (item.inventory_item_id || item._id) ? (
-                                <Link
-                                  to={`/products/${item.inventory_item_id || item._id}`}
-                                  state={{ from: location.pathname, label: "Invoice" }}
-                                  className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
-                                  title="Go to Product Details & Service History"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" /> Product
-                                </Link>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              {/* Serial Number */}
+                              <td className="py-3 px-2.5 font-mono font-bold uppercase text-gray-800 dark:text-gray-200">
+                                <span className="break-all text-xs">
+                                  {isService && (!item.serial_number || item.serial_number.startsWith("SRV-"))
+                                    ? "N/A"
+                                    : item.serial_number || "N/A"}
+                                </span>
+                              </td>
+
+                              {/* Purchase Supplier Origin */}
+                              <td className="py-3 px-2.5">
+                                {!isService ? (
+                                  hasDealer ? (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-900 truncate max-w-[110px]" title={item.dealer_id?.name || item.purchase_source}>
+                                        {item.dealer_id?.name || item.purchase_source}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedTraceItem(item)}
+                                        className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 rounded text-[10px] font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 flex items-center gap-0.5 shrink-0"
+                                        title="Trace Purchase Supplier & Invoice Origin"
+                                      >
+                                        <Building2 className="w-3 h-3" /> Trace
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                      <span className="text-red-600 dark:text-red-400 font-bold text-[10px] flex items-center gap-0.5">
+                                        <AlertCircle className="w-3 h-3 shrink-0" /> No Origin
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedRetroItem({ ...item, invoice: invoiceObj })}
+                                        className="px-1.5 py-0.5 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 rounded text-[10px] font-bold hover:bg-red-200 border border-red-300 dark:border-red-800 flex items-center gap-0.5 shrink-0"
+                                      >
+                                        <Plus className="w-3 h-3" /> Add
+                                      </button>
+                                    </div>
+                                  )
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+
+                              {/* Warranty */}
+                              <td className="py-3 px-2.5">
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {item.warranty_duration_months || 0} Months
+                                  </span>
+                                  {diffDays !== null && (
+                                    <span className={`text-[10px] font-bold ${isExpired ? "text-red-500" : "text-emerald-600"}`}>
+                                      {isExpired ? `Expired` : `${diffDays}d left`}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Amount */}
+                              <td className="py-3 px-3 text-right font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                                {formatCurrency(Number(item.selling_price || item.price || 0) * (Number(item.quantity) || 1))}
+                              </td>
+
+                              {/* Direct Product Link */}
+                              <td className="py-3 px-2 text-center">
+                                {!isService && (item.inventory_item_id || item._id) ? (
+                                  <Link
+                                    to={`/products/${item._id}`}
+                                    state={{ from: location.pathname, label: "Invoice" }}
+                                    className="inline-flex items-center justify-center p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded transition-colors"
+                                    title="Go to Product Details & Service History"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                  </Link>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">
+                <p className="text-gray-500 text-center py-8 text-xs">
                   No line items found for this invoice.
                 </p>
               )}
 
               {/* Invoice Summary Totals */}
               <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
-                <div className="max-w-xs ml-auto space-y-1.5 text-xs">
+                <div className="w-full sm:max-w-xs ml-auto space-y-1.5 text-xs">
                   <div className="flex justify-between text-gray-600 dark:text-gray-400">
                     <span>Subtotal</span>
                     <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(invoiceObj.subtotal)}</span>
@@ -694,6 +828,12 @@ const InvoiceView = () => {
                     <div className="flex justify-between text-red-600 font-medium">
                       <span>Discount</span>
                       <span>-{formatCurrency(invoiceObj.discount)}</span>
+                    </div>
+                  )}
+                  {invoiceObj.old_item_exchange_price > 0 && (
+                    <div className="flex justify-between text-amber-600 font-medium">
+                      <span>Old Item / Exchange</span>
+                      <span>-{formatCurrency(invoiceObj.old_item_exchange_price)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-sm border-t border-gray-300 dark:border-gray-600 pt-2 text-gray-900 dark:text-white">
@@ -806,7 +946,7 @@ const InvoiceView = () => {
                     </p>
                   </div>
                   <Link
-                    to={`/products/${selectedTraceItem.inventory_item_id || selectedTraceItem._id}`}
+                    to={`/products/${selectedTraceItem._id}`}
                     className="px-3 py-1.5 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 rounded-lg font-bold border border-gray-300 dark:border-gray-600 flex items-center gap-1 hover:underline text-xs shadow-2xs"
                   >
                     <ExternalLink className="w-3.5 h-3.5" /> Product Details

@@ -62,22 +62,67 @@ export const createDealer = async (req, res) => {
     const shopId = req.user.shopId;
     const { name, contact_person, phone, email, address, tax_id, notes } = req.body;
 
-    if (!name || !phone) {
+    const trimmedName = (name || "").trim();
+    const trimmedPhone = (phone || "").trim();
+    const trimmedTaxId = (tax_id || "").trim().toUpperCase();
+
+    if (!trimmedName || !trimmedPhone) {
       return res.status(400).json({
         success: false,
         message: "Dealer Name and Phone Number are required",
       });
     }
 
+    // Check for duplicate active dealer by Phone Number in the same shop
+    const existingByPhone = await Dealer.findOne({
+      shop_id: shopId,
+      phone: trimmedPhone,
+      deleted_at: null,
+    });
+    if (existingByPhone) {
+      return res.status(400).json({
+        success: false,
+        message: `A supplier/dealer with phone number '${trimmedPhone}' already exists (${existingByPhone.name}).`,
+      });
+    }
+
+    // Check for duplicate active dealer by Name (case-insensitive) in the same shop
+    const existingByName = await Dealer.findOne({
+      shop_id: shopId,
+      name: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") },
+      deleted_at: null,
+    });
+    if (existingByName) {
+      return res.status(400).json({
+        success: false,
+        message: `A supplier/dealer named '${trimmedName}' already exists.`,
+      });
+    }
+
+    // Check for duplicate Tax ID / GSTIN if provided
+    if (trimmedTaxId) {
+      const existingByTaxId = await Dealer.findOne({
+        shop_id: shopId,
+        tax_id: trimmedTaxId,
+        deleted_at: null,
+      });
+      if (existingByTaxId) {
+        return res.status(400).json({
+          success: false,
+          message: `A supplier/dealer with GSTIN '${trimmedTaxId}' already exists (${existingByTaxId.name}).`,
+        });
+      }
+    }
+
     const newDealer = await Dealer.create({
       shop_id: shopId,
-      name,
-      contact_person: contact_person || "",
-      phone,
-      email: email || "",
-      address: address || "",
-      tax_id: tax_id || "",
-      notes: notes || "",
+      name: trimmedName,
+      contact_person: (contact_person || "").trim(),
+      phone: trimmedPhone,
+      email: (email || "").trim().toLowerCase(),
+      address: (address || "").trim(),
+      tax_id: trimmedTaxId,
+      notes: (notes || "").trim(),
     });
 
     return res.status(201).json({
@@ -112,13 +157,63 @@ export const updateDealer = async (req, res) => {
       });
     }
 
-    if (name !== undefined) dealer.name = name;
-    if (contact_person !== undefined) dealer.contact_person = contact_person;
-    if (phone !== undefined) dealer.phone = phone;
-    if (email !== undefined) dealer.email = email;
-    if (address !== undefined) dealer.address = address;
-    if (tax_id !== undefined) dealer.tax_id = tax_id;
-    if (notes !== undefined) dealer.notes = notes;
+    if (phone !== undefined && phone.trim() !== dealer.phone) {
+      const trimmedPhone = phone.trim();
+      const existingByPhone = await Dealer.findOne({
+        _id: { $ne: id },
+        shop_id: shopId,
+        phone: trimmedPhone,
+        deleted_at: null,
+      });
+      if (existingByPhone) {
+        return res.status(400).json({
+          success: false,
+          message: `Another supplier/dealer with phone number '${trimmedPhone}' already exists (${existingByPhone.name}).`,
+        });
+      }
+      dealer.phone = trimmedPhone;
+    }
+
+    if (name !== undefined && name.trim() !== dealer.name) {
+      const trimmedName = name.trim();
+      const existingByName = await Dealer.findOne({
+        _id: { $ne: id },
+        shop_id: shopId,
+        name: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") },
+        deleted_at: null,
+      });
+      if (existingByName) {
+        return res.status(400).json({
+          success: false,
+          message: `Another supplier/dealer named '${trimmedName}' already exists.`,
+        });
+      }
+      dealer.name = trimmedName;
+    }
+
+    if (tax_id !== undefined && tax_id.trim().toUpperCase() !== dealer.tax_id) {
+      const trimmedTaxId = tax_id.trim().toUpperCase();
+      if (trimmedTaxId) {
+        const existingByTaxId = await Dealer.findOne({
+          _id: { $ne: id },
+          shop_id: shopId,
+          tax_id: trimmedTaxId,
+          deleted_at: null,
+        });
+        if (existingByTaxId) {
+          return res.status(400).json({
+            success: false,
+            message: `Another supplier/dealer with GSTIN '${trimmedTaxId}' already exists (${existingByTaxId.name}).`,
+          });
+        }
+      }
+      dealer.tax_id = trimmedTaxId;
+    }
+
+    if (contact_person !== undefined) dealer.contact_person = contact_person.trim();
+    if (email !== undefined) dealer.email = email.trim().toLowerCase();
+    if (address !== undefined) dealer.address = address.trim();
+    if (notes !== undefined) dealer.notes = notes.trim();
 
     await dealer.save();
 

@@ -156,8 +156,8 @@ const Inventory = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg pb-20 sm:pb-8 pt-4 sm:pt-6">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg pb-20 sm:pb-8 pt-3 sm:pt-6">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8 space-y-3 sm:space-y-4">
         {/* Top Header & Actions - Mobile App Optimized */}
         <div className="bg-white dark:bg-dark-card p-4 sm:p-5 rounded-2xl shadow-xs border border-gray-200 dark:border-dark-border space-y-3 sm:space-y-0 sm:flex sm:justify-between sm:items-center">
           <div>
@@ -346,109 +346,106 @@ const Inventory = () => {
             </div>
           ) : (
             <>
-              {/* MOBILE PWA CARD LIST (< md screens) */}
-              <div className="block md:hidden space-y-3">
-                {unitItems.map((item) => (
+              {/* MOBILE PWA CARD LIST (< md screens) ── Consistent with InvoiceList */}
+              <div className="block md:hidden bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden shadow-sm">
+                {unitItems.map((item, index) => (
                   <div
                     key={item._id}
-                    className="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-xs border border-gray-200 dark:border-dark-border space-y-3 relative active:border-blue-400 transition-colors"
+                    className={`relative px-3 py-2.5 transition-all active:bg-blue-50/40 dark:active:bg-slate-800/60 border-b border-gray-100 dark:border-dark-border/80 last:border-b-0 cursor-pointer ${
+                      index % 2 === 0
+                        ? "bg-white dark:bg-dark-card"
+                        : "bg-slate-50/60 dark:bg-slate-800/25"
+                    }`}
+                    onClick={() => setSelectedRetroItem(item)}
                   >
-                    {/* Header: Serial & Status */}
-                    <div className="flex justify-between items-start gap-2 border-b border-gray-100 dark:border-gray-800 pb-2.5">
-                      <div>
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 block">
-                          Serial Number
-                        </span>
-                        <span className="font-mono font-bold text-sm text-gray-900 dark:text-white uppercase tracking-tight">
-                          {item.serial_number || "N/A (Legacy)"}
-                        </span>
-                      </div>
-                      <div>{getStatusBadge(item.status)}</div>
-                    </div>
+                    {/* Left status accent indicator */}
+                    <div
+                      className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${
+                        item.status === "SOLD"
+                          ? "bg-blue-500"
+                          : item.status === "RESERVED"
+                          ? "bg-amber-500"
+                          : item.status === "DEFECTIVE"
+                          ? "bg-rose-500"
+                          : "bg-emerald-500"
+                      }`}
+                    />
 
-                    {/* Product Title */}
-                    <div>
-                      <h3 className="font-bold text-sm text-gray-900 dark:text-white leading-snug">
-                        {item.product_name}
-                      </h3>
-                    </div>
-
-                    {/* Key Attributes Grid */}
-                    <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                      {/* Supplier */}
-                      <div className="bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                        <span className="text-[10px] text-gray-400 font-semibold flex items-center gap-1 mb-0.5">
-                          <Building2 className="w-3 h-3 text-blue-500" /> Supplier
-                        </span>
-                        {item.dealer_id ? (
-                          <div>
-                            <strong className="text-gray-900 dark:text-gray-100 font-bold block truncate">
-                              {item.dealer_id.name}
-                            </strong>
-                            {item.dealer_id.phone && (
-                              <a
-                                href={`tel:${item.dealer_id.phone}`}
-                                className="text-[11px] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-0.5 mt-0.5"
-                              >
-                                <Phone className="w-2.5 h-2.5" /> {item.dealer_id.phone}
-                              </a>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-amber-600 dark:text-amber-400 font-medium text-[11px] italic">
-                            Unlinked
-                          </span>
-                        )}
+                    <div className="pl-1.5">
+                      {/* Top Row: Product Name & Status Badge */}
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="font-bold text-xs text-ink-base dark:text-slate-100 truncate hover:text-blue-600 dark:hover:text-blue-400">
+                          {item.product_name}
+                        </p>
+                        <div className="shrink-0">{getStatusBadge(item.status)}</div>
                       </div>
 
-                      {/* Purchase Invoice / Date */}
-                      <div className="bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800/80">
-                        <span className="text-[10px] text-gray-400 font-semibold flex items-center gap-1 mb-0.5">
-                          <Calendar className="w-3 h-3 text-indigo-500" /> Purchase Ref
+                      {/* Meta Row: Serial # · Purchase Ref / Date */}
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 dark:text-slate-400 flex-wrap">
+                        <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                          S/N: {item.serial_number || "N/A"}
                         </span>
-                        <strong className="text-gray-900 dark:text-gray-100 font-mono block truncate">
-                          {item.purchase_invoice_ref || "-"}
-                        </strong>
                         {item.purchase_date && (
-                          <span className="text-[10px] text-gray-400 block mt-0.5">
-                            {formatDate(item.purchase_date)}
-                          </span>
+                          <>
+                            <span>·</span>
+                            <span>{formatDate(item.purchase_date)}</span>
+                          </>
                         )}
-                      </div>
-                    </div>
-
-                    {/* Sales Invoice (if sold) */}
-                    {item.invoice_id && (
-                      <div className="bg-blue-50/60 dark:bg-blue-950/30 p-2.5 rounded-xl border border-blue-100 dark:border-blue-900/40 text-xs flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                          <div>
-                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold block uppercase">
-                              Sales Invoice
+                        {item.purchase_invoice_ref && (
+                          <>
+                            <span>·</span>
+                            <span className="font-mono text-[10px] text-slate-500">
+                              Ref: {item.purchase_invoice_ref}
                             </span>
-                            <strong className="text-blue-900 dark:text-blue-200 font-bold">
-                              {item.invoice_id.invoice_number}
-                            </strong>
-                          </div>
-                        </div>
-                        {item.invoice_id.customer_name && (
-                          <span className="text-[11px] text-gray-600 dark:text-gray-300 font-medium truncate max-w-[120px]">
-                            {item.invoice_id.customer_name}
-                          </span>
+                          </>
                         )}
                       </div>
-                    )}
 
-                    {/* Action Button */}
-                    <div className="pt-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedRetroItem(item)}
-                        className="w-full min-h-[40px] text-xs font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 bg-blue-50/30 dark:bg-blue-950/20 active:bg-blue-100 flex items-center justify-center gap-1.5"
-                      >
-                        <Building2 className="w-3.5 h-3.5" /> Edit Supplier Origin
-                      </Button>
+                      {/* Supplier & Sales Info (Single line summary) */}
+                      {(item.dealer_id || item.invoice_id) && (
+                        <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-600 dark:text-slate-400 truncate">
+                          {item.dealer_id ? (
+                            <span className="truncate">
+                              🏢 {item.dealer_id.name} {item.dealer_id.phone ? `(${item.dealer_id.phone})` : ""}
+                            </span>
+                          ) : (
+                            <span className="italic text-amber-600 dark:text-amber-400 text-[10px]">
+                              No supplier linked
+                            </span>
+                          )}
+
+                          {item.invoice_id && (
+                            <>
+                              <span>·</span>
+                              <span className="font-mono text-blue-600 dark:text-blue-400 font-medium">
+                                Inv: #{item.invoice_id.invoice_number}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Bottom Action Row */}
+                      <div className="flex items-center justify-between gap-2 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-dark-border/40">
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Unit #{index + 1}
+                        </span>
+
+                        <div
+                          className="flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setSelectedRetroItem(item)}
+                            className="px-2.5 py-1 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-semibold"
+                            aria-label="Edit Supplier"
+                          >
+                            <Building2 className="w-3.5 h-3.5" />
+                            <span>Supplier</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}

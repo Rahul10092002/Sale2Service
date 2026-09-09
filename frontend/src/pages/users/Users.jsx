@@ -287,7 +287,7 @@ const Users = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -337,7 +337,7 @@ const Users = () => {
             )}
           </div>
 
-          <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-100 dark:border-dark-border overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border overflow-hidden shadow-sm">
             <div className="hidden md:grid md:grid-cols-[60px_2fr_1fr_150px_100px] gap-4 p-4 bg-gray-50 dark:bg-dark-subtle border-b border-gray-100 dark:border-dark-border text-xs font-semibold text-ink-muted dark:text-slate-400 uppercase tracking-wider">
               <div>S.No</div>
               <div>User Details</div>
@@ -353,47 +353,125 @@ const Users = () => {
               </div>
             ) : (
               users.map((user, index) => (
-                <div key={user.id} className="grid grid-cols-1 md:grid-cols-[60px_2fr_1fr_150px_100px] gap-4 p-4 border-b border-gray-50 dark:border-dark-border hover:bg-gray-50/50 dark:hover:bg-dark-subtle/30 transition-colors items-center">
-                  <div className="hidden md:block text-ink-muted dark:text-slate-500 text-sm">{index + 1}</div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
-                      {user.name.charAt(0).toUpperCase()}
+                <div
+                  key={user.id}
+                  className={index % 2 === 0 ? "bg-white dark:bg-dark-card" : "bg-slate-50/60 dark:bg-slate-800/25"}
+                >
+                  {/* ── Compact Mobile Card (Consistent with InvoiceList) ── */}
+                  <div className="md:hidden relative px-3 py-2.5 transition-all active:bg-blue-50/40 dark:active:bg-slate-800/60 border-b border-gray-100 dark:border-dark-border/80 last:border-b-0">
+                    {/* Left role accent indicator */}
+                    <div
+                      className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${
+                        user.role === "Admin" || user.role === "Super Admin"
+                          ? "bg-purple-500"
+                          : user.role === "Manager"
+                          ? "bg-blue-500"
+                          : "bg-emerald-500"
+                      }`}
+                    />
+
+                    <div className="pl-1.5">
+                      {/* Top Row: User Name & Role Badge */}
+                      <div className="flex items-baseline justify-between gap-2">
+                        <h4 className="font-bold text-xs text-ink-base dark:text-slate-100 truncate">
+                          {user.name}
+                        </h4>
+                        <span
+                          className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${getRoleBadge(
+                            user.role,
+                          )}`}
+                        >
+                          {user.role}
+                        </span>
+                      </div>
+
+                      {/* Meta Row: Email · Phone */}
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 dark:text-slate-400 flex-wrap">
+                        <span className="truncate max-w-[150px]">{user.email}</span>
+                        {user.phone && (
+                          <>
+                            <span>·</span>
+                            <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                              {user.phone}
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Bottom Action Row */}
+                      <div className="flex items-center justify-between gap-2 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-dark-border/40">
+                        <div className="flex items-center gap-1 text-green-600 dark:text-green-400 text-[10.5px] font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Active</span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          {canEdit("users") && (
+                            <button
+                              onClick={() => openEditUser(user)}
+                              className="px-2 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-md transition-colors text-[11px] font-medium flex items-center gap-1"
+                              title="Edit User"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                          )}
+                          {canDelete("users") && (
+                            <button
+                              onClick={() => handleDeleteUser(user.id, user.name)}
+                              className="px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-md transition-colors text-[11px] font-medium flex items-center gap-1"
+                              title="Delete User"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Desktop Row ── */}
+                  <div className="hidden md:grid md:grid-cols-[60px_2fr_1fr_150px_100px] gap-4 p-4 border-b border-gray-50 dark:border-dark-border hover:bg-gray-50/50 dark:hover:bg-dark-subtle/30 transition-colors items-center">
+                    <div className="text-ink-muted dark:text-slate-500 text-sm">{index + 1}</div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-ink-base dark:text-slate-100 text-sm truncate">{user.name}</h4>
+                        <p className="text-xs text-ink-muted dark:text-slate-500 truncate">{user.email}</p>
+                      </div>
                     </div>
                     <div>
-                      <h4 className="font-bold text-ink-base dark:text-slate-100 text-sm truncate">{user.name}</h4>
-                      <p className="text-xs text-ink-muted dark:text-slate-500 truncate">{user.email}</p>
-                      <p className="text-xs text-ink-muted dark:text-slate-500 md:hidden">{user.phone}</p>
+                      <span className={`text-[10px] md:text-xs px-2 py-0.5 rounded-full font-bold uppercase ${getRoleBadge(user.role)}`}>
+                        {user.role}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex md:block items-center justify-between">
-                    <span className="md:hidden text-xs text-ink-muted font-medium">Role:</span>
-                    <span className={`text-[10px] md:text-xs px-2 py-0.5 rounded-full font-bold uppercase ${getRoleBadge(user.role)}`}>
-                      {user.role}
-                    </span>
-                  </div>
-                  <div className="hidden md:flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    <span className="text-sm text-green-600 dark:text-green-400 font-medium">Active</span>
-                  </div>
-                  <div className="flex items-center justify-end gap-2">
-                    {canEdit("users") && (
-                      <button 
-                        onClick={() => openEditUser(user)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
-                        title="Edit User"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    )}
-                    {canDelete("users") && (
-                      <button 
-                        onClick={() => handleDeleteUser(user.id, user.name)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
-                        title="Delete User"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <span className="text-sm text-green-600 dark:text-green-400 font-medium">Active</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      {canEdit("users") && (
+                        <button 
+                          onClick={() => openEditUser(user)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
+                          title="Edit User"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      {canDelete("users") && (
+                        <button 
+                          onClick={() => handleDeleteUser(user.id, user.name)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                          title="Delete User"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))

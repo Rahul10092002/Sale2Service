@@ -816,19 +816,20 @@ export default class InvoiceController {
       let vars;
       if (templateName === "payment_missed") {
         // payment_missed template variables:
-        // {{1}}: Pending amount, {{2}}: Due date (missed date),
-        // {{3}}: Invoice number, {{4}}: Product serial number,
-        // {{5}}: Shop contact info, {{6}}: Shop name
+        // {{1}}: Customer name, {{2}}: Pending amount, {{3}}: Due date (missed date),
+        // {{4}}: Invoice number, {{5}}: Product serial number,
+        // {{6}}: Shop contact info, {{7}}: Shop name
         vars = {
-          1:
+          1: customer.full_name || "",
+          2:
             typeof invoice.amount_due === "number"
               ? invoice.amount_due.toFixed(2)
               : String(invoice.amount_due || "0"),
-          2: formatDateForMessage(invoice.due_date),
-          3: invoice.invoice_number || "N/A",
-          4: serialNumber,
-          5: shopContact,
-          6: shop.shop_name_hi || shop.shop_name || "",
+          3: formatDateForMessage(invoice.due_date),
+          4: invoice.invoice_number || "N/A",
+          5: serialNumber,
+          6: shopContact,
+          7: shop.shop_name_hi || shop.shop_name || "",
         };
       } else {
         // payment_reminders template variables:

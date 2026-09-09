@@ -153,8 +153,8 @@ function Logs() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-3 sm:py-6">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8">
         {/* Modern Filters & Search */}
         <div className="flex flex-wrap items-center justify-between px-3 py-1.5 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-3 gap-2">
           <div className="flex items-center space-x-2">
@@ -461,85 +461,65 @@ function Logs() {
                 </table>
               </div>
 
-              {/* Mobile View */}
-              {logs.map((log, index) => (
-                <div key={`mobile-${log._id}`} className="md:hidden">
+              {/* Mobile View ── Consistent with InvoiceList */}
+              <div className="md:hidden">
+                {logs.map((log, index) => (
                   <div
-                    className={`${
-                      index % 2 === 0 ? "bg-white dark:bg-dark-card" : "bg-gray-200 dark:bg-dark-subtle"
-                    } border-b border-gray-100 dark:border-dark-border p-4 `}
+                    key={`mobile-${log._id}`}
+                    className={`relative px-3 py-2.5 transition-all active:bg-blue-50/40 dark:active:bg-slate-800/60 border-b border-gray-100 dark:border-dark-border/80 last:border-b-0 ${
+                      index % 2 === 0
+                        ? "bg-white dark:bg-dark-card"
+                        : "bg-slate-50/60 dark:bg-slate-800/25"
+                    }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <MessageSquare className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-ink-base dark:text-slate-100 capitalize">
-                            {log.recipient_name || "N/A"}
-                          </div>
-                          <div className="text-sm text-ink-secondary dark:text-slate-400">
-                            #{(currentPage - 1) * 10 + index + 1}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {getEntityTypeBadge(log.entity_type)}
-                        {getStatusBadge(log.message_status)}
-                      </div>
-                    </div>
+                    {/* Left status accent indicator */}
+                    <div
+                      className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${
+                        log.message_status === "SENT" || log.message_status === "DELIVERED"
+                          ? "bg-emerald-500"
+                          : log.message_status === "FAILED" || log.message_status === "ERROR"
+                          ? "bg-rose-500"
+                          : "bg-amber-500"
+                      }`}
+                    />
 
-                    {/* Recipient & Entity Details */}
-                    <div className="mb-4">
-                      <h4 className="font-medium text-ink-base dark:text-slate-100 text-sm mb-2">
-                        Recipient & Entity Details
-                      </h4>
-                      <div className="text-sm space-y-1">
-                        <p>
-                          <span className="font-medium text-ink-secondary dark:text-slate-400">
-                            Phone:
-                          </span>{" "}
+                    <div className="pl-1.5">
+                      {/* Top Row: Recipient Name & Status Badge */}
+                      <div className="flex items-baseline justify-between gap-2">
+                        <h4 className="font-bold text-xs text-ink-base dark:text-slate-100 truncate capitalize">
+                          {log.recipient_name || "N/A"}
+                        </h4>
+                        <div className="shrink-0">{getStatusBadge(log.message_status)}</div>
+                      </div>
+
+                      {/* Meta Row: Phone · Time · Log S.No */}
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 dark:text-slate-400 flex-wrap">
+                        <span className="font-mono text-indigo-600 dark:text-indigo-400 font-medium">
                           {log.recipient_number}
-                        </p>
-                        <p>
-                          <span className="font-medium text-ink-secondary dark:text-slate-400">
-                            Entity Type:
-                          </span>{" "}
-                          {log.entity_type}
-                        </p>
+                        </span>
+                        <span>·</span>
+                        <span>{formatDate(log.createdAt || log.sent_at)}</span>
                       </div>
-                    </div>
 
-                    {/* Message & Status Details */}
-                    <div className="mb-4">
-                     
-                      <div className="text-sm space-y-1">
-                        <p>
-                          <span className="font-medium text-ink-secondary dark:text-slate-400">
-                            Status:
-                          </span>{" "}
-                          {log.message_status}
-                        </p>
-                      </div>
-                    </div>
+                      {/* Bottom Entity & Index Row */}
+                      <div className="flex items-center justify-between gap-2 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-dark-border/40">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {getEntityTypeBadge(log.entity_type)}
+                          {log.error_message && (
+                            <span className="text-[10px] text-red-600 dark:text-red-400 truncate max-w-[150px]">
+                              {log.error_message}
+                            </span>
+                          )}
+                        </div>
 
-                    {/* Timing & Retry Details */}
-                    <div>
-                     
-                      <div className="text-sm space-y-1">
-                       
-                        <p>
-                          <span className="font-medium text-ink-secondary dark:text-slate-400">
-                            Sent:
-                          </span>{" "}
-                          {log.sent_at ? formatDate(log.sent_at) : "Not sent"}
-                        </p>
-                        
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          #{(currentPage - 1) * 10 + index + 1}
+                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
               {logs.length === 0 && !logsLoading && (
                 <div className="text-center py-8 bg-white border-t">

@@ -464,18 +464,23 @@ export default class WishesReminderScheduler extends BaseScheduler {
       // {{2}} Festival Name
       // {{3}} Shop Name
       const variables = {
-        1: festival.festival_name,
-        2: getShopName(shop),
+        1: customer.full_name,
+        2: festival.festival_name,
+        3: getShopName(shop),
       };
 
-      const messageContent = `नमस्ते  😊
+      const messageContent = `नमस्ते ${variables[1]} जी 😊
 
-आपको ${variables[1]} की हार्दिक शुभकामनाएँ 🎉
+✨ आपको और आपके परिवार को ${variables[2]} की हार्दिक शुभकामनाएं! ✨
 
-ईश्वर से प्रार्थना है कि यह पर्व आपके जीवन में सुख, समृद्धि और खुशियाँ लेकर आए।
+ईश्वर से प्रार्थना है कि यह पावन अवसर आपके जीवन में
+खुशियां, समृद्धि और सफलता लेकर आए 🙏
 
-सादर,
-${variables[2]} की ओर से`;
+🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।
+इसी तरह अपना स्नेह बनाए रखें ❤️
+
+धन्यवाद!
+${variables[3]} की ओर से`;
 
       // Create log
       const reminderLog = await this.createReminderLog({
@@ -496,6 +501,7 @@ ${variables[2]} की ओर से`;
         reminderLogId: reminderLog._id,
         metadata: {
           campaignName: "festival_wish",
+          customerName: customer.full_name,
           festivalName: festival.festival_name,
           messageType: "festival_wish",
         },

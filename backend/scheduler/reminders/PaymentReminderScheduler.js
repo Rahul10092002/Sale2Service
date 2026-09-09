@@ -303,17 +303,19 @@ export default class PaymentReminderScheduler extends BaseScheduler {
     const shopContact = getShopContactInfo(shop) || "";
 
     if (templateName === "payment_missed") {
+      const customerName = invoice.customer_id?.full_name || "";
       return {
         variables: {
-          1:
+          1: customerName,
+          2:
             typeof invoice.amount_due === "number"
               ? invoice.amount_due.toFixed(2)
               : String(invoice.amount_due || "0"),
-          2: formatDateForMessage(invoice.due_date),
-          3: invoice.invoice_number || "N/A",
-          4: serialNumber,
-          5: shopContact,
-          6: shop?.shop_name_hi || shop?.shop_name || "",
+          3: formatDateForMessage(invoice.due_date),
+          4: invoice.invoice_number || "N/A",
+          5: serialNumber,
+          6: shopContact,
+          7: shop?.shop_name_hi || shop?.shop_name || "",
         },
         buttons: [{ subtype: "url", value: shopContact }],
       };

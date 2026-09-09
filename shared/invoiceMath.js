@@ -35,7 +35,11 @@ export const derivePaymentStatus = ({
   const normalizedPaid = roundCurrency(Math.max(0, amountPaid));
   const normalizedFallback = String(fallbackStatus || "UNPAID").toUpperCase();
 
-  if (normalizedTotal > 0 && normalizedPaid >= normalizedTotal) {
+  if (normalizedTotal === 0) {
+    return normalizedFallback === "UNPAID" ? "UNPAID" : "PAID";
+  }
+
+  if (normalizedPaid >= normalizedTotal) {
     return "PAID";
   }
 
@@ -85,7 +89,20 @@ export const calculateInvoiceTotals = ({
 
   const totalDeductions = discount + oldItemExchangePrice;
   const totalAmount = Math.max(0, totalBeforeDiscount - totalDeductions);
-  const amountPaid = roundCurrency(Math.max(0, toNumber(invoice.amount_paid, 0)));
+
+  const explicitStatus = String(invoice.payment_status || "").toUpperCase();
+  let amountPaid = roundCurrency(Math.max(0, toNumber(invoice.amount_paid, 0)));
+
+  if (explicitStatus === "PAID") {
+    amountPaid = roundCurrency(totalAmount);
+  } else if (explicitStatus === "UNPAID") {
+    amountPaid = 0;
+  } else if (explicitStatus === "PARTIAL") {
+    if (amountPaid > totalAmount) {
+      amountPaid = roundCurrency(totalAmount);
+    }
+  }
+
   const amountDue = Math.max(0, totalAmount - amountPaid);
   const paymentStatus = derivePaymentStatus({
     amountPaid,

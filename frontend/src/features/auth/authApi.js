@@ -87,6 +87,45 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Auth", "User"],
     }),
+
+    /**
+     * Get delete security password configuration status
+     * @returns {Object} Status data { isConfigured: boolean }
+     */
+    getDeletePasswordStatus: builder.query({
+      query: () => "/auth/delete-password-status",
+      providesTags: ["DeletePasswordStatus"],
+      transformResponse: (response) => {
+        return response?.data || response;
+      },
+    }),
+
+    /**
+     * Set or update delete security password
+     * @param {Object} data - { current_owner_password, new_delete_password }
+     * @returns {Object} Success response
+     */
+    setDeletePassword: builder.mutation({
+      query: (data) => ({
+        url: "/auth/set-delete-password",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["DeletePasswordStatus"],
+    }),
+
+    /**
+     * Verify delete security password
+     * @param {Object} data - { delete_password }
+     * @returns {Object} Verification response
+     */
+    verifyDeletePassword: builder.mutation({
+      query: (data) => ({
+        url: "/auth/verify-delete-password",
+        method: "POST",
+        body: data,
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -97,4 +136,8 @@ export const {
   useLoginMutation,
   useGetCurrentUserQuery,
   useLogoutMutation,
+  useGetDeletePasswordStatusQuery,
+  useSetDeletePasswordMutation,
+  useVerifyDeletePasswordMutation,
 } = authApi;
+

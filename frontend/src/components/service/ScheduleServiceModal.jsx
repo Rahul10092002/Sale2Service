@@ -5,6 +5,7 @@ import Button from "../ui/Button.jsx";
 import Input from "../ui/Input.jsx";
 import SelectField from "../ui/SelectField.jsx";
 import LoadingSpinner from "../ui/LoadingSpinner.jsx";
+import { getToken } from "../../utils/token.js";
 
 /**
  * Schedule Service Modal
@@ -54,7 +55,7 @@ export const ScheduleServiceModal = ({
       const response = await fetch(`/api/invoices/items/${itemId}/services`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${getToken()}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),

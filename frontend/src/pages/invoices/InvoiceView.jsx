@@ -73,9 +73,18 @@ const InvoiceView = () => {
 
   // Handle API responses that return { invoice, invoice_items }
   const invoiceObj = invoice?.invoice ? invoice.invoice : invoice || {};
-  const items = invoice?.invoice_items
-    ? invoice.invoice_items
-    : invoiceObj?.invoice_items || [];
+  const productItems = (
+    invoice?.invoice_items
+      ? invoice.invoice_items
+      : invoiceObj?.invoice_items || []
+  ).map((i) => ({ ...i, item_type: i.item_type || "PRODUCT" }));
+
+  const serviceItems = (invoiceObj?.services || []).map((s) => ({
+    ...s,
+    item_type: "SERVICE",
+  }));
+
+  const items = [...productItems, ...serviceItems];
 
   const [deleteInvoice] = useDeleteInvoiceMutation();
   const [sendInvoice] = useSendInvoiceMutation();

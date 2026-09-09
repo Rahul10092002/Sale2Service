@@ -179,6 +179,30 @@ export default class InvoiceController {
       const dueDateToStore =
         derivedPaymentStatus === "PAID" ? null : invoice.due_date || null;
 
+      // Step 5: Separate products and services
+      const rawItems = Array.isArray(invoice_items) ? invoice_items : [];
+      const serviceItems = rawItems.filter(
+        (item) => String(item.item_type || "").toUpperCase() === "SERVICE",
+      );
+      const productItems = rawItems.filter(
+        (item) => String(item.item_type || "PRODUCT").toUpperCase() !== "SERVICE",
+      );
+
+      const embeddedServices = serviceItems.map((s) => ({
+        product_name: s.product_name || "Service",
+        service_category: s.service_category || "REPAIR",
+        selling_price: Number(s.selling_price ?? s.price ?? 0),
+        cost_price: Number(s.cost_price || 0),
+        quantity: Number(s.quantity || 1),
+        notes: s.notes || "",
+        product_images:
+          s.product_images && s.product_images.length > 0
+            ? s.product_images
+            : s.product_image_url
+            ? [s.product_image_url]
+            : [],
+      }));
+
       // Step 5: Create invoice
       const newInvoice = new Invoice({
         invoice_number: invoiceNumber,
@@ -197,15 +221,16 @@ export default class InvoiceController {
         due_date: dueDateToStore,
         created_by: user.userId,
         notes: invoice.notes,
+        services: embeddedServices,
       });
 
       await newInvoice.save({ session });
 
-      // Step 6: Create invoice items (products & services)
+      // Step 6: Create invoice items (strictly for PRODUCT items)
       const createdInvoiceItems = [];
 
-      for (const item of invoice_items) {
-        const itemType = String(item.item_type || "PRODUCT").toUpperCase();
+      for (const item of productItems) {
+        const itemType = "PRODUCT";
 
         // Calculate warranty end date
         const warrantyStartDate = item.warranty_start_date
@@ -237,7 +262,6 @@ export default class InvoiceController {
         }
 
         const isBattery =
-          itemType === "PRODUCT" &&
           item.product_category === "BATTERY" &&
           item.battery_type &&
           ["INVERTER_BATTERY", "VEHICLE_BATTERY"].includes(item.battery_type);
@@ -259,13 +283,10 @@ export default class InvoiceController {
         const invoiceItem = new InvoiceItem({
           invoice_id: newInvoice._id,
           shop_id: user.shopId,
-          item_type: itemType,
-          service_category:
-            itemType === "SERVICE" ? item.service_category || "REPAIR" : undefined,
+          item_type: "PRODUCT",
           serial_number: (item.serial_number || "").toUpperCase(),
           product_name: item.product_name,
-          product_category:
-            item.product_category || (itemType === "SERVICE" ? "OTHER" : "BATTERY"),
+          product_category: item.product_category || "BATTERY",
           ...batteryPayload,
           company: item.company,
           model_number: item.model_number,
@@ -1733,11 +1754,34 @@ export default class InvoiceController {
         invoice_id: id,
       }).session(session);
 
-      // Step 3: Create new invoice items — create individually so we can
-      // compute warranty dates and attach full required fields (matches create flow)
+      // Step 3: Separate products and services
+      const rawUpdateItems = Array.isArray(invoice_items) ? invoice_items : [];
+      const updateServiceItems = rawUpdateItems.filter(
+        (item) => String(item.item_type || "").toUpperCase() === "SERVICE",
+      );
+      const updateProductItems = rawUpdateItems.filter(
+        (item) => String(item.item_type || "PRODUCT").toUpperCase() !== "SERVICE",
+      );
+
+      const embeddedUpdateServices = updateServiceItems.map((s) => ({
+        product_name: s.product_name || "Service",
+        service_category: s.service_category || "REPAIR",
+        selling_price: Number(s.selling_price ?? s.price ?? 0),
+        cost_price: Number(s.cost_price || 0),
+        quantity: Number(s.quantity || 1),
+        notes: s.notes || "",
+        product_images:
+          s.product_images && s.product_images.length > 0
+            ? s.product_images
+            : s.product_image_url
+            ? [s.product_image_url]
+            : [],
+      }));
+
+      // Create new invoice items for products
       const createdInvoiceItems = [];
 
-      for (const item of invoice_items) {
+      for (const item of updateProductItems) {
         // Compute warranty start/end
         const warrantyStartDate = item.warranty_start_date
           ? new Date(item.warranty_start_date)
@@ -1780,6 +1824,7 @@ export default class InvoiceController {
         const invoiceItem = new InvoiceItem({
           invoice_id: id,
           shop_id: user.shopId,
+          item_type: "PRODUCT",
           serial_number: item.serial_number
             ? item.serial_number.toUpperCase()
             : undefined,
@@ -1874,6 +1919,7 @@ export default class InvoiceController {
         totals.payment_status === "PAID" ? null : invoice.due_date || null;
       existingInvoice.warranty_months = parseInt(invoice.warranty_months || 0);
       existingInvoice.notes = invoice.notes || "";
+      existingInvoice.services = embeddedUpdateServices;
       existingInvoice.updated_at = new Date();
 
       await existingInvoice.save({ session });

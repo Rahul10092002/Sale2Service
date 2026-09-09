@@ -99,6 +99,44 @@ const invoiceSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Standalone Service Items (for billing & repairs)
+    services: [
+      {
+        product_name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        service_category: {
+          type: String,
+          trim: true,
+          default: "REPAIR",
+        },
+        selling_price: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        cost_price: {
+          type: Number,
+          default: 0,
+        },
+        quantity: {
+          type: Number,
+          default: 1,
+          min: 1,
+        },
+        notes: {
+          type: String,
+          trim: true,
+        },
+        product_images: [
+          {
+            type: String,
+          },
+        ],
+      },
+    ],
     deleted_at: {
       type: Date,
       default: null,

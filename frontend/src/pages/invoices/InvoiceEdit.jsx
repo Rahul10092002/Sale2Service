@@ -54,9 +54,18 @@ const InvoiceEdit = () => {
       const source = existingInvoice.invoice
         ? existingInvoice.invoice
         : existingInvoice;
-      const items = existingInvoice.invoice_items
-        ? existingInvoice.invoice_items
-        : source.invoice_items || [];
+      const productItems = (
+        existingInvoice.invoice_items
+          ? existingInvoice.invoice_items
+          : source.invoice_items || []
+      ).map((i) => ({ ...i, item_type: i.item_type || "PRODUCT" }));
+
+      const serviceItems = (source.services || []).map((s) => ({
+        ...s,
+        item_type: "SERVICE",
+      }));
+
+      const items = [...productItems, ...serviceItems];
 
       const formattedInvoice = {
         customer: {
@@ -154,6 +163,28 @@ const InvoiceEdit = () => {
 
     if (!currentInvoice.customer.address.pincode?.trim()) {
       newErrors["customer.address.pincode"] = "Pincode is required";
+    }
+
+    // Payment validation
+    const { invoice } = currentInvoice;
+    if (invoice.payment_status === "UNPAID") {
+      if (!invoice.due_date) {
+        newErrors["invoice.due_date"] =
+          "Due date is required for unpaid invoices";
+      }
+    }
+    if (invoice.payment_status === "PARTIAL") {
+      if (!invoice.due_date) {
+        newErrors["invoice.due_date"] =
+          "Due date is required for partial payments";
+      }
+      if (!invoice.amount_paid || invoice.amount_paid <= 0) {
+        newErrors["invoice.amount_paid"] =
+          "Amount paid must be greater than 0 for partial payments";
+      } else if (invoice.amount_paid >= invoice.total_amount) {
+        newErrors["invoice.amount_paid"] =
+          "Amount paid must be less than total amount for partial payments";
+      }
     }
 
     // Invoice items validation
@@ -293,84 +324,29 @@ const InvoiceEdit = () => {
       setErrors({});
 
       // Prepare invoice data for submission
+      const isPaid = currentInvoice.invoice.payment_status === "PAID";
       const invoiceData = {
-        customer: {
-          full_name: currentInvoice.customer.full_name,
-          whatsapp_number: currentInvoice.customer.whatsapp_number,
-          address: currentInvoice.customer.address,
-        },
+        customer: currentInvoice.customer,
         invoice: {
-          invoice_number: currentInvoice.invoice.invoice_number,
-          invoice_date: currentInvoice.invoice.invoice_date,
-          payment_mode: currentInvoice.invoice.payment_mode,
-          payment_status: currentInvoice.invoice.payment_status,
-          is_tax_inclusive: currentInvoice.invoice.is_tax_inclusive !== false,
-          subtotal: Number(currentInvoice.invoice.subtotal || 0),
-          discount: parseFloat(currentInvoice.invoice.discount || 0),
-          old_item_exchange_price: parseFloat(
+          ...currentInvoice.invoice,
+          amount_paid: isPaid
+            ? Number(currentInvoice.invoice.total_amount || 0)
+            : currentInvoice.invoice.payment_status === "PARTIAL"
+            ? Number(currentInvoice.invoice.amount_paid || 0)
+            : 0,
+          due_date: isPaid ? null : currentInvoice.invoice.due_date,
+          discount: Number(currentInvoice.invoice.discount || 0),
+          old_item_exchange_price: Number(
             currentInvoice.invoice.old_item_exchange_price || 0,
           ),
+          subtotal: Number(currentInvoice.invoice.subtotal || 0),
           tax: Number(currentInvoice.invoice.tax || 0),
           total_amount: Number(currentInvoice.invoice.total_amount || 0),
-          amount_paid: Number(currentInvoice.invoice.amount_paid || 0),
-          due_date:
-            currentInvoice.invoice.payment_status === "PAID"
-              ? null
-              : currentInvoice.invoice.due_date,
-          warranty_months: parseInt(
-            currentInvoice.invoice.warranty_months || 0,
-          ),
-          notes: currentInvoice.invoice.notes,
         },
         invoice_items: currentInvoice.invoice_items.map((item) => ({
-          product_name: item.product_name,
-          serial_number: item.serial_number,
-          price: parseFloat(item.selling_price),
-          selling_price: parseFloat(item.selling_price),
-          cost_price: parseFloat(item.cost_price || 0),
-          quantity: parseInt(item.quantity || 1),
-          product_category: item.product_category || "BATTERY",
-          battery_type: item.battery_type || "",
-          vehicle_name: item.vehicle_name || "",
-          vehicle_number_plate: item.vehicle_number_plate || "",
-          company: item.company || "",
-          model_number: item.model_number || "",
-          warranty_type: item.warranty_type || "STANDARD",
-          warranty_start_date: item.warranty_start_date,
-          warranty_duration_months: parseInt(
-            item.warranty_duration_months || 12,
-          ),
-          warranty_end_date: item.warranty_end_date,
-          pro_warranty_end_date: item.pro_warranty_end_date,
-          manufacturing_date: item.manufacturing_date,
-          capacity_rating: item.capacity_rating,
-          voltage: item.voltage,
-          batch_number: item.batch_number,
-          purchase_source: item.purchase_source,
-          notes: item.notes,
-          // Include service plan data
-          service_plan_enabled: item.service_plan_enabled || false,
-          service_plan:
-            item.service_plan_enabled && item.service_plan
-              ? {
-                  service_interval_type:
-                    item.service_plan.service_interval_type,
-                  service_interval_value: parseInt(
-                    item.service_plan.service_interval_value || 1,
-                  ),
-                  total_services: parseInt(
-                    item.service_plan.total_services || 1,
-                  ),
-                  service_start_date: item.service_plan.service_start_date,
-                  service_end_date: item.service_plan.service_end_date,
-                  service_description:
-                    item.service_plan.service_description || "",
-                  service_charge: parseFloat(
-                    item.service_plan.service_charge || 0,
-                  ),
-                  is_active: item.service_plan.is_active !== false,
-                }
-              : null,
+          ...item,
+          id: undefined, // Remove UI-only ID
+          margin: undefined, // Remove computed field
         })),
       };
 

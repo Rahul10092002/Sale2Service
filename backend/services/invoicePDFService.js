@@ -111,6 +111,15 @@ export class InvoicePDFService {
         ? "Payment Due"
         : "Settled";
 
+    const rawProducts = Array.isArray(invoiceItems) ? invoiceItems : [];
+    const rawServices = Array.isArray(invoice.services)
+      ? invoice.services.map((s) => ({
+          ...(s.toObject ? s.toObject() : s),
+          item_type: "SERVICE",
+        }))
+      : [];
+    const allItems = [...rawProducts, ...rawServices];
+
     const data = {
       // Invoice details
       invoice: {
@@ -156,11 +165,8 @@ export class InvoicePDFService {
       },
       upiQRCode: null,
 
-      // Invoice items — do not compute amounts when invoice is UNPAID/PARTIAL;
-      // show values as present on the item object. If an explicit `amount`
-      // is provided on the item, display it; otherwise leave blank to avoid
-      // performing backend arithmetic.
-      items: invoiceItems.map((item, index) => {
+      // Invoice items & services — combine product items and invoice.services
+      items: allItems.map((item, index) => {
         const itemType = String(item.item_type || "PRODUCT").toUpperCase();
         const isService = itemType === "SERVICE";
         const quantityNum = item.quantity !== undefined ? Number(item.quantity) : 1;

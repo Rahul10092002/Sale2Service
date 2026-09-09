@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ShieldAlert, Eye, EyeOff, Lock, X } from "lucide-react";
-import { getToken } from "../../utils/token.js";
-
-const API_BASE_URL =
-  import.meta.env.VITE_ENVIRONMENT === "production"
-    ? import.meta.env.VITE_PROD_API_URL
-    : import.meta.env.VITE_LOCAL_API_URL;
+import { useVerifyDeletePasswordMutation } from "../../features/auth/authApi.js";
 
 export default function DeleteConfirmModal({
   isOpen,
@@ -17,8 +12,10 @@ export default function DeleteConfirmModal({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [skipFiveMinutes, setSkipFiveMinutes] = useState(true);
-  const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [verifyDeletePassword, { isLoading: loading }] =
+    useVerifyDeletePasswordMutation();
 
   const inputRef = useRef(null);
 
@@ -27,7 +24,6 @@ export default function DeleteConfirmModal({
     if (isOpen) {
       setPassword("");
       setErrorMessage("");
-      setLoading(false);
       setShowPassword(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
@@ -58,29 +54,11 @@ export default function DeleteConfirmModal({
     }
 
     setErrorMessage("");
-    setLoading(true);
 
     try {
-      const token = getToken();
-      const response = await fetch(
-        `${API_BASE_URL}/auth/verify-delete-password`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ delete_password: password }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message || "Incorrect delete security password. Please try again.",
-        );
-      }
+      await verifyDeletePassword({
+        delete_password: password,
+      }).unwrap();
 
       // If user checked "Skip for 5 minutes", set timestamp in sessionStorage
       if (skipFiveMinutes) {
@@ -93,10 +71,10 @@ export default function DeleteConfirmModal({
     } catch (err) {
       console.error("Delete password verification failed:", err);
       setErrorMessage(
-        err.message || "Network error. Please check your connection and try again.",
+        err?.data?.message ||
+          err?.message ||
+          "Incorrect delete security password. Please try again.",
       );
-    } finally {
-      setLoading(false);
     }
   };
 

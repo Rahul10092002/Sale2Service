@@ -2,6 +2,10 @@ import React, { useEffect, useState, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../features/ui/uiSlice.js";
 import {
+  useGetDeletePasswordStatusQuery,
+  useSetDeletePasswordMutation,
+} from "../../features/auth/authApi.js";
+import {
   useGetShopProfileQuery,
   useUpdateShopProfileMutation,
   useUploadShopLogoMutation,
@@ -449,9 +453,6 @@ const Settings = () => {
           />
         </SectionCard>
 
-        {/* Delete Protection Password Section */}
-        <DeleteProtectionCard />
-
         {/* Save Bar */}
         <div className="flex items-center justify-between pt-1">
           {saved ? (
@@ -481,6 +482,9 @@ const Settings = () => {
           </button>
         </div>
       </form>
+
+      {/* Delete Protection Password Section */}
+      <DeleteProtectionCard />
     </div>
   );
 };
@@ -490,35 +494,16 @@ const DeleteProtectionCard = () => {
   const [currentOwnerPassword, setCurrentOwnerPassword] = useState("");
   const [newDeletePassword, setNewDeletePassword] = useState("");
   const [confirmDeletePassword, setConfirmDeletePassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState({ isConfigured: false });
 
-  const API_BASE_URL =
-    import.meta.env.VITE_ENVIRONMENT === "production"
-      ? import.meta.env.VITE_PROD_API_URL
-      : import.meta.env.VITE_LOCAL_API_URL;
+  const { data: status } = useGetDeletePasswordStatusQuery();
+  const [setDeletePassword, { isLoading: loading }] =
+    useSetDeletePasswordMutation();
 
-  // Check current status on mount
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE_URL}/auth/delete-password-status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const json = await res.json();
-        if (res.ok && json.success) {
-          setStatus(json.data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch delete password status:", err);
-      }
-    };
-    fetchStatus();
-  }, [API_BASE_URL]);
+  const isConfigured = Boolean(status?.isConfigured);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!currentOwnerPassword || !newDeletePassword) {
       dispatch(
         showToast({
@@ -549,29 +534,16 @@ const DeleteProtectionCard = () => {
       return;
     }
 
-    setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE_URL}/auth/set-delete-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          current_owner_password: currentOwnerPassword,
-          new_delete_password: newDeletePassword,
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.message || "Failed to update delete password");
-      }
+      const res = await setDeletePassword({
+        current_owner_password: currentOwnerPassword,
+        new_delete_password: newDeletePassword,
+      }).unwrap();
 
       dispatch(
         showToast({
-          message: "Delete protection password updated successfully!",
+          message:
+            res?.message || "Delete protection password updated successfully!",
           type: "success",
         }),
       );
@@ -579,16 +551,16 @@ const DeleteProtectionCard = () => {
       setCurrentOwnerPassword("");
       setNewDeletePassword("");
       setConfirmDeletePassword("");
-      setStatus({ isConfigured: true });
     } catch (err) {
       dispatch(
         showToast({
-          message: err.message || "Update failed",
+          message:
+            err?.data?.message ||
+            err?.message ||
+            "Failed to update delete password",
           type: "error",
         }),
       );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -601,13 +573,13 @@ const DeleteProtectionCard = () => {
         {/* Status Banner */}
         <div
           className={`p-3 rounded-xl flex items-center justify-between text-xs font-medium ${
-            status.isConfigured
+            isConfigured
               ? "bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900"
               : "bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900"
           }`}
         >
           <span>
-            {status.isConfigured
+            {isConfigured
               ? "✅ Dedicated Delete Security Password is ACTIVE"
               : "⚠️ Using Default (Owner Login Password). Set a dedicated delete password below for enhanced security."}
           </span>

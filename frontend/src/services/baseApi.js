@@ -64,6 +64,7 @@ export const baseApi = createApi({
     "Dealer",
     "Inventory",
     "Warranty",
+    "DeletePasswordStatus",
   ],
 
   // Prevent unnecessary API calls on focus/navigation

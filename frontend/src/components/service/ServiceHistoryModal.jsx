@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../features/ui/uiSlice.js";
+import { getToken } from "../../utils/token.js";
 import {
   X,
   Calendar,
@@ -75,7 +76,7 @@ export const ServiceHistoryModal = ({
         `/api/invoices/${invoiceId}/items/${itemId}/services`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${getToken()}`,
             "Content-Type": "application/json",
           },
         },

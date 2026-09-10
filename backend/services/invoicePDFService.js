@@ -39,34 +39,101 @@ export class InvoicePDFService {
 
   // Format date
   formatDate(date) {
+    if (!date) return "";
     return new Date(date).toLocaleDateString("en-IN", {
       year: "numeric",
-      month: "long",
+      month: "short",
       day: "numeric",
     });
   }
 
+  // Convert number to Indian Currency Words
+  amountInWords(num) {
+    if (num === null || num === undefined || isNaN(num)) return "";
+    const rounded = Math.round(Number(num));
+    if (rounded === 0) return "Zero Rupees Only";
+
+    const a = [
+      "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+      "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+      "Seventeen", "Eighteen", "Nineteen"
+    ];
+    const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+    const inWords = (n) => {
+      if (n < 20) return a[n];
+      const digit = n % 10;
+      return b[Math.floor(n / 10)] + (digit ? " " + a[digit] : "");
+    };
+
+    let words = "";
+    let n = rounded;
+    const crore = Math.floor(n / 10000000);
+    n %= 10000000;
+    const lakh = Math.floor(n / 100000);
+    n %= 100000;
+    const thousand = Math.floor(n / 1000);
+    n %= 1000;
+    const hundred = Math.floor(n / 100);
+    const rem = n % 100;
+
+    if (crore > 0) words += inWords(crore) + " Crore ";
+    if (lakh > 0) words += inWords(lakh) + " Lakh ";
+    if (thousand > 0) words += inWords(thousand) + " Thousand ";
+    if (hundred > 0) words += a[hundred] + " Hundred ";
+    if (rem > 0) {
+      if (words !== "") words += "and ";
+      words += inWords(rem) + " ";
+    }
+
+    return words.trim() + " Rupees Only";
+  }
+
   // Calculate invoice totals
-  calculateTotals(invoice, invoiceItems) {
+  calculateTotals(invoice, invoiceItems, isInterState = false) {
     const totals = calculateInvoiceTotals({
       invoice,
       items: invoiceItems,
     });
 
+    const taxableAmount = Math.max(0, totals.total_amount - totals.tax);
+    const gstRate = GST_RATE_PERCENT;
+
+    let cgstAmount = 0;
+    let sgstAmount = 0;
+    let igstAmount = 0;
+
+    if (isInterState) {
+      igstAmount = totals.tax;
+    } else {
+      cgstAmount = totals.tax / 2;
+      sgstAmount = totals.tax / 2;
+    }
+
     return {
       subtotal: totals.subtotal,
       discount: totals.discount,
       oldItemExchangePrice: totals.old_item_exchange_price,
-      gstRate: GST_RATE_PERCENT,
+      taxableAmount,
+      isInterState,
+      gstRate,
       gstAmount: totals.tax,
+      cgstRate: isInterState ? "0%" : `${gstRate / 2}%`,
+      sgstRate: isInterState ? "0%" : `${gstRate / 2}%`,
+      igstRate: isInterState ? `${gstRate}%` : "0%",
+      cgstRateNum: isInterState ? 0 : gstRate / 2,
+      sgstRateNum: isInterState ? 0 : gstRate / 2,
+      igstRateNum: isInterState ? gstRate : 0,
+      cgstAmount,
+      sgstAmount,
+      igstAmount,
       total: totals.total_amount,
+      amountInWords: this.amountInWords(totals.total_amount),
     };
   }
 
   // Prepare invoice data for template
   async prepareInvoiceData(invoice, customer, invoiceItems, shop) {
-    const totals = this.calculateTotals(invoice, invoiceItems);
-
     // Normalize addresses for template
     const normalizeAddress = (addr) => {
       if (!addr) return {};
@@ -101,6 +168,14 @@ export class InvoicePDFService {
 
     const customerAddress = normalizeAddress(customer.address || {});
     const shopAddress = normalizeAddress(shop.address || {});
+
+    // Determine inter-state vs intra-state GST
+    const custState = (customerAddress.state || "").trim().toLowerCase();
+    const shpState = (shopAddress.state || "").trim().toLowerCase();
+    const isInterState = Boolean(custState && shpState && custState !== shpState);
+
+    const totals = this.calculateTotals(invoice, invoiceItems, isInterState);
+
     const paymentStatus = invoice.payment_status || "UNPAID";
     const isOutstanding = ["UNPAID", "PARTIAL"].includes(paymentStatus);
     const isOverdue =
@@ -110,6 +185,10 @@ export class InvoicePDFService {
       : isOutstanding
         ? "Payment Due"
         : "Settled";
+
+    const hasCustomerGst = Boolean(customer.gst_number && customer.gst_number.trim());
+    const invoiceType = hasCustomerGst ? "B2B (Tax Invoice)" : "B2C (Retail Invoice)";
+    const placeOfSupply = customerAddress.state || shopAddress.state || "—";
 
     const rawProducts = Array.isArray(invoiceItems) ? invoiceItems : [];
     const rawServices = Array.isArray(invoice.services)
@@ -130,6 +209,9 @@ export class InvoicePDFService {
         payment_status: paymentStatus,
         dueState,
         isOverdue,
+        invoiceType,
+        paymentTerms: invoice.due_date ? "Net Due Date" : "Due on Receipt",
+        placeOfSupply,
         notes: invoice.notes,
       },
 
@@ -190,7 +272,7 @@ export class InvoicePDFService {
           lineTotal = lineOriginal + lineTax;
         }
 
-        const unitTaxable = lineTaxable / quantityNum;
+        const unitTaxable = quantityNum > 0 ? lineTaxable / quantityNum : 0;
 
         let batteryLine = "";
         if (
@@ -216,37 +298,128 @@ export class InvoicePDFService {
           }
         }
 
+        // Warranty formatting
+        const warrantyDurationMonths = Number(item.warranty_duration_months) || 0;
+        const warrantyType = item.warranty_type || "STANDARD";
+        const warrantyStartDate = item.warranty_start_date
+          ? this.formatDate(item.warranty_start_date)
+          : "";
+        const warrantyEndDate = item.warranty_end_date
+          ? this.formatDate(item.warranty_end_date)
+          : "";
+        const proWarrantyEndDate = item.pro_warranty_end_date
+          ? this.formatDate(item.pro_warranty_end_date)
+          : "";
+
+        let warrantyText = "";
+        if (!isService && (warrantyDurationMonths > 0 || warrantyEndDate)) {
+          const parts = [];
+          if (warrantyDurationMonths > 0) {
+            parts.push(`${warrantyDurationMonths} Months Warranty`);
+          }
+          if (warrantyEndDate) {
+            parts.push(`Valid till ${warrantyEndDate}`);
+          }
+          if (warrantyType && warrantyType !== "STANDARD") {
+            parts.push(`(${warrantyType})`);
+          }
+          warrantyText = parts.join(" · ");
+        }
+
+        let proWarrantyText = "";
+        if (!isService && proWarrantyEndDate) {
+          proWarrantyText = `Pro-Rata Warranty till ${proWarrantyEndDate}`;
+        }
+
+        // Service Plan formatting
+        let servicePlanSummary = "";
+        if (!isService && item.service_plan_enabled && item.service_plan) {
+          const sp = item.service_plan;
+          const intervalRaw = sp.service_interval_type || "QUARTERLY";
+          const intervalFormatted =
+            intervalRaw.charAt(0).toUpperCase() + intervalRaw.slice(1).toLowerCase();
+          const totalVisits = sp.total_services || 1;
+          const startStr = sp.service_start_date
+            ? this.formatDate(sp.service_start_date)
+            : "";
+          const endStr = sp.service_end_date
+            ? this.formatDate(sp.service_end_date)
+            : "";
+          const dateRange =
+            startStr && endStr
+              ? ` (${startStr} – ${endStr})`
+              : startStr
+                ? ` (from ${startStr})`
+                : "";
+          servicePlanSummary = `Service Plan: ${totalVisits} ${intervalFormatted} visit${totalVisits > 1 ? "s" : ""}${dateRange}`;
+        }
+
+        const hsnCode =
+          item.hsn_code ||
+          (item.product_category === "BATTERY"
+            ? "8507"
+            : item.product_category === "INVERTER"
+              ? "8504"
+              : item.product_category === "SOLAR_PANEL"
+                ? "8541"
+                : isService
+                  ? "9987"
+                  : "—");
+
         return {
           sno: index + 1,
           itemType,
           isService,
           serviceCategory: item.service_category || "REPAIR",
           productName: item.product_name || "N/A",
+          company: item.company || "",
           modelNumber: isService ? "N/A" : item.model_number || "N/A",
           serialNumber: item.serial_number || "N/A",
+          hsnCode,
+          capacityRating: item.capacity_rating || "",
+          voltage: item.voltage || "",
           quantity: quantityNum,
+          unitPriceRaw: unitTaxable,
           unitPrice: this.formatCurrency(unitTaxable),
+          taxableAmountRaw: lineTaxable,
+          taxableAmount: this.formatCurrency(lineTaxable),
+          amountRaw: lineTotal,
           amount: this.formatCurrency(lineTotal),
+          taxAmountRaw: lineTax,
           taxAmount: this.formatCurrency(lineTax),
-          warrantyPeriod: item.warranty_duration_months
-            ? `${item.warranty_duration_months} months`
+          gstRate: item.gst_rate || totals.gstRate || 18,
+          warrantyPeriod: warrantyDurationMonths
+            ? `${warrantyDurationMonths} months`
             : "N/A",
+          warrantyText,
+          proWarrantyText,
           hasServicePlan: item.service_plan_enabled || false,
+          servicePlanSummary,
           batteryLine,
           notes: item.notes || "",
         };
       }),
 
-      // Totals (display values taken from invoice when status is UNPAID/PARTIAL)
+      // Totals
       totals: {
         subtotal: this.formatCurrency(totals.subtotal),
         discount: this.formatCurrency(totals.discount),
         discountRaw: totals.discount,
         oldItemExchangePrice: this.formatCurrency(totals.oldItemExchangePrice),
         oldItemExchangePriceRaw: totals.oldItemExchangePrice,
+        taxableAmount: this.formatCurrency(totals.taxableAmount),
+        taxableAmountRaw: totals.taxableAmount,
+        isInterState: totals.isInterState,
         gstRate: totals.gstRate,
         gstAmount: this.formatCurrency(totals.gstAmount),
+        cgstAmount: this.formatCurrency(totals.cgstAmount),
+        sgstAmount: this.formatCurrency(totals.sgstAmount),
+        igstAmount: this.formatCurrency(totals.igstAmount),
+        cgstRate: totals.cgstRate,
+        sgstRate: totals.sgstRate,
+        igstRate: totals.igstRate,
         total: this.formatCurrency(totals.total),
+        amountInWords: totals.amountInWords,
       },
 
       // Payment info from invoice (show due date when unpaid/partial)
@@ -268,14 +441,23 @@ export class InvoicePDFService {
       generatedOn: this.formatDate(new Date()),
     };
 
-    // Generate QR Code if UPI ID and amount exists
+    // Generate QR Code if UPI ID exists
     const upiId = shop.bank_details?.upi_id;
-    const rawTotal = totals.total; // totals.total is numeric from calculateTotals
+    const isUnpaidOrPartial =
+      invoice.payment_status === "UNPAID" || invoice.payment_status === "PARTIAL";
+    const amountToPay = isUnpaidOrPartial
+      ? Number(invoice.amount_due) > 0
+        ? Number(invoice.amount_due)
+        : Number(totals.total)
+      : Number(totals.total);
 
-    if (upiId && rawTotal > 0) {
-      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shop.shop_name)}&am=${rawTotal}&cu=INR`;
+    if (upiId && amountToPay > 0) {
+      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shop.shop_name || "Shop")}&am=${amountToPay}&cu=INR`;
       try {
-        data.upiQRCode = await QRCode.toDataURL(upiUrl);
+        data.upiQRCode = await QRCode.toDataURL(upiUrl, {
+          width: 140,
+          margin: 1,
+        });
       } catch (err) {
         console.error("Failed to generate UPI QR Code:", err);
       }

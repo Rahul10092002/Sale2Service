@@ -989,11 +989,40 @@ export default class InvoiceController {
           payment_mode: updatedPaymentMode,
         },
         { new: true },
-      ).populate("customer_id", "full_name whatsapp_number");
+      )
+        .populate("customer_id")
+        .populate("invoice_items");
+
+      const shop = await Shop.findById(user.shopId);
+
+      // Regenerate and update the PDF in Cloudinary with the new payment data
+      try {
+        if (shop && !shop.deleted_at) {
+          const invoiceItems =
+            updatedInvoice.invoice_items && updatedInvoice.invoice_items.length > 0
+              ? updatedInvoice.invoice_items
+              : await InvoiceItem.find({ invoice_id: id, deleted_at: null });
+
+          const pdfResult = await invoiceDocumentService.generateAndStoreInvoicePdf({
+            invoice: updatedInvoice,
+            customer: updatedInvoice.customer_id,
+            invoiceItems,
+            shop,
+            userId: user.userId,
+            tag: "payment-recorded",
+            replaceExisting: true,
+          });
+
+          if (pdfResult.pdf_url) {
+            updatedInvoice.invoice_pdf = pdfResult.pdf_url;
+          }
+        }
+      } catch (pdfErr) {
+        console.error("PDF update on recordPayment failed (non-fatal):", pdfErr);
+      }
 
       // Send payment_received WhatsApp notification (non-fatal)
       try {
-        const shop = await Shop.findById(user.shopId);
         const customer = updatedInvoice.customer_id;
         const {
           formatPhoneNumber,
@@ -1953,16 +1982,39 @@ export default class InvoiceController {
       const updatedInvoice = await Invoice.findById(id)
         .populate({
           path: "customer_id",
-          select: "full_name whatsapp_number address",
         })
         .populate({
           path: "invoice_items",
-          select: "product_name serial_number price",
         })
         .populate({
           path: "shop_id",
-          select: "shop_name address phone_number",
         });
+
+      // Regenerate and update PDF in Cloudinary with updated invoice details
+      try {
+        if (shop && !shop.deleted_at) {
+          const invoiceItems =
+            updatedInvoice.invoice_items && updatedInvoice.invoice_items.length > 0
+              ? updatedInvoice.invoice_items
+              : createdInvoiceItems;
+
+          const pdfResult = await invoiceDocumentService.generateAndStoreInvoicePdf({
+            invoice: updatedInvoice,
+            customer: updatedInvoice.customer_id,
+            invoiceItems,
+            shop,
+            userId: user.userId,
+            tag: "updated",
+            replaceExisting: true,
+          });
+
+          if (pdfResult.pdf_url) {
+            updatedInvoice.invoice_pdf = pdfResult.pdf_url;
+          }
+        }
+      } catch (pdfErr) {
+        console.error("PDF update on updateInvoice failed (non-fatal):", pdfErr);
+      }
 
       return res.status(200).json({
         success: true,

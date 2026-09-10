@@ -6,8 +6,8 @@
     <title>Invoice <%= invoice.number %></title>
     <style>
         @page {
-            margin: 0;
             size: A4;
+            margin: 12mm 14mm 12mm 14mm;
         }
         
         * {
@@ -17,41 +17,58 @@
         }
         
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 10px;
-            line-height: 1.4;
-            color: #1f2937;
-            padding: 12mm;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10pt;
+            line-height: 1.45;
+            color: #111827;
             background: #fff;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .items-table th {
+                background: #1e293b !important;
+                color: #ffffff !important;
+            }
         }
         
         .invoice-card {
+            width: 100%;
             background: #fff;
+            position: relative;
         }
 
+        /* ── Header ── */
         .header-main {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
+            gap: 20px;
         }
 
         .brand-section {
             display: flex;
             gap: 12px;
             align-items: flex-start;
+            flex: 1;
         }
         
         .logo-placeholder {
-            width: 50px;
-            height: 50px;
-            background: #f3f4f6;
-            border-radius: 8px;
+            width: 56px;
+            height: 56px;
+            background: #f8fafc;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            margin-top: 2px;
+            border: 1px solid #e2e8f0;
+            flex-shrink: 0;
         }
 
         .logo-placeholder img {
@@ -61,373 +78,625 @@
         }
         
         .shop-info h1 {
-            font-size: 16px;
+            font-size: 16pt;
             font-weight: 800;
-            color: #111827;
-            letter-spacing: -0.025em;
-            margin-bottom: 1px;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-bottom: 3px;
         }
 
         .shop-meta {
-            font-size: 9px;
-            color: #6b7280;
-            line-height: 1.3;
+            font-size: 8.5pt;
+            color: #475569;
+            line-height: 1.35;
+        }
+
+        .shop-meta strong {
+            color: #1e293b;
         }
         
-        .invoice-label {
+        /* ── Header Right: Tax Invoice Title & Number ── */
+        .header-invoice-title {
             text-align: right;
+            flex-shrink: 0;
         }
 
-        .invoice-label h2 {
-            font-size: 22px;
+        .header-invoice-title h2 {
+            font-size: 22pt;
             font-weight: 900;
+            color: #0f172a;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 2px;
+        }
+
+        .invoice-num-row {
+            font-size: 11pt;
+            font-weight: 700;
             color: #2563eb;
-            letter-spacing: -0.05em;
-            margin-bottom: 2px;
-        }
-
-        .invoice-number {
-            font-size: 12px;
-            font-weight: 600;
-            color: #374151;
-        }
-
-        .details-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 25px;
-        }
-
-        .section-title {
-            font-size: 8px;
-            text-transform: uppercase;
-            font-weight: 700;
-            color: #6b7280;
-            letter-spacing: 0.05em;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 3px;
-        }
-
-        .info-block p {
-            margin-bottom: 1px;
-        }
-
-        .info-block strong {
-            color: #111827;
-        }
-
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        .items-table th {
-            background: #f9fafb;
-            text-align: left;
-            padding: 8px 10px;
-            font-size: 8px;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: #4b5563;
-            border-bottom: 1.5px solid #e5e7eb;
-        }
-
-        .items-table td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #f3f4f6;
-            vertical-align: top;
-        }
-
-        .item-main {
-            font-weight: 600;
-            color: #111827;
-            margin-bottom: 2px;
-        }
-
-        .item-sub {
-            font-size: 8px;
-            color: #6b7280;
-        }
-
-        .summary-section {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-        }
-
-        .payment-info {
-            flex: 1;
-            max-width: 380px;
-        }
-
-        .bank-details {
-            background: #f8fafc;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-            margin-top: 6px;
-            display: flex;
-            gap: 15px;
-            align-items: flex-start;
-        }
-
-        .bank-text {
-            flex: 1;
-        }
-
-        .bank-details h4 {
-            font-size: 9px;
-            margin-bottom: 5px;
-            color: #334155;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .qr-code {
-            width: 75px;
-            height: 75px;
-            background: #fff;
-            padding: 4px;
-            border-radius: 4px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .qr-code img {
-            width: 100%;
-            height: 100%;
-        }
-
-        .totals-block {
-            width: 200px;
-        }
-
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 4px 0;
-            font-size: 10px;
-        }
-
-        .total-row.grand-total {
-            margin-top: 8px;
-            padding: 10px;
-            background: #2563eb;
-            color: #fff;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 12px;
+            font-family: monospace;
+            letter-spacing: 0.5px;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 9999px;
-            font-size: 7px;
-            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 8pt;
+            font-weight: 800;
             text-transform: uppercase;
-            margin-top: 3px;
+            letter-spacing: 0.04em;
+            text-align: center;
         }
 
-        .status-paid { background: #dcfce7; color: #166534; }
-        .status-pending { background: #fef9c3; color: #854d0e; }
-        .status-unpaid { background: #fee2e2; color: #991b1b; }
+        .status-paid { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+        .status-partial { background: #fef9c3; color: #a16207; border: 1px solid #fde047; }
+        .status-pending { background: #fef9c3; color: #a16207; border: 1px solid #fde047; }
+        .status-unpaid { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
 
-        .footer {
-            margin-top: 60px;
-            text-align: center;
-            color: #9ca3af;
-            font-size: 9px;
-            border-top: 1px solid #f3f4f6;
+        /* ── Details Grid (Bill To / Invoice Details) ── */
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        .info-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+
+        .section-title {
+            font-size: 8.5pt;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: #475569;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 3px;
+        }
+
+        .customer-name {
+            font-size: 10.5pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 2px;
+        }
+
+        .info-row {
+            font-size: 8.5pt;
+            color: #475569;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            line-height: 1.35;
+        }
+
+        .info-row span {
+            color: #64748b;
+        }
+
+        .info-row strong {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        /* ── Items Table ── */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .items-table th {
+            background: #0f172a;
+            color: #f8fafc;
+            text-align: left;
+            padding: 8px 9px;
+            font-size: 8.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid #0f172a;
+        }
+
+        .items-table td {
+            padding: 8px 9px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+            font-size: 9pt;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .items-table tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .items-table tr {
+            page-break-inside: avoid;
+        }
+
+        .item-title {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 9.5pt;
+            line-height: 1.3;
+        }
+
+        .item-brand {
+            font-size: 8pt;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            margin-left: 4px;
+        }
+
+        .item-spec-line {
+            font-size: 8pt;
+            color: #64748b;
+            margin-top: 2px;
+            font-family: inherit;
+        }
+
+        .item-tag {
+            display: inline-block;
+            font-size: 8pt;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-top: 3px;
+            margin-right: 4px;
+        }
+
+        .tag-warranty {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+
+        .tag-pro-warranty {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #ffedd5;
+        }
+
+        .tag-service-plan {
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+
+        .tag-service {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+        }
+
+        .item-notes {
+            font-size: 8pt;
+            color: #64748b;
+            font-style: italic;
+            margin-top: 2px;
+        }
+
+        /* ── Totals & Amount in Words ── */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 20px;
+            margin-top: 6px;
+            align-items: flex-start;
+        }
+
+        .totals-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+
+        .total-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 8.5pt;
+            color: #475569;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .total-line span {
+            color: #64748b;
+            font-weight: 400;
+        }
+
+        .total-line strong {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .grand-total {
+            margin-top: 6px;
+            padding: 8px 10px;
+            background: #0f172a;
+            color: #ffffff;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 800;
+            font-size: 11pt;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .grand-total span {
+            color: #e2e8f0;
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .grand-total strong {
+            color: #ffffff;
+            font-size: 12pt;
+        }
+
+        .balance-due-line {
+            margin-top: 6px;
+            padding: 6px 8px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 9.5pt;
+            font-weight: 800;
+            color: #b91c1c;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .amount-in-words {
+            font-size: 8pt;
+            color: #334155;
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px dashed #cbd5e1;
+            line-height: 1.35;
+        }
+
+        .amount-in-words strong {
+            color: #0f172a;
+            text-transform: uppercase;
+            font-size: 8pt;
+            display: block;
+            margin-bottom: 1px;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Terms & Signature Footer ── */
+        .footer-section {
+            margin-top: 22px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+        }
+
+        .terms-box {
+            flex: 1;
+            font-size: 8pt;
+            color: #64748b;
+            line-height: 1.35;
+        }
+
+        .terms-box strong {
+            color: #334155;
+            display: block;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .terms-box ul {
+            padding-left: 14px;
+            margin-bottom: 4px;
+        }
+
+        .terms-box li {
+            margin-bottom: 2px;
+        }
+
+        .signature-box {
+            width: 200px;
+            text-align: right;
+            font-size: 8.5pt;
+            color: #334155;
+            flex-shrink: 0;
             padding-top: 20px;
+        }
+
+        .signature-line {
+            margin-top: 36px;
+            border-top: 1px solid #94a3b8;
+            padding-top: 4px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .computer-generated {
+            margin-top: 12px;
+            text-align: center;
+            font-size: 8pt;
+            color: #94a3b8;
+            border-top: 1px dashed #f1f5f9;
+            padding-top: 6px;
         }
     </style>
 </head>
 <body>
     <div class="invoice-card">
-        <!-- Header -->
+        <!-- ── Header ── -->
         <div class="header-main">
             <div class="brand-section">
                 <% if (shop.logo_url) { %>
                 <div class="logo-placeholder">
-                    <img src="<%= shop.logo_url %>" alt="Logo" />
+                    <img src="<%= shop.logo_url %>" alt="<%= shop.name %> Logo" />
                 </div>
                 <% } %>
                 <div class="shop-info">
                     <h1><%= shop.name %></h1>
                     <div class="shop-meta">
-                        <% if (shop.gstNumber) { %>GSTIN: <%= shop.gstNumber %><br><% } %>
-                        <%= shop.address.street || '' %><br>
+                        <% if (shop.gstNumber) { %><strong>GSTIN:</strong> <%= shop.gstNumber %><br><% } %>
+                        <%= shop.address.street || '' %><% if (shop.address.street) { %>, <% } %>
                         <%= [shop.address.city, shop.address.state, shop.address.pincode].filter(Boolean).join(', ') %>
+                        <% if (shop.mobile) { %><br><strong>Phone:</strong> <%= shop.mobile %><% } %>
+                        <% if (shop.email) { %> | <strong>Email:</strong> <%= shop.email %><% } %>
                     </div>
                 </div>
             </div>
-            <div class="invoice-label">
-                <h2>INVOICE</h2>
-                <div class="invoice-number">#<%= invoice.number %></div>
-                <div class="status-badge status-<%= (invoice.payment_status || 'UNPAID').toLowerCase() %>">
-                    <%= invoice.payment_status || 'UNPAID' %>
-                </div>
+
+            <!-- ── Header Right: Tax Invoice Title & Number (Clean, no box) ── -->
+            <div class="header-invoice-title">
+                <h2>TAX INVOICE</h2>
+                <div class="invoice-num-row">#<%= invoice.number %></div>
             </div>
         </div>
 
-        <!-- Details -->
+        <!-- ── Details Grid (Bill To / Invoice Details) ── -->
         <div class="details-grid">
-            <div class="info-block">
-                <div class="section-title">Billed To</div>
-                <p><strong><%= customer.name %></strong></p>
-                <% if (customer.address && (customer.address.street || customer.address.city)) { %>
-                <p class="shop-meta">
-                    <%= customer.address.street || '' %><br>
-                    <%= [customer.address.city, customer.address.state, customer.address.pincode].filter(Boolean).join(', ') %>
-                </p>
-                <% } %>
-                <% if (customer.mobile) { %><p class="shop-meta">Mob: <%= customer.mobile %></p><% } %>
-                <% if (customer.gstNumber) { %><p class="shop-meta">GSTIN: <%= customer.gstNumber %></p><% } %>
+            <div class="info-card">
+                <div class="section-title">Billed To (Customer Details)</div>
+                <div class="customer-name"><%= customer.name %></div>
+                <div class="shop-meta">
+                    <% if (customer.address && (customer.address.street || customer.address.city || customer.address.state)) { %>
+                        <%= customer.address.street || '' %><% if (customer.address.street) { %>, <% } %>
+                        <%= [customer.address.city, customer.address.state, customer.address.pincode].filter(Boolean).join(', ') %><br>
+                    <% } %>
+                    <% if (customer.mobile) { %><strong>Phone / WhatsApp:</strong> <%= customer.mobile %><br><% } %>
+                    <% if (customer.gstNumber) { %><strong>GSTIN:</strong> <%= customer.gstNumber %><br><% } %>
+                    <% if (customer.email) { %><strong>Email:</strong> <%= customer.email %><br><% } %>
+                </div>
             </div>
-            <div class="info-block">
+
+            <div class="info-card">
                 <div class="section-title">Invoice Details</div>
-                <div class="total-row">
-                    <span class="shop-meta">Date:</span>
-                    <span style="font-weight: 600;"><%= invoice.date %></span>
+                <div class="info-row">
+                    <span>Invoice Date:</span>
+                    <strong><%= invoice.date %></strong>
                 </div>
                 <% if (invoice.dueDate) { %>
-                <div class="total-row">
-                    <span class="shop-meta">Due Date:</span>
-                    <span style="font-weight: 600;"><%= invoice.dueDate %></span>
+                <div class="info-row">
+                    <span>Due Date:</span>
+                    <strong style="color: <%= invoice.isOverdue ? '#b91c1c' : '#0f172a' %>;"><%= invoice.dueDate %></strong>
                 </div>
                 <% } %>
-                <div class="total-row">
-                    <span class="shop-meta">Method:</span>
-                    <span style="font-weight: 600;"><%= invoice.paymentMode %></span>
+                <div class="info-row" style="align-items: center; margin-top: 3px; margin-bottom: 3px;">
+                    <span>Payment Status:</span>
+                    <span class="status-badge status-<%= (invoice.payment_status || 'UNPAID').toLowerCase() %>"><%= invoice.payment_status || 'UNPAID' %></span>
                 </div>
+                <% if (invoice.payment_status === 'PAID' || invoice.payment_status === 'PARTIAL') { %>
+                <div class="info-row">
+                    <span>Payment Mode:</span>
+                    <strong><%= invoice.paymentMode %></strong>
+                </div>
+                <% } %>
+                <% if (shop.gstNumber) { %>
+                <div class="info-row">
+                    <span>Reverse Charge:</span>
+                    <strong>No</strong>
+                </div>
+                <% } %>
             </div>
         </div>
 
-        <!-- Items -->
+        <!-- ── Items Table ── -->
         <table class="items-table">
             <thead>
                 <tr>
-                    <th style="width: 40px;">#</th>
-                    <th>Description</th>
-                    <th style="text-align: center;">Qty</th>
-                    <th style="text-align: right;">Rate</th>
-                    <th style="text-align: right;">Tax</th>
-                    <th style="text-align: right;">Amount</th>
+                    <th style="width: 28px; text-align: center;">#</th>
+                    <th>Item & Description</th>
+                    <th style="width: 72px; text-align: center;">HSN / SAC</th>
+                    <th style="width: 40px; text-align: center;">Qty</th>
+                    <th style="width: 70px; text-align: right;">Rate</th>
+                    <th style="width: 70px; text-align: right;">Taxable</th>
+                    <th style="width: 65px; text-align: right;">Tax</th>
+                    <th style="width: 80px; text-align: right;">Amount</th>
                 </tr>
             </thead>
             <tbody>
-                <% items.forEach(function(item, i) { %>
+                <% if (!items || items.length === 0) { %>
                 <tr>
-                    <td><%= i + 1 %></td>
-                    <td>
-                        <div class="item-main">
-                            <%= item.productName %>
-                            <% if (item.isService) { %>
-                                <span style="font-size: 8px; background: #e0e7ff; color: #3730a3; padding: 1px 4px; border-radius: 3px; font-weight: 700; margin-left: 4px;">
-                                    [<%= item.serviceCategory || 'SERVICE' %>]
-                                </span>
-                            <% } %>
-                        </div>
-                        <% if (item.modelNumber && item.modelNumber !== 'N/A') { %>
-                            <span class="item-sub">Model: <%= item.modelNumber %></span>
-                        <% } %>
-                        <% if (item.serialNumber && item.serialNumber !== 'N/A' && !item.serialNumber.startsWith('SRV-')) { %>
-                            <span class="item-sub"> | S/N: <%= item.serialNumber %></span>
-                        <% } %>
-                        <% if (item.batteryLine) { %>
-                            <div class="item-sub"><%= item.batteryLine %></div>
-                        <% } %>
-                        <% if (item.notes) { %>
-                            <div class="item-sub" style="font-style: italic; color: #4b5563;">Notes: <%= item.notes %></div>
-                        <% } %>
-                        <% if (item.isService && item.warrantyPeriod && item.warrantyPeriod !== 'N/A') { %>
-                            <div class="item-sub" style="color: #059669; font-weight: 600;">Repair Warranty: <%= item.warrantyPeriod %></div>
-                        <% } %>
-                    </td>
-                    <td style="text-align: center;"><%= item.quantity %></td>
-                    <td style="text-align: right;"><%= item.unitPrice %></td>
-                    <td style="text-align: right;"><%= item.taxAmount %></td>
-                    <td style="text-align: right; font-weight: 600;"><%= item.amount %></td>
+                    <td colspan="8" style="text-align: center; color: #64748b; padding: 16px;">No items in this invoice</td>
                 </tr>
-                <% }); %>
+                <% } else { %>
+                    <% items.forEach(function(item, i) { %>
+                    <tr>
+                        <td style="text-align: center; color: #64748b;"><%= i + 1 %></td>
+                        <td>
+                            <div class="item-title">
+                                <%= item.productName %>
+                                <% if (item.company && item.company !== 'N/A' && !item.productName.toLowerCase().includes(item.company.toLowerCase())) { %>
+                                    <span class="item-brand">(<%= item.company %>)</span>
+                                <% } %>
+                                <% if (item.isService) { %>
+                                    <span class="item-tag tag-service">[<%= item.serviceCategory || 'SERVICE' %>]</span>
+                                <% } %>
+                            </div>
+
+                            <% const specParts = []; %>
+                            <% if (item.modelNumber && item.modelNumber !== 'N/A') { specParts.push('Model: ' + item.modelNumber); } %>
+                            <% if (item.serialNumber && item.serialNumber !== 'N/A' && !item.serialNumber.startsWith('SRV-')) { specParts.push('S/N: ' + item.serialNumber); } %>
+                            <% if (item.capacityRating || item.voltage) { specParts.push([item.capacityRating, item.voltage].filter(Boolean).join(' · ')); } %>
+                            <% if (specParts.length > 0) { %>
+                                <div class="item-spec-line"><%= specParts.join(' | ') %></div>
+                            <% } %>
+
+                            <% if (item.batteryLine) { %>
+                                <div class="item-spec-line"><%= item.batteryLine %></div>
+                            <% } %>
+
+                            <% if (item.warrantyText) { %>
+                                <div>
+                                    <span class="item-tag tag-warranty">Warranty: <%= item.warrantyText %></span>
+                                    <% if (item.proWarrantyText) { %>
+                                        <span class="item-tag tag-pro-warranty"><%= item.proWarrantyText %></span>
+                                    <% } %>
+                                </div>
+                            <% } %>
+
+                            <% if (item.servicePlanSummary) { %>
+                                <div>
+                                    <span class="item-tag tag-service-plan"><%= item.servicePlanSummary %></span>
+                                </div>
+                            <% } %>
+
+                            <% if (item.notes) { %>
+                                <div class="item-notes">Note: <%= item.notes %></div>
+                            <% } %>
+
+                            <% if (item.isService && item.warrantyPeriod && item.warrantyPeriod !== 'N/A') { %>
+                                <div class="item-notes" style="color: #15803d; font-weight: 700;">Service Warranty: <%= item.warrantyPeriod %></div>
+                            <% } %>
+                        </td>
+                        <td style="text-align: center; color: #475569; font-size: 8pt;"><%= item.hsnCode || '—' %></td>
+                        <td style="text-align: center; font-weight: 600;"><%= item.quantity %></td>
+                        <td style="text-align: right;"><%= item.unitPrice %></td>
+                        <td style="text-align: right;"><%= item.taxableAmount || (item.unitPriceRaw !== undefined ? (item.unitPriceRaw * item.quantity).toFixed(2) : item.unitPrice) %></td>
+                        <td style="text-align: right;"><%= item.taxAmount %></td>
+                        <td style="text-align: right; font-weight: 700;"><%= item.amount %></td>
+                    </tr>
+                    <% }); %>
+                <% } %>
             </tbody>
         </table>
 
-        <!-- Summary -->
-        <div class="summary-section">
-            <div class="payment-info">
-                <% if (shop.bank_details && (shop.bank_details.bank_name || shop.bank_details.upi_id)) { %>
-                <div class="section-title">Payment Details</div>
-                <div class="bank-details" style="background: transparent; border: none; padding: 0;">
-                    <% if (upiQRCode) { %>
-                    <div class="qr-wrapper" style="text-align: left;">
-                        <div class="qr-code">
-                            <img src="<%= upiQRCode %>" alt="Payment QR" />
-                        </div>
-                        <div style="font-size: 7px; color: #94a3b8; font-weight: 600; margin-top: 4px; text-align: center;">SCAN TO PAY</div>
+        <!-- ── Bottom Grid (Notes on Left | Totals on Right) ── -->
+        <div class="bottom-grid">
+            <div class="bottom-left-section">
+                <% if (invoice.notes) { %>
+                <div class="info-card">
+                    <div class="section-title">Invoice Notes</div>
+                    <p style="font-size: 8pt; color: #475569; white-space: pre-line;"><%= invoice.notes %></p>
+                </div>
+                <% } %>
+            </div>
+
+            <!-- Right: Totals Block -->
+            <div class="totals-card">
+                <div>
+                    <div class="section-title">Summary & Tax Breakdown</div>
+                    <div class="total-line">
+                        <span>Subtotal:</span>
+                        <strong><%= totals.subtotal %></strong>
+                    </div>
+
+                    <% if (totals.discountRaw > 0) { %>
+                    <div class="total-line">
+                        <span>Discount:</span>
+                        <strong style="color: #b91c1c;">-<%= totals.discount %></strong>
+                    </div>
+                    <% } %>
+
+                    <% if (totals.oldItemExchangePriceRaw > 0) { %>
+                    <div class="total-line">
+                        <span>Old Item / Exchange:</span>
+                        <strong style="color: #c2410c;">-<%= totals.oldItemExchangePrice %></strong>
+                    </div>
+                    <% } %>
+
+                    <div class="total-line">
+                        <span>Taxable Amount:</span>
+                        <strong><%= totals.taxableAmount || totals.subtotal %></strong>
+                    </div>
+
+                    <% if (totals.isInterState) { %>
+                    <div class="total-line">
+                        <span>IGST (<%= totals.igstRate %>):</span>
+                        <strong><%= totals.igstAmount %></strong>
+                    </div>
+                    <% } else { %>
+                    <div class="total-line">
+                        <span>CGST (<%= totals.cgstRate %>):</span>
+                        <strong><%= totals.cgstAmount %></strong>
+                    </div>
+
+                    <div class="total-line">
+                        <span>SGST (<%= totals.sgstRate %>):</span>
+                        <strong><%= totals.sgstAmount %></strong>
+                    </div>
+                    <% } %>
+
+                    <!-- Grand Total -->
+                    <div class="grand-total">
+                        <span>Total (Incl. of Tax)</span>
+                        <strong><%= totals.total %></strong>
+                    </div>
+
+                    <% if (payment.amountPaidRaw > 0) { %>
+                    <div class="total-line" style="margin-top: 6px; padding-top: 4px; border-top: 1px solid #e2e8f0;">
+                        <span>Amount Paid:</span>
+                        <strong style="color: #15803d;"><%= payment.amount_paid %></strong>
+                    </div>
+                    <% } %>
+
+                    <% if (payment.amountDueRaw > 0) { %>
+                    <div class="balance-due-line">
+                        <span>Balance Due</span>
+                        <strong><%= payment.amount_due %></strong>
                     </div>
                     <% } %>
                 </div>
-                <% } %>
-                
-                <% if (invoice.notes) { %>
-                <div style="margin-top: 20px;">
-                    <div class="section-title">Notes</div>
-                    <p class="shop-meta"><%= invoice.notes %></p>
-                </div>
-                <% } %>
-            </div>
 
-            <div class="totals-block">
-                <div class="total-row">
-                    <span class="shop-meta">Subtotal</span>
-                    <span><%= totals.subtotal %></span>
-                </div>
-                <% if (totals.discountRaw > 0) { %>
-                <div class="total-row">
-                    <span class="shop-meta">Discount</span>
-                    <span style="color: #dc2626;">-<%= totals.discount %></span>
-                </div>
-                <% } %>
-                <% if (totals.oldItemExchangePriceRaw > 0) { %>
-                <div class="total-row">
-                    <span class="shop-meta">Old Item / Exchange</span>
-                    <span style="color: #d97706;">-<%= totals.oldItemExchangePrice %></span>
-                </div>
-                <% } %>
-                <div class="total-row">
-                    <span class="shop-meta">Tax (<%= totals.gstRate %>%)</span>
-                    <span><%= totals.gstAmount %></span>
-                </div>
-                
-                <div class="total-row grand-total">
-                    <span>Total Amount</span>
-                    <span><%= totals.total %></span>
-                </div>
-
-                <% if (payment.amountPaidRaw > 0) { %>
-                <div class="total-row" style="padding-top: 10px; border-top: 1px solid #f3f4f6; margin-top: 10px;">
-                    <span class="shop-meta">Amount Paid</span>
-                    <span style="color: #059669; font-weight: 600;"><%= payment.amount_paid %></span>
-                </div>
-                <% } %>
-                <% if (payment.amountDueRaw > 0) { %>
-                <div class="total-row">
-                    <span class="shop-meta">Balance Due</span>
-                    <span style="color: #dc2626; font-weight: 700;"><%= payment.amount_due %></span>
+                <% if (totals.amountInWords) { %>
+                <div class="amount-in-words">
+                    <strong>Amount in Words:</strong>
+                    <%= totals.amountInWords %>
                 </div>
                 <% } %>
             </div>
         </div>
 
-        <!-- Footer -->
-        <div class="footer">
-            <p>Thank you for your business! This is a computer-generated invoice.</p>
-            <p>Generated on <%= generatedOn %> • Page 1 of 1</p>
+        <!-- ── Footer: Terms & Authorized Signatory ── -->
+        <div class="footer-section">
+            <div class="terms-box">
+            </div>
+
+            <div class="signature-box">
+                <div>For <strong><%= shop.name %></strong></div>
+                <div class="signature-line">Authorised Signatory</div>
+            </div>
         </div>
+
+       
     </div>
 </body>
 </html>

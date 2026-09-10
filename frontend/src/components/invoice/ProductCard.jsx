@@ -853,15 +853,30 @@ const ProductCard = React.memo(function ProductCard({
                               intervalType,
                               intervalValue,
                             );
+                            const warrantyEnd = getEffectiveWarrantyEndDate(item);
+                            const autoVisits = computeVisitsFromWarranty(
+                              serviceStartDate,
+                              warrantyEnd,
+                              intervalType,
+                              intervalValue,
+                            );
+                            const serviceEndDate = computeServiceEndDate(
+                              serviceStartDate,
+                              intervalType,
+                              intervalValue,
+                              autoVisits,
+                            );
+
                             updateItemImmediate(item.id, {
                               service_plan_enabled: true,
                               service_plan: {
                                 service_interval_type: intervalType,
                                 service_interval_value: intervalValue,
                                 service_start_date: serviceStartDate,
+                                service_end_date: serviceEndDate,
                                 service_description: `Regular service for ${item.product_name || "Product"}`,
                                 service_charge: 0,
-                                total_services: 1,
+                                total_services: autoVisits,
                                 is_active: true,
                               },
                             });
@@ -881,133 +896,174 @@ const ProductCard = React.memo(function ProductCard({
 
                 {item.service_plan_enabled && (
                   <div className="space-y-3 animate-in fade-in">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
                       <div>
                         <SelectField
                           id={`service-interval-type-${item.id}`}
-                          label="Interval Type"
+                          label="Frequency"
                           value={
                             item.service_plan?.service_interval_type || "MONTHLY"
                           }
                           onChange={(e) => {
-                            const newIntervalType = e.target.value;
-                            const intervalValue =
+                            const newFrequency = e.target.value;
+                            const currentVal =
                               item.service_plan?.service_interval_value || 1;
-                            const newServiceStartDate = computeServiceStartDate(
-                              newIntervalType,
-                              intervalValue,
+                            const newIntervalValue =
+                              newFrequency === "CUSTOM"
+                                ? currentVal > 1
+                                  ? currentVal
+                                  : 2
+                                : 1;
+                            const currentStart =
+                              item.service_plan?.service_start_date ||
+                              computeServiceStartDate(
+                                newFrequency,
+                                newIntervalValue,
+                              );
+                            const warrantyEnd = getEffectiveWarrantyEndDate(item);
+                            const autoVisits = computeVisitsFromWarranty(
+                              currentStart,
+                              warrantyEnd,
+                              newFrequency,
+                              newIntervalValue,
+                            );
+                            const newEndDate = computeServiceEndDate(
+                              currentStart,
+                              newFrequency,
+                              newIntervalValue,
+                              autoVisits,
                             );
 
                             updateItemImmediate(item.id, {
                               ...item,
                               service_plan: {
                                 ...item.service_plan,
-                                service_interval_type: newIntervalType,
-                                service_start_date: newServiceStartDate,
+                                service_interval_type: newFrequency,
+                                service_interval_value: newIntervalValue,
+                                service_start_date: currentStart,
+                                total_services: autoVisits,
+                                service_end_date: newEndDate,
                               },
                             });
                           }}
                           options={[
-                            { value: "MONTHLY", label: "Monthly" },
-                            { value: "QUARTERLY", label: "Quarterly (3 months)" },
+                            { value: "MONTHLY", label: "Monthly (1 month)" },
+                            {
+                              value: "QUARTERLY",
+                              label: "Quarterly (3 months)",
+                            },
                             {
                               value: "HALF_YEARLY",
                               label: "Half-Yearly (6 months)",
                             },
                             { value: "YEARLY", label: "Yearly (12 months)" },
+                            { value: "CUSTOM", label: "Custom interval..." },
                           ]}
                         />
                       </div>
 
+                      {item.service_plan?.service_interval_type === "CUSTOM" && (
+                        <div>
+                          <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+                            Repeat Every (Months)
+                          </label>
+                          <Input
+                            type="number"
+                            value={numVal(
+                              "sp_interval_value",
+                              item.service_plan?.service_interval_value,
+                              2,
+                            )}
+                            onChange={(e) => {
+                              setRaw("sp_interval_value", e.target.value);
+                              const newIntervalValue =
+                                parseInt(e.target.value) || 1;
+                              const currentStart =
+                                item.service_plan?.service_start_date ||
+                                computeServiceStartDate(
+                                  "CUSTOM",
+                                  newIntervalValue,
+                                );
+                              const warrantyEnd = getEffectiveWarrantyEndDate(item);
+                              const autoVisits = computeVisitsFromWarranty(
+                                currentStart,
+                                warrantyEnd,
+                                "CUSTOM",
+                                newIntervalValue,
+                              );
+                              const newEndDate = computeServiceEndDate(
+                                currentStart,
+                                "CUSTOM",
+                                newIntervalValue,
+                                autoVisits,
+                              );
+
+                              updateItem(item.id, {
+                                ...item,
+                                service_plan: {
+                                  ...item.service_plan,
+                                  service_interval_value: newIntervalValue,
+                                  total_services: autoVisits,
+                                  service_end_date: newEndDate,
+                                },
+                              });
+                            }}
+                            onBlur={() => clearRaw("sp_interval_value")}
+                            placeholder="2"
+                            min="1"
+                          />
+                        </div>
+                      )}
+
                       <div>
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                          Interval Value
-                        </label>
-                        <Input
-                          type="number"
-                          value={numVal(
-                            "sp_interval_value",
-                            item.service_plan?.service_interval_value,
-                            1,
-                          )}
-                          onChange={(e) => {
-                            setRaw("sp_interval_value", e.target.value);
-                            const newIntervalValue =
-                              parseInt(e.target.value) || 1;
-                            const intervalType =
-                              item.service_plan?.service_interval_type ||
-                              "MONTHLY";
-                            const newServiceStartDate = computeServiceStartDate(
-                              intervalType,
-                              newIntervalValue,
-                            );
-
-                            updateItem(item.id, {
-                              ...item,
-                              service_plan: {
-                                ...item.service_plan,
-                                service_interval_value: newIntervalValue,
-                                service_start_date: newServiceStartDate,
-                              },
-                            });
-                          }}
-                          onBlur={() => clearRaw("sp_interval_value")}
-                          placeholder="1"
-                          min="1"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                          Service Start Date
+                          First Service Date
                         </label>
                         <Input
                           type="date"
                           value={item.service_plan?.service_start_date || ""}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const newStart = e.target.value;
+                            const intervalType =
+                              item.service_plan?.service_interval_type ||
+                              "MONTHLY";
+                            const intervalValue =
+                              item.service_plan?.service_interval_value || 1;
+                            const warrantyEnd = getEffectiveWarrantyEndDate(item);
+                            const autoVisits = computeVisitsFromWarranty(
+                              newStart,
+                              warrantyEnd,
+                              intervalType,
+                              intervalValue,
+                            );
+                            const newEndDate = computeServiceEndDate(
+                              newStart,
+                              intervalType,
+                              intervalValue,
+                              autoVisits,
+                            );
                             updateItemImmediate(item.id, {
                               ...item,
                               service_plan: {
                                 ...item.service_plan,
-                                service_start_date: e.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                          Service Charge (₹)
-                        </label>
-                        <Input
-                          type="number"
-                          value={numVal(
-                            "sp_service_charge",
-                            item.service_plan?.service_charge,
-                            0,
-                          )}
-                          onChange={(e) => {
-                            setRaw("sp_service_charge", e.target.value);
-                            updateItem(item.id, {
-                              ...item,
-                              service_plan: {
-                                ...item.service_plan,
-                                service_charge: parseFloat(e.target.value) || 0,
+                                service_start_date: newStart,
+                                total_services: autoVisits,
+                                service_end_date: newEndDate,
                               },
                             });
                           }}
-                          onBlur={() => clearRaw("sp_service_charge")}
-                          placeholder="0.00"
-                          min="0"
-                          step="1"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                          Total Services
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300">
+                            Total Visits
+                          </label>
+                          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
+                            Auto (Warranty)
+                          </span>
+                        </div>
                         <Input
                           type="number"
                           value={numVal(
@@ -1020,7 +1076,11 @@ const ProductCard = React.memo(function ProductCard({
                             const total = parseInt(e.target.value) || 1;
                             const start =
                               item.service_plan?.service_start_date ||
-                              new Date().toISOString().split("T")[0];
+                              computeServiceStartDate(
+                                item.service_plan?.service_interval_type ||
+                                  "MONTHLY",
+                                item.service_plan?.service_interval_value || 1,
+                              );
                             const intervalType =
                               item.service_plan?.service_interval_type ||
                               "MONTHLY";
@@ -1050,19 +1110,36 @@ const ProductCard = React.memo(function ProductCard({
 
                       <div>
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                          Service End Date
+                          Charge per Visit (₹)
                         </label>
                         <Input
-                          type="date"
-                          value={item.service_plan?.service_end_date || ""}
-                          readOnly
-                          className="bg-gray-50 dark:bg-dark-input/50 cursor-not-allowed"
+                          type="number"
+                          value={numVal(
+                            "sp_service_charge",
+                            item.service_plan?.service_charge,
+                            0,
+                          )}
+                          onChange={(e) => {
+                            setRaw("sp_service_charge", e.target.value);
+                            updateItem(item.id, {
+                              ...item,
+                              service_plan: {
+                                ...item.service_plan,
+                                service_charge:
+                                  parseFloat(e.target.value) || 0,
+                              },
+                            });
+                          }}
+                          onBlur={() => clearRaw("sp_service_charge")}
+                          placeholder="0.00"
+                          min="0"
+                          step="1"
                         />
                       </div>
 
-                      <div className="sm:col-span-2 lg:col-span-3">
+                      <div className="sm:col-span-2 lg:col-span-4">
                         <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                          Service Description
+                          Service Description (Optional)
                         </label>
                         <textarea
                           value={item.service_plan?.service_description || ""}
@@ -1075,33 +1152,78 @@ const ProductCard = React.memo(function ProductCard({
                               },
                             })
                           }
-                          placeholder="Describe the service to be performed..."
+                          placeholder="Describe the service to be performed... (optional)"
                           rows={2}
                           className="w-full px-3 py-1.5 text-xs border border-gray-300 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none dark:bg-dark-bg dark:text-slate-100"
                         />
                       </div>
                     </div>
 
-                    <div className="bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 p-2.5 rounded-lg">
-                      <p className="text-xs text-indigo-900 dark:text-indigo-200">
-                        <strong>Service Plan Summary:</strong> First service scheduled{" "}
-                        {item.service_plan?.service_interval_value || 1}{" "}
-                        {item.service_plan?.service_interval_type
-                          ?.toLowerCase()
-                          .replace("_", " ") || "month(s)"}{" "}
-                        from today ({" "}
-                        {item.service_plan?.service_start_date
-                          ? new Date(
-                              item.service_plan.service_start_date,
-                            ).toLocaleDateString("en-IN")
-                          : "calculated date"}{" "}
-                        ), then every {item.service_plan?.service_interval_value || 1}{" "}
-                        {item.service_plan?.service_interval_type
-                          ?.toLowerCase()
-                          .replace("_", " ") || "month(s)"}{" "}
-                        at ₹{item.service_plan?.service_charge || 0} per service.
-                      </p>
-                    </div>
+                    {/* Dynamic Derived Summary Banner */}
+                    {(() => {
+                      const sp = item.service_plan || {};
+                      const intervalType = sp.service_interval_type || "MONTHLY";
+                      const intervalValue = sp.service_interval_value || 1;
+                      const start = sp.service_start_date;
+                      const total = Number(sp.total_services) || 1;
+                      const charge = Number(sp.service_charge) || 0;
+                      const end = computeServiceEndDate(
+                        start,
+                        intervalType,
+                        intervalValue,
+                        total,
+                      );
+
+                      let cadenceText = "Every 1 month (Monthly)";
+                      if (intervalType === "QUARTERLY") cadenceText = "Every 3 months (Quarterly)";
+                      else if (intervalType === "HALF_YEARLY" || intervalType === "SEMI_ANNUALLY")
+                        cadenceText = "Every 6 months (Half-Yearly)";
+                      else if (intervalType === "YEARLY" || intervalType === "ANNUALLY")
+                        cadenceText = "Every 12 months (Yearly)";
+                      else if (intervalType === "CUSTOM")
+                        cadenceText = `Every ${intervalValue} month${intervalValue > 1 ? "s" : ""}`;
+
+                      return (
+                        <div className="bg-gradient-to-r from-indigo-50/90 to-blue-50/70 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-100 dark:border-indigo-900/50 p-2.5 sm:p-3 rounded-lg text-xs space-y-1">
+                          <div className="flex items-center justify-between flex-wrap gap-1.5">
+                            <div className="font-semibold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                              <span>
+                                {total} {total === 1 ? "visit" : "visits"}
+                                {start && (
+                                  <span className="font-normal text-gray-700 dark:text-slate-300">
+                                    :{" "}
+                                    {new Date(start).toLocaleDateString("en-IN", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    })}
+                                    {total > 1 && end && (
+                                      <>
+                                        {" "}→{" "}
+                                        {new Date(end).toLocaleDateString("en-IN", {
+                                          day: "numeric",
+                                          month: "short",
+                                          year: "numeric",
+                                        })}
+                                      </>
+                                    )}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            <span className="font-bold text-indigo-700 dark:text-indigo-300">
+                              {charge > 0
+                                ? `₹${charge.toLocaleString("en-IN")} / visit · Total ₹${(total * charge).toLocaleString("en-IN")}`
+                                : "Free of charge"}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-indigo-600/80 dark:text-indigo-300/70">
+                            Cadence: {cadenceText}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -1269,6 +1391,72 @@ const ProductCard = React.memo(function ProductCard({
 });
 
 export default ProductCard;
+
+// Helper: get effective warranty end date for product
+function getEffectiveWarrantyEndDate(item) {
+  if (item?.warranty_type === "PRO" && item?.pro_warranty_end_date) {
+    return item.pro_warranty_end_date;
+  }
+  if (item?.warranty_end_date) {
+    return item.warranty_end_date;
+  }
+  if (item?.warranty_start_date && item?.warranty_duration_months) {
+    const start = new Date(item.warranty_start_date);
+    start.setMonth(start.getMonth() + Number(item.warranty_duration_months));
+    return start.toISOString().split("T")[0];
+  }
+  const d = new Date();
+  d.setMonth(d.getMonth() + 12);
+  return d.toISOString().split("T")[0];
+}
+
+// Helper: auto-calculate number of visits based on warranty end date
+function computeVisitsFromWarranty(
+  serviceStartDate,
+  warrantyEndDate,
+  intervalType,
+  intervalValue,
+) {
+  let deltaMonths = 1;
+  switch ((intervalType || "MONTHLY").toUpperCase()) {
+    case "QUARTERLY":
+      deltaMonths = 3 * (Number(intervalValue) || 1);
+      break;
+    case "SEMI_ANNUALLY":
+    case "HALF_YEARLY":
+      deltaMonths = 6 * (Number(intervalValue) || 1);
+      break;
+    case "ANNUALLY":
+    case "YEARLY":
+      deltaMonths = 12 * (Number(intervalValue) || 1);
+      break;
+    case "CUSTOM":
+    default:
+      deltaMonths = Number(intervalValue) || 1;
+      break;
+  }
+
+  if (!serviceStartDate || !warrantyEndDate || deltaMonths <= 0) {
+    return 1;
+  }
+
+  const start = new Date(serviceStartDate);
+  const end = new Date(warrantyEndDate);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+    return 1;
+  }
+
+  const monthsDiff =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth()) +
+    (end.getDate() >= start.getDate() ? 0 : -1);
+
+  if (monthsDiff < 0) return 1;
+
+  const visits = Math.floor(monthsDiff / deltaMonths) + 1;
+  return Math.max(1, visits);
+}
 
 // Helper: compute service start date based on interval type and value
 function computeServiceStartDate(intervalType, intervalValue) {

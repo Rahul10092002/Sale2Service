@@ -383,33 +383,44 @@ export default class InvoiceController {
 
         // Step 7: Create service plan if enabled for this item
         if (item.service_plan_enabled && item.service_plan) {
-          const totalServices =
-            item.service_plan.total_services &&
-            Number(item.service_plan.total_services) > 0
-              ? Number(item.service_plan.total_services)
-              : 1;
+          const intervalType =
+            item.service_plan.service_interval_type || "MONTHLY";
+          const intervalValue =
+            Number(item.service_plan.service_interval_value) || 1;
 
           const serviceStart = item.service_plan.service_start_date
             ? new Date(item.service_plan.service_start_date)
             : new Date();
 
+          let totalServices = Number(item.service_plan.total_services);
+          if (!totalServices || totalServices <= 0) {
+            const warrantyEnd =
+              invoiceItem.warranty_end_date || invoiceItem.pro_warranty_end_date;
+            totalServices = this.computeVisitsFromWarranty(
+              serviceStart,
+              warrantyEnd,
+              intervalType,
+              intervalValue,
+            );
+          }
+
           const serviceEnd = this.computeServiceEndDate(
             serviceStart,
-            item.service_plan.service_interval_type,
-            item.service_plan.service_interval_value,
+            intervalType,
+            intervalValue,
             totalServices,
           );
 
           const servicePlan = new ServicePlan({
             invoice_item_id: invoiceItem._id,
             shop_id: user.shopId,
-            service_interval_type: item.service_plan.service_interval_type,
-            service_interval_value: item.service_plan.service_interval_value,
+            service_interval_type: intervalType,
+            service_interval_value: intervalValue,
             total_services: totalServices,
             service_start_date: serviceStart,
             service_end_date: serviceEnd,
             service_description: item.service_plan.service_description,
-            service_charge: item.service_plan.service_charge || 0,
+            service_charge: parseFloat(item.service_plan.service_charge) || 0,
             is_active: item.service_plan.is_active !== false,
             created_by: user.userId,
             pending_services: totalServices,
@@ -1859,33 +1870,44 @@ export default class InvoiceController {
 
         // If service plan info present on update, create/replace service plan
         if (item.service_plan_enabled && item.service_plan) {
-          const totalServices =
-            item.service_plan.total_services &&
-            Number(item.service_plan.total_services) > 0
-              ? Number(item.service_plan.total_services)
-              : 1;
+          const intervalType =
+            item.service_plan.service_interval_type || "MONTHLY";
+          const intervalValue =
+            Number(item.service_plan.service_interval_value) || 1;
 
           const serviceStart = item.service_plan.service_start_date
             ? new Date(item.service_plan.service_start_date)
             : new Date();
 
+          let totalServices = Number(item.service_plan.total_services);
+          if (!totalServices || totalServices <= 0) {
+            const warrantyEnd =
+              invoiceItem.warranty_end_date || invoiceItem.pro_warranty_end_date;
+            totalServices = this.computeVisitsFromWarranty(
+              serviceStart,
+              warrantyEnd,
+              intervalType,
+              intervalValue,
+            );
+          }
+
           const serviceEnd = this.computeServiceEndDate(
             serviceStart,
-            item.service_plan.service_interval_type,
-            item.service_plan.service_interval_value,
+            intervalType,
+            intervalValue,
             totalServices,
           );
 
           const servicePlan = new ServicePlan({
             invoice_item_id: invoiceItem._id,
             shop_id: user.shopId,
-            service_interval_type: item.service_plan.service_interval_type,
-            service_interval_value: item.service_plan.service_interval_value,
+            service_interval_type: intervalType,
+            service_interval_value: intervalValue,
             total_services: totalServices,
             service_start_date: serviceStart,
             service_end_date: serviceEnd,
             service_description: item.service_plan.service_description,
-            service_charge: item.service_plan.service_charge || 0,
+            service_charge: parseFloat(item.service_plan.service_charge) || 0,
             notes: item.service_plan.service_description || "",
             is_active: item.service_plan.is_active !== false,
             created_by: user.userId,
@@ -1999,17 +2021,14 @@ export default class InvoiceController {
         service_description,
       } = req.body;
 
-      if (
-        !service_interval_type ||
-        !service_interval_value ||
-        !service_start_date
-      ) {
+      if (!service_interval_type || !service_start_date) {
         return res.status(400).json({
           success: false,
-          message:
-            "service_interval_type, service_interval_value, and service_start_date are required",
+          message: "service_interval_type and service_start_date are required",
         });
       }
+
+      const intervalVal = Number(service_interval_value) || 1;
 
       // Validate invoice item belongs to this shop
       const invoiceItem = await InvoiceItem.findById(itemId)
@@ -2052,13 +2071,13 @@ export default class InvoiceController {
       const serviceEnd = this.computeServiceEndDate(
         serviceStart,
         service_interval_type,
-        Number(service_interval_value),
+        intervalVal,
         totalServicesCount,
       );
 
       // Update plan fields
       existingPlan.service_interval_type = service_interval_type;
-      existingPlan.service_interval_value = Number(service_interval_value);
+      existingPlan.service_interval_value = intervalVal;
       existingPlan.total_services = totalServicesCount;
       existingPlan.service_start_date = serviceStart;
       existingPlan.service_end_date = serviceEnd;
@@ -2101,25 +2120,24 @@ export default class InvoiceController {
 
           if (i < remainingCount - 1) {
             switch (service_interval_type) {
+              case "MONTHLY":
+                currentDate.setMonth(currentDate.getMonth() + 1 * intervalVal);
+                break;
               case "QUARTERLY":
-                currentDate.setMonth(
-                  currentDate.getMonth() + 3 * Number(service_interval_value),
-                );
+                currentDate.setMonth(currentDate.getMonth() + 3 * intervalVal);
                 break;
+              case "SEMI_ANNUALLY":
               case "HALF_YEARLY":
-                currentDate.setMonth(
-                  currentDate.getMonth() + 6 * Number(service_interval_value),
-                );
+                currentDate.setMonth(currentDate.getMonth() + 6 * intervalVal);
                 break;
+              case "ANNUALLY":
               case "YEARLY":
-                currentDate.setFullYear(
-                  currentDate.getFullYear() + Number(service_interval_value),
-                );
+                currentDate.setMonth(currentDate.getMonth() + 12 * intervalVal);
                 break;
-              default: // MONTHLY / CUSTOM
-                currentDate.setMonth(
-                  currentDate.getMonth() + Number(service_interval_value),
-                );
+              case "CUSTOM":
+              default:
+                currentDate.setMonth(currentDate.getMonth() + intervalVal);
+                break;
             }
           }
         }
@@ -2243,37 +2261,26 @@ export default class InvoiceController {
 
         // Calculate next service date based on interval (except for the last service)
         if (scheduleCount < totalServices - 1) {
+          const val = Number(servicePlan.service_interval_value) || 1;
           switch (servicePlan.service_interval_type) {
             case "MONTHLY":
-              currentDate.setMonth(
-                currentDate.getMonth() + servicePlan.service_interval_value,
-              );
+              currentDate.setMonth(currentDate.getMonth() + 1 * val);
               break;
             case "QUARTERLY":
-              currentDate.setMonth(
-                currentDate.getMonth() + 3 * servicePlan.service_interval_value,
-              );
+              currentDate.setMonth(currentDate.getMonth() + 3 * val);
               break;
+            case "SEMI_ANNUALLY":
             case "HALF_YEARLY":
-              currentDate.setMonth(
-                currentDate.getMonth() + 6 * servicePlan.service_interval_value,
-              );
+              currentDate.setMonth(currentDate.getMonth() + 6 * val);
               break;
+            case "ANNUALLY":
             case "YEARLY":
-              currentDate.setFullYear(
-                currentDate.getFullYear() + servicePlan.service_interval_value,
-              );
+              currentDate.setMonth(currentDate.getMonth() + 12 * val);
               break;
             case "CUSTOM":
-              // For custom intervals, default to monthly
-              currentDate.setMonth(
-                currentDate.getMonth() + servicePlan.service_interval_value,
-              );
-              break;
             default:
-              currentDate.setMonth(
-                currentDate.getMonth() + servicePlan.service_interval_value,
-              );
+              currentDate.setMonth(currentDate.getMonth() + val);
+              break;
           }
         }
       }
@@ -2323,6 +2330,54 @@ export default class InvoiceController {
     const end = new Date(start);
     end.setMonth(end.getMonth() + totalMonths);
     return end;
+  }
+
+  // Compute visits based on warranty end date
+  computeVisitsFromWarranty(
+    serviceStartDate,
+    warrantyEndDate,
+    intervalType,
+    intervalValue,
+  ) {
+    let deltaMonths = 1;
+    switch ((intervalType || "MONTHLY").toUpperCase()) {
+      case "QUARTERLY":
+        deltaMonths = 3 * (Number(intervalValue) || 1);
+        break;
+      case "SEMI_ANNUALLY":
+      case "HALF_YEARLY":
+        deltaMonths = 6 * (Number(intervalValue) || 1);
+        break;
+      case "ANNUALLY":
+      case "YEARLY":
+        deltaMonths = 12 * (Number(intervalValue) || 1);
+        break;
+      case "CUSTOM":
+      default:
+        deltaMonths = Number(intervalValue) || 1;
+        break;
+    }
+
+    if (!serviceStartDate || !warrantyEndDate || deltaMonths <= 0) {
+      return 1;
+    }
+
+    const start = new Date(serviceStartDate);
+    const end = new Date(warrantyEndDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+      return 1;
+    }
+
+    const monthsDiff =
+      (end.getFullYear() - start.getFullYear()) * 12 +
+      (end.getMonth() - start.getMonth()) +
+      (end.getDate() >= start.getDate() ? 0 : -1);
+
+    if (monthsDiff < 0) return 1;
+
+    const visits = Math.floor(monthsDiff / deltaMonths) + 1;
+    return Math.max(1, visits);
   }
 
   /**
@@ -2465,16 +2520,14 @@ export default class InvoiceController {
       } = req.body;
 
       // Validate required fields
-      if (
-        !service_interval_type ||
-        !service_interval_value ||
-        !service_start_date
-      ) {
+      if (!service_interval_type || !service_start_date) {
         return res.status(400).json({
           success: false,
-          message: "Service interval type, value, and start date are required",
+          message: "Service interval type and start date are required",
         });
       }
+
+      const intervalVal = Number(service_interval_value) || 1;
 
       // Validate invoice item exists and belongs to user's shop
       const invoiceItem = await InvoiceItem.findById(itemId)
@@ -2510,16 +2563,23 @@ export default class InvoiceController {
         });
       }
 
-      // Calculate service end date
+      // Calculate service end date and total visits count
       const serviceStart = new Date(service_start_date);
-      const totalServicesCount =
-        total_services && Number(total_services) > 0
-          ? Number(total_services)
-          : 1;
+      let totalServicesCount = Number(total_services);
+      if (!totalServicesCount || totalServicesCount <= 0) {
+        const warrantyEnd =
+          invoiceItem.warranty_end_date || invoiceItem.pro_warranty_end_date;
+        totalServicesCount = this.computeVisitsFromWarranty(
+          serviceStart,
+          warrantyEnd,
+          service_interval_type,
+          intervalVal,
+        );
+      }
       const serviceEnd = this.computeServiceEndDate(
         serviceStart,
         service_interval_type,
-        service_interval_value,
+        intervalVal,
         totalServicesCount,
       );
 
@@ -2528,13 +2588,13 @@ export default class InvoiceController {
         invoice_item_id: itemId,
         shop_id: user.shopId,
         service_interval_type,
-        service_interval_value,
+        service_interval_value: intervalVal,
         total_services: totalServicesCount,
         service_start_date: serviceStart,
         service_end_date: serviceEnd,
         service_description:
           service_description || `Service for ${invoiceItem.product_name}`,
-        service_charge: service_charge || 0,
+        service_charge: parseFloat(service_charge) || 0,
         is_active: true,
         created_by: user.userId,
       });

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import {
@@ -26,6 +26,9 @@ import {
   ExternalLink,
   Download,
   ScanLine,
+  Check,
+  Plus,
+  Wrench,
 } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import {
@@ -41,6 +44,7 @@ import EditProductModal from "./EditProductModal.jsx";
 import SerialScanner from "../../components/invoice/SerialScanner.jsx";
 import {
   useGetInvoiceItemServicesQuery,
+  useCreateServicePlanMutation,
   useUpdateServicePlanMutation,
 } from "../../features/invoices/invoiceApi.js";
 import {
@@ -54,12 +58,150 @@ import { LoadingSpinner } from "../../components/ui/index.js";
 import { usePermissions } from "../../hooks/usePermissions.js";
 import { ServiceIntegration } from "../../components/service/index.js";
 
+// Helper: compute service start date based on interval type and value
+function computeServiceStartDate(intervalType, intervalValue) {
+  const today = new Date();
+  let monthsToAdd = 0;
+
+  switch ((intervalType || "MONTHLY").toUpperCase()) {
+    case "MONTHLY":
+      monthsToAdd = Number(intervalValue) || 1;
+      break;
+    case "QUARTERLY":
+      monthsToAdd = 3 * (Number(intervalValue) || 1);
+      break;
+    case "SEMI_ANNUALLY":
+    case "HALF_YEARLY":
+      monthsToAdd = 6 * (Number(intervalValue) || 1);
+      break;
+    case "ANNUALLY":
+    case "YEARLY":
+      monthsToAdd = 12 * (Number(intervalValue) || 1);
+      break;
+    case "CUSTOM":
+      monthsToAdd = Number(intervalValue) || 1;
+      break;
+    default:
+      monthsToAdd = Number(intervalValue) || 1;
+  }
+
+  const startDate = new Date(today);
+  startDate.setMonth(startDate.getMonth() + monthsToAdd);
+  return startDate.toISOString().split("T")[0];
+}
+
+// Helper: compute service end date based on start date, interval and count
+function computeServiceEndDate(
+  startDateStr,
+  intervalType,
+  intervalValue,
+  totalServices,
+) {
+  if (!startDateStr) return "";
+  const start = new Date(startDateStr);
+  let monthsDelta = 0;
+
+  switch ((intervalType || "MONTHLY").toUpperCase()) {
+    case "MONTHLY":
+      monthsDelta = Number(intervalValue) || 1;
+      break;
+    case "QUARTERLY":
+      monthsDelta = 3 * (Number(intervalValue) || 1);
+      break;
+    case "SEMI_ANNUALLY":
+    case "HALF_YEARLY":
+      monthsDelta = 6 * (Number(intervalValue) || 1);
+      break;
+    case "ANNUALLY":
+    case "YEARLY":
+      monthsDelta = 12 * (Number(intervalValue) || 1);
+      break;
+    case "CUSTOM":
+      monthsDelta = Number(intervalValue) || 1;
+      break;
+    default:
+      monthsDelta = Number(intervalValue) || 1;
+  }
+
+  const totalMonths = monthsDelta * Math.max((Number(totalServices) || 1) - 1, 0);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + totalMonths);
+  return end.toISOString().split("T")[0];
+}
+
+// Helper: get effective warranty end date for a product
+function getEffectiveWarrantyEndDate(product) {
+  if (product?.pro_warranty_end_date) {
+    return product.pro_warranty_end_date;
+  }
+  if (product?.warranty_end_date) {
+    return product.warranty_end_date;
+  }
+  if (product?.warranty_start_date && product?.warranty_duration_months) {
+    const start = new Date(product.warranty_start_date);
+    start.setMonth(start.getMonth() + Number(product.warranty_duration_months));
+    return start.toISOString().split("T")[0];
+  }
+  const d = new Date();
+  d.setMonth(d.getMonth() + 12);
+  return d.toISOString().split("T")[0];
+}
+
+// Helper: auto-calculate number of visits based on warranty end date
+function computeVisitsFromWarranty(
+  serviceStartDate,
+  warrantyEndDate,
+  intervalType,
+  intervalValue,
+) {
+  let deltaMonths = 1;
+  switch ((intervalType || "MONTHLY").toUpperCase()) {
+    case "QUARTERLY":
+      deltaMonths = 3 * (Number(intervalValue) || 1);
+      break;
+    case "SEMI_ANNUALLY":
+    case "HALF_YEARLY":
+      deltaMonths = 6 * (Number(intervalValue) || 1);
+      break;
+    case "ANNUALLY":
+    case "YEARLY":
+      deltaMonths = 12 * (Number(intervalValue) || 1);
+      break;
+    case "CUSTOM":
+    default:
+      deltaMonths = Number(intervalValue) || 1;
+      break;
+  }
+
+  if (!serviceStartDate || !warrantyEndDate || deltaMonths <= 0) {
+    return 1;
+  }
+
+  const start = new Date(serviceStartDate);
+  const end = new Date(warrantyEndDate);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+    return 1;
+  }
+
+  const monthsDiff =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth()) +
+    (end.getDate() >= start.getDate() ? 0 : -1);
+
+  if (monthsDiff < 0) return 1;
+
+  const visits = Math.floor(monthsDiff / deltaMonths) + 1;
+  return Math.max(1, visits);
+}
+
 const ProductView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { canEdit } = usePermissions();
   const dispatch = useDispatch();
+  const serviceSectionRef = useRef(null);
 
   const routeLabels = {
     "/products": "Products",
@@ -72,7 +214,12 @@ const ProductView = () => {
   const label =
     location.state?.label || routeLabels[location.state?.from] || "Products";
 
-  const { data: response, isLoading, error } = useGetProductByIdQuery(id);
+  const {
+    data: response,
+    isLoading,
+    error,
+    refetch: refetchProduct,
+  } = useGetProductByIdQuery(id);
 
   // Extract product from nested response
   const product = response?.product;
@@ -107,9 +254,101 @@ const ProductView = () => {
     useRescheduleServiceMutation();
   const [cancelServiceMutation, { isLoading: cancelling }] =
     useCancelServiceMutation();
+  const [createServicePlanMutation, { isLoading: creatingPlan }] =
+    useCreateServicePlanMutation();
   const [updateServicePlanMutation, { isLoading: updatingPlan }] =
     useUpdateServicePlanMutation();
   const actionLoading = markingComplete || rescheduling || cancelling;
+
+  // New Service Plan state (when item has no service plan yet)
+  const [enableServicePlan, setEnableServicePlan] = useState(false);
+  const [newIntervalType, setNewIntervalType] = useState("MONTHLY");
+  const [newIntervalValue, setNewIntervalValue] = useState(1);
+  const [newTotalServices, setNewTotalServices] = useState(1);
+  const [newStartDate, setNewStartDate] = useState("");
+  const [newCharge, setNewCharge] = useState(0);
+  const [newDescription, setNewDescription] = useState("");
+
+  // Initialize new service plan form defaults
+  useEffect(() => {
+    if (product) {
+      const defaultStart = computeServiceStartDate("MONTHLY", 1);
+      setNewStartDate(defaultStart);
+      const warrantyEnd = getEffectiveWarrantyEndDate(product);
+      const visits = computeVisitsFromWarranty(
+        defaultStart,
+        warrantyEnd,
+        "MONTHLY",
+        1,
+      );
+      setNewTotalServices(visits);
+      setNewDescription(`Regular service for ${product.product_name || "Product"}`);
+    }
+  }, [product?.product_name, product?.warranty_end_date, product?.pro_warranty_end_date]);
+
+  const handleToggleEnableService = (enabled) => {
+    setEnableServicePlan(enabled);
+    if (enabled) {
+      const start = computeServiceStartDate(newIntervalType, newIntervalValue);
+      setNewStartDate(start);
+      const warrantyEnd = getEffectiveWarrantyEndDate(product);
+      const visits = computeVisitsFromWarranty(
+        start,
+        warrantyEnd,
+        newIntervalType,
+        newIntervalValue,
+      );
+      setNewTotalServices(visits);
+      if (!newDescription && product?.product_name) {
+        setNewDescription(`Regular service for ${product.product_name}`);
+      }
+    }
+  };
+
+  const handleCreateServicePlanSubmit = async () => {
+    if (!newStartDate) {
+      dispatch(
+        showToast({
+          message: "Service start date is required",
+          type: "error",
+        }),
+      );
+      return;
+    }
+    try {
+      await createServicePlanMutation({
+        itemId: id,
+        service_interval_type: newIntervalType,
+        service_interval_value: Number(newIntervalValue) || 1,
+        total_services: Number(newTotalServices) || 1,
+        service_start_date: newStartDate,
+        service_charge: parseFloat(newCharge) || 0,
+        service_description:
+          newDescription ||
+          `Regular service for ${product?.product_name || "Product"}`,
+      }).unwrap();
+
+      dispatch(
+        showToast({
+          message: "Service plan created and schedules generated successfully!",
+          type: "success",
+        }),
+      );
+      setEnableServicePlan(false);
+      refetchService();
+      refetchProduct();
+    } catch (err) {
+      dispatch(
+        showToast({
+          message:
+            err?.data?.message ||
+            err?.message ||
+            "Failed to create service plan",
+          type: "error",
+        }),
+      );
+    }
+  };
 
   // Image viewer state
   const [selectedImage, setSelectedImage] = useState(null);
@@ -923,176 +1162,545 @@ const ProductView = () => {
                 </div>
               </div>
 
-              {/* Service Details */}
-              {product.hasServicePlan && (
-                <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border">
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-ink-base dark:text-slate-100 flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-indigo-500" />
-                        Service Details
-                      </h3>
-                      {canEdit("products") && serviceData?.plan && (
-                        <button
-                          onClick={openEditPlanModal}
-                          disabled={actionLoading || updatingPlan}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 transition-colors disabled:opacity-50"
-                        >
-                          <Settings className="w-3.5 h-3.5" />
-                          Edit Service Plan
-                        </button>
-                      )}
-                    </div>
+              {/* Service Details & Configuration Card */}
+              {(() => {
+                const hasActiveServicePlan = Boolean(
+                  product?.hasServicePlan ||
+                    serviceData?.hasServicePlan ||
+                    serviceData?.plan ||
+                    (serviceData?.schedules && serviceData.schedules.length > 0),
+                );
 
-                    {serviceLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <LoadingSpinner />
-                        <span className="ml-2 text-ink-secondary dark:text-slate-400">
-                          Loading service data...
+                if (hasActiveServicePlan) {
+                  return (
+                    <div
+                      ref={serviceSectionRef}
+                      className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border"
+                    >
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-indigo-500" />
+                            <h3 className="text-base font-semibold text-ink-base dark:text-slate-100">
+                              Service Details
+                            </h3>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                              Active Plan
+                            </span>
+                          </div>
+                          {canEdit("products") && serviceData?.plan && (
+                            <button
+                              onClick={openEditPlanModal}
+                              disabled={actionLoading || updatingPlan}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 transition-colors disabled:opacity-50"
+                            >
+                              <Settings className="w-3.5 h-3.5" />
+                              Edit Service Plan
+                            </button>
+                          )}
+                        </div>
+
+                        {serviceLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <LoadingSpinner />
+                            <span className="ml-2 text-ink-secondary dark:text-slate-400">
+                              Loading service data...
+                            </span>
+                          </div>
+                        ) : serviceError ? (
+                          <div className="text-center py-8">
+                            <AlertCircle
+                              className="mx-auto text-red-500 mb-4"
+                              size={40}
+                            />
+                            <p className="text-red-600 dark:text-red-400 text-sm">
+                              {serviceError?.data?.message ||
+                                serviceError?.message ||
+                                "Failed to load service data"}
+                            </p>
+                            <button
+                              onClick={refetchService}
+                              className="mt-3 px-4 py-2 text-sm bg-gray-100 dark:bg-dark-subtle hover:bg-gray-200 dark:hover:bg-dark-hover text-ink-base dark:text-slate-100 rounded-lg transition-colors border border-gray-200 dark:border-dark-border"
+                            >
+                              Try Again
+                            </button>
+                          </div>
+                        ) : !serviceData?.schedules?.length ? (
+                          <div className="text-center py-10">
+                            <Calendar
+                              className="mx-auto text-gray-400 dark:text-slate-500 mb-3"
+                              size={40}
+                            />
+                            <h4 className="text-xs font-medium text-ink-base dark:text-slate-100 mb-1">
+                              No Services Found
+                            </h4>
+                            <p className="text-sm text-ink-muted dark:text-slate-500">
+                              No service schedules found for this product.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="border-b border-gray-200 dark:border-dark-border">
+                                  <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Date</th>
+                                  <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Status</th>
+                                  <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Description</th>
+                                  <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Charge</th>
+                                  <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Collected</th>
+                                  <th className="text-right py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {serviceData.schedules.map((schedule) => (
+                                  <tr
+                                    key={schedule._id}
+                                    className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle"
+                                  >
+                                    <td className="py-2 px-2 text-xs text-ink-base dark:text-slate-200">
+                                      {formatDate(schedule.scheduled_date)}
+                                    </td>
+                                    <td className="py-2 px-2">
+                                      <span
+                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${getServiceStatusColor(schedule.status)}`}
+                                      >
+                                        <span className="capitalize">{schedule.status}</span>
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-2 text-xs text-ink-secondary dark:text-slate-400 max-w-[150px] truncate">
+                                      {schedule.service_description || serviceData.plan?.service_description || "—"}
+                                    </td>
+                                    <td className="py-2 px-2 text-xs font-medium text-ink-base dark:text-slate-200">
+                                      {schedule.service_charge
+                                        ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
+                                        : serviceData.plan?.service_charge
+                                          ? `₹${serviceData.plan.service_charge.toLocaleString("en-IN")}`
+                                          : "Free"}
+                                    </td>
+                                    <td className="py-2 px-2">
+                                      <span
+                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                          schedule.payment_status === "PAID"
+                                            ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300"
+                                            : schedule.payment_status === "PARTIAL"
+                                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200"
+                                              : schedule.payment_status === "FREE"
+                                                ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                                : "bg-gray-100 dark:bg-dark-subtle text-gray-700 dark:text-slate-300"
+                                        }`}
+                                      >
+                                        {schedule.amount_collected ? `₹${schedule.amount_collected.toLocaleString("en-IN")}` : "₹0"}
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-2 text-right">
+                                      <div className="flex items-center justify-end gap-1.5">
+                                        {canEdit("products") && (schedule.status === "scheduled" || schedule.status === "overdue") && (
+                                          <>
+                                            <button
+                                              onClick={() => {
+                                                const serviceCharge = schedule.service_charge || serviceData.plan?.service_charge || 0;
+                                                setAmountCollected(serviceCharge);
+                                                setPaymentMethod(serviceCharge === 0 ? "NONE" : "CASH");
+                                                setTechnicianName("");
+                                                setCompletionNotes("MAINTENANCE");
+                                                setIssueReported("Regular maintenance service");
+                                                setWorkDone("Service completed successfully");
+                                                setShowCompleteModal(schedule._id);
+                                              }}
+                                              disabled={actionLoading}
+                                              className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/40 rounded transition-colors disabled:opacity-50"
+                                              title="Complete Service"
+                                            >
+                                              {markingComplete ? <LoadingSpinner size="xs" /> : <CheckCircle2 size={14} />}
+                                            </button>
+                                            <button
+                                              onClick={() => setShowRescheduleModal(schedule._id)}
+                                              disabled={actionLoading}
+                                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors disabled:opacity-50"
+                                              title="Reschedule Service"
+                                            >
+                                              {rescheduling ? <LoadingSpinner size="xs" /> : <RotateCcw size={14} />}
+                                            </button>
+                                            {schedule.status === "scheduled" && (
+                                              <button
+                                                onClick={() => cancelService(schedule._id)}
+                                                disabled={actionLoading}
+                                                className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors disabled:opacity-50"
+                                                title="Cancel Service"
+                                              >
+                                                {cancelling ? <LoadingSpinner size="xs" /> : <XCircle size={14} />}
+                                              </button>
+                                            )}
+                                          </>
+                                        )}
+                                        {(schedule.status === "completed" || schedule.status === "cancelled") && (
+                                          <span className="text-[10px] text-ink-muted dark:text-slate-500 italic px-2">
+                                            Done
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // If product has NO service plan yet: Render configurable toggle card (reference ProductCard.jsx)
+                return (
+                  <div
+                    ref={serviceSectionRef}
+                    className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border overflow-hidden"
+                  >
+                    <div className="p-3.5 sm:p-4 space-y-3.5">
+                      {/* Section Header */}
+                      <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-gray-100 dark:border-dark-border/60">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                            <Calendar className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-slate-100">
+                              Maintenance Service Plan
+                            </h3>
+                            <p className="text-[11px] text-gray-500 dark:text-slate-400">
+                              Schedule and track maintenance cycles for this product
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            enableServicePlan
+                              ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300"
+                              : "bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-slate-400"
+                          }`}
+                        >
+                          {enableServicePlan ? "Configuring Plan" : "No Plan Active"}
                         </span>
                       </div>
-                    ) : serviceError ? (
-                      <div className="text-center py-8">
-                        <AlertCircle
-                          className="mx-auto text-red-500 mb-4"
-                          size={40}
-                        />
-                        <p className="text-red-600 dark:text-red-400 text-sm">
-                          {serviceError?.data?.message ||
-                            serviceError?.message ||
-                            "Failed to load service data"}
-                        </p>
-                        <button
-                          onClick={refetchService}
-                          className="mt-3 px-4 py-2 text-sm bg-gray-100 dark:bg-dark-subtle hover:bg-gray-200 dark:hover:bg-dark-hover text-ink-base dark:text-slate-100 rounded-lg transition-colors border border-gray-200 dark:border-dark-border"
-                        >
-                          Try Again
-                        </button>
+
+                      {/* Toggle Pill - reference ProductCard */}
+                      <div className="flex items-center justify-between bg-gray-50/70 dark:bg-dark-bg/60 p-3 rounded-xl border border-gray-200/70 dark:border-dark-border">
+                        <div>
+                          <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-slate-100 block">
+                            Enable Maintenance Service Plan
+                          </span>
+                          <span className="text-[11px] sm:text-xs text-gray-500 dark:text-slate-400">
+                            Auto-schedules recurring maintenance visits for this product
+                          </span>
+                        </div>
+                        {canEdit("products") ? (
+                          <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+                            <input
+                              type="checkbox"
+                              checked={enableServicePlan}
+                              onChange={(e) =>
+                                handleToggleEnableService(e.target.checked)
+                              }
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-dark-border peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                          </label>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">
+                            Not enabled
+                          </span>
+                        )}
                       </div>
-                    ) : !serviceData?.schedules?.length ? (
-                      <div className="text-center py-10">
-                        <Calendar
-                          className="mx-auto text-gray-400 dark:text-slate-500 mb-3"
-                          size={40}
-                        />
-                        <h4 className="text-xs font-medium text-ink-base dark:text-slate-100 mb-1">
-                          No Services Found
-                        </h4>
-                        <p className="text-sm text-ink-muted dark:text-slate-500">
-                          No service schedules found for this product.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-gray-200 dark:border-dark-border">
-                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Date</th>
-                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Status</th>
-                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Description</th>
-                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Charge</th>
-                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Collected</th>
-                              <th className="text-right py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {serviceData.schedules.map((schedule) => (
-                              <tr
-                                key={schedule._id}
-                                className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle"
+
+                      {/* When toggle is ON: Configurable Form */}
+                      {enableServicePlan ? (
+                        <div className="space-y-3.5 pt-1 animate-in fade-in">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Frequency *
+                              </label>
+                              <select
+                                value={newIntervalType}
+                                onChange={(e) => {
+                                  const nextType = e.target.value;
+                                  setNewIntervalType(nextType);
+                                  const nextIntervalVal =
+                                    nextType !== "CUSTOM"
+                                      ? 1
+                                      : newIntervalValue <= 1
+                                        ? 2
+                                        : newIntervalValue;
+                                  if (nextType !== "CUSTOM") {
+                                    setNewIntervalValue(1);
+                                  } else if (newIntervalValue <= 1) {
+                                    setNewIntervalValue(2);
+                                  }
+                                  const start =
+                                    newStartDate ||
+                                    computeServiceStartDate(
+                                      nextType,
+                                      nextIntervalVal,
+                                    );
+                                  if (!newStartDate) {
+                                    setNewStartDate(start);
+                                  }
+                                  const warrantyEnd =
+                                    getEffectiveWarrantyEndDate(product);
+                                  const autoVisits = computeVisitsFromWarranty(
+                                    start,
+                                    warrantyEnd,
+                                    nextType,
+                                    nextIntervalVal,
+                                  );
+                                  setNewTotalServices(autoVisits);
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-xs bg-white dark:bg-dark-bg text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                               >
-                                <td className="py-2 px-2 text-xs text-ink-base dark:text-slate-200">
-                                  {formatDate(schedule.scheduled_date)}
-                                </td>
-                                <td className="py-2 px-2">
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${getServiceStatusColor(schedule.status)}`}
-                                  >
-                                    <span className="capitalize">{schedule.status}</span>
-                                  </span>
-                                </td>
-                                <td className="py-2 px-2 text-xs text-ink-secondary dark:text-slate-400 max-w-[150px] truncate">
-                                  {schedule.service_description || serviceData.plan?.service_description || "—"}
-                                </td>
-                                <td className="py-2 px-2 text-xs font-medium text-ink-base dark:text-slate-200">
-                                  {schedule.service_charge
-                                    ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
-                                    : serviceData.plan?.service_charge
-                                      ? `₹${serviceData.plan.service_charge.toLocaleString("en-IN")}`
-                                      : "Free"}
-                                </td>
-                                <td className="py-2 px-2">
-                                  <span
-                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                                      schedule.payment_status === "PAID"
-                                        ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300"
-                                        : schedule.payment_status === "PARTIAL"
-                                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200"
-                                          : schedule.payment_status === "FREE"
-                                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
-                                            : "bg-gray-100 dark:bg-dark-subtle text-gray-700 dark:text-slate-300"
-                                    }`}
-                                  >
-                                    {schedule.amount_collected ? `₹${schedule.amount_collected.toLocaleString("en-IN")}` : "₹0"}
-                                  </span>
-                                </td>
-                                <td className="py-2 px-2 text-right">
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    {canEdit("products") && (schedule.status === "scheduled" || schedule.status === "overdue") && (
-                                      <>
-                                        <button
-                                          onClick={() => {
-                                            const serviceCharge = schedule.service_charge || serviceData.plan?.service_charge || 0;
-                                            setAmountCollected(serviceCharge);
-                                            setPaymentMethod(serviceCharge === 0 ? "NONE" : "CASH");
-                                            setTechnicianName("");
-                                            setCompletionNotes("MAINTENANCE");
-                                            setIssueReported("Regular maintenance service");
-                                            setWorkDone("Service completed successfully");
-                                            setShowCompleteModal(schedule._id);
-                                          }}
-                                          disabled={actionLoading}
-                                          className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/40 rounded transition-colors disabled:opacity-50"
-                                          title="Complete Service"
-                                        >
-                                          {markingComplete ? <LoadingSpinner size="xs" /> : <CheckCircle2 size={14} />}
-                                        </button>
-                                        <button
-                                          onClick={() => setShowRescheduleModal(schedule._id)}
-                                          disabled={actionLoading}
-                                          className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors disabled:opacity-50"
-                                          title="Reschedule Service"
-                                        >
-                                          {rescheduling ? <LoadingSpinner size="xs" /> : <RotateCcw size={14} />}
-                                        </button>
-                                        {schedule.status === "scheduled" && (
-                                          <button
-                                            onClick={() => cancelService(schedule._id)}
-                                            disabled={actionLoading}
-                                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors disabled:opacity-50"
-                                            title="Cancel Service"
-                                          >
-                                            {cancelling ? <LoadingSpinner size="xs" /> : <XCircle size={14} />}
-                                          </button>
-                                        )}
-                                      </>
-                                    )}
-                                    {(schedule.status === "completed" || schedule.status === "cancelled") && (
-                                      <span className="text-[10px] text-ink-muted dark:text-slate-500 italic px-2">
-                                        Done
-                                      </span>
-                                    )}
+                                <option value="MONTHLY">Monthly (1 month)</option>
+                                <option value="QUARTERLY">
+                                  Quarterly (3 months)
+                                </option>
+                                <option value="HALF_YEARLY">
+                                  Half-Yearly (6 months)
+                                </option>
+                                <option value="YEARLY">
+                                  Yearly (12 months)
+                                </option>
+                                <option value="CUSTOM">Custom interval...</option>
+                              </select>
+                            </div>
+
+                            {newIntervalType === "CUSTOM" && (
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                  Repeat Every (Months) *
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={newIntervalValue}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 1;
+                                    setNewIntervalValue(val);
+                                    const warrantyEnd =
+                                      getEffectiveWarrantyEndDate(product);
+                                    const autoVisits = computeVisitsFromWarranty(
+                                      newStartDate,
+                                      warrantyEnd,
+                                      "CUSTOM",
+                                      val,
+                                    );
+                                    setNewTotalServices(autoVisits);
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-xs bg-white dark:bg-dark-bg text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                  placeholder="2"
+                                />
+                              </div>
+                            )}
+
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                First Service Date *
+                              </label>
+                              <input
+                                type="date"
+                                value={newStartDate}
+                                onChange={(e) => {
+                                  const newDate = e.target.value;
+                                  setNewStartDate(newDate);
+                                  if (newDate) {
+                                    const warrantyEnd =
+                                      getEffectiveWarrantyEndDate(product);
+                                    const autoVisits = computeVisitsFromWarranty(
+                                      newDate,
+                                      warrantyEnd,
+                                      newIntervalType,
+                                      newIntervalValue,
+                                    );
+                                    setNewTotalServices(autoVisits);
+                                  }
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-xs bg-white dark:bg-dark-bg text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                                <span>Total Visits *</span>
+                                <span className="text-[9px] font-normal text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-1 py-0.5 rounded">
+                                  Auto(Warranty)
+                                </span>
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={newTotalServices}
+                                onChange={(e) =>
+                                  setNewTotalServices(
+                                    parseInt(e.target.value) || 1,
+                                  )
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-xs bg-white dark:bg-dark-bg text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="1"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Charge per Visit (₹)
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={newCharge}
+                                  onChange={(e) =>
+                                    setNewCharge(parseFloat(e.target.value) || 0)
+                                  }
+                                  className="w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-xs bg-white dark:bg-dark-bg text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                  placeholder="0.00"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="sm:col-span-2 lg:col-span-4">
+                              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Service Description (Optional)
+                              </label>
+                              <textarea
+                                value={newDescription}
+                                onChange={(e) =>
+                                  setNewDescription(e.target.value)
+                                }
+                                placeholder="Describe the maintenance service to be performed... (optional)"
+                                rows={2}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-xs bg-white dark:bg-dark-bg text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Dynamic Derived Summary Banner */}
+                          {(() => {
+                            const end = computeServiceEndDate(
+                              newStartDate,
+                              newIntervalType,
+                              newIntervalValue,
+                              newTotalServices,
+                            );
+
+                            let cadenceText = "Every 1 month (Monthly)";
+                            if (newIntervalType === "QUARTERLY")
+                              cadenceText = "Every 3 months (Quarterly)";
+                            else if (
+                              newIntervalType === "HALF_YEARLY" ||
+                              newIntervalType === "SEMI_ANNUALLY"
+                            )
+                              cadenceText = "Every 6 months (Half-Yearly)";
+                            else if (
+                              newIntervalType === "YEARLY" ||
+                              newIntervalType === "ANNUALLY"
+                            )
+                              cadenceText = "Every 12 months (Yearly)";
+                            else if (newIntervalType === "CUSTOM")
+                              cadenceText = `Every ${newIntervalValue} month${newIntervalValue > 1 ? "s" : ""}`;
+
+                            const chargeVal = parseFloat(newCharge) || 0;
+                            const totalVal = Number(newTotalServices) || 1;
+
+                            return (
+                              <div className="bg-gradient-to-r from-indigo-50/90 to-blue-50/70 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-100 dark:border-indigo-900/50 p-3 rounded-lg text-xs space-y-1">
+                                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                  <div className="font-semibold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                                    <span>
+                                      {totalVal} {totalVal === 1 ? "visit" : "visits"}
+                                      {newStartDate && (
+                                        <span className="font-normal text-gray-700 dark:text-slate-300">
+                                          :{" "}
+                                          {new Date(
+                                            newStartDate,
+                                          ).toLocaleDateString("en-IN", {
+                                            day: "numeric",
+                                            month: "short",
+                                            year: "numeric",
+                                          })}
+                                          {totalVal > 1 && end && (
+                                            <>
+                                              {" "}→{" "}
+                                              {new Date(end).toLocaleDateString(
+                                                "en-IN",
+                                                {
+                                                  day: "numeric",
+                                                  month: "short",
+                                                  year: "numeric",
+                                                },
+                                              )}
+                                            </>
+                                          )}
+                                        </span>
+                                      )}
+                                    </span>
                                   </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                                  <span className="font-bold text-indigo-700 dark:text-indigo-300">
+                                    {chargeVal > 0
+                                      ? `₹${chargeVal.toLocaleString("en-IN")} / visit · Total ₹${(totalVal * chargeVal).toLocaleString("en-IN")}`
+                                      : "Free of charge"}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-indigo-600/80 dark:text-indigo-300/70">
+                                  Cadence: {cadenceText}
+                                </p>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-dark-border/60">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setEnableServicePlan(false)}
+                              disabled={creatingPlan}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={handleCreateServicePlanSubmit}
+                              disabled={creatingPlan || !newStartDate}
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                {creatingPlan ? (
+                                  <LoadingSpinner size="xs" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5" />
+                                )}
+                                <span>Save & Activate Service Plan</span>
+                              </div>
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 px-4 bg-gray-50/50 dark:bg-dark-bg/30 rounded-lg border border-dashed border-gray-200 dark:border-dark-border">
+                          <Calendar className="mx-auto text-indigo-400 dark:text-indigo-500 mb-2 w-7 h-7 opacity-70" />
+                          <h4 className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-slate-200">
+                            No Active Maintenance Service Plan
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-slate-400 max-w-md mx-auto mt-1">
+                            This product currently has no recurring service plan.
+                            Toggle above to configure intervals, charges, and auto-generate service schedules.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Right Column - Actions */}
@@ -1163,6 +1771,32 @@ const ProductView = () => {
 
                     {canEdit("products") && (
                       <>
+                        {!product?.hasServicePlan &&
+                          !serviceData?.hasServicePlan &&
+                          !serviceData?.plan && (
+                            <button
+                              onClick={() => {
+                                setEnableServicePlan(true);
+                                serviceSectionRef.current?.scrollIntoView({
+                                  behavior: "smooth",
+                                });
+                              }}
+                              className="w-full flex items-center space-x-3 p-3 text-left border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-lg hover:bg-indigo-100/50 dark:hover:bg-indigo-950/40 transition-all duration-200 group"
+                            >
+                              <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                                <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-indigo-900 dark:text-indigo-200">
+                                  Enable Service Plan
+                                </span>
+                                <p className="text-xs text-indigo-700/70 dark:text-indigo-400/70">
+                                  Configure maintenance schedule
+                                </p>
+                              </div>
+                            </button>
+                          )}
+
                         <button
                           onClick={() => {
                             setNewSerialNumber("");
@@ -1492,59 +2126,118 @@ const ProductView = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
-                    Service Interval Type *
+                    Frequency *
                   </label>
                   <select
                     value={planIntervalType}
-                    onChange={(e) => setPlanIntervalType(e.target.value)}
+                    onChange={(e) => {
+                      const nextType = e.target.value;
+                      setPlanIntervalType(nextType);
+                      const nextIntervalVal =
+                        nextType !== "CUSTOM"
+                          ? 1
+                          : planIntervalValue <= 1
+                            ? 2
+                            : planIntervalValue;
+                      if (nextType !== "CUSTOM") {
+                        setPlanIntervalValue(1);
+                      } else if (planIntervalValue <= 1) {
+                        setPlanIntervalValue(2);
+                      }
+                      const warrantyEnd = getEffectiveWarrantyEndDate(product);
+                      const autoVisits = computeVisitsFromWarranty(
+                        planStartDate,
+                        warrantyEnd,
+                        nextType,
+                        nextIntervalVal,
+                      );
+                      setPlanTotalServices(autoVisits);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   >
-                    <option value="MONTHLY">Monthly</option>
+                    <option value="MONTHLY">Monthly (1 month)</option>
                     <option value="QUARTERLY">Quarterly (3 months)</option>
                     <option value="HALF_YEARLY">Half-Yearly (6 months)</option>
                     <option value="YEARLY">Yearly (12 months)</option>
+                    <option value="CUSTOM">Custom interval...</option>
                   </select>
                 </div>
+
+                {planIntervalType === "CUSTOM" && (
+                  <div>
+                    <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
+                      Repeat Every (Months) *
+                    </label>
+                    <input
+                      type="number"
+                      value={planIntervalValue}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setPlanIntervalValue(val);
+                        const warrantyEnd = getEffectiveWarrantyEndDate(product);
+                        const autoVisits = computeVisitsFromWarranty(
+                          planStartDate,
+                          warrantyEnd,
+                          "CUSTOM",
+                          val,
+                        );
+                        setPlanTotalServices(autoVisits);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      min="1"
+                      placeholder="2"
+                    />
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
-                    Interval Value *
-                  </label>
-                  <input
-                    type="number"
-                    value={planIntervalValue}
-                    onChange={(e) => setPlanIntervalValue(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    min="1"
-                    placeholder="1"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
-                    Total Services *
-                  </label>
-                  <input
-                    type="number"
-                    value={planTotalServices}
-                    onChange={(e) => setPlanTotalServices(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    min="1"
-                    placeholder="1"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
-                    Service Start Date *
+                    First Service Date *
                   </label>
                   <input
                     type="date"
                     value={planStartDate}
-                    onChange={(e) => setPlanStartDate(e.target.value)}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setPlanStartDate(newDate);
+                      if (newDate) {
+                        const warrantyEnd = getEffectiveWarrantyEndDate(product);
+                        const autoVisits = computeVisitsFromWarranty(
+                          newDate,
+                          warrantyEnd,
+                          planIntervalType,
+                          planIntervalValue,
+                        );
+                        setPlanTotalServices(autoVisits);
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2 flex items-center justify-between">
+                    <span>Total Visits *</span>
+                    <span className="text-[10px] font-normal text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.5 rounded">
+                      Auto (Warranty)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    value={planTotalServices}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      setPlanTotalServices(val);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    min="1"
+                    placeholder="1"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
-                    Service Charge (₹) *
+                    Charge per Visit (₹)
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-2 text-ink-muted dark:text-slate-500">
@@ -1557,23 +2250,97 @@ const ProductView = () => {
                       className="w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       min="0"
                       step="1"
-                      placeholder="0"
+                      placeholder="0.00"
                     />
                   </div>
                 </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-ink-secondary dark:text-slate-300 mb-2">
-                    Service Description
+                    Service Description (Optional)
                   </label>
                   <textarea
                     value={planDescription}
                     onChange={(e) => setPlanDescription(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    rows="3"
-                    placeholder="Describe the service to be performed..."
+                    rows="2"
+                    placeholder="Describe the service to be performed... (optional)"
                   />
                 </div>
               </div>
+
+              {/* Dynamic Derived Summary in Edit Modal */}
+              {(() => {
+                const end = computeServiceEndDate(
+                  planStartDate,
+                  planIntervalType,
+                  planIntervalValue,
+                  planTotalServices,
+                );
+
+                let cadenceText = "Every 1 month (Monthly)";
+                if (planIntervalType === "QUARTERLY")
+                  cadenceText = "Every 3 months (Quarterly)";
+                else if (
+                  planIntervalType === "HALF_YEARLY" ||
+                  planIntervalType === "SEMI_ANNUALLY"
+                )
+                  cadenceText = "Every 6 months (Half-Yearly)";
+                else if (
+                  planIntervalType === "YEARLY" ||
+                  planIntervalType === "ANNUALLY"
+                )
+                  cadenceText = "Every 12 months (Yearly)";
+                else if (planIntervalType === "CUSTOM")
+                  cadenceText = `Every ${planIntervalValue} month${planIntervalValue > 1 ? "s" : ""}`;
+
+                const chargeVal = parseFloat(planCharge) || 0;
+                const totalVal = Number(planTotalServices) || 1;
+
+                return (
+                  <div className="bg-gradient-to-r from-indigo-50/90 to-blue-50/70 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-100 dark:border-indigo-900/50 p-3 rounded-lg text-xs space-y-1">
+                    <div className="flex items-center justify-between flex-wrap gap-1.5">
+                      <div className="font-semibold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                        <span>
+                          {totalVal} {totalVal === 1 ? "visit" : "visits"}
+                          {planStartDate && (
+                            <span className="font-normal text-gray-700 dark:text-slate-300">
+                              :{" "}
+                              {new Date(planStartDate).toLocaleDateString(
+                                "en-IN",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
+                              {totalVal > 1 && end && (
+                                <>
+                                  {" "}→{" "}
+                                  {new Date(end).toLocaleDateString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })}
+                                </>
+                              )}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <span className="font-bold text-indigo-700 dark:text-indigo-300">
+                        {chargeVal > 0
+                          ? `₹${chargeVal.toLocaleString("en-IN")} / visit · Total ₹${(totalVal * chargeVal).toLocaleString("en-IN")}`
+                          : "Free of charge"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-indigo-600/80 dark:text-indigo-300/70">
+                      Cadence: {cadenceText}
+                    </p>
+                  </div>
+                );
+              })()}
 
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-dark-border">
                 <Button

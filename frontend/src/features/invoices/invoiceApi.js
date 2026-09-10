@@ -159,6 +159,21 @@ export const invoiceApi = baseApi.injectEndpoints({
       transformResponse: (response) => response.data,
     }),
 
+    // Create service plan for a specific invoice item
+    createServicePlan: builder.mutation({
+      query: ({ itemId, ...data }) => ({
+        url: `/invoices/items/${itemId}/services`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (result, error, { itemId }) => [
+        { type: "Product", id: itemId },
+        { type: "ServiceSchedule", id: itemId },
+        "Product",
+      ],
+      transformResponse: (response) => response.data,
+    }),
+
     // Update full service plan details for a specific invoice item
     updateServicePlan: builder.mutation({
       query: ({ itemId, ...data }) => ({
@@ -167,7 +182,9 @@ export const invoiceApi = baseApi.injectEndpoints({
         body: data,
       }),
       invalidatesTags: (result, error, { itemId }) => [
+        { type: "Product", id: itemId },
         { type: "ServiceSchedule", id: itemId },
+        "Product",
       ],
       transformResponse: (response) => response.data,
     }),
@@ -212,6 +229,7 @@ export const {
   useSearchCustomerMutation,
   useUploadInvoiceAttachmentMutation,
   useGetInvoiceItemServicesQuery,
+  useCreateServicePlanMutation,
   useUpdateServicePlanMutation,
   useDownloadInvoicePDFMutation,
   usePreviewInvoicePDFMutation,

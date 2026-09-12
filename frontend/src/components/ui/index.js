@@ -9,9 +9,12 @@ export { default as FAB } from './FAB.jsx';
 export { default as MetricCard } from './MetricCard.jsx';
 export { default as Toast } from './Toast.jsx';
 export { default as ToastContainer } from './ToastContainer.jsx';
+export { default as ImageGalleryModal } from './ImageGalleryModal.jsx';
+export { default as DeleteConfirmModal } from './DeleteConfirmModal.jsx';
 export {
   Dialog as Modal,
   DialogHeader,
   DialogBody,
   DialogFooter,
 } from './Modal.jsx';
+

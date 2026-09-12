@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -26,6 +26,7 @@ import {
 const FestivalSchedule = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [showFilters, setShowFilters] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -42,7 +43,7 @@ const FestivalSchedule = () => {
     refetch,
   } = useGetFestivalsQuery({
     page: currentPage,
-    limit: 10,
+    limit,
     search: searchTerm,
   });
 
@@ -316,67 +317,78 @@ const FestivalSchedule = () => {
           )}
 
           {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-ink-muted dark:text-slate-500">
-                  Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                  {Math.min(
-                    pagination.page * pagination.limit,
-                    pagination.total,
-                  )}{" "}
-                  of {pagination.total} festivals
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(pagination.page - 1)}
-                    disabled={pagination.page <= 1}
-                    className="p-2"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-
-                  <div className="flex items-center gap-1">
-                    {Array.from(
-                      { length: pagination.pages },
-                      (_, i) => i + 1,
-                    ).map((pageNum) => (
-                      <button
-                        key={pageNum}
-                        onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-1 rounded text-sm ${
-                          pageNum === pagination.page
-                            ? "bg-blue-500 text-white"
-                            : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    ))}
+          {pagination.total > 0 && (
+            <div className="px-4 sm:px-6 py-3 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input rounded-b-lg">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-4 text-xs sm:text-sm text-ink-muted dark:text-slate-400">
+                  <span>
+                    Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                    {Math.min(
+                      pagination.page * pagination.limit,
+                      pagination.total,
+                    )}{" "}
+                    of {pagination.total} festivals
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span>Rows per page:</span>
+                    <select
+                      value={limit}
+                      onChange={(e) => {
+                        setLimit(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="px-2 py-1 text-xs border border-gray-300 dark:border-dark-border rounded-md bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
                   </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(pagination.page + 1)}
-                    disabled={pagination.page >= pagination.pages}
-                    className="p-2"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {pagination.pages <= 1 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input">
-              <div className="text-sm text-gray-500 text-center">
-                Showing {pagination.total || 0} of {pagination.total || 0}{" "}
-                festivals
+                {pagination.pages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                      disabled={pagination.page <= 1}
+                      className="p-2"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from(
+                        { length: pagination.pages },
+                        (_, i) => i + 1,
+                      ).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-3 py-1 rounded text-xs sm:text-sm ${
+                            pageNum === pagination.page
+                              ? "bg-blue-500 text-white"
+                              : "bg-white dark:bg-dark-card text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                      disabled={pagination.page >= pagination.pages}
+                      className="p-2"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}

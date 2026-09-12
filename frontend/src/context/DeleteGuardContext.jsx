@@ -8,7 +8,9 @@ export const DeleteGuardProvider = ({ children }) => {
     isOpen: false,
     itemName: "",
     itemType: "",
+    isSkippedAuth: false,
     pendingConfirm: null,
+    pendingCancel: null,
   });
 
   const clearDeleteAuth = useCallback(() => {
@@ -19,21 +21,15 @@ export const DeleteGuardProvider = ({ children }) => {
     ({ itemName = "this item", itemType = "Item", onConfirm }) => {
       const authUntilStr = sessionStorage.getItem("wd_delete_auth_until");
       const authUntil = authUntilStr ? parseInt(authUntilStr, 10) : 0;
+      const isSkippedAuth = Boolean(authUntil && Date.now() < authUntil);
 
-      // Check if 5-minute skip window is currently active
-      if (authUntil && Date.now() < authUntil) {
-        if (typeof onConfirm === "function") {
-          onConfirm();
-        }
-        return Promise.resolve(true);
-      }
-
-      // Open password confirmation modal
+      // Always open confirmation modal (with isSkippedAuth flag if password was recently verified)
       return new Promise((resolve) => {
         setModalState({
           isOpen: true,
           itemName,
           itemType,
+          isSkippedAuth,
           pendingConfirm: () => {
             setModalState((prev) => ({ ...prev, isOpen: false }));
             if (typeof onConfirm === "function") {
@@ -70,6 +66,7 @@ export const DeleteGuardProvider = ({ children }) => {
         isOpen={modalState.isOpen}
         itemName={modalState.itemName}
         itemType={modalState.itemType}
+        isSkippedAuth={modalState.isSkippedAuth}
         onConfirm={handleModalConfirm}
         onCancel={handleModalCancel}
       />

@@ -57,11 +57,12 @@ const CustomerView = () => {
   } = useGetCustomerByIdQuery(id);
 
   const [invoicePage, setInvoicePage] = useState(1);
+  const [invoiceLimit, setInvoiceLimit] = useState(10);
   const {
     data: invoicesResp,
     isLoading: invoicesLoading,
     refetch: refetchInvoices,
-  } = useGetInvoicesQuery({ customer_id: id, page: invoicePage, limit: 10 });
+  } = useGetInvoicesQuery({ customer_id: id, page: invoicePage, limit: invoiceLimit });
 
   const [deleteInvoice] = useDeleteInvoiceMutation();
   const [deleteCustomer] = useDeleteCustomerMutation();
@@ -680,38 +681,64 @@ const CustomerView = () => {
                     </div>
 
                     {/* Pagination */}
-                    {pagination && pagination.pages > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-dark-border">
-                        <div className="text-sm text-ink-muted dark:text-slate-500">
-                          Showing page {pagination.page} of {pagination.pages}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            onClick={() =>
-                              setInvoicePage((p) => Math.max(1, p - 1))
-                            }
-                            disabled={invoicePage <= 1}
-                            variant="outline"
-                            size="sm"
-                          >
-                            Previous
-                          </Button>
-                          <span className="text-sm text-ink-secondary dark:text-slate-400 mx-2">
-                            {pagination.page}
+                    {pagination && (pagination.total > 0 || pagination.pages > 1) && (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-dark-border">
+                        <div className="flex items-center gap-4 text-xs text-ink-muted dark:text-slate-400">
+                          <span>
+                            Showing {(pagination.page - 1) * (pagination.limit || invoiceLimit) + 1} to{" "}
+                            {Math.min(
+                              pagination.page * (pagination.limit || invoiceLimit),
+                              pagination.total || invoices.length,
+                            )}{" "}
+                            of {pagination.total || invoices.length} invoices
                           </span>
-                          <Button
-                            onClick={() =>
-                              setInvoicePage((p) =>
-                                Math.min(pagination.pages, p + 1),
-                              )
-                            }
-                            disabled={invoicePage >= pagination.pages}
-                            variant="outline"
-                            size="sm"
-                          >
-                            Next
-                          </Button>
+                          <div className="flex items-center gap-1.5">
+                            <span>Rows per page:</span>
+                            <select
+                              value={invoiceLimit}
+                              onChange={(e) => {
+                                setInvoiceLimit(Number(e.target.value));
+                                setInvoicePage(1);
+                              }}
+                              className="px-2 py-1 text-xs border border-gray-300 dark:border-dark-border rounded-md bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                            >
+                              <option value={10}>10</option>
+                              <option value={20}>20</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                            </select>
+                          </div>
                         </div>
+
+                        {pagination.pages > 1 && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              onClick={() =>
+                                setInvoicePage((p) => Math.max(1, p - 1))
+                              }
+                              disabled={invoicePage <= 1}
+                              variant="outline"
+                              size="sm"
+                            >
+                              Previous
+                            </Button>
+                            <span className="text-xs text-ink-secondary dark:text-slate-400 mx-2">
+                              {pagination.page} / {pagination.pages}
+                            </span>
+                            <Button
+                              onClick={() =>
+                                setInvoicePage((p) =>
+                                  Math.min(pagination.pages, p + 1),
+                                )
+                              }
+                              disabled={invoicePage >= pagination.pages}
+                              variant="outline"
+                              size="sm"
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

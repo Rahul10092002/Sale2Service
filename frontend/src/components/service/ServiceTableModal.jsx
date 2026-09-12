@@ -14,6 +14,8 @@ import {
   XCircle,
   Eye,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Dialog as Modal, DialogHeader, DialogBody } from "../ui/Modal.jsx";
 import Button from "../ui/Button.jsx";
@@ -37,6 +39,8 @@ export const ServiceTableModal = ({
   isOpen,
   onClose,
 }) => {
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [showRescheduleModal, setShowRescheduleModal] = useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -47,6 +51,12 @@ export const ServiceTableModal = ({
   const [technicianName, setTechnicianName] = useState("");
   const [issueReported, setIssueReported] = useState("");
   const [workDone, setWorkDone] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setPage(1);
+    }
+  }, [isOpen, itemId]);
 
   // RTK Query hooks
   const {
@@ -319,112 +329,177 @@ export const ServiceTableModal = ({
               </div>
             ) : (
               <div className="w-full">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-dark-border">
-                        <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Date</th>
-                        <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Status</th>
-                        <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Description</th>
-                        <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Charge</th>
-                        <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Collected</th>
-                        <th className="text-right py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {serviceData.schedules.map((schedule) => (
-                        <tr
-                          key={schedule._id}
-                          className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle"
-                        >
-                          <td className="py-2 px-2 text-xs text-ink-base dark:text-slate-200 whitespace-nowrap">
-                            {formatDate(schedule.scheduled_date)}
-                          </td>
-                          <td className="py-2 px-2 whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(schedule.status)}`}
-                            >
-                              <span className="capitalize">{schedule.status}</span>
-                            </span>
-                          </td>
-                          <td className="py-2 px-2 text-xs text-ink-secondary dark:text-slate-400 max-w-[150px] truncate">
-                            {schedule.service_description || serviceData.plan?.service_description || "—"}
-                          </td>
-                          <td className="py-2 px-2 text-xs font-medium text-ink-base dark:text-slate-200 whitespace-nowrap">
-                            {schedule.service_charge
-                              ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
-                              : serviceData.plan?.service_charge
-                                ? `₹${serviceData.plan.service_charge.toLocaleString("en-IN")}`
-                                : "Free"}
-                          </td>
-                          <td className="py-2 px-2 whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                                schedule.payment_status === "PAID"
-                                  ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300"
-                                  : schedule.payment_status === "PARTIAL"
-                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200"
-                                    : schedule.payment_status === "FREE"
-                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
-                                      : "bg-gray-100 dark:bg-dark-subtle text-gray-700 dark:text-slate-300"
-                              }`}
-                            >
-                              {schedule.amount_collected ? `₹${schedule.amount_collected.toLocaleString("en-IN")}` : "₹0"}
-                            </span>
-                          </td>
-                          <td className="py-2 px-2 text-right">
-                            <div className="flex items-center justify-end gap-1.5 min-w-[max-content]">
-                              {(schedule.status === "scheduled" || schedule.status === "overdue") && (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      const serviceCharge = schedule.service_charge || serviceData.plan?.service_charge || 0;
-                                      setAmountCollected(serviceCharge);
-                                      setPaymentMethod(serviceCharge === 0 ? "NONE" : "CASH");
-                                      setTechnicianName("");
-                                      setCompletionNotes("MAINTENANCE");
-                                      setIssueReported("Regular maintenance service");
-                                      setWorkDone("Service completed successfully");
-                                      setShowCompleteModal(schedule._id);
-                                    }}
-                                    disabled={actionLoading}
-                                    className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/40 rounded transition-colors disabled:opacity-50"
-                                    title="Complete Service"
+                {(() => {
+                  const allSchedules = serviceData.schedules || [];
+                  const total = allSchedules.length;
+                  const totalPages = Math.ceil(total / limit) || 1;
+                  const displayedSchedules = allSchedules.slice((page - 1) * limit, page * limit);
+
+                  return (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-dark-border">
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Date</th>
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Status</th>
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Description</th>
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Charge</th>
+                              <th className="text-left py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Collected</th>
+                              <th className="text-right py-2 px-2 font-medium text-xs text-ink-secondary dark:text-slate-400">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {displayedSchedules.map((schedule) => (
+                              <tr
+                                key={schedule._id}
+                                className="border-b border-gray-100 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle"
+                              >
+                                <td className="py-2 px-2 text-xs text-ink-base dark:text-slate-200 whitespace-nowrap">
+                                  {formatDate(schedule.scheduled_date)}
+                                </td>
+                                <td className="py-2 px-2 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(schedule.status)}`}
                                   >
-                                    {markingComplete ? <LoadingSpinner size="xs" /> : <CheckCircle2 size={14} />}
-                                  </button>
-                                  <button
-                                    onClick={() => setShowRescheduleModal(schedule._id)}
-                                    disabled={actionLoading}
-                                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors disabled:opacity-50"
-                                    title="Reschedule Service"
+                                    <span className="capitalize">{schedule.status}</span>
+                                  </span>
+                                </td>
+                                <td className="py-2 px-2 text-xs text-ink-secondary dark:text-slate-400 max-w-[150px] truncate">
+                                  {schedule.service_description || serviceData.plan?.service_description || "—"}
+                                </td>
+                                <td className="py-2 px-2 text-xs font-medium text-ink-base dark:text-slate-200 whitespace-nowrap">
+                                  {schedule.service_charge
+                                    ? `₹${schedule.service_charge.toLocaleString("en-IN")}`
+                                    : serviceData.plan?.service_charge
+                                      ? `₹${serviceData.plan.service_charge.toLocaleString("en-IN")}`
+                                      : "Free"}
+                                </td>
+                                <td className="py-2 px-2 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                      schedule.payment_status === "PAID"
+                                        ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300"
+                                        : schedule.payment_status === "PARTIAL"
+                                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200"
+                                          : schedule.payment_status === "FREE"
+                                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                            : "bg-gray-100 dark:bg-dark-subtle text-gray-700 dark:text-slate-300"
+                                    }`}
                                   >
-                                    {rescheduling ? <LoadingSpinner size="xs" /> : <RotateCcw size={14} />}
-                                  </button>
-                                  {schedule.status === "scheduled" && (
-                                    <button
-                                      onClick={() => cancelService(schedule._id)}
-                                      disabled={actionLoading}
-                                      className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors disabled:opacity-50"
-                                      title="Cancel Service"
-                                    >
-                                      {cancelling ? <LoadingSpinner size="xs" /> : <XCircle size={14} />}
-                                    </button>
-                                  )}
-                                </>
-                              )}
-                              {(schedule.status === "completed" || schedule.status === "cancelled") && (
-                                <span className="text-[10px] text-ink-muted dark:text-slate-500 italic px-2">
-                                  Done
-                                </span>
-                              )}
+                                    {schedule.amount_collected ? `₹${schedule.amount_collected.toLocaleString("en-IN")}` : "₹0"}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-2 text-right">
+                                  <div className="flex items-center justify-end gap-1.5 min-w-[max-content]">
+                                    {(schedule.status === "scheduled" || schedule.status === "overdue") && (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            const serviceCharge = schedule.service_charge || serviceData.plan?.service_charge || 0;
+                                            setAmountCollected(serviceCharge);
+                                            setPaymentMethod(serviceCharge === 0 ? "NONE" : "CASH");
+                                            setTechnicianName("");
+                                            setCompletionNotes("MAINTENANCE");
+                                            setIssueReported("Regular maintenance service");
+                                            setWorkDone("Service completed successfully");
+                                            setShowCompleteModal(schedule._id);
+                                          }}
+                                          disabled={actionLoading}
+                                          className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/40 rounded transition-colors disabled:opacity-50"
+                                          title="Complete Service"
+                                        >
+                                          {markingComplete ? <LoadingSpinner size="xs" /> : <CheckCircle2 size={14} />}
+                                        </button>
+                                        <button
+                                          onClick={() => setShowRescheduleModal(schedule._id)}
+                                          disabled={actionLoading}
+                                          className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors disabled:opacity-50"
+                                          title="Reschedule Service"
+                                        >
+                                          {rescheduling ? <LoadingSpinner size="xs" /> : <RotateCcw size={14} />}
+                                        </button>
+                                        {schedule.status === "scheduled" && (
+                                          <button
+                                            onClick={() => cancelService(schedule._id)}
+                                            disabled={actionLoading}
+                                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors disabled:opacity-50"
+                                            title="Cancel Service"
+                                          >
+                                            {cancelling ? <LoadingSpinner size="xs" /> : <XCircle size={14} />}
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+                                    {(schedule.status === "completed" || schedule.status === "cancelled") && (
+                                      <span className="text-[10px] text-ink-muted dark:text-slate-500 italic px-2">
+                                        Done
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination & Rows per page */}
+                      {total > 0 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-3 border-t border-gray-100 dark:border-dark-border">
+                          <div className="flex items-center gap-4 text-xs text-ink-muted dark:text-slate-400">
+                            <span>
+                              Showing {(page - 1) * limit + 1} to{" "}
+                              {Math.min(page * limit, total)} of {total} services
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span>Rows per page:</span>
+                              <select
+                                value={limit}
+                                onChange={(e) => {
+                                  setLimit(Number(e.target.value));
+                                  setPage(1);
+                                }}
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-dark-border rounded-md bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                              >
+                                <option value={5}>5</option>
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                              </select>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+
+                          {totalPages > 1 && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page <= 1}
+                                className="p-1.5"
+                              >
+                                <ChevronLeft className="w-3.5 h-3.5" />
+                              </Button>
+                              <span className="text-xs text-ink-secondary dark:text-slate-400">
+                                {page} / {totalPages}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages}
+                                className="p-1.5"
+                              >
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </DialogBody>

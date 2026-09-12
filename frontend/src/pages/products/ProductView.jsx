@@ -30,7 +30,7 @@ import {
   Plus,
   Wrench,
 } from "lucide-react";
-import { Button } from "../../components/ui/index.js";
+import { Button, ImageGalleryModal } from "../../components/ui/index.js";
 import {
   Dialog as Modal,
   DialogHeader,
@@ -2372,54 +2372,13 @@ const ProductView = () => {
       )}
 
       {/* Full Image Preview Modal */}
-      <Modal
-        open={!!selectedImage}
+      <ImageGalleryModal
+        isOpen={Boolean(selectedImage)}
         onClose={() => setSelectedImage(null)}
-        maxWidth="lg"
-        className="!bg-transparent !border-none !shadow-none"
-      >
-        {selectedImage && (
-          <div className="relative flex flex-col h-full">
-            <DialogHeader
-              title={selectedImage.title}
-              onClose={() => setSelectedImage(null)}
-              className="!bg-white/90 dark:!bg-dark-card/90 backdrop-blur-md rounded-t-xl"
-            />
-            <DialogBody className="!p-0 bg-black/5 flex items-center justify-center min-h-[50vh]">
-              <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-4">
-                <img
-                  src={selectedImage.url}
-                  alt={selectedImage.title}
-                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl transition-all duration-300"
-                />
-              </div>
-            </DialogBody>
-            <div className="bg-white/90 dark:bg-dark-card/90 backdrop-blur-md p-3 flex items-center justify-center gap-4 rounded-b-xl border-t border-gray-200 dark:border-dark-border">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(selectedImage.url, "_blank")}
-                className="flex items-center gap-2"
-              >
-                <ExternalLink size={14} />
-                Open Original
-              </Button>
-              <a
-                href={selectedImage.url}
-                download={selectedImage.title}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
-                onClick={() => {
-                  // Direct download might be blocked by CORS for Cloudinary URLs
-                  // Usually, it's safer to open in new tab if we can't force download
-                }}
-              >
-                <Download size={14} />
-                Download
-              </a>
-            </div>
-          </div>
-        )}
-      </Modal>
+        images={selectedImage?.url ? [selectedImage.url] : []}
+        title={selectedImage?.title || product?.product_name || "Product Image"}
+        subtitle={product?.serial_number ? `SN: ${product.serial_number}` : null}
+      />
 
       {showEditProductModal && (
         <EditProductModal

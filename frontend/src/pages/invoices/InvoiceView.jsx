@@ -437,15 +437,15 @@ const InvoiceView = () => {
 
         {/* Missing Origin Warning Banner */}
         {missingOriginItemsCount > 0 && (
-          <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl flex items-center justify-between gap-3 text-amber-800 dark:text-amber-300 text-xs">
-            <div className="flex items-center gap-2 font-medium">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+          <div className="px-3 py-1.5 sm:py-2 bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 rounded-lg flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-amber-900 dark:text-amber-200 text-xs">
+            <div className="flex items-center gap-1.5 font-medium">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
               <span>
-                <strong>Supplier Link Alert:</strong> {missingOriginItemsCount} product item(s) in this invoice do not have a linked purchase dealer origin.
+                <strong>Supplier Alert:</strong> {missingOriginItemsCount} item{missingOriginItemsCount > 1 ? "s" : ""} missing purchase origin.
               </span>
             </div>
-            <span className="text-[11px] font-semibold underline text-amber-700 dark:text-amber-400">
-              Add Purchase Origin below to enable supplier RMA warranty claims
+            <span className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">
+              Link below to enable supplier RMA claims
             </span>
           </div>
         )}

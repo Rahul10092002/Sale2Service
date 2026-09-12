@@ -750,9 +750,10 @@ export default class InvoiceController {
       const customerNumber = customer?.whatsapp_number;
 
       let pdfBuffer;
+      let pdfResult;
       try {
         const invoiceItems = await InvoiceItem.find({ invoice_id: id });
-        const pdfResult = await invoiceDocumentService.getOrCreateInvoicePdf({
+        pdfResult = await invoiceDocumentService.getOrCreateInvoicePdf({
           invoice,
           customer,
           invoiceItems,

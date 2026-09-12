@@ -32,6 +32,78 @@ const getNextInvoiceSequence = async (shopId, datePart, session) => {
   return counter.sequence;
 };
 
+/**
+ * Robustly generates a guaranteed-unique, sequential invoice number for a shop.
+ * Automatically synchronizes with existing database records to prevent any duplicate key errors (E11000).
+ */
+const generateAuthoritativeInvoiceNumber = async (shopId, invoiceDate = new Date(), session) => {
+  const dateObj = invoiceDate instanceof Date ? invoiceDate : new Date(invoiceDate);
+  const { datePart } = buildInvoiceNumberPreview({ date: dateObj });
+
+  // 1. Inspect existing active invoices for this shop + datePart
+  const existingInvoices = await Invoice.find({
+    shop_id: shopId,
+    invoice_number: new RegExp(`^INV-${datePart}-\\d+$`),
+    deleted_at: null,
+  })
+    .select("invoice_number")
+    .session(session);
+
+  let maxExistingSeq = 0;
+  for (const inv of existingInvoices) {
+    if (inv.invoice_number) {
+      const match = inv.invoice_number.match(/-(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxExistingSeq) {
+          maxExistingSeq = num;
+        }
+      }
+    }
+  }
+
+  // 2. Fast-forward InvoiceCounter if it lags behind existing records
+  if (maxExistingSeq > 0) {
+    await InvoiceCounter.findOneAndUpdate(
+      { shop_id: shopId, date: datePart, sequence: { $lt: maxExistingSeq } },
+      { $set: { sequence: maxExistingSeq } },
+      { upsert: true, session },
+    );
+  }
+
+  // 3. Atomically increment and ensure candidate invoice number is unique
+  let candidateNumber = "";
+  let isUnique = false;
+  let attempts = 0;
+  const maxAttempts = 15;
+
+  while (!isUnique && attempts < maxAttempts) {
+    attempts++;
+    const sequence = await getNextInvoiceSequence(shopId, datePart, session);
+    candidateNumber = buildInvoiceNumberPreview({
+      date: dateObj,
+      sequence,
+    }).invoice_number;
+
+    const collision = await Invoice.findOne({
+      shop_id: shopId,
+      invoice_number: candidateNumber,
+      deleted_at: null,
+    }).session(session);
+
+    if (!collision) {
+      isUnique = true;
+    }
+  }
+
+  if (!isUnique) {
+    const fallbackSeq = Date.now().toString().slice(-4);
+    candidateNumber = `INV-${datePart}-${fallbackSeq}`;
+  }
+
+  return candidateNumber;
+};
+
 // Temporary in-memory store for PDF buffers used during WhatsApp delivery.
 // Meta/MSG91 fetches the URL we provide; serving from our own backend avoids
 // Cloudinary CDN propagation race (error 131053). Tokens are single-use,
@@ -147,21 +219,15 @@ export default class InvoiceController {
         }
       }
 
-      // Step 3: Generate invoice number if not provided
-      let invoiceNumber = invoice.invoice_number;
-      if (!invoiceNumber) {
-        const now = new Date();
-        const datePart = buildInvoiceNumberPreview({ date: now }).datePart;
-        const sequence = await getNextInvoiceSequence(
-          user.shopId,
-          datePart,
-          session,
-        );
-        invoiceNumber = buildInvoiceNumberPreview({
-          date: now,
-          sequence,
-        }).invoice_number;
-      }
+      // Step 3: Automatically generate authoritative, collision-free invoice number on backend
+      const invoiceDate = invoice.invoice_date
+        ? new Date(invoice.invoice_date)
+        : new Date();
+      const invoiceNumber = await generateAuthoritativeInvoiceNumber(
+        user.shopId,
+        invoiceDate,
+        session,
+      );
 
       // Step 4: Calculate totals
       const totals = calculateInvoiceTotals({
@@ -1669,11 +1735,36 @@ export default class InvoiceController {
       const { user } = req;
       const now = new Date();
       const preview = buildInvoiceNumberPreview({ date: now });
+      const datePart = preview.datePart;
+
       const counter = await InvoiceCounter.findOne({
         shop_id: user.shopId,
-        date: preview.datePart,
+        date: datePart,
       });
-      const nextSequence = (counter?.sequence || 0) + 1;
+
+      const existingInvoices = await Invoice.find({
+        shop_id: user.shopId,
+        invoice_number: new RegExp(`^INV-${datePart}-\\d+$`),
+        deleted_at: null,
+      }).select("invoice_number");
+
+      let maxExistingSeq = 0;
+      for (const inv of existingInvoices) {
+        if (inv.invoice_number) {
+          const match = inv.invoice_number.match(/-(\d+)$/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxExistingSeq) {
+              maxExistingSeq = num;
+            }
+          }
+        }
+      }
+
+      const currentCounterSeq = counter?.sequence || 0;
+      const effectiveCurrentSeq = Math.max(currentCounterSeq, maxExistingSeq);
+      const nextSequence = effectiveCurrentSeq + 1;
+
       const nextInvoice = buildInvoiceNumberPreview({
         date: now,
         sequence: nextSequence,

@@ -280,10 +280,13 @@ const InvoiceGenerationPage = () => {
 
     try {
       const isPaid = currentInvoice.invoice.payment_status === "PAID";
+      const invoiceData = { ...currentInvoice.invoice };
+      delete invoiceData.invoice_number;
+
       const payload = {
         customer: currentInvoice.customer,
         invoice: {
-          ...currentInvoice.invoice,
+          ...invoiceData,
           amount_paid: isPaid
             ? Number(currentInvoice.invoice.total_amount || 0)
             : currentInvoice.invoice.payment_status === "PARTIAL"

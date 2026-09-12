@@ -579,8 +579,19 @@ export default class InvoiceController {
             backendUrl.startsWith("https://");
 
           let mediaUrl = null;
-          if (pdfBuffer && isBackendUrlValid) {
-            // Serve from our backend with invoice ID in token so servePublicPdf can self-heal/recover if needed
+          if (
+            newInvoice.invoice_pdf &&
+            newInvoice.invoice_pdf.startsWith("http")
+          ) {
+            // Direct public CDN URL (Cloudinary) — immediately reachable by Meta from local & prod
+            mediaUrl = newInvoice.invoice_pdf;
+          } else if (
+            pdfBuffer &&
+            isBackendUrlValid &&
+            !backendUrl.includes("localhost") &&
+            !backendUrl.includes("127.0.0.1")
+          ) {
+            // Fallback to backend temporary endpoint if not on localhost
             const token = `${newInvoice._id}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
             tempPdfStore.set(token, {
               buffer: pdfBuffer,
@@ -589,11 +600,6 @@ export default class InvoiceController {
             });
             setTimeout(() => tempPdfStore.delete(token), 60 * 60 * 1000);
             mediaUrl = `${backendUrl}/v1/invoices/public-pdf/${token}`;
-          } else if (
-            newInvoice.invoice_pdf &&
-            newInvoice.invoice_pdf.startsWith("http")
-          ) {
-            mediaUrl = newInvoice.invoice_pdf;
           }
 
           if (mediaUrl) {
@@ -776,9 +782,20 @@ export default class InvoiceController {
       const isBackendUrlValid =
         backendUrl.startsWith("http://") || backendUrl.startsWith("https://");
 
-      let pdfUrl = isBackendUrlValid
-        ? `${backendUrl}/v1/invoices/public-pdf/${token}`
-        : invoice.invoice_pdf;
+      let pdfUrl = null;
+      if (
+        (pdfResult?.pdf_url && pdfResult.pdf_url.startsWith("http")) ||
+        (invoice.invoice_pdf && invoice.invoice_pdf.startsWith("http"))
+      ) {
+        pdfUrl = pdfResult?.pdf_url || invoice.invoice_pdf;
+      } else if (
+        pdfBuffer &&
+        isBackendUrlValid &&
+        !backendUrl.includes("localhost") &&
+        !backendUrl.includes("127.0.0.1")
+      ) {
+        pdfUrl = `${backendUrl}/v1/invoices/public-pdf/${token}`;
+      }
 
       if (!pdfUrl) {
         return res.status(500).json({

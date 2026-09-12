@@ -65,9 +65,9 @@ const generateAuthoritativeInvoiceNumber = async (shopId, invoiceDate = new Date
   // 2. Fast-forward InvoiceCounter if it lags behind existing records
   if (maxExistingSeq > 0) {
     await InvoiceCounter.findOneAndUpdate(
-      { shop_id: shopId, date: datePart, sequence: { $lt: maxExistingSeq } },
-      { $set: { sequence: maxExistingSeq } },
-      { upsert: true, session },
+      { shop_id: shopId, date: datePart },
+      { $max: { sequence: maxExistingSeq } },
+      { upsert: true, new: true, session },
     );
   }
 

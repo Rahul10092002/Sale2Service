@@ -1,9 +1,50 @@
 import InventoryItem from "../models/InventoryItem.js";
 import Invoice from "../models/Invoice.js";
 import InvoiceItem from "../models/InvoiceItem.js";
+import Customer from "../models/Customer.js";
 import Dealer from "../models/Dealer.js";
 import ProductMaster from "../models/ProductMaster.js";
 import InventoryAuditLog from "../models/InventoryAuditLog.js";
+
+/**
+ * Format Invoice with Customer details for response
+ */
+const formatInvoiceCustomer = (invoice) => {
+  if (!invoice) return null;
+  const customer = invoice.customer_id;
+  const isCustObj = customer && typeof customer === "object";
+
+  const customerName = isCustObj
+    ? customer.full_name
+    : invoice.customer_name || "N/A";
+  const customerMobile = isCustObj
+    ? customer.whatsapp_number || customer.alternate_phone || ""
+    : invoice.customer_mobile || "N/A";
+  const customerEmail = isCustObj ? customer.email || "" : "";
+  const customerAddress =
+    isCustObj && customer.address
+      ? [
+          customer.address.line1,
+          customer.address.line2,
+          customer.address.city,
+          customer.address.state,
+          customer.address.pincode,
+        ]
+          .filter(Boolean)
+          .join(", ")
+      : "";
+
+  return {
+    _id: invoice._id,
+    invoice_number: invoice.invoice_number,
+    invoice_date: invoice.invoice_date,
+    customer_id: isCustObj ? customer._id : customer,
+    customer_name: customerName,
+    customer_mobile: customerMobile,
+    customer_email: customerEmail,
+    customer_address: customerAddress,
+  };
+};
 
 /**
  * Instant Warranty & Support Lookup Endpoint
@@ -37,44 +78,83 @@ export const lookupWarranty = async (req, res) => {
       })
       .populate("invoice_item_id");
 
-    // 2. If no direct serial match, search via Invoices (by customer_mobile, customer_name, or invoice_number)
+    // 2. Search via Customers & Invoices if no exact serial match
     if (inventoryItems.length === 0) {
+      const matchingCustomers = await Customer.find({
+        shop_id: shopId,
+        $or: [
+          { full_name: searchRegex },
+          { whatsapp_number: searchRegex },
+          { alternate_phone: searchRegex },
+          { email: searchRegex },
+        ],
+        deleted_at: null,
+      }).select("_id");
+
+      const customerIds = matchingCustomers.map((c) => c._id);
+
       const matchingInvoices = await Invoice.find({
         shop_id: shopId,
         $or: [
           { invoice_number: searchRegex },
-          { customer_name: searchRegex },
-          { customer_mobile: searchRegex },
+          ...(customerIds.length > 0 ? [{ customer_id: { $in: customerIds } }] : []),
         ],
         deleted_at: null,
       }).select("_id");
 
       const invoiceIds = matchingInvoices.map((inv) => inv._id);
 
-      if (invoiceIds.length > 0) {
-        inventoryItems = await InventoryItem.find({
-          shop_id: shopId,
-          invoice_id: { $in: invoiceIds },
-          deleted_at: null,
+      inventoryItems = await InventoryItem.find({
+        shop_id: shopId,
+        $or: [
+          { serial_number: searchRegex },
+          { product_name: searchRegex },
+          ...(invoiceIds.length > 0 ? [{ invoice_id: { $in: invoiceIds } }] : []),
+        ],
+        deleted_at: null,
+      })
+        .populate("product_id")
+        .populate("dealer_id")
+        .populate({
+          path: "invoice_id",
+          populate: { path: "customer_id" },
         })
-          .populate("product_id")
-          .populate("dealer_id")
-          .populate({
-            path: "invoice_id",
-            populate: { path: "customer_id" },
-          })
-          .populate("invoice_item_id");
-      }
+        .populate("invoice_item_id");
     }
 
     // 3. Fallback: Search InvoiceItem records directly (for legacy invoices or replaced serials)
     if (inventoryItems.length === 0) {
+      const matchingCustomers = await Customer.find({
+        shop_id: shopId,
+        $or: [
+          { full_name: searchRegex },
+          { whatsapp_number: searchRegex },
+          { alternate_phone: searchRegex },
+        ],
+        deleted_at: null,
+      }).select("_id");
+
+      const customerIds = matchingCustomers.map((c) => c._id);
+
+      const matchingInvoices = await Invoice.find({
+        shop_id: shopId,
+        $or: [
+          { invoice_number: searchRegex },
+          ...(customerIds.length > 0 ? [{ customer_id: { $in: customerIds } }] : []),
+        ],
+        deleted_at: null,
+      }).select("_id");
+
+      const invoiceIds = matchingInvoices.map((inv) => inv._id);
+
       const matchingInvoiceItems = await InvoiceItem.find({
         shop_id: shopId,
         $or: [
-          { serial_number: searchTerm.toUpperCase() },
-          { previous_serial_number: searchTerm.toUpperCase() },
+          { serial_number: searchRegex },
+          { previous_serial_number: searchRegex },
+          { product_name: searchRegex },
           { invoice_item_id: searchTerm },
+          ...(invoiceIds.length > 0 ? [{ invoice_id: { $in: invoiceIds } }] : []),
         ],
         deleted_at: null,
       }).populate({
@@ -103,15 +183,7 @@ export const lookupWarranty = async (req, res) => {
               company: item.company,
               model_number: item.model_number,
               status: item.status,
-              invoice: item.invoice_id
-                ? {
-                    _id: item.invoice_id._id,
-                    invoice_number: item.invoice_id.invoice_number,
-                    invoice_date: item.invoice_id.invoice_date,
-                    customer_name: item.invoice_id.customer_name,
-                    customer_mobile: item.invoice_id.customer_mobile,
-                  }
-                : null,
+              invoice: formatInvoiceCustomer(item.invoice_id),
               dealer: dealer
                 ? {
                     _id: dealer._id,
@@ -177,15 +249,7 @@ export const lookupWarranty = async (req, res) => {
           purchase_date: item.purchase_date,
           purchase_invoice_ref: item.purchase_invoice_ref,
           sold_at: item.sold_at,
-          invoice: invoice
-            ? {
-                _id: invoice._id,
-                invoice_number: invoice.invoice_number,
-                invoice_date: invoice.invoice_date,
-                customer_name: invoice.customer_name,
-                customer_mobile: invoice.customer_mobile,
-              }
-            : null,
+          invoice: formatInvoiceCustomer(invoice),
           dealer: dealer
             ? {
                 _id: dealer._id,
@@ -220,6 +284,209 @@ export const lookupWarranty = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to perform warranty lookup",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Autocomplete / Suggestions for Warranty & RMA Search
+ */
+export const getWarrantySuggestions = async (req, res) => {
+  try {
+    const shopId = req.user.shopId;
+    const { query = "" } = req.query;
+    const searchTerm = query.trim();
+
+    if (!searchTerm) {
+      // Return recent sold/active items, recent invoices, recent customers
+      const [recentItems, recentInvoices, recentCustomers] = await Promise.all([
+        InventoryItem.find({
+          shop_id: shopId,
+          serial_number: { $nin: ["", null] },
+          deleted_at: null,
+        })
+          .sort({ updatedAt: -1 })
+          .limit(5)
+          .select("serial_number product_name status"),
+        Invoice.find({ shop_id: shopId, deleted_at: null })
+          .populate("customer_id", "full_name whatsapp_number")
+          .sort({ invoice_date: -1 })
+          .limit(5)
+          .select("invoice_number invoice_date customer_id"),
+        Customer.find({ shop_id: shopId, deleted_at: null })
+          .sort({ createdAt: -1 })
+          .limit(5)
+          .select("full_name whatsapp_number"),
+      ]);
+
+      const suggestions = [
+        ...recentItems.map((item) => ({
+          type: "serial",
+          value: item.serial_number,
+          title: item.serial_number,
+          subtitle: `${item.product_name} • ${item.status || "IN_STOCK"}`,
+          badge: "Serial",
+        })),
+        ...recentInvoices.map((inv) => ({
+          type: "invoice",
+          value: inv.invoice_number,
+          title: inv.invoice_number,
+          subtitle: `${inv.customer_id?.full_name || "Customer"} • ${new Date(inv.invoice_date).toLocaleDateString("en-IN")}`,
+          badge: "Invoice",
+        })),
+        ...recentCustomers.map((cust) => ({
+          type: "customer",
+          value: cust.full_name,
+          title: cust.full_name,
+          subtitle: cust.whatsapp_number || "Customer",
+          badge: "Customer",
+        })),
+      ];
+
+      return res.status(200).json({ success: true, suggestions });
+    }
+
+    const regex = new RegExp(searchTerm, "i");
+
+    // Search across InventoryItem, InvoiceItem, Invoice, Customer, ProductMaster in parallel
+    const [
+      matchingSerials,
+      matchingInvoiceItems,
+      matchingInvoices,
+      matchingCustomers,
+      matchingProducts,
+    ] = await Promise.all([
+      InventoryItem.find({
+        shop_id: shopId,
+        $or: [
+          { serial_number: regex },
+          { product_name: regex },
+        ],
+        deleted_at: null,
+      })
+        .limit(6)
+        .select("serial_number product_name status"),
+      InvoiceItem.find({
+        shop_id: shopId,
+        $or: [
+          { serial_number: regex },
+          { previous_serial_number: regex },
+        ],
+        deleted_at: null,
+      })
+        .limit(6)
+        .select("serial_number product_name"),
+      Invoice.find({
+        shop_id: shopId,
+        invoice_number: regex,
+        deleted_at: null,
+      })
+        .populate("customer_id", "full_name whatsapp_number")
+        .limit(5)
+        .select("invoice_number invoice_date customer_id"),
+      Customer.find({
+        shop_id: shopId,
+        $or: [
+          { full_name: regex },
+          { whatsapp_number: regex },
+          { alternate_phone: regex },
+        ],
+        deleted_at: null,
+      })
+        .limit(5)
+        .select("full_name whatsapp_number"),
+      ProductMaster.find({
+        shop_id: shopId,
+        $or: [
+          { product_name: regex },
+          { company: regex },
+          { model_number: regex },
+        ],
+        deleted_at: null,
+      })
+        .limit(5)
+        .select("product_name company model_number product_category"),
+    ]);
+
+    const seenValues = new Set();
+    const suggestions = [];
+
+    // Add Serials
+    for (const item of matchingSerials) {
+      if (item.serial_number && !seenValues.has(item.serial_number.toUpperCase())) {
+        seenValues.add(item.serial_number.toUpperCase());
+        suggestions.push({
+          type: "serial",
+          value: item.serial_number,
+          title: item.serial_number,
+          subtitle: `${item.product_name} • ${item.status || "IN_STOCK"}`,
+          badge: "Serial",
+        });
+      }
+    }
+
+    for (const item of matchingInvoiceItems) {
+      if (item.serial_number && !seenValues.has(item.serial_number.toUpperCase())) {
+        seenValues.add(item.serial_number.toUpperCase());
+        suggestions.push({
+          type: "serial",
+          value: item.serial_number,
+          title: item.serial_number,
+          subtitle: `${item.product_name || "Product"} • Invoice Item`,
+          badge: "Serial",
+        });
+      }
+    }
+
+    // Add Invoices
+    for (const inv of matchingInvoices) {
+      if (!seenValues.has(inv.invoice_number)) {
+        seenValues.add(inv.invoice_number);
+        suggestions.push({
+          type: "invoice",
+          value: inv.invoice_number,
+          title: inv.invoice_number,
+          subtitle: `${inv.customer_id?.full_name || "Customer"} • ${new Date(inv.invoice_date).toLocaleDateString("en-IN")}`,
+          badge: "Invoice",
+        });
+      }
+    }
+
+    // Add Customers
+    for (const cust of matchingCustomers) {
+      if (!seenValues.has(cust.full_name)) {
+        seenValues.add(cust.full_name);
+        suggestions.push({
+          type: "customer",
+          value: cust.full_name,
+          title: cust.full_name,
+          subtitle: cust.whatsapp_number,
+          badge: "Customer",
+        });
+      }
+    }
+
+    // Add Products
+    for (const prod of matchingProducts) {
+      if (!seenValues.has(prod.product_name)) {
+        seenValues.add(prod.product_name);
+        suggestions.push({
+          type: "product",
+          value: prod.product_name,
+          title: prod.product_name,
+          subtitle: `${prod.company || ""} ${prod.model_number ? `(${prod.model_number})` : ""} • ${prod.product_category || "Product"}`.trim(),
+          badge: "Product",
+        });
+      }
+    }
+
+    return res.status(200).json({ success: true, suggestions });
+  } catch (error) {
+    console.error("Error fetching warranty suggestions:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch suggestions",
       error: error.message,
     });
   }

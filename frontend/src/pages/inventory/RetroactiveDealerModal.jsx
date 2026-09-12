@@ -4,7 +4,7 @@ import { useGetDealersQuery } from "../../features/dealers/dealerApi.js";
 import { useLinkRetroactiveDealerMutation } from "../../features/inventory/inventoryApi.js";
 import { Button } from "../../components/ui/index.js";
 
-const RetroactiveDealerModal = ({ isOpen, onClose, item }) => {
+const RetroactiveDealerModal = ({ isOpen, onClose, item, onSuccess }) => {
   const { data: dealersData } = useGetDealersQuery(undefined, { skip: !isOpen });
   const [linkDealer, { isLoading: isSubmitting }] = useLinkRetroactiveDealerMutation();
 
@@ -64,6 +64,9 @@ const RetroactiveDealerModal = ({ isOpen, onClose, item }) => {
       }).unwrap();
 
       setSuccessMsg(res.message || "Origin supplier linked successfully!");
+      if (onSuccess) {
+        onSuccess(res);
+      }
       setTimeout(() => {
         onClose();
         setSuccessMsg("");

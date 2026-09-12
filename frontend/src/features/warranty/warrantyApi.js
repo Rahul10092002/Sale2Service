@@ -6,7 +6,17 @@ export const warrantyApi = baseApi.injectEndpoints({
       query: (query) => `/warranty/lookup?query=${encodeURIComponent(query)}`,
       providesTags: ["Warranty"],
     }),
+    getWarrantySuggestions: builder.query({
+      query: (query = "") =>
+        `/warranty/suggestions?query=${encodeURIComponent(query)}`,
+      providesTags: ["WarrantySuggestions"],
+    }),
   }),
 });
 
-export const { useLazyLookupWarrantyQuery, useLookupWarrantyQuery } = warrantyApi;
+export const {
+  useLazyLookupWarrantyQuery,
+  useLookupWarrantyQuery,
+  useGetWarrantySuggestionsQuery,
+  useLazyGetWarrantySuggestionsQuery,
+} = warrantyApi;

@@ -570,31 +570,43 @@ export default class InvoiceController {
             messageType: "invoice_created",
           };
 
-          if (pdfBuffer) {
-            // Serve from our backend so Meta can fetch immediately without CDN delay
-            const token = randomUUID();
+          const backendUrl = (process.env.BACKEND_URL || "").replace(
+            /\/$/,
+            "",
+          );
+          const isBackendUrlValid =
+            backendUrl.startsWith("http://") ||
+            backendUrl.startsWith("https://");
+
+          let mediaUrl = null;
+          if (pdfBuffer && isBackendUrlValid) {
+            // Serve from our backend with invoice ID in token so servePublicPdf can self-heal/recover if needed
+            const token = `${newInvoice._id}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
             tempPdfStore.set(token, {
               buffer: pdfBuffer,
               filename: `Invoice_${invoiceNumber}.pdf`,
-              expires: Date.now() + 5 * 60 * 1000,
+              expires: Date.now() + 60 * 60 * 1000,
             });
-            setTimeout(() => tempPdfStore.delete(token), 5 * 60 * 1000);
-            const backendUrl = (process.env.BACKEND_URL || "").replace(
-              /\/$/,
-              "",
-            );
-            msgConfig.media = {
-              url: `${backendUrl}/v1/invoices/public-pdf/${token}`,
-              filename: `Invoice_${invoiceNumber}.pdf`,
-            };
-          } else if (newInvoice.invoice_pdf) {
-            msgConfig.media = {
-              url: newInvoice.invoice_pdf,
-              filename: `Invoice_${invoiceNumber}.pdf`,
-            };
+            setTimeout(() => tempPdfStore.delete(token), 60 * 60 * 1000);
+            mediaUrl = `${backendUrl}/v1/invoices/public-pdf/${token}`;
+          } else if (
+            newInvoice.invoice_pdf &&
+            newInvoice.invoice_pdf.startsWith("http")
+          ) {
+            mediaUrl = newInvoice.invoice_pdf;
           }
 
-          await sendWhatsappMessageViaMSG91(msgConfig);
+          if (mediaUrl) {
+            msgConfig.media = {
+              url: mediaUrl,
+              filename: `Invoice_${invoiceNumber}.pdf`,
+            };
+            await sendWhatsappMessageViaMSG91(msgConfig);
+          } else {
+            console.warn(
+              `Skipping WhatsApp invoice_created for ${invoiceNumber}: No valid PDF document URL available for DOCUMENT header.`,
+            );
+          }
         } catch (waErr) {
           console.error("WhatsApp send error (non-fatal):", waErr);
         }
@@ -615,28 +627,86 @@ export default class InvoiceController {
 
   /**
    * Serve a PDF temporarily stored in memory for WhatsApp delivery.
-   * This is a public (unauthenticated) endpoint — the token is a
-   * cryptographically random UUID that expires in 10 minutes.
-   * Token is NOT single-use so Meta can retry on failure.
+   * This is a public (unauthenticated) endpoint — the token is
+   * composed of the invoiceId and a random suffix (e.g. <invoiceId>_<suffix>).
+   * If the in-memory cache expired or was wiped by a server restart/cold start,
+   * it gracefully falls back to Cloudinary redirect or on-the-fly PDF regeneration
+   * so Meta never receives a 404 JSON response (which causes "Format mismatch, expected DOCUMENT").
    * GET /invoices/public-pdf/:token
    */
   async servePublicPdf(req, res) {
-    const { token } = req.params;
-    const entry = tempPdfStore.get(token);
-    if (!entry || entry.expires < Date.now()) {
-      tempPdfStore.delete(token);
+    try {
+      const { token } = req.params;
+      const entry = tempPdfStore.get(token);
+      if (entry && entry.buffer && entry.expires >= Date.now()) {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `inline; filename="${entry.filename || "invoice.pdf"}"`,
+        );
+        res.setHeader("Content-Length", entry.buffer.length);
+        return res.send(entry.buffer);
+      }
+
+      // If not found in memory (e.g. server restarted / cold start on Render),
+      // recover using the invoice ID embedded in the token
+      const invoiceId = token?.includes("_") ? token.split("_")[0] : token;
+      if (invoiceId && mongoose.Types.ObjectId.isValid(invoiceId)) {
+        const invoice = await Invoice.findOne({
+          _id: invoiceId,
+          deleted_at: null,
+        })
+          .populate("customer_id")
+          .populate("shop_id");
+
+        if (invoice) {
+          if (invoice.invoice_pdf && invoice.invoice_pdf.startsWith("http")) {
+            return res.redirect(invoice.invoice_pdf);
+          }
+
+          // If Cloudinary URL not available, regenerate PDF buffer on the fly
+          const invoiceItems = await InvoiceItem.find({
+            invoice_id: invoice._id,
+            deleted_at: null,
+          });
+          const shop =
+            invoice.shop_id || (await Shop.findById(invoice.shop_id));
+
+          const pdfResult =
+            await invoiceDocumentService.generateAndStoreInvoicePdf({
+              invoice,
+              customer: invoice.customer_id,
+              invoiceItems,
+              shop,
+              tag: "recovery",
+            });
+
+          if (pdfResult?.buffer) {
+            tempPdfStore.set(token, {
+              buffer: pdfResult.buffer,
+              filename: `Invoice_${invoice.invoice_number || "doc"}.pdf`,
+              expires: Date.now() + 60 * 60 * 1000,
+            });
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader(
+              "Content-Disposition",
+              `inline; filename="Invoice_${invoice.invoice_number || "doc"}.pdf"`,
+            );
+            res.setHeader("Content-Length", pdfResult.buffer.length);
+            return res.send(pdfResult.buffer);
+          }
+        }
+      }
+
       return res
         .status(404)
         .json({ success: false, message: "PDF not found or expired" });
+    } catch (err) {
+      console.error("servePublicPdf recovery error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Error retrieving PDF document" });
     }
-    // Do NOT delete token here — Meta may retry the download
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="${entry.filename}"`,
-    );
-    res.setHeader("Content-Length", entry.buffer.length);
-    return res.send(entry.buffer);
   }
 
   /**
@@ -694,23 +764,35 @@ export default class InvoiceController {
       }
 
       // Store buffer in temp map — Meta will fetch from our backend URL
-      const token = randomUUID();
+      const token = `${invoice._id}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
       const pdfFilename = `Invoice_${invoice.invoice_number}.pdf`;
       tempPdfStore.set(token, {
         buffer: pdfBuffer,
         filename: pdfFilename,
-        expires: Date.now() + 10 * 60 * 1000,
+        expires: Date.now() + 60 * 60 * 1000,
       });
-      setTimeout(() => tempPdfStore.delete(token), 10 * 60 * 1000);
+      setTimeout(() => tempPdfStore.delete(token), 60 * 60 * 1000);
       const backendUrl = (process.env.BACKEND_URL || "").replace(/\/$/, "");
-      const pdfUrl = `${backendUrl}/v1/invoices/public-pdf/${token}`;
+      const isBackendUrlValid =
+        backendUrl.startsWith("http://") || backendUrl.startsWith("https://");
+
+      let pdfUrl = isBackendUrlValid
+        ? `${backendUrl}/v1/invoices/public-pdf/${token}`
+        : invoice.invoice_pdf;
+
+      if (!pdfUrl) {
+        return res.status(500).json({
+          success: false,
+          message: "Cannot send invoice: No public PDF URL available",
+        });
+      }
 
       const vars = {
         1: customer?.full_name || "",
 
         2: invoice.invoice_number,
 
-        3: new Date(invoice.invoice_date).toLocaleDateString(),
+        3: new Date(invoice.invoice_date).toLocaleDateString("hi-IN"),
 
         4:
           typeof invoice.total_amount === "number"
@@ -718,16 +800,21 @@ export default class InvoiceController {
             : String(invoice.total_amount),
 
         5:
-          typeof invoice.paid_amount === "number"
+          typeof invoice.amount_paid === "number"
             ? invoice.amount_paid.toFixed(2)
-            : "0",
+            : typeof invoice.paid_amount === "number"
+              ? invoice.paid_amount.toFixed(2)
+              : "0",
 
         6:
-          typeof invoice.due_amount === "number"
+          typeof invoice.amount_due === "number"
             ? invoice.amount_due.toFixed(2)
-            : (
-                (invoice.total_amount || 0) - (invoice.paid_amount || 0)
-              ).toFixed(2),
+            : typeof invoice.due_amount === "number"
+              ? invoice.due_amount.toFixed(2)
+              : (
+                  (invoice.total_amount || 0) -
+                  (invoice.amount_paid || invoice.paid_amount || 0)
+                ).toFixed(2),
 
         7: {
              PAID: "Paid",
@@ -735,7 +822,7 @@ export default class InvoiceController {
              UNPAID: "Unpaid",
            }[invoice.payment_status] || "Pending",
 
-        8: shop.phone || shop.mobile || "",
+        8: shop.phone || shop.mobile || shop.contact_number || "",
 
         9: shop.shop_name_hi || shop.shop_name || "",
       };
@@ -834,11 +921,12 @@ export default class InvoiceController {
         });
       }
 
-      // Template variables matching payment_reminders template (6 params):
-      // {{1}}: Pending amount, {{2}}: Invoice number, {{3}}: Due date,
-      // {{4}}: Product serial number, {{5}}: Shop contact info, {{6}}: Shop name
+      // Template variables matching payment_reminders template (7 params):
+      // {{1}}: Customer name, {{2}}: Pending amount, {{3}}: Invoice number,
+      // {{4}}: Product serial number, {{5}}: Due date, {{6}}: Shop contact info, {{7}}: Shop name
       const serialNumber = invoice.invoice_items?.[0]?.serial_number || "N/A";
       const shopContact = formatPhoneNumber(shop?.phone) || "";
+      const customerName = customer.full_name || invoice.customer_name || "";
 
       // Determine if invoice is overdue (past due date)
       const isOverdue =
@@ -852,7 +940,7 @@ export default class InvoiceController {
         // {{4}}: Invoice number, {{5}}: Product serial number,
         // {{6}}: Shop contact info, {{7}}: Shop name
         vars = {
-          1: customer.full_name || "",
+          1: customerName,
           2:
             typeof invoice.amount_due === "number"
               ? invoice.amount_due.toFixed(2)
@@ -865,18 +953,20 @@ export default class InvoiceController {
         };
       } else {
         // payment_reminders template variables:
-        // {{1}}: Pending amount, {{2}}: Invoice number, {{3}}: Due date,
-        // {{4}}: Product serial number, {{5}}: Shop contact info, {{6}}: Shop name
+        // {{1}}: Customer name, {{2}}: Pending amount, {{3}}: Invoice number,
+        // {{4}}: Product serial number, {{5}}: Due date,
+        // {{6}}: Shop contact info, {{7}}: Shop name
         vars = {
-          1:
+          1: customerName,
+          2:
             typeof invoice.amount_due === "number"
               ? invoice.amount_due.toFixed(2)
               : String(invoice.amount_due || "0"),
-          2: invoice.invoice_number || "N/A",
-          3: serialNumber,
-          4: formatDateForMessage(invoice.due_date),
-          5: shopContact,
-          6: shop.shop_name_hi || shop.shop_name || "",
+          3: invoice.invoice_number || "N/A",
+          4: serialNumber,
+          5: formatDateForMessage(invoice.due_date),
+          6: shopContact,
+          7: shop.shop_name_hi || shop.shop_name || "",
         };
       }
 

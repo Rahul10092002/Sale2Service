@@ -302,8 +302,10 @@ export default class PaymentReminderScheduler extends BaseScheduler {
     const serialNumber = invoiceItems?.[0]?.serial_number || "N/A";
     const shopContact = getShopContactInfo(shop) || "";
 
+    const customerName =
+      invoice.customer_id?.full_name || invoice.customer_name || "";
+
     if (templateName === "payment_missed") {
-      const customerName = invoice.customer_id?.full_name || "";
       return {
         variables: {
           1: customerName,
@@ -323,15 +325,16 @@ export default class PaymentReminderScheduler extends BaseScheduler {
 
     return {
       variables: {
-        1:
+        1: customerName,
+        2:
           typeof invoice.amount_due === "number"
             ? invoice.amount_due.toFixed(2)
             : String(invoice.amount_due || "0"),
-        2: invoice.invoice_number || "N/A",
-        3: serialNumber,
-        4: formatDateForMessage(invoice.due_date),
-        5: shopContact,
-        6: shop?.shop_name_hi || shop?.shop_name || "",
+        3: invoice.invoice_number || "N/A",
+        4: serialNumber,
+        5: formatDateForMessage(invoice.due_date),
+        6: shopContact,
+        7: shop?.shop_name_hi || shop?.shop_name || "",
       },
       buttons: [{ subtype: "quick_reply", value: shopContact }],
     };

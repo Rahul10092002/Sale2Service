@@ -89,10 +89,20 @@ export const sendWhatsappMessageViaMSG91 = async ({
     }
 
     if (media && media.url) {
+      let mediaUrl = String(media.url).trim();
+      if (
+        mediaUrl.startsWith("/") &&
+        process.env.BACKEND_URL &&
+        (process.env.BACKEND_URL.startsWith("http://") ||
+          process.env.BACKEND_URL.startsWith("https://"))
+      ) {
+        const base = process.env.BACKEND_URL.replace(/\/$/, "");
+        mediaUrl = `${base}${mediaUrl}`;
+      }
       componentPayload["header_1"] = {
-        type: "document",
+        type: media.type || "document",
         filename: media.filename || "document.pdf",
-        value: media.url,
+        value: mediaUrl,
       };
     }
 

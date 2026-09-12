@@ -192,7 +192,7 @@ const ProductCard = React.memo(function ProductCard({
   const photoCount = images.length;
   const warrantySummary = `${item.warranty_type || "STANDARD"} · ${item.warranty_duration_months || 12}M`;
   const servicePlanSummary = item.service_plan_enabled
-    ? `Active · ${item.service_plan?.service_interval_type || "MONTHLY"}`
+    ? `Active · ${item.service_plan?.service_interval_type || "QUARTERLY"}`
     : "Off";
   const metadataFilledCount = [
     item.capacity_rating,
@@ -847,7 +847,7 @@ const ProductCard = React.memo(function ProductCard({
                               },
                             });
                           } else {
-                            const intervalType = "MONTHLY";
+                            const intervalType = "QUARTERLY";
                             const intervalValue = 1;
                             const serviceStartDate = computeServiceStartDate(
                               intervalType,
@@ -902,7 +902,7 @@ const ProductCard = React.memo(function ProductCard({
                           id={`service-interval-type-${item.id}`}
                           label="Frequency"
                           value={
-                            item.service_plan?.service_interval_type || "MONTHLY"
+                            item.service_plan?.service_interval_type || "QUARTERLY"
                           }
                           onChange={(e) => {
                             const newFrequency = e.target.value;
@@ -1026,7 +1026,7 @@ const ProductCard = React.memo(function ProductCard({
                             const newStart = e.target.value;
                             const intervalType =
                               item.service_plan?.service_interval_type ||
-                              "MONTHLY";
+                              "QUARTERLY";
                             const intervalValue =
                               item.service_plan?.service_interval_value || 1;
                             const warrantyEnd = getEffectiveWarrantyEndDate(item);
@@ -1078,12 +1078,12 @@ const ProductCard = React.memo(function ProductCard({
                               item.service_plan?.service_start_date ||
                               computeServiceStartDate(
                                 item.service_plan?.service_interval_type ||
-                                  "MONTHLY",
+                                  "QUARTERLY",
                                 item.service_plan?.service_interval_value || 1,
                               );
                             const intervalType =
                               item.service_plan?.service_interval_type ||
-                              "MONTHLY";
+                              "QUARTERLY";
                             const intervalValue =
                               item.service_plan?.service_interval_value || 1;
                             const endDate = computeServiceEndDate(
@@ -1162,7 +1162,7 @@ const ProductCard = React.memo(function ProductCard({
                     {/* Dynamic Derived Summary Banner */}
                     {(() => {
                       const sp = item.service_plan || {};
-                      const intervalType = sp.service_interval_type || "MONTHLY";
+                      const intervalType = sp.service_interval_type || "QUARTERLY";
                       const intervalValue = sp.service_interval_value || 1;
                       const start = sp.service_start_date;
                       const total = Number(sp.total_services) || 1;

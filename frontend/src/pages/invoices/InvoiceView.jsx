@@ -24,6 +24,10 @@ import {
   Plus,
   Search,
   Maximize2,
+  Image as ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import { Button, LoadingSpinner } from "../../components/ui/index.js";
 import {
@@ -53,6 +57,7 @@ const InvoiceView = () => {
   const { id } = useParams();
   const [selectedRetroItem, setSelectedRetroItem] = useState(null);
   const [selectedTraceItem, setSelectedTraceItem] = useState(null);
+  const [selectedItemImages, setSelectedItemImages] = useState(null); // { item, images: string[], activeIndex: number }
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -70,6 +75,45 @@ const InvoiceView = () => {
     location.state?.label || routeLabels[location.state?.from] || "Invoices";
 
   const { data: invoice, isLoading, error } = useGetInvoiceByIdQuery(id);
+
+  // Helper to extract all valid image URLs from a product or service line item
+  const getItemImages = (item) => {
+    if (!item) return [];
+    const list = [];
+    if (Array.isArray(item.product_images)) {
+      list.push(...item.product_images.filter(Boolean));
+    } else if (
+      typeof item.product_images === "string" &&
+      item.product_images.trim()
+    ) {
+      list.push(item.product_images.trim());
+    }
+    if (Array.isArray(item.images)) {
+      list.push(...item.images.filter(Boolean));
+    }
+    if (item.product_image_url && typeof item.product_image_url === "string") {
+      list.push(item.product_image_url);
+    }
+    if (item.image_url && typeof item.image_url === "string") {
+      list.push(item.image_url);
+    }
+    if (item.serial_number_image) {
+      list.push(item.serial_number_image);
+    }
+    if (item.warranty_card_image) {
+      list.push(item.warranty_card_image);
+    }
+    if (item.installation_image) {
+      list.push(item.installation_image);
+    }
+    if (item.customer_with_product_image) {
+      list.push(item.customer_with_product_image);
+    }
+    if (Array.isArray(item.inventory_item_id?.product_images)) {
+      list.push(...item.inventory_item_id.product_images.filter(Boolean));
+    }
+    return [...new Set(list)];
+  };
 
   // Handle API responses that return { invoice, invoice_items }
   const invoiceObj = invoice?.invoice ? invoice.invoice : invoice || {};
@@ -550,6 +594,7 @@ const InvoiceView = () => {
                       const hasDealer = Boolean(item.dealer_id || item.purchase_source);
                       const batteryLine = !isService ? invoiceBatteryLine(item) : "";
                       const lineTotal = Number(item.selling_price || item.price || 0) * (Number(item.quantity) || 1);
+                      const itemImages = getItemImages(item);
 
                       const endDate = item.warranty_end_date ? new Date(item.warranty_end_date) : null;
                       const today = new Date();
@@ -581,6 +626,24 @@ const InvoiceView = () => {
                                       {item.product_category}
                                     </span>
                                   )
+                                )}
+                                {itemImages.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setSelectedItemImages({
+                                        item,
+                                        images: itemImages,
+                                        activeIndex: 0,
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 text-[10px] font-bold transition-all shadow-2xs group shrink-0"
+                                    title={`View ${itemImages.length} image(s)`}
+                                  >
+                                    <ImageIcon className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                    <span>{itemImages.length} Photo{itemImages.length > 1 ? "s" : ""}</span>
+                                    <Eye className="w-2.5 h-2.5 text-purple-500 group-hover:scale-110 transition-transform" />
+                                  </button>
                                 )}
                               </div>
                               {batteryLine && (
@@ -662,15 +725,33 @@ const InvoiceView = () => {
                               </div>
                             )}
 
-                            {!isService && (item.inventory_item_id || item._id) && (
-                              <Link
-                                to={`/products/${item._id}`}
-                                state={{ from: location.pathname, label: "Invoice" }}
-                                className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline self-end sm:self-auto"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" /> View Product
-                              </Link>
-                            )}
+                            <div className="flex items-center gap-3 self-end sm:self-auto">
+                              {itemImages.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedItemImages({
+                                      item,
+                                      images: itemImages,
+                                      activeIndex: 0,
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 font-semibold hover:underline"
+                                >
+                                  <ImageIcon className="w-3.5 h-3.5" /> Photos ({itemImages.length})
+                                </button>
+                              )}
+
+                              {!isService && (item.inventory_item_id || item._id) && (
+                                <Link
+                                  to={`/products/${item._id}`}
+                                  state={{ from: location.pathname, label: "Invoice" }}
+                                  className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" /> View Product
+                                </Link>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -695,6 +776,7 @@ const InvoiceView = () => {
                           const isService = item.item_type === "SERVICE";
                           const hasDealer = Boolean(item.dealer_id || item.purchase_source);
                           const batteryLine = !isService ? invoiceBatteryLine(item) : "";
+                          const itemImages = getItemImages(item);
 
                           const endDate = item.warranty_end_date ? new Date(item.warranty_end_date) : null;
                           const today = new Date();
@@ -720,6 +802,24 @@ const InvoiceView = () => {
                                       <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
                                         {item.service_category || "SERVICE"}
                                       </span>
+                                    )}
+                                    {itemImages.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setSelectedItemImages({
+                                            item,
+                                            images: itemImages,
+                                            activeIndex: 0,
+                                          })
+                                        }
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 text-[10px] font-bold transition-all shadow-2xs group shrink-0"
+                                        title={`View ${itemImages.length} image(s) for ${item.product_name}`}
+                                      >
+                                        <ImageIcon className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                        <span>{itemImages.length} Photo{itemImages.length > 1 ? "s" : ""}</span>
+                                        <Eye className="w-2.5 h-2.5 text-purple-500 group-hover:scale-110 transition-transform" />
+                                      </button>
                                     )}
                                   </div>
 
@@ -795,20 +895,36 @@ const InvoiceView = () => {
                                 {formatCurrency(Number(item.selling_price || item.price || 0) * (Number(item.quantity) || 1))}
                               </td>
 
-                              {/* Direct Product Link */}
+                              {/* Direct Product Link & Images */}
                               <td className="py-3 px-2 text-center">
-                                {!isService && (item.inventory_item_id || item._id) ? (
-                                  <Link
-                                    to={`/products/${item._id}`}
-                                    state={{ from: location.pathname, label: "Invoice" }}
-                                    className="inline-flex items-center justify-center p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded transition-colors"
-                                    title="Go to Product Details & Service History"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                  </Link>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
+                                <div className="inline-flex items-center justify-center gap-1">
+                                  {itemImages.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setSelectedItemImages({
+                                          item,
+                                          images: itemImages,
+                                          activeIndex: 0,
+                                        })
+                                      }
+                                      className="inline-flex items-center justify-center p-1 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950 rounded transition-colors"
+                                      title={`View ${itemImages.length} image(s)`}
+                                    >
+                                      <ImageIcon className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  {!isService && (item.inventory_item_id || item._id) ? (
+                                    <Link
+                                      to={`/products/${item._id}`}
+                                      state={{ from: location.pathname, label: "Invoice" }}
+                                      className="inline-flex items-center justify-center p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded transition-colors"
+                                      title="Go to Product Details & Service History"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                    </Link>
+                                  ) : null}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1209,6 +1325,145 @@ const InvoiceView = () => {
           onClose={() => setSelectedRetroItem(null)}
           item={selectedRetroItem}
         />
+
+        {/* Modal 5: Product & Service Images Gallery Modal */}
+        {selectedItemImages && (
+          <Dialog
+            open={Boolean(selectedItemImages)}
+            onClose={() => setSelectedItemImages(null)}
+            maxWidth="3xl"
+          >
+            <DialogHeader onClose={() => setSelectedItemImages(null)}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 rounded-lg shrink-0">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-bold text-gray-900 dark:text-white truncate text-base leading-snug">
+                    {selectedItemImages.item?.product_name || "Product Images"}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 font-normal">
+                    <span className="font-medium text-purple-600 dark:text-purple-400">
+                      {selectedItemImages.item?.item_type === "SERVICE" ? "Service Item" : "Product Item"}
+                    </span>
+                    {selectedItemImages.item?.serial_number && (
+                      <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-[11px]">
+                        SN: {selectedItemImages.item.serial_number}
+                      </span>
+                    )}
+                    <span>• {selectedItemImages.images.length} Image{selectedItemImages.images.length > 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <DialogBody className="p-3 sm:p-4">
+              <div className="space-y-3">
+                {/* Main Image Showcase */}
+                <div className="relative bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center min-h-[300px] max-h-[60vh] sm:max-h-[65vh] border border-slate-800 shadow-inner group select-none">
+                  <img
+                    src={selectedItemImages.images[selectedItemImages.activeIndex || 0]}
+                    alt={`${selectedItemImages.item?.product_name || "Product"} - Image ${(selectedItemImages.activeIndex || 0) + 1}`}
+                    className="max-h-[55vh] sm:max-h-[60vh] w-auto max-w-full object-contain mx-auto transition-transform duration-200"
+                  />
+
+                  {/* Previous Button */}
+                  {selectedItemImages.images.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedItemImages((prev) => ({
+                          ...prev,
+                          activeIndex:
+                            (prev.activeIndex - 1 + prev.images.length) %
+                            prev.images.length,
+                        }))
+                      }
+                      className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white backdrop-blur-xs transition-all opacity-80 hover:opacity-100 hover:scale-110 shadow-lg"
+                      title="Previous image"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                  )}
+
+                  {/* Next Button */}
+                  {selectedItemImages.images.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedItemImages((prev) => ({
+                          ...prev,
+                          activeIndex:
+                            (prev.activeIndex + 1) % prev.images.length,
+                        }))
+                      }
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white backdrop-blur-xs transition-all opacity-80 hover:opacity-100 hover:scale-110 shadow-lg"
+                      title="Next image"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  )}
+
+                  {/* Image Counter Badge */}
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-sm text-white text-xs font-bold border border-white/10 shadow-sm">
+                    {(selectedItemImages.activeIndex || 0) + 1} / {selectedItemImages.images.length}
+                  </div>
+                </div>
+
+                {/* Thumbnail Carousel (when multiple photos exist) */}
+                {selectedItemImages.images.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto py-1 px-0.5 scrollbar-thin">
+                    {selectedItemImages.images.map((imgUrl, idx) => {
+                      const isActive = (selectedItemImages.activeIndex || 0) === idx;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() =>
+                            setSelectedItemImages((prev) => ({
+                              ...prev,
+                              activeIndex: idx,
+                            }))
+                          }
+                          className={`relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                            isActive
+                              ? "border-purple-500 ring-2 ring-purple-400/50 scale-95 opacity-100"
+                              : "border-gray-200 dark:border-dark-border opacity-60 hover:opacity-100"
+                          }`}
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`Thumbnail ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </DialogBody>
+
+            <DialogFooter>
+              <div className="w-full flex items-center justify-between">
+                <a
+                  href={selectedItemImages.images[selectedItemImages.activeIndex || 0]}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline"
+                >
+                  <ExternalLink className="w-4 h-4" /> Open Full Image
+                </a>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedItemImages(null)}
+                >
+                  Close
+                </Button>
+              </div>
+            </DialogFooter>
+          </Dialog>
+        )}
       </div>
     </div>
   );

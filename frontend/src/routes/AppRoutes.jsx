@@ -84,7 +84,16 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path={ROUTES.HOME} element={<LandingPage />} />
+      <Route
+        path={ROUTES.HOME}
+        element={
+          isAuthenticated ? (
+            <Navigate to={ROUTES.DASHBOARD} replace />
+          ) : (
+            <LandingPage />
+          )
+        }
+      />
       <Route
         path={ROUTES.LOGIN}
         element={

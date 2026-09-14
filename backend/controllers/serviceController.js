@@ -3,19 +3,29 @@ import ServiceSchedule from "../models/ServiceSchedule.js";
 import ServiceVisit from "../models/ServiceVisit.js";
 import ServicePlan from "../models/ServicePlan.js";
 import InvoiceItem from "../models/InvoiceItem.js";
+import { BaseController } from "./baseController.js";
 
-export default class ServiceController {
+export default class ServiceController extends BaseController {
   /**
-   * Get service schedules for a shop
+   * Get service schedules for a shop using single-pass aggregation pipeline
    */
   async getServiceSchedules(req, res) {
     try {
       const { user } = req;
       const { page = 1, limit = 10, status, date_from, date_to } = req.query;
 
-      // Build query to filter by shop through service plan
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 10), 100);
+      const skip = (pageNum - 1) * limitNum;
+      const shopObjectId = new mongoose.Types.ObjectId(user.shopId);
+
+      // Build initial match query
       const matchQuery = {
         deleted_at: null,
+        $or: [
+          { shop_id: shopObjectId },
+          { shop_id: { $exists: false } },
+        ],
       };
 
       if (status) {
@@ -32,7 +42,8 @@ export default class ServiceController {
         }
       }
 
-      const schedules = await ServiceSchedule.aggregate([
+      const result = await ServiceSchedule.aggregate([
+        { $match: matchQuery },
         {
           $lookup: {
             from: "serviceplans",
@@ -41,111 +52,81 @@ export default class ServiceController {
             as: "service_plan",
           },
         },
-        {
-          $unwind: "$service_plan",
-        },
+        { $unwind: "$service_plan" },
         {
           $match: {
-            "service_plan.shop_id": new mongoose.Types.ObjectId(user.shopId),
-            ...matchQuery,
+            "service_plan.shop_id": shopObjectId,
+            "service_plan.deleted_at": null,
           },
         },
         {
-          $lookup: {
-            from: "invoiceitems",
-            localField: "service_plan.invoice_item_id",
-            foreignField: "_id",
-            as: "invoice_item",
+          $facet: {
+            metadata: [{ $count: "total" }],
+            schedules: [
+              { $sort: { scheduled_date: 1 } },
+              { $skip: skip },
+              { $limit: limitNum },
+              {
+                $lookup: {
+                  from: "invoiceitems",
+                  localField: "service_plan.invoice_item_id",
+                  foreignField: "_id",
+                  as: "invoice_item",
+                },
+              },
+              { $unwind: { path: "$invoice_item", preserveNullAndEmptyArrays: true } },
+              {
+                $lookup: {
+                  from: "invoices",
+                  localField: "invoice_item.invoice_id",
+                  foreignField: "_id",
+                  as: "invoice",
+                },
+              },
+              { $unwind: { path: "$invoice", preserveNullAndEmptyArrays: true } },
+              {
+                $lookup: {
+                  from: "customers",
+                  localField: "invoice.customer_id",
+                  foreignField: "_id",
+                  as: "customer",
+                },
+              },
+              { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+              {
+                $project: {
+                  service_schedule_id: 1,
+                  scheduled_date: 1,
+                  service_number: 1,
+                  status: 1,
+                  original_date: 1,
+                  rescheduled_date: 1,
+                  reschedule_reason: 1,
+                  "customer.full_name": 1,
+                  "customer.whatsapp_number": 1,
+                  "customer.address": 1,
+                  "invoice_item.product_name": 1,
+                  "invoice_item.serial_number": 1,
+                  "invoice_item.company": 1,
+                  "invoice.invoice_number": 1,
+                  createdAt: 1,
+                },
+              },
+            ],
           },
-        },
-        {
-          $unwind: "$invoice_item",
-        },
-        {
-          $lookup: {
-            from: "invoices",
-            localField: "invoice_item.invoice_id",
-            foreignField: "_id",
-            as: "invoice",
-          },
-        },
-        {
-          $unwind: "$invoice",
-        },
-        {
-          $lookup: {
-            from: "customers",
-            localField: "invoice.customer_id",
-            foreignField: "_id",
-            as: "customer",
-          },
-        },
-        {
-          $unwind: "$customer",
-        },
-        {
-          $project: {
-            service_schedule_id: 1,
-            scheduled_date: 1,
-            service_number: 1,
-            status: 1,
-            original_date: 1,
-            rescheduled_date: 1,
-            reschedule_reason: 1,
-            "customer.full_name": 1,
-            "customer.whatsapp_number": 1,
-            "customer.address": 1,
-            "invoice_item.product_name": 1,
-            "invoice_item.serial_number": 1,
-            "invoice_item.company": 1,
-            "invoice.invoice_number": 1,
-            createdAt: 1,
-          },
-        },
-        {
-          $sort: { scheduled_date: 1 },
-        },
-        {
-          $skip: (page - 1) * limit,
-        },
-        {
-          $limit: parseInt(limit),
         },
       ]);
 
-      // Get total count
-      const totalResult = await ServiceSchedule.aggregate([
-        {
-          $lookup: {
-            from: "serviceplans",
-            localField: "service_plan_id",
-            foreignField: "_id",
-            as: "service_plan",
-          },
-        },
-        {
-          $unwind: "$service_plan",
-        },
-        {
-          $match: {
-            "service_plan.shop_id": new mongoose.Types.ObjectId(user.shopId),
-            ...matchQuery,
-          },
-        },
-        {
-          $count: "total",
-        },
-      ]);
-
-      const total = totalResult[0]?.total || 0;
+      const total = result[0]?.metadata[0]?.total || 0;
+      const schedules = result[0]?.schedules || [];
 
       res.json({
         success: true,
         data: {
           schedules,
           pagination: {
-            current: parseInt(page),
-            total: Math.ceil(total / limit),
+            current: pageNum,
+            total: Math.ceil(total / limitNum) || 1,
             count: schedules.length,
             totalRecords: total,
           },
@@ -176,6 +157,8 @@ export default class ServiceController {
         });
       }
 
+      const shopObjectId = new mongoose.Types.ObjectId(user.shopId);
+
       // Get service schedule with shop validation
       const schedule = await ServiceSchedule.aggregate([
         {
@@ -197,7 +180,7 @@ export default class ServiceController {
         },
         {
           $match: {
-            "service_plan.shop_id": new mongoose.Types.ObjectId(user.shopId),
+            "service_plan.shop_id": shopObjectId,
           },
         },
       ]);
@@ -209,24 +192,28 @@ export default class ServiceController {
         });
       }
 
-      const serviceSchedule = schedule[0];
-
-    
+      const currentSchedule = schedule[0];
 
       // Update schedule
       const updateData = {
+        rescheduled_date: new Date(new_date),
         scheduled_date: new Date(new_date),
         status: "RESCHEDULED",
-        rescheduled_date: new Date(new_date),
         reschedule_reason: reason,
         rescheduled_by,
         rescheduled_at: new Date(),
+        shop_id: shopObjectId,
       };
 
-      await ServiceSchedule.findByIdAndUpdate(id, updateData);
+      const updatedSchedule = await ServiceSchedule.findByIdAndUpdate(
+        id,
+        updateData,
+        { new: true },
+      );
 
       res.json({
         success: true,
+        data: updatedSchedule,
         message: "Service rescheduled successfully",
       });
     } catch (error) {
@@ -265,6 +252,7 @@ export default class ServiceController {
       } = req.body;
 
       const { user } = req;
+      const shopObjectId = new mongoose.Types.ObjectId(user.shopId);
 
       // Validate required fields
       if (
@@ -302,7 +290,7 @@ export default class ServiceController {
         },
         {
           $match: {
-            "service_plan.shop_id": new mongoose.Types.ObjectId(user.shopId),
+            "service_plan.shop_id": shopObjectId,
           },
         },
       ]);
@@ -313,8 +301,6 @@ export default class ServiceController {
           message: "Service schedule not found or access denied",
         });
       }
-
-      const serviceSchedule = schedule[0];
 
       // Check if visit already exists
       const existingVisit = await ServiceVisit.findOne({
@@ -346,6 +332,7 @@ export default class ServiceController {
         customer_feedback,
         internal_notes,
         created_by: user.userId,
+        shop_id: shopObjectId,
       });
 
       await serviceVisit.save({ session });
@@ -353,7 +340,7 @@ export default class ServiceController {
       // Update service schedule status to completed
       await ServiceSchedule.findByIdAndUpdate(
         service_schedule_id,
-        { status: "COMPLETED" },
+        { status: "COMPLETED", shop_id: shopObjectId },
         { session },
       );
 
@@ -376,6 +363,9 @@ export default class ServiceController {
     }
   }
 
+  /**
+   * Get service visits list with aggregation pipeline
+   */
   async getServiceVisits(req, res) {
     try {
       const { user } = req;
@@ -387,8 +377,17 @@ export default class ServiceController {
         date_to,
       } = req.query;
 
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.max(1, parseInt(limit, 10) || 10);
+      const skip = (pageNum - 1) * limitNum;
+      const shopObjectId = new mongoose.Types.ObjectId(user.shopId);
+
       const matchQuery = {
         deleted_at: null,
+        $or: [
+          { shop_id: shopObjectId },
+          { shop_id: { $exists: false } },
+        ],
       };
 
       if (technician) {
@@ -405,7 +404,8 @@ export default class ServiceController {
         }
       }
 
-      const visits = await ServiceVisit.aggregate([
+      const result = await ServiceVisit.aggregate([
+        { $match: matchQuery },
         {
           $lookup: {
             from: "serviceschedules",
@@ -414,9 +414,7 @@ export default class ServiceController {
             as: "service_schedule",
           },
         },
-        {
-          $unwind: "$service_schedule",
-        },
+        { $unwind: "$service_schedule" },
         {
           $lookup: {
             from: "serviceplans",
@@ -425,126 +423,85 @@ export default class ServiceController {
             as: "service_plan",
           },
         },
-        {
-          $unwind: "$service_plan",
-        },
+        { $unwind: "$service_plan" },
         {
           $match: {
-            "service_plan.shop_id": new mongoose.Types.ObjectId(user.shopId),
-            ...matchQuery,
+            "service_plan.shop_id": shopObjectId,
+            "service_plan.deleted_at": null,
           },
         },
         {
-          $lookup: {
-            from: "invoiceitems",
-            localField: "service_plan.invoice_item_id",
-            foreignField: "_id",
-            as: "invoice_item",
+          $facet: {
+            metadata: [{ $count: "total" }],
+            visits: [
+              { $sort: { visit_date: -1 } },
+              { $skip: skip },
+              { $limit: limitNum },
+              {
+                $lookup: {
+                  from: "invoiceitems",
+                  localField: "service_plan.invoice_item_id",
+                  foreignField: "_id",
+                  as: "invoice_item",
+                },
+              },
+              { $unwind: { path: "$invoice_item", preserveNullAndEmptyArrays: true } },
+              {
+                $lookup: {
+                  from: "invoices",
+                  localField: "invoice_item.invoice_id",
+                  foreignField: "_id",
+                  as: "invoice",
+                },
+              },
+              { $unwind: { path: "$invoice", preserveNullAndEmptyArrays: true } },
+              {
+                $lookup: {
+                  from: "customers",
+                  localField: "invoice.customer_id",
+                  foreignField: "_id",
+                  as: "customer",
+                },
+              },
+              { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+              {
+                $project: {
+                  service_visit_id: 1,
+                  visit_date: 1,
+                  service_type: 1,
+                  technician_name: 1,
+                  technician_contact: 1,
+                  issue_reported: 1,
+                  work_done: 1,
+                  service_duration_minutes: 1,
+                  parts_replaced: 1,
+                  service_cost: 1,
+                  customer_rating: 1,
+                  customer_feedback: 1,
+                  "customer.full_name": 1,
+                  "customer.whatsapp_number": 1,
+                  "invoice_item.product_name": 1,
+                  "invoice_item.serial_number": 1,
+                  "invoice.invoice_number": 1,
+                  "service_schedule.service_number": 1,
+                  createdAt: 1,
+                },
+              },
+            ],
           },
-        },
-        {
-          $unwind: "$invoice_item",
-        },
-        {
-          $lookup: {
-            from: "invoices",
-            localField: "invoice_item.invoice_id",
-            foreignField: "_id",
-            as: "invoice",
-          },
-        },
-        {
-          $unwind: "$invoice",
-        },
-        {
-          $lookup: {
-            from: "customers",
-            localField: "invoice.customer_id",
-            foreignField: "_id",
-            as: "customer",
-          },
-        },
-        {
-          $unwind: "$customer",
-        },
-        {
-          $project: {
-            service_visit_id: 1,
-            visit_date: 1,
-            service_type: 1,
-            technician_name: 1,
-            technician_contact: 1,
-            issue_reported: 1,
-            work_done: 1,
-            service_duration_minutes: 1,
-            parts_replaced: 1,
-            service_cost: 1,
-            customer_rating: 1,
-            customer_feedback: 1,
-            "customer.full_name": 1,
-            "customer.whatsapp_number": 1,
-            "invoice_item.product_name": 1,
-            "invoice_item.serial_number": 1,
-            "invoice.invoice_number": 1,
-            "service_schedule.service_number": 1,
-            createdAt: 1,
-          },
-        },
-        {
-          $sort: { visit_date: -1 },
-        },
-        {
-          $skip: (page - 1) * limit,
-        },
-        {
-          $limit: parseInt(limit),
         },
       ]);
 
-      // Get total count
-      const totalResult = await ServiceVisit.aggregate([
-        {
-          $lookup: {
-            from: "serviceschedules",
-            localField: "service_schedule_id",
-            foreignField: "_id",
-            as: "service_schedule",
-          },
-        },
-        {
-          $unwind: "$service_schedule",
-        },
-        {
-          $lookup: {
-            from: "serviceplans",
-            localField: "service_schedule.service_plan_id",
-            foreignField: "_id",
-            as: "service_plan",
-          },
-        },
-        {
-          $unwind: "$service_plan",
-        },
-        {
-          $match: {
-            "service_plan.shop_id": new mongoose.Types.ObjectId(user.shopId),
-            ...matchQuery,
-          },
-        },
-        {
-          $count: "total",
-        },
-      ]);
-
-      const total = totalResult[0]?.total || 0;
+      const total = result[0]?.metadata[0]?.total || 0;
+      const visits = result[0]?.visits || [];
 
       res.json({
         success: true,
         data: {
           visits,
           pagination: {
-            current: parseInt(page),
-            total: Math.ceil(total / limit),
+            current: pageNum,
+            total: Math.ceil(total / limitNum) || 1,
             count: visits.length,
             totalRecords: total,
           },
@@ -579,8 +536,19 @@ export default class ServiceController {
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       endOfMonth.setHours(23, 59, 59, 999);
 
+      const shopObjectId = new mongoose.Types.ObjectId(user.shopId);
+
       // Aggregate service statistics
       const stats = await ServiceSchedule.aggregate([
+        {
+          $match: {
+            deleted_at: null,
+            $or: [
+              { shop_id: shopObjectId },
+              { shop_id: { $exists: false } },
+            ],
+          },
+        },
         {
           $lookup: {
             from: "serviceplans",
@@ -589,13 +557,11 @@ export default class ServiceController {
             as: "service_plan",
           },
         },
-        {
-          $unwind: "$service_plan",
-        },
+        { $unwind: "$service_plan" },
         {
           $match: {
-            "service_plan.shop_id": new mongoose.Types.ObjectId(user.shopId),
-            deleted_at: null,
+            "service_plan.shop_id": shopObjectId,
+            "service_plan.deleted_at": null,
           },
         },
         {
@@ -606,9 +572,7 @@ export default class ServiceController {
             as: "invoice_item",
           },
         },
-        {
-          $unwind: "$invoice_item",
-        },
+        { $unwind: { path: "$invoice_item", preserveNullAndEmptyArrays: true } },
         {
           $addFields: {
             is_under_warranty: {
@@ -688,36 +652,36 @@ export default class ServiceController {
         },
       ]);
 
-      const result = stats[0];
-      const revenueData = result.monthlyRevenue[0] || {
+      const result = stats[0] || {};
+      const revenueData = result.monthlyRevenue?.[0] || {
         total: 0,
         warranty: 0,
         paid: 0,
       };
 
       const dashboard = {
-        total_services: result.total[0]?.count || 0,
-        pending_services: result.pending[0]?.count || 0,
-        completed_services: result.completed[0]?.count || 0,
-        missed_services: result.missed[0]?.count || 0,
-        warranty_services: result.warrantyServices[0]?.count || 0,
-        out_of_warranty_services: result.outOfWarrantyServices[0]?.count || 0,
-        this_week_services: result.thisWeek[0]?.count || 0,
-        overdue_services: result.overdue[0]?.count || 0,
+        total_services: result.total?.[0]?.count || 0,
+        pending_services: result.pending?.[0]?.count || 0,
+        completed_services: result.completed?.[0]?.count || 0,
+        missed_services: result.missed?.[0]?.count || 0,
+        warranty_services: result.warrantyServices?.[0]?.count || 0,
+        out_of_warranty_services: result.outOfWarrantyServices?.[0]?.count || 0,
+        this_week_services: result.thisWeek?.[0]?.count || 0,
+        overdue_services: result.overdue?.[0]?.count || 0,
         monthly_service_revenue: revenueData.total,
         free_service_revenue: revenueData.warranty,
         paid_service_revenue: revenueData.paid,
         // Calculate additional metrics
         completion_rate:
-          result.total[0]?.count > 0
+          (result.total?.[0]?.count || 0) > 0
             ? Math.round(
-                ((result.completed[0]?.count || 0) / result.total[0].count) *
+                ((result.completed?.[0]?.count || 0) / result.total[0].count) *
                   100,
               )
             : 0,
         // Service plans statistics
         active_service_plans: await ServicePlan.countDocuments({
-          shop_id: user.shopId,
+          shop_id: shopObjectId,
           is_active: true,
           deleted_at: null,
         }),
@@ -745,183 +709,147 @@ export default class ServiceController {
       const { user } = req;
       const { warranty_filter = "all", limit = 20, page = 1 } = req.query;
 
-      const skip = (page - 1) * limit;
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.max(1, parseInt(limit, 10) || 20);
+      const skip = (pageNum - 1) * limitNum;
+      const shopObjectId = new mongoose.Types.ObjectId(user.shopId);
 
-      // Build aggregation pipeline
+      // Build aggregation pipeline with facet
       const pipeline = [
-        // Match shop's invoice items with service plans
         {
           $match: {
-            shop_id: user.shopId,
+            shop_id: shopObjectId,
             deleted_at: null,
             service_plan_id: { $exists: true, $ne: null },
           },
         },
-
-        // Lookup invoice and customer info
         {
-          $lookup: {
-            from: "invoices",
-            localField: "invoice_id",
-            foreignField: "_id",
-            as: "invoice",
+          $addFields: {
+            is_under_warranty: {
+              $gt: ["$warranty_end_date", new Date()],
+            },
           },
         },
+        ...(warranty_filter !== "all"
+          ? [
+              {
+                $match: {
+                  is_under_warranty: warranty_filter === "warranty",
+                },
+              },
+            ]
+          : []),
         {
-          $lookup: {
-            from: "customers",
-            localField: "invoice.customer_id",
-            foreignField: "_id",
-            as: "customer",
-          },
-        },
-
-        // Lookup service plan
-        {
-          $lookup: {
-            from: "serviceplans",
-            localField: "service_plan_id",
-            foreignField: "_id",
-            as: "service_plan",
-          },
-        },
-
-        // Lookup service schedules
-        {
-          $lookup: {
-            from: "serviceschedules",
-            localField: "service_plan_id",
-            foreignField: "service_plan_id",
-            as: "service_schedules",
-            pipeline: [
+          $facet: {
+            metadata: [{ $count: "total" }],
+            products: [
               {
                 $lookup: {
-                  from: "servicevisits",
-                  localField: "_id",
-                  foreignField: "service_schedule_id",
-                  as: "service_visit",
+                  from: "invoices",
+                  localField: "invoice_id",
+                  foreignField: "_id",
+                  as: "invoice",
+                },
+              },
+              { $unwind: { path: "$invoice", preserveNullAndEmptyArrays: true } },
+              {
+                $sort: { "invoice.invoice_date": -1, createdAt: -1 },
+              },
+              { $skip: skip },
+              { $limit: limitNum },
+              {
+                $lookup: {
+                  from: "customers",
+                  localField: "invoice.customer_id",
+                  foreignField: "_id",
+                  as: "customer",
+                },
+              },
+              { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+              {
+                $lookup: {
+                  from: "serviceplans",
+                  localField: "service_plan_id",
+                  foreignField: "_id",
+                  as: "service_plan",
                 },
               },
               {
-                $addFields: {
-                  service_visit: { $arrayElemAt: ["$service_visit", 0] },
+                $unwind: { path: "$service_plan", preserveNullAndEmptyArrays: true },
+              },
+              {
+                $lookup: {
+                  from: "serviceschedules",
+                  localField: "service_plan_id",
+                  foreignField: "service_plan_id",
+                  as: "service_schedules",
+                  pipeline: [
+                    {
+                      $lookup: {
+                        from: "servicevisits",
+                        localField: "_id",
+                        foreignField: "service_schedule_id",
+                        as: "service_visit",
+                      },
+                    },
+                    {
+                      $addFields: {
+                        service_visit: { $arrayElemAt: ["$service_visit", 0] },
+                      },
+                    },
+                    { $sort: { scheduled_date: -1 } },
+                  ],
                 },
               },
-              { $sort: { scheduled_date: -1 } },
+              {
+                $project: {
+                  _id: 1,
+                  invoice_item_id: "$_id",
+                  serial_number: 1,
+                  product_name: 1,
+                  product_category: 1,
+                  company: 1,
+                  model_number: 1,
+                  warranty_start_date: 1,
+                  warranty_end_date: 1,
+                  warranty_type: 1,
+                  is_under_warranty: 1,
+                  service_schedules: 1,
+                  customer_info: {
+                    full_name: "$customer.full_name",
+                    whatsapp_number: "$customer.whatsapp_number",
+                    address: "$customer.address",
+                  },
+                  invoice_info: {
+                    invoice_number: "$invoice.invoice_number",
+                    invoice_date: "$invoice.invoice_date",
+                  },
+                  service_plan_info: {
+                    service_interval_type: "$service_plan.service_interval_type",
+                    service_interval_value: "$service_plan.service_interval_value",
+                    service_description: "$service_plan.service_description",
+                    is_active: "$service_plan.is_active",
+                  },
+                },
+              },
             ],
           },
         },
-
-        // Unwind arrays
-        { $unwind: { path: "$invoice", preserveNullAndEmptyArrays: true } },
-        { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
-        {
-          $unwind: { path: "$service_plan", preserveNullAndEmptyArrays: true },
-        },
-
-        // Add warranty status field
-        {
-          $addFields: {
-            is_under_warranty: {
-              $gt: ["$warranty_end_date", new Date()],
-            },
-          },
-        },
-
-        // Filter by warranty status if specified
-        ...(warranty_filter !== "all"
-          ? [
-              {
-                $match: {
-                  is_under_warranty: warranty_filter === "warranty",
-                },
-              },
-            ]
-          : []),
-
-        // Project fields
-        {
-          $project: {
-            _id: 1,
-            invoice_item_id: "$_id",
-            serial_number: 1,
-            product_name: 1,
-            product_category: 1,
-            company: 1,
-            model_number: 1,
-            warranty_start_date: 1,
-            warranty_end_date: 1,
-            warranty_type: 1,
-            is_under_warranty: 1,
-            service_schedules: 1,
-            customer_info: {
-              full_name: "$customer.full_name",
-              whatsapp_number: "$customer.whatsapp_number",
-              address: "$customer.address",
-            },
-            invoice_info: {
-              invoice_number: "$invoice.invoice_number",
-              invoice_date: "$invoice.invoice_date",
-            },
-            service_plan_info: {
-              service_interval_type: "$service_plan.service_interval_type",
-              service_interval_value: "$service_plan.service_interval_value",
-              service_description: "$service_plan.service_description",
-              is_active: "$service_plan.is_active",
-            },
-          },
-        },
-
-        // Sort by most recent invoice
-        { $sort: { "invoice_info.invoice_date": -1 } },
-
-        // Pagination
-        { $skip: skip },
-        { $limit: parseInt(limit) },
       ];
 
-      const products = await InvoiceItem.aggregate(pipeline);
-
-      // Get total count for pagination
-      const totalCountPipeline = [
-        {
-          $match: {
-            shop_id: user.shopId,
-            deleted_at: null,
-            service_plan_id: { $exists: true, $ne: null },
-          },
-        },
-        {
-          $addFields: {
-            is_under_warranty: {
-              $gt: ["$warranty_end_date", new Date()],
-            },
-          },
-        },
-        ...(warranty_filter !== "all"
-          ? [
-              {
-                $match: {
-                  is_under_warranty: warranty_filter === "warranty",
-                },
-              },
-            ]
-          : []),
-        { $count: "total" },
-      ];
-
-      const totalCountResult = await InvoiceItem.aggregate(totalCountPipeline);
-      const totalCount = totalCountResult[0]?.total || 0;
+      const result = await InvoiceItem.aggregate(pipeline);
+      const totalCount = result[0]?.metadata[0]?.total || 0;
+      const products = result[0]?.products || [];
 
       res.status(200).json({
         success: true,
         data: {
           products,
           pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
+            page: pageNum,
+            limit: limitNum,
             totalProducts: totalCount,
-            totalPages: Math.ceil(totalCount / limit),
+            totalPages: Math.ceil(totalCount / limitNum) || 1,
           },
           warranty_filter,
         },
@@ -941,7 +869,19 @@ export default class ServiceController {
    */
   async getAverageCustomerRating(shopId) {
     try {
+      const shopObjectId = new mongoose.Types.ObjectId(shopId);
+
       const ratingStats = await ServiceVisit.aggregate([
+        {
+          $match: {
+            customer_rating: { $exists: true, $ne: null },
+            deleted_at: null,
+            $or: [
+              { shop_id: shopObjectId },
+              { shop_id: { $exists: false } },
+            ],
+          },
+        },
         {
           $lookup: {
             from: "serviceschedules",
@@ -950,9 +890,7 @@ export default class ServiceController {
             as: "schedule",
           },
         },
-        {
-          $unwind: "$schedule",
-        },
+        { $unwind: "$schedule" },
         {
           $lookup: {
             from: "serviceplans",
@@ -961,14 +899,11 @@ export default class ServiceController {
             as: "service_plan",
           },
         },
-        {
-          $unwind: "$service_plan",
-        },
+        { $unwind: "$service_plan" },
         {
           $match: {
-            "service_plan.shop_id": new mongoose.Types.ObjectId(shopId),
-            customer_rating: { $exists: true, $ne: null },
-            deleted_at: null,
+            "service_plan.shop_id": shopObjectId,
+            "service_plan.deleted_at": null,
           },
         },
         {
@@ -1006,7 +941,6 @@ export default class ServiceController {
         service_type = "MAINTENANCE",
       } = req.body;
 
-      // Validate required fields
       if (!technician_name?.trim()) {
         return res.status(400).json({
           success: false,
@@ -1028,7 +962,6 @@ export default class ServiceController {
         });
       }
 
-      // Find the service schedule and validate ownership FIRST
       const schedule =
         await ServiceSchedule.findById(id).populate("service_plan_id");
 
@@ -1039,7 +972,6 @@ export default class ServiceController {
         });
       }
 
-      // Verify the service belongs to user's shop
       if (schedule.service_plan_id.shop_id.toString() !== user.shopId) {
         return res.status(403).json({
           success: false,
@@ -1047,7 +979,6 @@ export default class ServiceController {
         });
       }
 
-      // Check if already completed
       if (schedule.status === "COMPLETED") {
         return res.status(400).json({
           success: false,
@@ -1055,7 +986,6 @@ export default class ServiceController {
         });
       }
 
-      // Map frontend service category to business service type
       const getBusinessServiceType = (
         category,
         serviceCharge,
@@ -1074,7 +1004,6 @@ export default class ServiceController {
         parseFloat(amount_collected) || 0,
       );
 
-      // Ensure required fields have proper values
       const finalIssueReported =
         issue_reported?.trim() || "Regular maintenance service";
       const finalWorkDone =
@@ -1082,7 +1011,8 @@ export default class ServiceController {
       const finalTechnicianName =
         technician_name?.trim() || "Unknown Technician";
 
-      // Create service visit record with proper linking
+      const shopObjectId = new mongoose.Types.ObjectId(user.shopId);
+
       const serviceVisit = new ServiceVisit({
         service_schedule_id: schedule._id,
         visit_date: new Date(),
@@ -1097,18 +1027,18 @@ export default class ServiceController {
         payment_method: payment_method,
         internal_notes: notes || "",
         created_by: user.userId,
+        shop_id: shopObjectId,
       });
 
       await serviceVisit.save();
 
-      // Update schedule with completion details and link to service visit
       schedule.status = "COMPLETED";
       schedule.completed_at = new Date();
       schedule.completed_by = user.userId;
       schedule.amount_collected = parseFloat(amount_collected) || 0;
       schedule.service_visit_id = serviceVisit._id;
+      schedule.shop_id = shopObjectId;
 
-      // Update payment status based on amount collected vs service charge
       if (schedule.service_charge === 0) {
         schedule.payment_status = "FREE";
       } else if (schedule.amount_collected >= schedule.service_charge) {
@@ -1149,7 +1079,6 @@ export default class ServiceController {
       const { id } = req.params;
       const { reason } = req.body;
 
-      // Find the service schedule and validate ownership
       const schedule =
         await ServiceSchedule.findById(id).populate("service_plan_id");
 
@@ -1160,7 +1089,6 @@ export default class ServiceController {
         });
       }
 
-      // Verify the service belongs to user's shop
       if (schedule.service_plan_id.shop_id.toString() !== user.shopId) {
         return res.status(403).json({
           success: false,
@@ -1168,7 +1096,6 @@ export default class ServiceController {
         });
       }
 
-      // Check if already completed or cancelled
       if (schedule.status === "COMPLETED") {
         return res.status(400).json({
           success: false,
@@ -1183,7 +1110,6 @@ export default class ServiceController {
         });
       }
 
-      // Update schedule status
       schedule.status = "CANCELLED";
       schedule.cancelled_at = new Date();
       schedule.cancelled_by = user.userId;

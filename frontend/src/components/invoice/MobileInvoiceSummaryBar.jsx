@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Calculator,
   ChevronUp,
@@ -8,14 +9,25 @@ import {
   Receipt,
   AlertCircle,
   X,
+  LayoutGrid,
+  Home,
+  Box,
+  User,
+  Table,
+  ShieldCheck,
+  Settings,
+  Activity,
+  Calendar,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "../ui/index.js";
+import { ROUTES } from "../../utils/constants.js";
 
 /**
  * MobileInvoiceSummaryBar
  * 
  * High-performance, touch-friendly sticky bottom bar & slide-up drawer
- * for mobile invoice creation and editing.
+ * for mobile invoice creation and editing with quick navigation options.
  */
 export default function MobileInvoiceSummaryBar({
   invoice,
@@ -31,9 +43,23 @@ export default function MobileInvoiceSummaryBar({
   loadingLabel = "Creating...",
 }) {
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showNavDrawer, setShowNavDrawer] = useState(false);
   const [showErrorBanner, setShowErrorBanner] = useState(false);
   const [localRawOldItem, setLocalRawOldItem] = useState(null);
   const drawerRef = useRef(null);
+  const navigate = useNavigate();
+
+  const navItems = [
+    { icon: Home, label: "Dashboard", path: ROUTES.DASHBOARD, color: "text-blue-600 bg-blue-50 dark:bg-blue-900/40" },
+    { icon: Receipt, label: "Invoices", path: ROUTES.INVOICES, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/40" },
+    { icon: Box, label: "Products", path: ROUTES.PRODUCTS, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/40" },
+    { icon: User, label: "Customers", path: ROUTES.CUSTOMERS, color: "text-violet-600 bg-violet-50 dark:bg-violet-900/40" },
+    { icon: Table, label: "Purchases", path: ROUTES.INVENTORY, color: "text-amber-600 bg-amber-50 dark:bg-amber-900/40" },
+    { icon: ShieldCheck, label: "Warranty", path: ROUTES.WARRANTY, color: "text-cyan-600 bg-cyan-50 dark:bg-cyan-900/40" },
+    { icon: Calendar, label: "Schedules", path: ROUTES.FESTIVAL_SCHEDULE, color: "text-pink-600 bg-pink-50 dark:bg-pink-900/40" },
+    { icon: Activity, label: "Audit Logs", path: ROUTES.LOGS, color: "text-orange-600 bg-orange-50 dark:bg-orange-900/40" },
+    { icon: Settings, label: "Settings", path: ROUTES.SETTINGS, color: "text-slate-600 bg-slate-100 dark:bg-slate-800" },
+  ];
 
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("en-IN", {
@@ -50,16 +76,17 @@ export default function MobileInvoiceSummaryBar({
     }
   }, [errorCount, submitError]);
 
-  // Handle escape key to close drawer
+  // Handle escape key to close drawers
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && showDrawer) {
-        setShowDrawer(false);
+      if (e.key === "Escape") {
+        if (showDrawer) setShowDrawer(false);
+        if (showNavDrawer) setShowNavDrawer(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showDrawer]);
+  }, [showDrawer, showNavDrawer]);
 
   // Smoothly scroll to the first error on the page
   const scrollToFirstError = () => {
@@ -82,13 +109,97 @@ export default function MobileInvoiceSummaryBar({
 
   return (
     <div className="lg:hidden">
-      {/* Backdrop overlay when summary drawer is open */}
-      {showDrawer && (
+      {/* Backdrop overlay when summary drawer or nav drawer is open */}
+      {(showDrawer || showNavDrawer) && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 animate-in fade-in duration-200"
-          onClick={() => setShowDrawer(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 animate-in fade-in duration-200"
+          onClick={() => {
+            setShowDrawer(false);
+            setShowNavDrawer(false);
+          }}
           aria-hidden="true"
         />
+      )}
+
+      {/* Slide-Up Navigation Drawer */}
+      {showNavDrawer && (
+        <div className="fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 rounded-t-3xl px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl animate-in slide-in-from-bottom duration-250 border-t border-slate-200 dark:border-slate-800">
+          {/* Grab Bar */}
+          <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
+
+          {/* Header */}
+          <div className="flex justify-between items-center mb-3.5 px-1">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg">
+                <LayoutGrid className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Navigate Pages
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Switch to any module (your form input is saved)
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowNavDrawer(false)}
+              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full bg-slate-100 dark:bg-slate-800 active:scale-95 transition-transform"
+              aria-label="Close navigation drawer"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Quick Exit Row */}
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowNavDrawer(false);
+                navigate(ROUTES.INVOICES);
+              }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs active:scale-95 transition-all"
+            >
+              <ArrowLeft size={15} />
+              <span>Back to Invoices List</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowNavDrawer(false);
+                navigate(ROUTES.DASHBOARD);
+              }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-xs active:scale-95 transition-all border border-blue-200 dark:border-blue-900"
+            >
+              <Home size={15} />
+              <span>Go to Dashboard</span>
+            </button>
+          </div>
+
+          {/* Navigation Grid */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-[50vh] overflow-y-auto pt-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setShowNavDrawer(false)}
+                  className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 text-center active:scale-95 transition-all"
+                >
+                  <div className={`p-2 rounded-xl ${item.color}`}>
+                    <Icon size={18} />
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 leading-tight truncate max-w-full">
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Floating/Sticky Action Bar Container */}
@@ -267,41 +378,59 @@ export default function MobileInvoiceSummaryBar({
         )}
 
         {/* Primary Sticky Bottom Bar Row */}
-        <div className="px-3 pt-2.5 flex items-center justify-between gap-3">
-          {/* Summary Trigger Pill (Left Thumb Reach) */}
+        <div className="px-3 pt-2.5 flex items-center justify-between gap-2 sm:gap-3">
+          {/* Quick Nav Button */}
           <button
             type="button"
-            onClick={() => setShowDrawer((prev) => !prev)}
-            className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800/80 active:scale-95 transition-all focus:outline-none min-w-[120px]"
+            onClick={() => {
+              setShowDrawer(false);
+              setShowNavDrawer(true);
+            }}
+            className="flex flex-col items-center justify-center px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all shrink-0 min-w-[50px] h-[46px] border border-slate-200/80 dark:border-slate-700"
+            title="Navigate to other pages"
+            aria-label="Navigate to other pages"
+          >
+            <LayoutGrid className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-[9px] font-bold mt-0.5 leading-none">Pages</span>
+          </button>
+
+          {/* Summary Trigger Pill */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowNavDrawer(false);
+              setShowDrawer((prev) => !prev);
+            }}
+            className="flex items-center gap-1.5 sm:gap-2 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800/80 active:scale-95 transition-all focus:outline-none min-w-0"
             aria-expanded={showDrawer}
             aria-label="Toggle invoice summary breakdown"
           >
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/50">
-              <Calculator className="w-5 h-5" />
+            <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/50">
+              <Calculator className="w-4 h-4" />
             </div>
-            <div className="text-left">
-              <span className="text-[11px] text-gray-500 dark:text-gray-400 block font-semibold leading-none flex items-center gap-1">
+            <div className="text-left truncate">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-semibold leading-none flex items-center gap-0.5">
                 {items.length} Item{items.length === 1 ? "" : "s"}
                 <ChevronUp
-                  className={`w-3.5 h-3.5 text-indigo-500 transition-transform duration-200 ${
+                  className={`w-3 h-3 text-indigo-500 transition-transform duration-200 ${
                     showDrawer ? "rotate-180" : ""
                   }`}
                 />
               </span>
-              <strong className="text-base font-extrabold text-gray-900 dark:text-slate-100 leading-tight block">
+              <strong className="text-xs sm:text-sm font-extrabold text-gray-900 dark:text-slate-100 leading-tight block truncate">
                 {formatCurrency(invoice.total_amount)}
               </strong>
             </div>
           </button>
 
-          {/* Primary Action Button (Right Thumb Reach) */}
+          {/* Primary Action Button */}
           <Button
             type="button"
             onClick={handleActionClick}
             disabled={isSubmitting}
             className={`
-              flex-1 min-h-[48px] px-5 py-2.5 rounded-xl font-bold text-sm text-white shadow-md
-              flex items-center justify-center gap-2 transition-all active:scale-98
+              flex-1 min-h-[46px] px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm text-white shadow-md
+              flex items-center justify-center gap-1.5 transition-all active:scale-98
               ${
                 errorCount > 0
                   ? "bg-amber-600 hover:bg-amber-700 active:bg-amber-800 shadow-amber-600/20"

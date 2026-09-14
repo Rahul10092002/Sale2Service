@@ -19,8 +19,10 @@ import { roleRouter } from "./routes/role.js";
 import dealerRouter from "./routes/dealer.js";
 import inventoryRouter from "./routes/inventory.js";
 import warrantyRouter from "./routes/warranty.js";
+import { validateEnv } from "./utils/validateEnv.js";
 
 dotenv.config();
+validateEnv();
 
 const app = express();
 

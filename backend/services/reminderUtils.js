@@ -40,7 +40,6 @@ export const getUpcomingWishes = async (shopId, period = "today") => {
   for (let i = 0; i <= days; i++) {
     const range = createDateRange(i);
     const istParts = getISTDateParts(range.start);
-    const label = i === 0 ? "today" : i === 1 ? "tomorrow" : `${i} days`;
 
     // Birthdays
     const birthdays = await Customer.aggregate([
@@ -48,7 +47,7 @@ export const getUpcomingWishes = async (shopId, period = "today") => {
         $match: {
           date_of_birth: { $ne: null },
           deleted_at: null,
-          shop_id: shopId,
+          shop_id: new mongoose.Types.ObjectId(shopId),
         },
       },
       {
@@ -79,7 +78,7 @@ export const getUpcomingWishes = async (shopId, period = "today") => {
         $match: {
           anniversary_date: { $exists: true, $ne: null },
           deleted_at: null,
-          shop_id: shopId,
+          shop_id: new mongoose.Types.ObjectId(shopId),
         },
       },
       {
@@ -128,8 +127,6 @@ export const getUpcomingFestivals = async (shopId, period = "today") => {
     deleted_at: null
   }).sort({ schedule_date: 1 }).lean();
 
-  // Get logs for festivals (often mapped to CUSTOMER or SERVICE in some systems, 
-  // but let's check current date matching for today)
   const todayRange = createDateRange(0);
   const todayLogs = await ReminderLog.find({
     shop_id: shopId,
@@ -138,8 +135,6 @@ export const getUpcomingFestivals = async (shopId, period = "today") => {
   }).lean();
 
   return festivals.map(f => {
-    // A bit harder for festivals as they reach many customers. 
-    // We'll just check if any log exists for today with this festival name in content/template
     const sentToday = todayLogs.some(log => 
       log.template_name?.includes(f.festival_name) || 
       log.message_content?.includes(f.festival_name)
@@ -185,15 +180,17 @@ export const getUpcomingServices = async (shopId, period = "today") => {
   const statusFilter = ["PENDING", "MISSED", "RESCHEDULED"];
   if (period === "today") statusFilter.push("COMPLETED");
 
-  // Get service plans for this shop to filter schedules (schedules don't have shop_id)
-  const plans = await ServicePlan.find({ shop_id: shopId, deleted_at: null }).select("_id").lean();
-  const planIds = plans.map(p => p._id);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
+  // Fast aggregation pipeline with shop matching
   const services = await ServiceSchedule.aggregate([
     {
       $match: {
         deleted_at: null,
-        service_plan_id: { $in: planIds },
+        $or: [
+          { shop_id: shopObjectId },
+          { shop_id: { $exists: false } }
+        ],
         status: { $in: statusFilter },
         $or: [
           { scheduled_date: { $gte: startRange.start, $lt: endRange.end } },
@@ -210,6 +207,12 @@ export const getUpcomingServices = async (shopId, period = "today") => {
       },
     },
     { $unwind: "$plan" },
+    {
+      $match: {
+        "plan.shop_id": shopObjectId,
+        "plan.deleted_at": null,
+      }
+    },
     {
       $lookup: {
         from: "invoiceitems",
@@ -266,6 +269,8 @@ export const getUpcomingWarranties = async (shopId, period = "today") => {
   const startRange = createDateRange(0);
   const endRange = createDateRange(days);
 
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
+
   // Get logs for today
   const todayLogs = await ReminderLog.find({
     shop_id: shopId,
@@ -282,7 +287,7 @@ export const getUpcomingWarranties = async (shopId, period = "today") => {
   const items = await InvoiceItem.aggregate([
     {
       $match: {
-        shop_id: shopId,
+        shop_id: shopObjectId,
         warranty_end_date: { $gte: startRange.start, $lt: endRange.end },
         deleted_at: null,
       },
@@ -331,6 +336,7 @@ export const getUpcomingPayments = async (shopId, period = "today") => {
 
   const startRange = createDateRange(0);
   const endRange = createDateRange(days);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   // Get logs for today
   const todayLogs = await ReminderLog.find({
@@ -348,7 +354,7 @@ export const getUpcomingPayments = async (shopId, period = "today") => {
   const invoices = await Invoice.aggregate([
     {
       $match: {
-        shop_id: shopId,
+        shop_id: shopObjectId,
         payment_status: { $in: ["UNPAID", "PARTIAL"] },
         deleted_at: null,
         $or: [

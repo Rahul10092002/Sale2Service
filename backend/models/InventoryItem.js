@@ -9,8 +9,7 @@ const inventoryItemSchema = new mongoose.Schema(
     },
     product_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "ProductMaster",
-      required: true,
+      default: null,
     },
     product_name: {
       type: String,

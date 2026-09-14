@@ -156,6 +156,9 @@ invoiceSchema.index(
 );
 invoiceSchema.index({ invoice_id: 1, deleted_at: 1 });
 invoiceSchema.index({ customer_id: 1, deleted_at: 1 });
+invoiceSchema.index({ shop_id: 1, deleted_at: 1, invoice_date: -1 });
+invoiceSchema.index({ shop_id: 1, deleted_at: 1, payment_status: 1, due_date: 1 });
+invoiceSchema.index({ shop_id: 1, deleted_at: 1, createdAt: -1 });
 invoiceSchema.index({ shop_id: 1, deleted_at: 1 });
 invoiceSchema.index({ invoice_date: 1, deleted_at: 1 });
 invoiceSchema.index({ payment_status: 1, deleted_at: 1 });

@@ -1,20 +1,36 @@
 import React, { useState } from "react";
-import { Menu, User, Settings, LogOut, Sun, Moon } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Menu, User, Settings, LogOut, Sun, Moon, ArrowLeft } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth.js";
 import { useDarkMode } from "../../hooks/useDarkMode.js";
+import { ROUTES } from "../../utils/constants.js";
 
 const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
   const { user, role, logout } = useAuth();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isNotDashboard = location.pathname !== ROUTES.DASHBOARD;
 
   return (
     <div className="w-full sticky top-0 z-50 pt-[env(safe-area-inset-top)] h-[calc(64px+env(safe-area-inset-top))] bg-white dark:bg-dark-input border-b border-gray-200 dark:border-dark-border shadow-sm">
-      {" "}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
         <div className="flex h-full items-center justify-between">
-          {/* ── Left: sidebar toggle + page title ─────────────────── */}
+          {/* ── Left: sidebar toggle + back button + page title ─────────────────── */}
           <div className="flex items-center">
+            {isNotDashboard && (
+              <button
+                type="button"
+                aria-label="Go back"
+                onClick={() => navigate(-1)}
+                className="lg:hidden p-2 -ml-2 mr-1 rounded-xl text-ink-secondary dark:text-slate-300 hover:bg-surface-hover dark:hover:bg-dark-hover active:scale-95 transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+
             <button
               aria-label="Open sidebar"
               onClick={onToggleSidebar}
@@ -23,11 +39,11 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
               <Menu className="w-5 h-5" />
             </button>
 
-            <div className="ml-3">
-              <h1 className="text-xl font-semibold text-ink-base dark:text-slate-100">
+            <div className={`${isNotDashboard ? "ml-1 lg:ml-3" : "ml-1 sm:ml-3"}`}>
+              <h1 className="text-lg sm:text-xl font-semibold text-ink-base dark:text-slate-100 truncate max-w-[200px] sm:max-w-none">
                 {title}
               </h1>
-              <div className="text-xs text-ink-muted dark:text-slate-500 mt-0.5">
+              <div className="text-[11px] sm:text-xs text-ink-muted dark:text-slate-500">
                 WarrantyDesk Professional
               </div>
             </div>

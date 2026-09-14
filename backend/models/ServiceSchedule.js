@@ -82,6 +82,11 @@ const serviceScheduleSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "ServiceVisit",
     },
+    shop_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Shop",
+      index: true,
+    },
     deleted_at: {
       type: Date,
       default: null,
@@ -102,8 +107,21 @@ const serviceScheduleSchema = new mongoose.Schema(
 
 // Indexes
 serviceScheduleSchema.index({ service_plan_id: 1, deleted_at: 1 });
+serviceScheduleSchema.index({ shop_id: 1, deleted_at: 1, scheduled_date: 1, status: 1 });
+serviceScheduleSchema.index({ shop_id: 1, deleted_at: 1, status: 1 });
 serviceScheduleSchema.index({ scheduled_date: 1, status: 1, deleted_at: 1 });
 serviceScheduleSchema.index({ status: 1, deleted_at: 1 });
+
+// Pre-save hook to ensure shop_id is always populated from ServicePlan
+serviceScheduleSchema.pre("save", async function () {
+  if (!this.shop_id && this.service_plan_id) {
+    const ServicePlan = mongoose.model("ServicePlan");
+    const plan = await ServicePlan.findById(this.service_plan_id).select("shop_id");
+    if (plan && plan.shop_id) {
+      this.shop_id = plan.shop_id;
+    }
+  }
+});
 
 // Virtual for active schedules
 serviceScheduleSchema.virtual("isActive").get(function () {

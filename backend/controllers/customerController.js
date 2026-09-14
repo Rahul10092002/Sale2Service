@@ -1,7 +1,9 @@
+import mongoose from "mongoose";
 import Customer from "../models/Customer.js";
 import Invoice from "../models/Invoice.js";
+import { BaseController } from "./baseController.js";
 
-export default class CustomerController {
+export default class CustomerController extends BaseController {
   // Create a new customer
   async createCustomer(req, res) {
     try {
@@ -45,41 +47,57 @@ export default class CustomerController {
     }
   }
 
-  // Get customers list (pagination + search)
+  // Get customers list (single-trip aggregation pipeline with pagination + search)
   async getCustomers(req, res) {
     try {
       const { user } = req;
       const { page = 1, limit = 10, search } = req.query;
 
-      const query = { shop_id: user.shopId, deleted_at: null };
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 10), 100);
+      const skip = (pageNum - 1) * limitNum;
 
-      if (search) {
-        query.$or = [
-          { full_name: { $regex: search, $options: "i" } },
-          { whatsapp_number: { $regex: search, $options: "i" } },
-          { email: { $regex: search, $options: "i" } },
+      const matchQuery = {
+        shop_id: new mongoose.Types.ObjectId(user.shopId),
+        deleted_at: null,
+      };
+
+      if (search && search.trim()) {
+        const regex = new RegExp(search.trim(), "i");
+        matchQuery.$or = [
+          { full_name: regex },
+          { whatsapp_number: regex },
+          { email: regex },
         ];
       }
 
-      const skip = (page - 1) * parseInt(limit);
-
-      const [customers, total] = await Promise.all([
-        Customer.find(query)
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(parseInt(limit)),
-        Customer.countDocuments(query),
+      // High performance aggregation pipeline with facet
+      const result = await Customer.aggregate([
+        { $match: matchQuery },
+        {
+          $facet: {
+            metadata: [{ $count: "total" }],
+            customers: [
+              { $sort: { createdAt: -1 } },
+              { $skip: skip },
+              { $limit: limitNum },
+            ],
+          },
+        },
       ]);
+
+      const total = result[0]?.metadata[0]?.total || 0;
+      const customers = result[0]?.customers || [];
 
       res.json({
         success: true,
         data: {
           customers,
           pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
+            page: pageNum,
+            limit: limitNum,
             total,
-            pages: Math.ceil(total / parseInt(limit)),
+            pages: Math.ceil(total / limitNum) || 1,
           },
         },
       });
@@ -124,7 +142,7 @@ export default class CustomerController {
     }
   }
 
-  // Update customer
+  // Update customer (with field whitelisting protection)
   async updateCustomer(req, res) {
     try {
       const { user } = req;
@@ -142,7 +160,30 @@ export default class CustomerController {
           .json({ success: false, message: "Customer not found" });
       }
 
-      Object.assign(customer, payload);
+      // Allowed updates whitelist to prevent mass-assignment
+      const ALLOWED_FIELDS = [
+        "full_name",
+        "whatsapp_number",
+        "email",
+        "alternate_phone",
+        "address",
+        "date_of_birth",
+        "anniversary_date",
+        "gst_number",
+        "customer_type",
+        "preferred_language",
+        "notes",
+        "customer_images",
+        "id_proof_files",
+        "address_proof_files",
+      ];
+
+      ALLOWED_FIELDS.forEach((field) => {
+        if (payload[field] !== undefined) {
+          customer[field] = payload[field];
+        }
+      });
+
       customer.updated_at = new Date();
       await customer.save();
 

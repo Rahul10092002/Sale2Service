@@ -57,7 +57,7 @@ const primaryItems = [
   },
   {
     icon: Table,
-    label: "Inventory",
+    label: "Purchases",
     path: ROUTES.INVENTORY,
     permission: "inventory_view",
     matchPrefix: "/inventory",

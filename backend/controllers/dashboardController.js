@@ -1,4 +1,4 @@
-import * as dashboardService from "../service/dashboardService.js";
+import * as dashboardService from "../services/dashboardService.js";
 import mongoose from "mongoose";
 
 /**

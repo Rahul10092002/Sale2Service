@@ -10,6 +10,7 @@ import {
   linkRetroactiveDealer,
   updateInventoryStatus,
   getItemAuditLogs,
+  getPurchasesList,
 } from "../controllers/inventoryController.js";
 
 const router = express.Router();
@@ -18,6 +19,7 @@ router.use(authenticate);
 
 router.post("/receiving-slip", strictMutationRateLimiter, createReceivingSlipIntake);
 router.put("/receiving-slips/:id", strictMutationRateLimiter, updateReceivingSlip);
+router.get("/purchases", getPurchasesList);
 router.get("/items", getInventoryItems);
 router.get("/items/:itemId", getInventoryItemById);
 router.get("/receiving-slips/:id", getReceivingSlipById);

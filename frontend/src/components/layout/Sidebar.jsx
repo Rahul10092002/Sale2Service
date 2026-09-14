@@ -45,7 +45,7 @@ const navItems = [
   },
   {
     key: "inventory",
-    label: "Inventory",
+    label: "Purchases",
     icon: <Table className="w-4 h-4" />,
     path: ROUTES.INVENTORY,
     permission: "inventory_view",

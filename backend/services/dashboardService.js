@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Invoice from "../models/Invoice.js";
 import Customer from "../models/Customer.js";
 import ServiceVisit from "../models/ServiceVisit.js";
@@ -10,7 +11,7 @@ import { createDateRange } from "../scheduler/core/utils.js";
 
 /**
  * Dashboard Service
- * Provides aggregated data for dashboard metrics and insights
+ * Provides aggregated data for dashboard metrics and insights using MongoDB Aggregation Pipelines
  */
 
 /**
@@ -42,12 +43,13 @@ const getDateRange = (period) => {
  */
 export const getRevenueStats = async (shopId, period = "today") => {
   const { start, end } = getDateRange(period);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   // Current period revenue
   const currentRevenue = await Invoice.aggregate([
     {
       $match: {
-        shop_id: shopId,
+        shop_id: shopObjectId,
         invoice_date: { $gte: start, $lt: end },
         deleted_at: null,
       },
@@ -69,7 +71,7 @@ export const getRevenueStats = async (shopId, period = "today") => {
   const previousRevenue = await Invoice.aggregate([
     {
       $match: {
-        shop_id: shopId,
+        shop_id: shopObjectId,
         invoice_date: { $gte: prevStart, $lt: prevEnd },
         deleted_at: null,
       },
@@ -103,11 +105,12 @@ export const getRevenueStats = async (shopId, period = "today") => {
  */
 export const getInvoiceStats = async (shopId, period = "today") => {
   const { start, end } = getDateRange(period);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   const stats = await Invoice.aggregate([
     {
       $match: {
-        shop_id: shopId,
+        shop_id: shopObjectId,
         invoice_date: { $gte: start, $lt: end },
         deleted_at: null,
       },
@@ -147,24 +150,25 @@ export const getInvoiceStats = async (shopId, period = "today") => {
  */
 export const getCustomerStats = async (shopId, period = "today") => {
   const { start, end } = getDateRange(period);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
-  // Total customers
-  const totalCustomers = await Customer.countDocuments({ 
-    shop_id: shopId,
-    deleted_at: null 
-  });
-
-  // New customers in period
-  const newCustomers = await Customer.countDocuments({
-    shop_id: shopId,
-    createdAt: { $gte: start, $lt: end },
-    deleted_at: null
-  });
+  // Total customers and new customers in period
+  const [totalCustomers, newCustomers] = await Promise.all([
+    Customer.countDocuments({ 
+      shop_id: shopObjectId,
+      deleted_at: null 
+    }),
+    Customer.countDocuments({
+      shop_id: shopObjectId,
+      createdAt: { $gte: start, $lt: end },
+      deleted_at: null
+    })
+  ]);
 
   // Active customers (with invoices in last 30 days)
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const activeCustomerIds = await Invoice.distinct("customer_id", {
-    shop_id: shopId,
+    shop_id: shopObjectId,
     invoice_date: { $gte: thirtyDaysAgo },
     deleted_at: null,
   });
@@ -181,8 +185,19 @@ export const getCustomerStats = async (shopId, period = "today") => {
  */
 export const getServiceStats = async (shopId, period = "today") => {
   const { start, end } = getDateRange(period);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   const visits = await ServiceSchedule.aggregate([
+    {
+      $match: {
+        deleted_at: null,
+        scheduled_date: { $gte: start, $lt: end },
+        $or: [
+          { shop_id: shopObjectId },
+          { shop_id: { $exists: false } }
+        ]
+      },
+    },
     {
       $lookup: {
         from: "serviceplans",
@@ -194,10 +209,8 @@ export const getServiceStats = async (shopId, period = "today") => {
     { $unwind: "$plan" },
     {
       $match: {
-        "plan.shop_id": shopId,
+        "plan.shop_id": shopObjectId,
         "plan.deleted_at": null,
-        deleted_at: null,
-        scheduled_date: { $gte: start, $lt: end },
       },
     },
     {
@@ -219,8 +232,8 @@ export const getServiceStats = async (shopId, period = "today") => {
     result.total += visit.count;
     if (visit._id === "COMPLETED") {
       result.completed = visit.count;
-    } else if (visit._id === "SCHEDULED") {
-      result.scheduled = visit.count;
+    } else if (visit._id === "SCHEDULED" || visit._id === "PENDING" || visit._id === "RESCHEDULED") {
+      result.scheduled += visit.count;
     } else if (visit._id === "CANCELLED") {
       result.cancelled = visit.count;
     }
@@ -235,18 +248,21 @@ export const getServiceStats = async (shopId, period = "today") => {
 export const getServicePlanStats = async (shopId) => {
   const now = new Date();
   const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
-  const activePlans = await ServicePlan.countDocuments({
-    shop_id: shopId,
-    plan_status: "ACTIVE",
-  });
-
-  const expiringPlans = await ServicePlan.countDocuments({
-    shop_id: shopId,
-    plan_status: "ACTIVE",
-    end_date: { $gte: now, $lte: thirtyDaysLater },
-    deleted_at: null,
-  });
+  const [activePlans, expiringPlans] = await Promise.all([
+    ServicePlan.countDocuments({
+      shop_id: shopObjectId,
+      plan_status: "ACTIVE",
+      deleted_at: null,
+    }),
+    ServicePlan.countDocuments({
+      shop_id: shopObjectId,
+      plan_status: "ACTIVE",
+      end_date: { $gte: now, $lte: thirtyDaysLater },
+      deleted_at: null,
+    })
+  ]);
 
   return {
     active: activePlans,
@@ -264,11 +280,12 @@ export const getRevenueTrend = async (shopId, days = 30) => {
   const startDate = new Date(endDate);
   startDate.setDate(startDate.getDate() - days);
   startDate.setHours(0, 0, 0, 0);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   const trendData = await Invoice.aggregate([
     {
       $match: {
-        shop_id: shopId,
+        shop_id: shopObjectId,
         invoice_date: { $gte: startDate, $lte: endDate },
         deleted_at: null,
       },
@@ -301,11 +318,12 @@ export const getRevenueTrend = async (shopId, days = 30) => {
  */
 export const getTopProducts = async (shopId, limit = 5) => {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   const topProducts = await Invoice.aggregate([
     {
       $match: {
-        shop_id: shopId,
+        shop_id: shopObjectId,
         invoice_date: { $gte: thirtyDaysAgo },
         deleted_at: null,
       },
@@ -326,7 +344,13 @@ export const getTopProducts = async (shopId, limit = 5) => {
         _id: "$items.product_name",
         quantity: { $sum: "$items.quantity" },
         revenue: {
-          $sum: { $multiply: ["$items.quantity", "$items.unit_price"] },
+          $sum: {
+            $cond: [
+              { $gt: ["$items.line_total", 0] },
+              "$items.line_total",
+              { $multiply: ["$items.quantity", { $ifNull: ["$items.selling_price", 0] }] }
+            ]
+          },
         },
       },
     },
@@ -349,25 +373,72 @@ export const getTopProducts = async (shopId, limit = 5) => {
  * Get recent activity
  */
 export const getRecentActivity = async (shopId, limit = 10) => {
-  console.log("Fetching recent activity for shop:", shopId);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
+
   const [recentInvoices, recentVisits, recentReminders] = await Promise.all([
-    Invoice.find({ shop_id: shopId, deleted_at: null })
+    Invoice.find({ shop_id: shopObjectId, deleted_at: null })
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate("customer_id", "full_name")
-      .select("invoice_number total_amount payment_status createdAt"),
+      .select("invoice_number total_amount payment_status createdAt")
+      .lean(),
       
-    ServiceVisit.find({ deleted_at: null })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate({
-        path: "service_schedule_id",
-        populate: {
-          path: "service_plan_id",
-          match: { shop_id: shopId },
-          populate: { path: "customer_id", select: "full_name" }
+    ServiceVisit.aggregate([
+      {
+        $match: {
+          deleted_at: null,
+          $or: [
+            { shop_id: shopObjectId },
+            { shop_id: { $exists: false } }
+          ]
         }
-      }),
+      },
+      {
+        $lookup: {
+          from: "serviceschedules",
+          localField: "service_schedule_id",
+          foreignField: "_id",
+          as: "schedule"
+        }
+      },
+      { $unwind: { path: "$schedule", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "serviceplans",
+          localField: "schedule.service_plan_id",
+          foreignField: "_id",
+          as: "plan"
+        }
+      },
+      { $unwind: { path: "$plan", preserveNullAndEmptyArrays: true } },
+      {
+        $match: {
+          $or: [
+            { shop_id: shopObjectId },
+            { "plan.shop_id": shopObjectId }
+          ]
+        }
+      },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "plan.customer_id",
+          foreignField: "_id",
+          as: "customer"
+        }
+      },
+      { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+      { $sort: { createdAt: -1 } },
+      { $limit: limit },
+      {
+        $project: {
+          _id: 1,
+          status: 1,
+          createdAt: 1,
+          customer_name: "$customer.full_name"
+        }
+      }
+    ]),
 
     reminderUtils.getRecentReminderActivity(shopId, limit)
   ]);
@@ -381,20 +452,18 @@ export const getRecentActivity = async (shopId, limit = 10) => {
       status: invoice.payment_status,
       timestamp: invoice.createdAt,
     })),
-    ...recentVisits
-      .filter(v => v.service_schedule_id?.service_plan_id) // Match successful
-      .map((visit) => ({
-        type: "service",
-        id: visit._id,
-        title: "Service Visit",
-        description: `${visit.service_schedule_id?.service_plan_id?.customer_id?.full_name || "Customer"} - ${visit.status}`,
-        status: visit.status,
-        timestamp: visit.createdAt,
-      })),
+    ...recentVisits.map((visit) => ({
+      type: "service",
+      id: visit._id,
+      title: "Service Visit",
+      description: `${visit.customer_name || "Customer"} - ${visit.status}`,
+      status: visit.status,
+      timestamp: visit.createdAt,
+    })),
     ...recentReminders
   ];
   
-  return activities.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+  return activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, limit);
 };
 
 /**
@@ -404,10 +473,11 @@ export const getAlerts = async (shopId) => {
   const alerts = [];
   const limit = 10;
   const now = new Date();
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   // 1. Overdue invoices
   const overdueInvoiceList = await Invoice.find({
-    shop_id: shopId,
+    shop_id: shopObjectId,
     payment_status: { $in: ["UNPAID", "PARTIAL"] },
     due_date: { $lt: now },
     deleted_at: null,
@@ -415,7 +485,8 @@ export const getAlerts = async (shopId) => {
     .populate("customer_id", "full_name whatsapp_number")
     .select("invoice_number total_amount due_date payment_status customer_id")
     .sort({ due_date: 1 })
-    .limit(limit);
+    .limit(limit)
+    .lean();
 
   if (overdueInvoiceList.length > 0) {
     alerts.push({
@@ -436,13 +507,17 @@ export const getAlerts = async (shopId) => {
     });
   }
 
-  // 2. Missed or overdue service visits
+  // 2. Missed or overdue service visits using aggregation pipeline
   const overdueServiceList = await ServiceSchedule.aggregate([
     {
       $match: {
         deleted_at: null,
         status: { $in: ["MISSED", "PENDING"] },
         scheduled_date: { $lt: now },
+        $or: [
+          { shop_id: shopObjectId },
+          { shop_id: { $exists: false } }
+        ]
       },
     },
     {
@@ -456,7 +531,7 @@ export const getAlerts = async (shopId) => {
     { $unwind: "$plan" },
     {
       $match: {
-        "plan.shop_id": shopId,
+        "plan.shop_id": shopObjectId,
         "plan.deleted_at": null,
       },
     },
@@ -517,12 +592,13 @@ export const getAlerts = async (shopId) => {
 
   // 3. Failed Reminder Messages
   const failedReminders = await ReminderLog.find({
-    shop_id: shopId,
+    shop_id: shopObjectId,
     message_status: "FAILED",
     deleted_at: null,
     createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
   })
-  .limit(limit);
+  .limit(limit)
+  .lean();
 
   if (failedReminders.length > 0) {
     alerts.push({
@@ -543,7 +619,7 @@ export const getAlerts = async (shopId) => {
 
   // 4. Invoices missing due dates (if payment status is not PAID)
   const missingDueDateCount = await Invoice.countDocuments({
-    shop_id: shopId,
+    shop_id: shopObjectId,
     payment_status: { $in: ["UNPAID", "PARTIAL"] },
     due_date: null,
     deleted_at: null
@@ -604,11 +680,12 @@ export const getDashboardSummary = async (shopId, period = "today") => {
  */
 export const getPaymentMethodStats = async (shopId, period = "month") => {
   const { start, end } = getDateRange(period);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   const paymentStats = await Invoice.aggregate([
     {
       $match: {
-        shop_id: shopId,
+        shop_id: shopObjectId,
         invoice_date: { $gte: start, $lt: end },
         payment_status: "PAID",
         deleted_at: null,
@@ -654,20 +731,21 @@ export const getWarrantyExpiringStats = async (shopId) => {
   const now = new Date();
   const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   const [expiringThisWeek, expiringThisMonth, total] = await Promise.all([
     InvoiceItem.countDocuments({
-      shop_id: shopId,
+      shop_id: shopObjectId,
       warranty_end_date: { $gte: now, $lte: sevenDaysLater },
       deleted_at: null,
     }),
     InvoiceItem.countDocuments({
-      shop_id: shopId,
+      shop_id: shopObjectId,
       warranty_end_date: { $gte: now, $lte: thirtyDaysLater },
       deleted_at: null,
     }),
     InvoiceItem.countDocuments({
-      shop_id: shopId,
+      shop_id: shopObjectId,
       warranty_end_date: { $gte: now },
       deleted_at: null,
     }),

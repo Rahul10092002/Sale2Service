@@ -18,16 +18,27 @@ import {
   Calendar,
   X,
   SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  Image as ImageIcon,
+  Edit3,
+  Copy,
+  Receipt,
+  Boxes,
 } from "lucide-react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { Button, LoadingSpinner } from "../../components/ui/index.js";
-import { useGetInventoryItemsQuery } from "../../features/inventory/inventoryApi.js";
+import { Button, LoadingSpinner, ImageGalleryModal } from "../../components/ui/index.js";
+import { useGetPurchasesQuery } from "../../features/inventory/inventoryApi.js";
+import { useGetDealersQuery } from "../../features/dealers/dealerApi.js";
 import { usePermissions } from "../../hooks/usePermissions.js";
 import { ROUTES } from "../../utils/constants.js";
 import { formatDate } from "../../utils/date.js";
 import DealersModal from "./DealersModal.jsx";
 import ReceivingSlipModal from "./ReceivingSlipModal.jsx";
+import EditReceivingSlipModal from "./EditReceivingSlipModal.jsx";
 import RetroactiveDealerModal from "./RetroactiveDealerModal.jsx";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../features/ui/uiSlice.js";
 
 const Chip = ({ label, onRemove }) => {
   return (
@@ -51,38 +62,30 @@ const formatCurrency = (amount) => {
   }).format(amount || 0);
 };
 
-const getStatusBadgeClass = (status) => {
-  switch (status) {
-    case "IN_STOCK":
-      return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400";
-    case "SOLD":
-      return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-    case "DEFECTIVE_RMA":
-    case "DEFECTIVE":
-      return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
-    case "RETURNED":
-      return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400";
-    case "UNDER_SERVICE":
-      return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
-    default:
-      return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
-  }
-};
-
-const Inventory = () => {
+const Purchases = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const { canCreate } = usePermissions();
 
-  // Modals
+  // Modals state
   const [showDealersModal, setShowDealersModal] = useState(false);
   const [showReceivingSlipModal, setShowReceivingSlipModal] = useState(false);
+  const [selectedEditSlipId, setSelectedEditSlipId] = useState(null);
   const [selectedRetroItem, setSelectedRetroItem] = useState(null);
+  const [expandedSlipSerials, setExpandedSlipSerials] = useState({});
+
+  // Image Gallery State
+  const [galleryConfig, setGalleryConfig] = useState({
+    isOpen: false,
+    images: [],
+    title: "Purchase Bill Images",
+    initialIndex: 0,
+  });
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
-  const [searchIn, setSearchIn] = useState(searchParams.get("search_in") || "");
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(
     Number(searchParams.get("page")) || 1
@@ -92,33 +95,68 @@ const Inventory = () => {
   );
   const [filters, setFilters] = useState({
     status: searchParams.get("status") || "",
-    category: searchParams.get("category") || "",
+    dealer_id: searchParams.get("dealer_id") || "",
   });
 
   const filterRef = useRef(null);
 
-  // Fetch Inventory Query
+  // Fetch Dealers for filter dropdown
+  const { data: dealersResp } = useGetDealersQuery();
+  const dealersList = dealersResp?.dealers || [];
+
+  // Fetch Grouped Purchases Query
   const {
     data: response,
     isLoading,
+    isFetching,
     error,
     refetch,
-  } = useGetInventoryItemsQuery({
+  } = useGetPurchasesQuery({
     search: searchTerm,
     status: filters.status || undefined,
+    dealer_id: filters.dealer_id || undefined,
     page: currentPage,
     limit,
   });
 
-  const items = response?.items || [];
+  const purchases = response?.purchases || [];
   const pagination = response?.pagination || { page: 1, limit: 10, total: 0, pages: 1 };
 
-  const handleViewItem = (itemId) => {
-    navigate(`${ROUTES.INVENTORY}/${itemId}`, {
+  const handleViewSlip = (purchase) => {
+    // If slip has a representative item ID, navigate to item view with context, or purchase order id
+    const targetId = purchase.first_item_id || purchase._id || purchase.purchase_order_id;
+    navigate(`${ROUTES.INVENTORY}/${targetId}`, {
       state: {
         from: location.pathname + location.search,
-        label: "Inventory",
+        label: "Purchases",
+        slipId: purchase.purchase_order_id || purchase._id,
       },
+    });
+  };
+
+  const handleCopySerial = (e, serial) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(serial);
+    dispatch(showToast({ type: "success", message: `Serial ${serial} copied!` }));
+  };
+
+  const toggleSerialExpansion = (e, slipId) => {
+    e.stopPropagation();
+    setExpandedSlipSerials((prev) => ({
+      ...prev,
+      [slipId]: !prev[slipId],
+    }));
+  };
+
+  const openGallery = (e, images, title) => {
+    e.stopPropagation();
+    const validImages = Array.isArray(images) ? images.filter(Boolean) : [images].filter(Boolean);
+    if (validImages.length === 0) return;
+    setGalleryConfig({
+      isOpen: true,
+      images: validImages,
+      title: title || "Purchase Bill",
+      initialIndex: 0,
     });
   };
 
@@ -142,12 +180,11 @@ const Inventory = () => {
 
   useEffect(() => {
     setSearchTerm(searchParams.get("search") || "");
-    setSearchIn(searchParams.get("search_in") || "");
     setCurrentPage(Number(searchParams.get("page")) || 1);
     setLimit(Number(searchParams.get("limit")) || 10);
     setFilters({
       status: searchParams.get("status") || "",
-      category: searchParams.get("category") || "",
+      dealer_id: searchParams.get("dealer_id") || "",
     });
   }, [location.search]);
 
@@ -156,7 +193,6 @@ const Inventory = () => {
     const finalState = {
       filters,
       searchTerm,
-      searchIn,
       currentPage,
       limit,
       ...newState,
@@ -167,7 +203,6 @@ const Inventory = () => {
     });
 
     if (finalState.searchTerm) params.search = finalState.searchTerm;
-    if (finalState.searchIn) params.search_in = finalState.searchIn;
     if (finalState.currentPage > 1) params.page = finalState.currentPage;
     if (finalState.limit && finalState.limit !== 10) params.limit = finalState.limit;
 
@@ -209,43 +244,105 @@ const Inventory = () => {
     <>
       <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-3 sm:py-6">
         <div className="max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8">
-          {/* Modern Filters & Search Bar Matching InvoiceList */}
-          <div className="flex flex-wrap items-center justify-between px-3 py-1.5 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-3 gap-2">
-            <div className="flex items-center space-x-2">
+          {/* Top Bar: Title & Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">
+                  Purchases & Inward
+                </h1>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                  {pagination.total} Slip{pagination.total === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                Manage supplier bills, product inward batches, and warranty origins
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowDealersModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl hover:bg-gray-50 dark:hover:bg-dark-hover active:scale-95 transition-all shadow-xs"
+              >
+                <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>Suppliers & Dealers</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowReceivingSlipModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl active:scale-95 transition-all shadow-xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Purchase Intake</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Modern Filters & Search Bar */}
+          <div className="flex flex-wrap items-center justify-between px-3 py-2 bg-white dark:bg-dark-card rounded-xl shadow-xs border border-gray-200 dark:border-dark-border mb-3 gap-2">
+            <div className="flex items-center space-x-2 flex-1 min-w-[240px]">
               {/* Filter Dropdown */}
               <div className="relative" ref={filterRef}>
                 <button
                   onClick={toggleFilter}
-                  className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-md p-2 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                  className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-lg p-2 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                   aria-label="Filter options"
                 >
                   <Filter className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </button>
 
                 {showFilters && (
-                  <div className="absolute top-12 left-0 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-xl shadow-xl p-5 z-20 w-[320px] sm:w-[340px] space-y-4">
+                  <div className="absolute top-12 left-0 bg-white dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl p-5 z-30 w-[320px] sm:w-[360px] space-y-4 animate-in fade-in">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-2">
-                      <h3 className="text-xs font-semibold text-gray-800 dark:text-slate-100">
-                        Inventory Filters
+                      <h3 className="text-xs font-bold text-gray-800 dark:text-slate-100 uppercase tracking-wide">
+                        Purchase Filters
                       </h3>
                       <button
                         onClick={() => {
-                          const resetFilters = { status: "", category: "" };
+                          const resetFilters = { status: "", dealer_id: "" };
                           setFilters(resetFilters);
                           setCurrentPage(1);
                           updateURL({ filters: resetFilters, currentPage: 1 });
                         }}
-                        className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 font-medium"
+                        className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 font-semibold"
                       >
                         Clear All
                       </button>
                     </div>
 
+                    {/* Dealer Filter */}
+                    <div>
+                      <label className="text-xs text-ink-muted dark:text-slate-400 font-semibold">
+                        Supplier / Dealer
+                      </label>
+                      <select
+                        value={filters.dealer_id}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const newFilters = { ...filters, dealer_id: val };
+                          setFilters(newFilters);
+                          setCurrentPage(1);
+                          updateURL({ filters: newFilters, currentPage: 1 });
+                        }}
+                        className="w-full mt-1 px-3 py-2 text-xs border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                      >
+                        <option value="">All Suppliers</option>
+                        {dealersList.map((d) => (
+                          <option key={d._id} value={d._id}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     {/* Status Filter */}
                     <div>
-                      <label className="text-xs text-ink-muted dark:text-slate-400 font-medium">
-                        Unit Status
+                      <label className="text-xs text-ink-muted dark:text-slate-400 font-semibold">
+                        Stock Status In Purchase
                       </label>
                       <select
                         value={filters.status}
@@ -256,41 +353,14 @@ const Inventory = () => {
                           setCurrentPage(1);
                           updateURL({ filters: newFilters, currentPage: 1 });
                         }}
-                        className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full mt-1 px-3 py-2 text-xs border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
                       >
-                        <option value="">All Statuses</option>
-                        <option value="IN_STOCK">In Stock (Available)</option>
-                        <option value="SOLD">Sold (Invoiced)</option>
-                        <option value="DEFECTIVE_RMA">Defective RMA</option>
-                        <option value="RETURNED">Returned</option>
-                        <option value="UNDER_SERVICE">Under Service</option>
-                      </select>
-                    </div>
-
-                    {/* Category Filter */}
-                    <div>
-                      <label className="text-xs text-ink-muted dark:text-slate-400 font-medium">
-                        Category
-                      </label>
-                      <select
-                        value={filters.category}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const newFilters = { ...filters, category: val };
-                          setFilters(newFilters);
-                          setCurrentPage(1);
-                          updateURL({ filters: newFilters, currentPage: 1 });
-                        }}
-                        className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                      >
-                        <option value="">All Categories</option>
-                        <option value="BATTERY">Battery</option>
-                        <option value="INVERTER">Inverter</option>
-                        <option value="UPS">UPS</option>
-                        <option value="SOLAR_PANEL">Solar Panel</option>
-                        <option value="CHARGER">Charger</option>
-                        <option value="ACCESSORIES">Accessories</option>
-                        <option value="OTHER">Other</option>
+                        <option value="">All Slips</option>
+                        <option value="IN_STOCK">Has In-Stock Units</option>
+                        <option value="SOLD">Has Invoiced/Sold Units</option>
+                        <option value="DEFECTIVE_RMA">Has Defective RMA</option>
+                        <option value="RETURNED">Has Returned Units</option>
+                        <option value="UNDER_SERVICE">Has Units Under Service</option>
                       </select>
                     </div>
                   </div>
@@ -298,328 +368,414 @@ const Inventory = () => {
               </div>
 
               {/* Modern Search Bar */}
-              <div className="flex items-center space-x-3 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-input rounded-full px-4 py-1.5 max-w-xs shadow-sm">
-                <Search className="h-4 w-4 text-gray-500 dark:text-slate-400" />
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
-                  placeholder="Search serial #, product..."
-                  className="bg-transparent focus:outline-none text-ink-base dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 w-full text-xs"
+                  type="text"
                   value={searchTerm}
                   onChange={(e) => {
-                    const value = e.target.value;
-                    setSearchTerm(value);
-                    setCurrentPage(1);
-                    updateURL({ searchTerm: value, currentPage: 1 });
+                    setSearchTerm(e.target.value);
+                    updateURL({ searchTerm: e.target.value, currentPage: 1 });
                   }}
+                  placeholder="Search serial numbers, bill #, product names, or supplier..."
+                  className="w-full pl-9 pr-8 py-2 text-xs border border-gray-200 dark:border-dark-border rounded-xl bg-gray-50/50 dark:bg-dark-input text-ink-base dark:text-slate-200 focus:bg-white dark:focus:bg-dark-input focus:ring-2 focus:ring-blue-500 outline-none font-medium"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm("");
+                      updateURL({ searchTerm: "", currentPage: 1 });
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Action Buttons Matching InvoiceList */}
-            <div className="flex items-center gap-2">
+            {/* Clear All active chips button if filters applied */}
+            {(filters.status || filters.dealer_id || searchTerm) && (
               <button
-                type="button"
-                onClick={() => setShowDealersModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-dark-input border border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-200 rounded-md text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                onClick={() => {
+                  const resetFilters = { status: "", dealer_id: "" };
+                  setFilters(resetFilters);
+                  setSearchTerm("");
+                  setCurrentPage(1);
+                  updateURL({ filters: resetFilters, searchTerm: "", currentPage: 1 });
+                }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
               >
-                <Building2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                <span>Suppliers</span>
+                Reset Search
               </button>
-
-              {canCreate("products") && (
-                <button
-                  type="button"
-                  onClick={() => setShowReceivingSlipModal(true)}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-white dark:bg-dark-input border-2 border-blue-500 text-blue-500 dark:text-blue-400 rounded-md text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-600 hover:text-blue-600 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Stock</span>
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Active Filter Chips */}
-          <div className="flex flex-wrap gap-2 mb-3 px-1">
+          <div className="flex flex-wrap gap-2 mb-3">
+            {searchTerm && (
+              <Chip
+                label={`Search: "${searchTerm}"`}
+                onRemove={() => {
+                  setSearchTerm("");
+                  updateURL({ searchTerm: "", currentPage: 1 });
+                }}
+              />
+            )}
             {filters.status && (
               <Chip
-                label={`Status: ${filters.status.replace("_", " ")}`}
+                label={`Status: ${filters.status}`}
                 onRemove={() => {
                   const newFilters = { ...filters, status: "" };
                   setFilters(newFilters);
-                  setCurrentPage(1);
                   updateURL({ filters: newFilters, currentPage: 1 });
                 }}
               />
             )}
-
-            {filters.category && (
+            {filters.dealer_id && (
               <Chip
-                label={`Category: ${filters.category.replace("_", " ")}`}
+                label={`Supplier: ${
+                  dealersList.find((d) => d._id === filters.dealer_id)?.name || "Selected"
+                }`}
                 onRemove={() => {
-                  const newFilters = { ...filters, category: "" };
+                  const newFilters = { ...filters, dealer_id: "" };
                   setFilters(newFilters);
-                  setCurrentPage(1);
                   updateURL({ filters: newFilters, currentPage: 1 });
                 }}
               />
             )}
           </div>
 
-          {/* Inventory Item List Card */}
-          <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
-            {error ? (
-              <div className="p-6 text-center">
-                <div className="text-red-600 dark:text-red-400 text-sm">
-                  Failed to load inventory items. Please try again.
+          {/* Main Table / Card Container */}
+          <div className="bg-white dark:bg-dark-card rounded-2xl shadow-xs border border-gray-200 dark:border-dark-border overflow-hidden">
+            {/* Desktop Table Header */}
+            <div className="hidden md:grid grid-cols-[50px_1.8fr_1.6fr_1.8fr_1.4fr_140px] gap-2 items-center px-4 py-3 bg-gray-50/80 dark:bg-dark-input/60 border-b border-gray-200 dark:border-dark-border text-xs font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider">
+              <div>#</div>
+              <div>Purchase Slip & Date</div>
+              <div>Supplier / Origin</div>
+              <div>Products & Serials</div>
+              <div>Cost & Status</div>
+              <div className="text-right">Actions</div>
+            </div>
+
+            {/* Empty State */}
+            {purchases.length === 0 ? (
+              <div className="text-center py-16 px-4">
+                <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-3 text-blue-600 dark:text-blue-400">
+                  <FileSpreadsheet className="w-7 h-7" />
                 </div>
-                <Button onClick={refetch} className="mt-4">
-                  Retry
-                </Button>
-              </div>
-            ) : !items?.length ? (
-              <div className="p-12 text-center">
-                <Package className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
-                <h3 className="text-base font-medium text-ink-base dark:text-slate-100 mb-2">
-                  No inventory items found
+                <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 mb-1">
+                  No purchases found
                 </h3>
-                <p className="text-ink-secondary dark:text-slate-400 mb-3 text-xs">
-                  {searchTerm || filters.status
-                    ? "No inventory units match your search criteria."
-                    : "Get started by adding received stock items."}
+                <p className="text-xs text-gray-500 dark:text-slate-400 max-w-sm mx-auto mb-5">
+                  {searchTerm || filters.status || filters.dealer_id
+                    ? "Try adjusting your search terms or clearing your filters."
+                    : "Enter your first receiving slip to track product purchases and warranty origins."}
                 </p>
-                <div className="flex items-center justify-center">
-                  {canCreate("products") && (
-                    <Button onClick={() => setShowReceivingSlipModal(true)}>
-                      <Plus className="w-4 h-4 mr-1.5" /> Add First Stock
-                    </Button>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReceivingSlipModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 shadow-xs transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>New Purchase Intake</span>
+                </button>
               </div>
             ) : (
-              <div>
-                {/* Desktop Table Header Matching InvoiceList */}
-                <div className="hidden md:grid grid-cols-[60px_2.2fr_1.4fr_1.4fr_120px] gap-2 text-gray-500 dark:text-slate-400 text-xs font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
-                  <div>S No.</div>
-                  <div>Product & Serial Details</div>
-                  <div>Supplier / Origin</div>
-                  <div>Status & Purchase Cost</div>
-                  <div>Actions</div>
-                </div>
+              <div className="divide-y divide-gray-100 dark:divide-dark-border">
+                {purchases.map((purchase, index) => {
+                  const slipImages = purchase.purchase_bill_images?.length > 0
+                    ? purchase.purchase_bill_images
+                    : purchase.purchase_bill_image
+                    ? [purchase.purchase_bill_image]
+                    : [];
 
-                {/* Rows List */}
-                {items.map((item, index) => {
-                  const serialDisplay = item.serial_number || "NO SERIAL (LEGACY)";
-                  const supplierName = item.dealer_id?.name || "No Supplier Linked";
+                  const isExpanded = expandedSlipSerials[purchase._id];
+                  const totalSerials = purchase.serial_numbers || [];
+                  const displayedSerials = isExpanded ? totalSerials : totalSerials.slice(0, 3);
+                  const remainingSerials = totalSerials.length - 3;
 
                   return (
                     <div
-                      key={item._id}
-                      className={
-                        index % 2 === 0
-                          ? "bg-white dark:bg-dark-card"
-                          : "bg-gray-50 dark:bg-dark-subtle"
-                      }
+                      key={purchase._id}
+                      className="hover:bg-blue-50/30 dark:hover:bg-dark-hover transition-colors"
                     >
-                      {/* ── Compact Mobile Card (Touch-First Design Matching InvoiceList) ── */}
-                      <div
-                        className={`md:hidden relative px-3 py-2.5 transition-all active:bg-blue-50/40 dark:active:bg-slate-800/60 border-b border-gray-100 dark:border-dark-border/80 last:border-b-0 cursor-pointer ${
-                          index % 2 === 0
-                            ? "bg-white dark:bg-dark-card"
-                            : "bg-slate-50/60 dark:bg-slate-800/25"
-                        }`}
-                        onClick={() => handleViewItem(item._id)}
-                      >
-                        {/* Left status accent indicator */}
-                        <div
-                          className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${
-                            item.status === "SOLD"
-                              ? "bg-blue-500"
-                              : item.status === "DEFECTIVE_RMA" || item.status === "DEFECTIVE"
-                              ? "bg-red-500"
-                              : item.status === "RETURNED"
-                              ? "bg-amber-500"
-                              : item.status === "UNDER_SERVICE"
-                              ? "bg-purple-500"
-                              : "bg-emerald-500"
-                          }`}
-                        />
-
-                        <div className="pl-1.5">
-                          {/* Top Row: Product Name & Purchase Price */}
-                          <div className="flex items-baseline justify-between gap-2">
-                            <p className="font-bold text-xs text-ink-base dark:text-slate-100 truncate hover:text-blue-600 dark:hover:text-blue-400">
-                              {item.product_name}
-                            </p>
-                            <span className="text-xs font-bold text-ink-base dark:text-white shrink-0 tracking-tight">
-                              {formatCurrency(item.purchase_price)}
-                            </span>
+                      {/* ── Mobile Card View (< md) ── */}
+                      <div className="p-3.5 md:hidden space-y-3">
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                              <Receipt className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="font-extrabold text-sm text-gray-900 dark:text-slate-100 flex items-center gap-1.5 font-mono">
+                                {purchase.dealer_invoice_no || "INTAKE SLIP"}
+                              </div>
+                              <div className="text-[11px] text-gray-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                                <Calendar className="w-3 h-3" />
+                                <span>{formatDate(purchase.purchase_date)}</span>
+                              </div>
+                            </div>
                           </div>
 
-                          {/* Meta Row: S/N · Purchase Date · Supplier */}
-                          <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 dark:text-slate-400 flex-wrap">
-                            <span className="font-mono font-medium text-indigo-600 dark:text-indigo-400 break-all">
-                              {serialDisplay}
+                          <div className="text-right">
+                            <div className="font-extrabold text-sm text-gray-900 dark:text-slate-100">
+                              {formatCurrency(purchase.total_cost)}
+                            </div>
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">
+                              {purchase.total_items_count} Unit{purchase.total_items_count === 1 ? "" : "s"}
                             </span>
-                            {item.purchase_date && (
-                              <>
-                                <span>·</span>
-                                <span>{formatDate(item.purchase_date)}</span>
-                              </>
-                            )}
-                            {item.dealer_id?.name && (
-                              <>
-                                <span>·</span>
-                                <span className="truncate max-w-[120px]">
-                                  {item.dealer_id.name}
-                                </span>
-                              </>
-                            )}
                           </div>
+                        </div>
 
-                          {/* Sales or Invoice Ref Single-Line Summary */}
-                          {item.invoice_id && (
-                            <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-600 dark:text-slate-300">
-                              <span className="shrink-0 px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-900/30 text-[10px] font-semibold text-blue-600 dark:text-blue-400">
-                                Sold Inv #{item.invoice_id.invoice_number}
+                        {/* Supplier Row */}
+                        <div className="p-2.5 bg-gray-50 dark:bg-dark-input/60 rounded-xl border border-gray-100 dark:border-dark-border text-xs flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                            <div className="truncate">
+                              <span className="font-bold text-gray-800 dark:text-slate-200">
+                                {purchase.dealer?.name || "Direct Supplier"}
                               </span>
-                              {item.invoice_id.customer_name && (
-                                <span className="truncate text-slate-600 dark:text-slate-400">
-                                  {item.invoice_id.customer_name}
+                              {purchase.dealer?.phone && (
+                                <span className="text-[11px] text-gray-500 dark:text-slate-400 font-mono ml-2">
+                                  {purchase.dealer.phone}
                                 </span>
                               )}
                             </div>
-                          )}
-
-                          {/* Bottom Status & Action Row */}
-                          <div className="flex items-center justify-between gap-2 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-dark-border/40">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span
-                                className={`text-[9.5px] px-2 py-0.5 rounded-full font-semibold tracking-wide ${getStatusBadgeClass(
-                                  item.status
-                                )}`}
-                              >
-                                {item.status ? item.status.replace("_", " ") : "IN STOCK"}
-                              </span>
-
-                              {item.purchase_invoice_ref && (
-                                <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 font-mono break-all">
-                                  Ref: {item.purchase_invoice_ref}
-                                </span>
-                              )}
-                            </div>
-
-                            <div
-                              className="flex items-center gap-1"
-                              onClick={(e) => e.stopPropagation()}
+                          </div>
+                          {slipImages.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => openGallery(e, slipImages, `Bill #${purchase.dealer_invoice_no}`)}
+                              className="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold flex items-center gap-1 shrink-0"
                             >
-                              <button
-                                type="button"
-                                className="px-2.5 py-1 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-semibold"
-                                onClick={() => handleViewItem(item._id)}
-                                aria-label="View Details"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>View</span>
-                              </button>
+                              <ImageIcon className="w-3.5 h-3.5" />
+                              <span>Bill ({slipImages.length})</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Products List Summary */}
+                        <div className="space-y-1">
+                          {purchase.products_summary?.map((prod, pIdx) => (
+                            <div key={pIdx} className="flex justify-between items-center text-xs">
+                              <span className="font-medium text-gray-700 dark:text-slate-300 truncate max-w-[200px]">
+                                {prod.product_name}
+                              </span>
+                              <span className="font-bold text-gray-900 dark:text-white shrink-0 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-[11px]">
+                                {prod.count} {prod.count === 1 ? "unit" : "units"}
+                              </span>
                             </div>
+                          ))}
+                        </div>
+
+                        {/* Serials Preview */}
+                        {totalSerials.length > 0 && (
+                          <div className="pt-1">
+                            <div className="flex flex-wrap gap-1 items-center">
+                              {displayedSerials.map((sn, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  onClick={(e) => handleCopySerial(e, sn)}
+                                  className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 active:scale-95 cursor-pointer"
+                                  title="Click to copy serial"
+                                >
+                                  {sn}
+                                  <Copy className="w-2.5 h-2.5 opacity-60" />
+                                </span>
+                              ))}
+                              {remainingSerials > 0 && !isExpanded && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => toggleSerialExpansion(e, purchase._id)}
+                                  className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline px-1"
+                                >
+                                  +{remainingSerials} more...
+                                </button>
+                              )}
+                              {isExpanded && remainingSerials > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => toggleSerialExpansion(e, purchase._id)}
+                                  className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline px-1"
+                                >
+                                  Show less
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actions Footer */}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-dark-border gap-2">
+                          <div className="flex items-center gap-2 text-[11px]">
+                            {purchase.status_breakdown?.IN_STOCK > 0 && (
+                              <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                                {purchase.status_breakdown.IN_STOCK} In Stock
+                              </span>
+                            )}
+                            {purchase.status_breakdown?.SOLD > 0 && (
+                              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                · {purchase.status_breakdown.SOLD} Sold
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedEditSlipId(purchase._id || purchase.purchase_order_id)}
+                              className="px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-all flex items-center gap-1"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleViewSlip(purchase)}
+                              className="px-3 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg active:scale-95 transition-all flex items-center gap-1 shadow-xs"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>View Slip</span>
+                            </button>
                           </div>
                         </div>
                       </div>
 
-                      {/* ── Desktop Row Matching InvoiceList ── */}
-                      <div className="hidden md:grid grid-cols-[60px_2.2fr_1.4fr_1.4fr_120px] gap-2 items-center p-4">
-                        {/* S No. */}
-                        <div className="text-ink-secondary dark:text-slate-400">
+                      {/* ── Desktop Row View (>= md) ── */}
+                      <div className="hidden md:grid grid-cols-[50px_1.8fr_1.6fr_1.8fr_1.4fr_140px] gap-2 items-center p-4">
+                        {/* S No */}
+                        <div className="text-xs font-semibold text-gray-400 dark:text-slate-500">
                           {(currentPage - 1) * limit + index + 1}
                         </div>
 
-                        {/* Product & Serial Details */}
-                        <div className="flex gap-3 items-center min-w-0">
+                        {/* Slip Info & Date */}
+                        <div className="min-w-0">
                           <div
-                            className="cursor-pointer shrink-0"
-                            onClick={() => handleViewItem(item._id)}
+                            className="font-mono font-extrabold text-sm text-gray-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer flex items-center gap-1.5 truncate"
+                            onClick={() => handleViewSlip(purchase)}
                           >
-                            <div className="w-10 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                              <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                            </div>
+                            <Receipt className="w-4 h-4 text-blue-600 shrink-0" />
+                            <span className="truncate">{purchase.dealer_invoice_no || "INTAKE SLIP"}</span>
                           </div>
-                          <div className="min-w-0">
-                            <div
-                              className="font-bold text-sm text-ink-base dark:text-slate-100 cursor-pointer hover:underline truncate"
-                              onClick={() => handleViewItem(item._id)}
-                            >
-                              {item.product_name}
-                            </div>
-                            <div className="flex items-center gap-2 text-[11px] text-ink-secondary dark:text-slate-400 mt-0.5 flex-wrap">
-                              <span className="font-mono font-medium text-indigo-600 dark:text-indigo-400 break-all">
-                                {serialDisplay}
-                              </span>
-                              <span>·</span>
-                              <span>
-                                {item.product_id?.category || item.product_id?.product_category || "Unit"}
-                              </span>
-                              {item.purchase_date && (
-                                <>
-                                  <span>·</span>
-                                  <span>{formatDate(item.purchase_date)}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Supplier / Origin Column */}
-                        <div className="text-xs text-ink-secondary dark:text-slate-400 min-w-0">
-                          {item.dealer_id ? (
-                            <div>
-                              <div
-                                className="font-semibold text-gray-900 dark:text-slate-100 truncate hover:text-blue-600 cursor-pointer"
-                                onClick={() => handleViewItem(item._id)}
+                          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 mt-1">
+                            <Calendar className="w-3.5 h-3.5 shrink-0" />
+                            <span>{formatDate(purchase.purchase_date)}</span>
+                            {slipImages.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => openGallery(e, slipImages, `Bill #${purchase.dealer_invoice_no}`)}
+                                className="text-[11px] text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-0.5 ml-1"
                               >
-                                {item.dealer_id.name}
-                              </div>
-                              <div className="text-[11px] text-gray-500 dark:text-slate-400 font-mono mt-0.5 truncate">
-                                {item.dealer_id.phone || item.purchase_invoice_ref || "Direct Supplier"}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs italic">
-                              <span>No Supplier Linked</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Status & Purchase Column */}
-                        <div className="text-ink-secondary dark:text-slate-400">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm text-gray-900 dark:text-slate-100">
-                                {formatCurrency(item.purchase_price)}
-                              </span>
-                              <span
-                                className={`text-[10px] px-2 py-0.5 font-medium rounded-full ${getStatusBadgeClass(
-                                  item.status
-                                )}`}
-                              >
-                                {item.status ? item.status.replace("_", " ") : "IN STOCK"}
-                              </span>
-                            </div>
-                            {item.invoice_id && (
-                              <p className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">
-                                Invoiced #{item.invoice_id.invoice_number}
-                              </p>
+                                <ImageIcon className="w-3 h-3" />
+                                <span>Bill ({slipImages.length})</span>
+                              </button>
                             )}
                           </div>
                         </div>
 
-                        {/* Actions Column */}
-                        <div>
+                        {/* Supplier / Origin */}
+                        <div className="min-w-0 text-xs">
+                          {purchase.dealer ? (
+                            <div>
+                              <div
+                                className="font-bold text-gray-900 dark:text-slate-100 truncate hover:text-blue-600 cursor-pointer"
+                                onClick={() => handleViewSlip(purchase)}
+                              >
+                                {purchase.dealer.name}
+                              </div>
+                              <div className="text-[11px] text-gray-500 dark:text-slate-400 font-mono mt-0.5 truncate">
+                                {purchase.dealer.phone || purchase.dealer.contact_person || "Supplier"}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-amber-600 dark:text-amber-400 italic text-xs">
+                              Direct / Unassigned
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Products & Serials */}
+                        <div className="min-w-0 space-y-1">
+                          {purchase.products_summary?.map((prod, pIdx) => (
+                            <div key={pIdx} className="text-xs text-gray-800 dark:text-slate-200 flex items-center gap-1.5">
+                              <span className="font-semibold truncate max-w-[150px]">{prod.product_name}</span>
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 bg-gray-100 dark:bg-slate-800 rounded text-gray-700 dark:text-slate-300 shrink-0">
+                                x{prod.count}
+                              </span>
+                            </div>
+                          ))}
+
+                          {/* Serials Chips Preview */}
+                          {totalSerials.length > 0 && (
+                            <div className="flex flex-wrap gap-1 items-center pt-0.5">
+                              {displayedSerials.map((sn, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  onClick={(e) => handleCopySerial(e, sn)}
+                                  className="font-mono text-[10px] font-medium px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-0.5 cursor-pointer hover:bg-indigo-100"
+                                  title="Click to copy serial"
+                                >
+                                  {sn}
+                                </span>
+                              ))}
+                              {remainingSerials > 0 && !isExpanded && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => toggleSerialExpansion(e, purchase._id)}
+                                  className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  +{remainingSerials} more...
+                                </button>
+                              )}
+                              {isExpanded && remainingSerials > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => toggleSerialExpansion(e, purchase._id)}
+                                  className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                  Show less
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Total Cost & Status */}
+                        <div className="min-w-0 text-xs">
+                          <div className="font-extrabold text-sm text-gray-900 dark:text-slate-100">
+                            {formatCurrency(purchase.total_cost)}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              {purchase.total_items_count} Units
+                            </span>
+                            {purchase.status_breakdown?.IN_STOCK > 0 && (
+                              <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                                {purchase.status_breakdown.IN_STOCK} in stock
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
-                            className="bg-blue-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-blue-600 transition-colors flex items-center gap-1"
-                            onClick={() => handleViewItem(item._id)}
+                            type="button"
+                            onClick={() => setSelectedEditSlipId(purchase._id || purchase.purchase_order_id)}
+                            className="p-1.5 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg active:scale-95 transition-all"
+                            title="Edit Receiving Slip"
                           >
-                            <Eye className="w-4 h-4" />
-                            View Details
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleViewSlip(purchase)}
+                            className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs active:scale-95 transition-all"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Slip</span>
                           </button>
                         </div>
                       </div>
@@ -629,22 +785,22 @@ const Inventory = () => {
               </div>
             )}
 
-            {/* Pagination Footer Matching InvoiceList */}
+            {/* Pagination Footer */}
             {pagination.total > 0 && (
-              <div className="px-4 sm:px-3 py-2 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input rounded-b-lg">
+              <div className="px-4 py-3 border-t border-gray-200 dark:border-dark-border bg-gray-50/70 dark:bg-dark-input/60 rounded-b-2xl">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-4 text-xs text-ink-muted dark:text-slate-400">
+                  <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-slate-400">
                     <span>
                       Showing {(currentPage - 1) * limit + 1} to{" "}
                       {Math.min(currentPage * limit, pagination.total)} of{" "}
-                      {pagination.total} items
+                      {pagination.total} purchase slips
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <span>Rows per page:</span>
+                      <span>Per page:</span>
                       <select
                         value={limit}
                         onChange={(e) => handleLimitChange(Number(e.target.value))}
-                        className="px-2 py-1 text-xs border border-gray-300 dark:border-dark-border rounded-md bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        className="px-2 py-1 text-xs border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                       >
                         <option value={10}>10</option>
                         <option value={20}>20</option>
@@ -655,13 +811,13 @@ const Inventory = () => {
                   </div>
 
                   {pagination.pages > 1 && (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
                       <Button
                         size="xs"
                         variant="outline"
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage <= 1}
-                        className="p-1"
+                        className="p-1.5 rounded-lg"
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
@@ -684,9 +840,9 @@ const Inventory = () => {
                             <button
                               key={pageNum}
                               onClick={() => handlePageChange(pageNum)}
-                              className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
+                              className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
                                 currentPage === pageNum
-                                  ? "bg-blue-600 text-white"
+                                  ? "bg-blue-600 text-white shadow-xs"
                                   : "text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-dark-hover"
                               }`}
                             >
@@ -701,7 +857,7 @@ const Inventory = () => {
                         variant="outline"
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage >= pagination.pages}
-                        className="p-1"
+                        className="p-1.5 rounded-lg"
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -722,12 +878,26 @@ const Inventory = () => {
 
       <ReceivingSlipModal
         isOpen={showReceivingSlipModal}
-        onClose={() => setShowReceivingSlipModal(false)}
+        onClose={() => {
+          setShowReceivingSlipModal(false);
+          refetch();
+        }}
         onOpenDealers={() => {
           setShowReceivingSlipModal(false);
           setShowDealersModal(true);
         }}
       />
+
+      {selectedEditSlipId && (
+        <EditReceivingSlipModal
+          isOpen={Boolean(selectedEditSlipId)}
+          onClose={() => {
+            setSelectedEditSlipId(null);
+            refetch();
+          }}
+          slipId={selectedEditSlipId}
+        />
+      )}
 
       <RetroactiveDealerModal
         isOpen={Boolean(selectedRetroItem)}
@@ -737,8 +907,17 @@ const Inventory = () => {
         }}
         item={selectedRetroItem}
       />
+
+      {/* Bill Image Gallery Modal */}
+      <ImageGalleryModal
+        isOpen={galleryConfig.isOpen}
+        onClose={() => setGalleryConfig((prev) => ({ ...prev, isOpen: false }))}
+        images={galleryConfig.images}
+        title={galleryConfig.title}
+        initialIndex={galleryConfig.initialIndex}
+      />
     </>
   );
 };
 
-export default Inventory;
+export default Purchases;

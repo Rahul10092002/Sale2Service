@@ -257,6 +257,10 @@ invoiceItemSchema.index(
 );
 invoiceItemSchema.index({ invoice_item_id: 1, deleted_at: 1 });
 invoiceItemSchema.index({ invoice_id: 1, deleted_at: 1 });
+invoiceItemSchema.index({ shop_id: 1, deleted_at: 1, createdAt: -1 });
+invoiceItemSchema.index({ shop_id: 1, deleted_at: 1, item_type: 1 });
+invoiceItemSchema.index({ shop_id: 1, deleted_at: 1, warranty_end_date: 1 });
+invoiceItemSchema.index({ shop_id: 1, deleted_at: 1, company: 1, product_name: 1 });
 invoiceItemSchema.index({ shop_id: 1, deleted_at: 1 });
 invoiceItemSchema.index({ product_category: 1, deleted_at: 1 });
 invoiceItemSchema.index({ company: 1, deleted_at: 1 });

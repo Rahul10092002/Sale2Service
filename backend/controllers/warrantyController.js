@@ -3,7 +3,6 @@ import Invoice from "../models/Invoice.js";
 import InvoiceItem from "../models/InvoiceItem.js";
 import Customer from "../models/Customer.js";
 import Dealer from "../models/Dealer.js";
-import ProductMaster from "../models/ProductMaster.js";
 import InventoryAuditLog from "../models/InventoryAuditLog.js";
 
 /**
@@ -349,7 +348,7 @@ export const getWarrantySuggestions = async (req, res) => {
 
     const regex = new RegExp(searchTerm, "i");
 
-    // Search across InventoryItem, InvoiceItem, Invoice, Customer, ProductMaster in parallel
+    // Search across InventoryItem, InvoiceItem, Invoice, Customer in parallel
     const [
       matchingSerials,
       matchingInvoiceItems,
@@ -396,7 +395,7 @@ export const getWarrantySuggestions = async (req, res) => {
       })
         .limit(5)
         .select("full_name whatsapp_number"),
-      ProductMaster.find({
+      InvoiceItem.find({
         shop_id: shopId,
         $or: [
           { product_name: regex },

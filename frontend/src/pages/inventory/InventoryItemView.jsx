@@ -125,7 +125,7 @@ const InventoryItemView = () => {
     setGalleryConfig((prev) => ({ ...prev, isOpen: false }));
   };
 
-  const label = location.state?.label || "Inventory";
+  const label = location.state?.label || "Purchases";
 
   const { data, isLoading, isError, error, refetch } = useGetInventoryItemByIdQuery(id);
   const [updateStatus, { isLoading: isUpdatingStatus }] = useUpdateInventoryStatusMutation();

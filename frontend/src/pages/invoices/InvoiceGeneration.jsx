@@ -1,13 +1,12 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { Save, X, ChevronDown, ChevronUp, Calculator } from "lucide-react";
+import { Save, X, ChevronDown, ChevronUp, Calculator, ArrowLeft } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 import {
   useInvoiceForm,
   useInvoiceActions,
 } from "../../features/invoices/hooks.js";
-import { useSaveMasterProductMutation } from "../../features/products/productApi.js";
 import { useGetNextInvoiceNumberQuery } from "../../features/invoices/invoiceApi.js";
 import { useGetCustomerByIdQuery } from "../../features/customers/customerApi.js";
 import CustomerInformationForm from "../../components/invoice/CustomerInformationForm.jsx";
@@ -66,7 +65,6 @@ const InvoiceGenerationPage = () => {
   }, [customerResp, updateCustomerData, updateCustomerAddressData]);
 
   const { createInvoice } = useInvoiceActions();
-  const [saveMaster] = useSaveMasterProductMutation();
   const [submitResult, setSubmitResult] = useState(null);
   const [rawDiscount, setRawDiscount] = useState(null);
   const [rawOldItemPrice, setRawOldItemPrice] = useState(null);
@@ -311,29 +309,6 @@ const InvoiceGenerationPage = () => {
       const result = await createInvoice(payload).unwrap();
       setSubmitResult({ success: true, data: result });
 
-      // Save only PRODUCT items to ProductMaster
-      currentInvoice.invoice_items.forEach((item) => {
-        const resolvedName =
-          item.product_name?.trim() ||
-          `${item.company || ""} ${item.model_number || ""}`.trim();
-        if (item.item_type !== "SERVICE" && resolvedName) {
-          saveMaster({
-            product_name: resolvedName,
-            product_category: item.product_category,
-            battery_type: item.battery_type,
-            company: item.company,
-            model_number: item.model_number,
-            selling_price: item.selling_price,
-            cost_price: item.cost_price,
-            capacity_rating: item.capacity_rating,
-            voltage: item.voltage,
-            warranty_type: item.warranty_type,
-            warranty_duration_months: item.warranty_duration_months,
-            product_images: item.product_images,
-          }).catch(() => {});
-        }
-      });
-
       // Clear the form state in Redux so customer/product details are removed
       reset();
     } catch (error) {
@@ -353,7 +328,6 @@ const InvoiceGenerationPage = () => {
     createInvoice,
     setSubmitting,
     reset,
-    saveMaster,
   ]);
 
   // Show success message if invoice was created
@@ -418,6 +392,30 @@ const InvoiceGenerationPage = () => {
     <>
       <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg py-3 pb-36 lg:pb-8">
         <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8">
+          {/* Mobile Top Context & Navigation Bar */}
+          <div className="flex items-center justify-between gap-2 mb-3 lg:hidden bg-white dark:bg-dark-card p-2.5 rounded-xl border border-gray-200/90 dark:border-dark-border shadow-xs">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(ROUTES.INVOICES)}
+                className="flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 py-1 px-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 active:scale-95 transition-all"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Invoices</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(ROUTES.DASHBOARD)}
+                className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 py-1 px-2 active:scale-95 transition-all"
+              >
+                Dashboard
+              </button>
+            </div>
+            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/50">
+              New Invoice
+            </span>
+          </div>
+
           {/* Main Form Content */}
           <div className="space-y-4">
             {/* Customer Information Section */}

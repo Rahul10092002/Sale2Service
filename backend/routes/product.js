@@ -19,30 +19,7 @@ productRouter.get(
   checkPermission("products_view"),
   (req, res) => productController.autocomplete(req, res),
 );
-productRouter.post(
-  "/master-save",
-  strictMutationRateLimiter,
-  checkPermission("inventory_create"),
-  (req, res) => productController.saveMaster(req, res),
-);
-// Inventory (ProductMaster) Routes
-productRouter.get(
-  "/inventory",
-  checkPermission("inventory_view"),
-  (req, res) => productController.getMasterProducts(req, res),
-);
-productRouter.put(
-  "/inventory/:id",
-  strictMutationRateLimiter,
-  checkPermission("inventory_edit"),
-  (req, res) => productController.updateMasterProduct(req, res),
-);
-productRouter.delete(
-  "/inventory/:id",
-  strictMutationRateLimiter,
-  checkPermission("inventory_delete"),
-  (req, res) => productController.deleteMasterProduct(req, res),
-);
+
 
 productRouter.get("/:id", checkPermission("products_view"), (req, res) =>
   productController.getProductById(req, res),

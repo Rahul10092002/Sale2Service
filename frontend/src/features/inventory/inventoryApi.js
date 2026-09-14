@@ -2,6 +2,13 @@ import { baseApi } from "../../services/baseApi.js";
 
 export const inventoryApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getPurchases: builder.query({
+      query: (params) => ({
+        url: "/inventory/purchases",
+        params: params || {},
+      }),
+      providesTags: ["Inventory"],
+    }),
     getInventoryItems: builder.query({
       query: (params) => ({
         url: "/inventory/items",
@@ -57,6 +64,7 @@ export const inventoryApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetPurchasesQuery,
   useGetInventoryItemsQuery,
   useGetInventoryItemByIdQuery,
   useGetReceivingSlipByIdQuery,

@@ -243,7 +243,10 @@ export class InvoicePDFService {
         email: shop.email || shop.contact_email || shop.email_address || "",
         gstNumber: shop.gst_number,
         logo_url: shop.logo_url,
-        bank_details: shop.bank_details || {},
+        bank_details:
+          shop.bank_details && typeof shop.bank_details.toObject === "function"
+            ? shop.bank_details.toObject()
+            : shop.bank_details || {},
       },
       upiQRCode: null,
 
@@ -442,17 +445,27 @@ export class InvoicePDFService {
     };
 
     // Generate QR Code if UPI ID exists
-    const upiId = shop.bank_details?.upi_id;
+    const bankDetails =
+      shop.bank_details && typeof shop.bank_details.toObject === "function"
+        ? shop.bank_details.toObject()
+        : (shop.bank_details || {});
+
+    const upiId = (bankDetails?.upi_id || shop.upi_id || "").trim();
     const isUnpaidOrPartial =
       invoice.payment_status === "UNPAID" || invoice.payment_status === "PARTIAL";
+    const amountDueNum = Number(invoice.amount_due);
+    const grandTotalNum = Number(totals.total);
     const amountToPay = isUnpaidOrPartial
-      ? Number(invoice.amount_due) > 0
-        ? Number(invoice.amount_due)
-        : Number(totals.total)
-      : Number(totals.total);
+      ? amountDueNum > 0
+        ? amountDueNum
+        : grandTotalNum
+      : grandTotalNum;
 
-    if (upiId && amountToPay > 0) {
-      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(shop.shop_name || "Shop")}&am=${amountToPay}&cu=INR`;
+    if (upiId) {
+      let upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(shop.shop_name || "Shop")}`;
+      if (amountToPay > 0) {
+        upiUrl += `&am=${amountToPay}&cu=INR`;
+      }
       try {
         data.upiQRCode = await QRCode.toDataURL(upiUrl, {
           width: 140,

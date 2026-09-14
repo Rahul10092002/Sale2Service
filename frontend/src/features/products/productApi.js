@@ -79,52 +79,6 @@ export const productApi = baseApi.injectEndpoints({
       keepUnusedDataFor: 0,
       transformResponse: (response) => response.data,
     }),
-
-    saveMasterProduct: builder.mutation({
-      query: (payload) => ({
-        url: "/products/master-save",
-        method: "POST",
-        body: payload,
-      }),
-      invalidatesTags: [{ type: "InventoryItem", id: "LIST" }],
-    }),
-
-    getInventoryProducts: builder.query({
-      query: (params) => ({ url: "/products/inventory", params: params || {} }),
-      providesTags: (result) => [
-        ...(result?.products?.map(({ _id }) => ({
-          type: "InventoryItem",
-          id: _id,
-        })) || []),
-        { type: "InventoryItem", id: "LIST" },
-      ],
-      transformResponse: (response) => response.data,
-    }),
-
-    updateInventoryProduct: builder.mutation({
-      query: ({ id, ...payload }) => ({
-        url: `/products/inventory/${id}`,
-        method: "PUT",
-        body: payload,
-      }),
-      invalidatesTags: (result, error, { id }) => [
-        { type: "InventoryItem", id },
-        { type: "InventoryItem", id: "LIST" },
-      ],
-      transformResponse: (response) => response.data,
-    }),
-
-    deleteInventoryProduct: builder.mutation({
-      query: (id) => ({
-        url: `/products/inventory/${id}`,
-        method: "DELETE",
-      }),
-      invalidatesTags: (result, error, id) => [
-        { type: "InventoryItem", id },
-        { type: "InventoryItem", id: "LIST" },
-      ],
-      transformResponse: (response) => response.data,
-    }),
   }),
   overrideExisting: false,
 });
@@ -139,8 +93,4 @@ export const {
   useReplaceSerialNumberMutation,
   useDeleteProductMutation,
   useLazyProductAutocompleteQuery,
-  useSaveMasterProductMutation,
-  useGetInventoryProductsQuery,
-  useUpdateInventoryProductMutation,
-  useDeleteInventoryProductMutation,
 } = productApi;

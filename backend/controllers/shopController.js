@@ -1,4 +1,4 @@
-import ShopService from "../service/shopService.js";
+import ShopService from "../services/shopService.js";
 import cloudinaryUpload from "../services/cloudinaryUpload.js";
 import Shop from "../models/Shop.js";
 

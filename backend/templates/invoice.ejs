@@ -602,6 +602,38 @@
         <!-- ── Bottom Grid (Notes on Left | Totals on Right) ── -->
         <div class="bottom-grid">
             <div class="bottom-left-section">
+                <% const hasBankInfo = shop.bank_details && (shop.bank_details.account_number || shop.bank_details.bank_name || shop.bank_details.ifsc_code || shop.bank_details.upi_id); %>
+                <% if (upiQRCode || hasBankInfo) { %>
+                <div class="info-card" style="margin-bottom: 8px;">
+                    <div class="section-title">Payment & Bank Details</div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <% if (upiQRCode) { %>
+                        <div style="text-align: center; flex-shrink: 0;">
+                            <img src="<%= upiQRCode %>" alt="UPI QR Code" style="width: 95px; height: 95px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px; background: #fff; display: block; margin: 0 auto;" />
+                            <div style="font-size: 7.5pt; font-weight: 700; color: #1e293b; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.03em;">Scan & Pay UPI</div>
+                        </div>
+                        <% } %>
+                        <div style="flex: 1; min-width: 0;">
+                            <% if (shop.bank_details?.account_holder_name) { %>
+                            <div class="info-row"><span>A/C Holder:</span><strong><%= shop.bank_details.account_holder_name %></strong></div>
+                            <% } %>
+                            <% if (shop.bank_details?.bank_name) { %>
+                            <div class="info-row"><span>Bank Name:</span><strong><%= shop.bank_details.bank_name %></strong></div>
+                            <% } %>
+                            <% if (shop.bank_details?.account_number) { %>
+                            <div class="info-row"><span>A/C Number:</span><strong style="font-family: monospace; letter-spacing: 0.5px;"><%= shop.bank_details.account_number %></strong></div>
+                            <% } %>
+                            <% if (shop.bank_details?.ifsc_code) { %>
+                            <div class="info-row"><span>IFSC Code:</span><strong style="font-family: monospace; letter-spacing: 0.5px;"><%= shop.bank_details.ifsc_code %></strong></div>
+                            <% } %>
+                            <% if (shop.bank_details?.upi_id) { %>
+                            <div class="info-row"><span>UPI ID:</span><strong style="color: #2563eb;"><%= shop.bank_details.upi_id %></strong></div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+                <% } %>
+
                 <% if (invoice.notes) { %>
                 <div class="info-card">
                     <div class="section-title">Invoice Notes</div>

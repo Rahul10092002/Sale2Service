@@ -3,7 +3,7 @@ import { useLazyProductAutocompleteQuery } from "../../features/products/product
 
 /**
  * Autocomplete input for product names.
- * Searches InvoiceItem history and ProductMaster on the server.
+ * Searches InvoiceItem history on the server.
  *
  * Props:
  *   value        – controlled text value

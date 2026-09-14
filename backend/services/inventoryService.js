@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import InventoryItem from "../models/InventoryItem.js";
 import PurchaseOrder from "../models/PurchaseOrder.js";
-import ProductMaster from "../models/ProductMaster.js";
 import Dealer from "../models/Dealer.js";
 import InvoiceItem from "../models/InvoiceItem.js";
 import InventoryAuditLog from "../models/InventoryAuditLog.js";
@@ -18,7 +17,7 @@ export const createReceivingSlipIntakeService = async ({
   purchaseBillImage,
   purchaseBillImages,
   notes,
-  items, // array of { product_id, purchase_price, serial_numbers }
+  items, // array of { product_name, purchase_price, serial_numbers }
 }) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -118,51 +117,9 @@ export const createReceivingSlipIntakeService = async ({
 
     // 4. Loop through items & create InventoryItem records
     for (const item of items) {
-      let product = null;
-
-      if (item.product_id && mongoose.Types.ObjectId.isValid(item.product_id)) {
-        product = await ProductMaster.findOne({
-          _id: item.product_id,
-          shop_id: shopId,
-        }).session(session);
-      }
-
-      if (!product) {
-        let historicalItem = null;
-        if (item.product_id && mongoose.Types.ObjectId.isValid(item.product_id)) {
-          historicalItem = await InvoiceItem.findOne({
-            _id: item.product_id,
-            shop_id: shopId,
-          }).session(session);
-        }
-
-        const fallbackName = (historicalItem ? historicalItem.product_name : (item.product_name || "")).trim();
-
-        if (fallbackName) {
-          // Check if product with same name already exists in this shop (case-insensitive)
-          product = await ProductMaster.findOne({
-            shop_id: shopId,
-            product_name: { $regex: new RegExp(`^${fallbackName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
-          }).session(session);
-
-          if (!product) {
-            product = new ProductMaster({
-              product_name: fallbackName,
-              shop_id: shopId,
-              product_category: historicalItem?.product_category || item.product_category || "OTHER",
-              company: historicalItem?.company || item.company || "",
-              model_number: historicalItem?.model_number || item.model_number || "",
-              selling_price: historicalItem?.selling_price || item.selling_price || 0,
-              cost_price: Number(item.purchase_price) || historicalItem?.cost_price || 0,
-              stock_quantity: 0,
-            });
-            await product.save({ session });
-          }
-        }
-      }
-
-      if (!product) {
-        throw new Error(`Please provide a valid product name for all received items.`);
+      const prodName = (item.product_name || "").trim();
+      if (!prodName) {
+        throw new Error("Please provide a valid product name for all received items.");
       }
 
       const serials = Array.isArray(item.serial_numbers) && item.serial_numbers.length > 0
@@ -174,8 +131,7 @@ export const createReceivingSlipIntakeService = async ({
 
         const invItem = new InventoryItem({
           shop_id: shopId,
-          product_id: product._id,
-          product_name: product.product_name,
+          product_name: prodName,
           purchase_order_id: purchaseOrder._id,
           serial_number: serialNumber,
           dealer_id: dealerId,
@@ -210,11 +166,6 @@ export const createReceivingSlipIntakeService = async ({
           { session }
         );
       }
-
-      // Reconcile ProductMaster stock quantity (+ count)
-      const addedQuantity = serials.length;
-      product.stock_quantity = (product.stock_quantity || 0) + addedQuantity;
-      await product.save({ session });
     }
 
     await session.commitTransaction();
@@ -311,28 +262,12 @@ export const linkRetroactiveDealerService = async ({
 
         // If no InventoryItem exists yet (e.g. direct invoice sale without pre-existing stock), create one
         if (!inventoryItem) {
-          let productMaster = await ProductMaster.findOne({
-            shop_id: shopId,
-            product_name: invoiceItem.product_name,
-          }).session(session);
-
-          if (!productMaster) {
-            productMaster = new ProductMaster({
-              shop_id: shopId,
-              product_name: invoiceItem.product_name || "Product",
-              product_category: invoiceItem.product_category || "OTHER",
-              company: invoiceItem.company || "",
-              model_number: invoiceItem.model_number || "",
-              selling_price: invoiceItem.selling_price || 0,
-              cost_price: invoiceItem.cost_price || 0,
-            });
-            await productMaster.save({ session });
-          }
-
           inventoryItem = new InventoryItem({
             shop_id: shopId,
-            product_id: productMaster._id,
-            product_name: invoiceItem.product_name || productMaster.product_name,
+            product_name: invoiceItem.product_name || "Product",
+            product_category: invoiceItem.product_category || "OTHER",
+            company: invoiceItem.company || "",
+            model_number: invoiceItem.model_number || "",
             serial_number: (invoiceItem.serial_number || "").trim().toUpperCase(),
             dealer_id: dealerId,
             purchase_date: purchaseDate
@@ -385,7 +320,56 @@ export const linkRetroactiveDealerService = async ({
     };
 
     // Update origin fields
-    if (dealerId) inventoryItem.dealer_id = dealerId;
+    if (dealerId) {
+      inventoryItem.dealer_id = dealerId;
+
+      // Ensure PurchaseOrder (Receiving Slip) exists for this purchase
+      let po = null;
+      const refNo = (purchaseInvoiceRef && purchaseInvoiceRef.trim())
+        ? purchaseInvoiceRef.trim().toUpperCase()
+        : `PUR-${inventoryItem.serial_number || (inventoryItem._id ? inventoryItem._id.toString().slice(-6) : Date.now())}`.toUpperCase();
+
+      if (inventoryItem.purchase_order_id) {
+        po = await PurchaseOrder.findOne({
+          _id: inventoryItem.purchase_order_id,
+          shop_id: shopId,
+        }).session(session);
+      }
+
+      if (!po && purchaseInvoiceRef && purchaseInvoiceRef.trim()) {
+        po = await PurchaseOrder.findOne({
+          shop_id: shopId,
+          dealer_id: dealerId,
+          dealer_invoice_no: refNo,
+          deleted_at: null,
+        }).session(session);
+      }
+
+      if (po) {
+        po.dealer_id = dealerId;
+        if (purchaseDate) po.purchase_date = new Date(purchaseDate);
+        if (!inventoryItem.purchase_order_id) {
+          po.total_items_count = (po.total_items_count || 0) + 1;
+          po.total_cost = (po.total_cost || 0) + (inventoryItem.purchase_price || 0);
+        }
+        await po.save({ session });
+        inventoryItem.purchase_order_id = po._id;
+      } else {
+        po = new PurchaseOrder({
+          shop_id: shopId,
+          dealer_id: dealerId,
+          dealer_invoice_no: refNo,
+          purchase_date: purchaseDate ? new Date(purchaseDate) : (inventoryItem.purchase_date || new Date()),
+          total_cost: inventoryItem.purchase_price || 0,
+          total_items_count: 1,
+          notes: notes || "Direct origin dealer linkage",
+          created_by: userId,
+        });
+        await po.save({ session });
+        inventoryItem.purchase_order_id = po._id;
+      }
+    }
+
     if (!isSoldOrInService && newSerialUpper) {
       inventoryItem.serial_number = newSerialUpper;
     }
@@ -485,27 +469,6 @@ export const reconcileInventoryStatusService = async ({
       await session.commitTransaction();
       session.endSession();
       return { success: true, inventoryItem };
-    }
-
-    const product = await ProductMaster.findOne({
-      _id: inventoryItem.product_id,
-      shop_id: shopId,
-    }).session(session);
-
-    // Stock Reconciliation Engine Rules:
-    // IN_STOCK -> SOLD: -1
-    // SOLD -> RETURNED (Resellable): +1
-    // SOLD -> DEFECTIVE_RMA: 0 (Loss/RMA, not resellable stock)
-    // DEFECTIVE_RMA -> IN_STOCK: +1
-    if (product) {
-      if (prevStatus === "IN_STOCK" && newStatus === "SOLD") {
-        product.stock_quantity = Math.max(0, (product.stock_quantity || 0) - 1);
-      } else if (prevStatus === "SOLD" && newStatus === "RETURNED") {
-        product.stock_quantity = (product.stock_quantity || 0) + 1;
-      } else if (prevStatus === "DEFECTIVE_RMA" && newStatus === "IN_STOCK") {
-        product.stock_quantity = (product.stock_quantity || 0) + 1;
-      }
-      await product.save({ session });
     }
 
     inventoryItem.status = newStatus;
@@ -660,22 +623,17 @@ export const updateReceivingSlipService = async ({
       if (purchaseOrder && !invItem.purchase_order_id) invItem.purchase_order_id = purchaseOrder._id;
 
       // Check if price update was supplied for this product
-      const prodIdStr = invItem.product_id?._id?.toString() || invItem.product_id?.toString();
-      if (prodIdStr && rowPrices[prodIdStr] !== undefined) {
-        invItem.purchase_price = Number(rowPrices[prodIdStr]) || 0;
+      const key = invItem.product_name || invItem._id?.toString();
+      const prodIdStr = invItem.product_id?._id?.toString() || invItem.product_id?.toString() || invItem._id?.toString();
+      const newPrice = rowPrices[key] !== undefined ? rowPrices[key] : (prodIdStr ? rowPrices[prodIdStr] : undefined);
+      if (newPrice !== undefined) {
+        invItem.purchase_price = Number(newPrice) || 0;
       }
 
       // Check if name update was supplied for this product
-      if (prodIdStr && rowNames[prodIdStr] !== undefined && rowNames[prodIdStr].trim()) {
-        const updatedName = rowNames[prodIdStr].trim();
-        invItem.product_name = updatedName;
-        if (invItem.product_id) {
-          await ProductMaster.findByIdAndUpdate(
-            invItem.product_id,
-            { product_name: updatedName },
-            { session }
-          );
-        }
+      const newName = rowNames[key] !== undefined ? rowNames[key] : (prodIdStr ? rowNames[prodIdStr] : undefined);
+      if (newName !== undefined && newName.trim()) {
+        invItem.product_name = newName.trim();
       }
 
       await invItem.save({ session });

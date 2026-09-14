@@ -119,13 +119,6 @@ export default class UserService {
       throw new Error("User not found");
     }
 
-    // Check if the user being updated is an OWNER based on role name (if applicable)
-    // or if we want to protect specific users. For now, let's keep it simple.
-    if (user.role?.name === "OWNER") {
-      // throw new Error("Cannot modify shop owner");
-      // Letting it pass for now if the UI allows it, or we can check requestingUser
-    }
-
     const { name, phone, role, password } = updates;
     if (name) user.name = name;
     if (phone) user.phone = phone;

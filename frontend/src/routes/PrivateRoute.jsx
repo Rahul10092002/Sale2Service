@@ -28,7 +28,7 @@ const PrivateRoute = ({ children, allowedRoles = [], title }) => {
       [ROUTES.INVOICES]: "Invoices",
       [ROUTES.PRODUCTS]: "Products",
       [ROUTES.CUSTOMERS]: "Customers",
-      [ROUTES.INVENTORY]: "Inventory",
+      [ROUTES.INVENTORY]: "Purchases",
       [ROUTES.WARRANTY]: "Warranty Lookup",
       [ROUTES.USERS]: "Users",
       [ROUTES.LOGS]: "Logs",

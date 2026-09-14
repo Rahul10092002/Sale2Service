@@ -121,6 +121,7 @@ customerSchema.index(
   { unique: true },
 );
 customerSchema.index({ customer_id: 1, deleted_at: 1 });
+customerSchema.index({ shop_id: 1, deleted_at: 1, createdAt: -1 });
 customerSchema.index({ shop_id: 1, deleted_at: 1 });
 customerSchema.index({ full_name: "text" });
 

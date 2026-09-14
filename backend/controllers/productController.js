@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
 import InvoiceItem from "../models/InvoiceItem.js";
-import ProductMaster from "../models/ProductMaster.js";
 import ServicePlan from "../models/ServicePlan.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
 import Invoice from "../models/Invoice.js";
+import { BaseController } from "./baseController.js";
 
-export default class ProductController {
+export default class ProductController extends BaseController {
   // Create product (invoice item)
   async createProduct(req, res) {
     try {
@@ -49,7 +49,7 @@ export default class ProductController {
     }
   }
 
-  // List products with pagination and search
+  // List products with pagination, filters and search using MongoDB Aggregation Pipeline
   async getProducts(req, res) {
     try {
       const { user } = req;
@@ -68,21 +68,29 @@ export default class ProductController {
         payment_status, // 'PAID' | 'PARTIAL' | 'UNPAID'
       } = req.query;
 
-      const query = { shop_id: user.shopId, deleted_at: null };
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 10), 100);
+      const skip = (pageNum - 1) * limitNum;
+      const shopObjectId = new mongoose.Types.ObjectId(user.shopId);
 
-      if (serial_number) query.serial_number = serial_number.toUpperCase();
-      if (product_name)
-        query.product_name = { $regex: product_name, $options: "i" };
-      if (company) query.company = { $regex: company, $options: "i" };
-      if (status) query.status = status;
-      if (product_category) query.product_category = product_category;
+      const matchQuery = {
+        shop_id: shopObjectId,
+        deleted_at: null,
+      };
 
-      if (search) {
-        query.$or = [
-          { serial_number: { $regex: search, $options: "i" } },
-          { product_name: { $regex: search, $options: "i" } },
-          { company: { $regex: search, $options: "i" } },
-          { model_number: { $regex: search, $options: "i" } },
+      if (serial_number) matchQuery.serial_number = serial_number.toUpperCase();
+      if (product_name) matchQuery.product_name = { $regex: product_name, $options: "i" };
+      if (company) matchQuery.company = { $regex: company, $options: "i" };
+      if (status) matchQuery.status = status;
+      if (product_category) matchQuery.product_category = product_category;
+
+      if (search && search.trim()) {
+        const regex = new RegExp(search.trim(), "i");
+        matchQuery.$or = [
+          { serial_number: regex },
+          { product_name: regex },
+          { company: regex },
+          { model_number: regex },
         ];
       }
 
@@ -90,185 +98,215 @@ export default class ProductController {
       if (warranty_status) {
         const now = new Date();
         if (warranty_status === "expired") {
-          query.warranty_end_date = { $lt: now };
+          matchQuery.warranty_end_date = { $lt: now };
         } else {
-          const days = parseInt(warranty_status);
-          const future = new Date(now);
-          future.setDate(future.getDate() + days);
-          query.warranty_end_date = { $gte: now, $lte: future };
+          const days = parseInt(warranty_status, 10);
+          if (!isNaN(days)) {
+            const future = new Date(now);
+            future.setDate(future.getDate() + days);
+            matchQuery.warranty_end_date = { $gte: now, $lte: future };
+          }
         }
       }
 
-      // Filters that require cross-collection lookups — collect allowed product ID sets
-      let allowedProductIds = null; // null = no restriction
-
+      // Cross-collection filter optimization
       if (has_service_plan === "yes") {
         const ids = await ServicePlan.distinct("invoice_item_id", {
-          shop_id: user.shopId,
+          shop_id: shopObjectId,
           deleted_at: null,
         });
-        allowedProductIds = ids;
+        matchQuery._id = { ...(matchQuery._id || {}), $in: ids };
       } else if (has_service_plan === "no") {
         const ids = await ServicePlan.distinct("invoice_item_id", {
-          shop_id: user.shopId,
+          shop_id: shopObjectId,
           deleted_at: null,
         });
-        query._id = { $nin: ids };
+        matchQuery._id = { ...(matchQuery._id || {}), $nin: ids };
       }
 
       if (service_due_days) {
         const now = new Date();
         const future = new Date();
-        future.setDate(future.getDate() + parseInt(service_due_days));
+        future.setDate(future.getDate() + parseInt(service_due_days, 10));
 
         const planIds = await ServiceSchedule.distinct("service_plan_id", {
           scheduled_date: { $gte: now, $lte: future },
           status: { $in: ["PENDING", "RESCHEDULED"] },
+          deleted_at: null,
         });
 
         const productIds = await ServicePlan.distinct("invoice_item_id", {
           _id: { $in: planIds },
-          shop_id: user.shopId,
+          shop_id: shopObjectId,
           deleted_at: null,
         });
 
-        if (allowedProductIds !== null) {
-          const allowed = new Set(productIds.map(String));
-          allowedProductIds = allowedProductIds.filter((id) =>
-            allowed.has(String(id)),
-          );
+        if (matchQuery._id?.$in) {
+          const existingAllowed = new Set(matchQuery._id.$in.map(String));
+          matchQuery._id.$in = productIds.filter((id) => existingAllowed.has(String(id)));
         } else {
-          allowedProductIds = productIds;
+          matchQuery._id = { ...(matchQuery._id || {}), $in: productIds };
         }
       }
 
-      if (allowedProductIds !== null) {
-        query._id = { ...(query._id || {}), $in: allowedProductIds };
-      }
-
-      // Payment status filter — lookup invoices by payment_status
       if (payment_status) {
         const invoiceIds = await Invoice.distinct("_id", {
-          shop_id: user.shopId,
+          shop_id: shopObjectId,
           payment_status,
           deleted_at: null,
         });
-        query.invoice_id = { $in: invoiceIds };
+        matchQuery.invoice_id = { $in: invoiceIds };
       }
 
-      const skip = (page - 1) * parseInt(limit);
+      const now = new Date();
 
-      const [products, total] = await Promise.all([
-        InvoiceItem.find(query)
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(parseInt(limit))
-          .populate({
-            path: "invoice_id",
-            select:
-              "invoice_number invoice_date total_amount payment_status amount_paid amount_due",
-            populate: {
-              path: "customer_id",
-              select: "full_name whatsapp_number address",
-            },
-          }),
-        InvoiceItem.countDocuments(query),
+      // Execute high-performance aggregation pipeline with single-pass facet
+      const pipelineResult = await InvoiceItem.aggregate([
+        { $match: matchQuery },
+        {
+          $facet: {
+            metadata: [{ $count: "total" }],
+            products: [
+              { $sort: { createdAt: -1 } },
+              { $skip: skip },
+              { $limit: limitNum },
+              // Lookup invoice details
+              {
+                $lookup: {
+                  from: "invoices",
+                  localField: "invoice_id",
+                  foreignField: "_id",
+                  as: "invoice_doc",
+                },
+              },
+              { $unwind: { path: "$invoice_doc", preserveNullAndEmptyArrays: true } },
+              // Lookup customer details via invoice
+              {
+                $lookup: {
+                  from: "customers",
+                  localField: "invoice_doc.customer_id",
+                  foreignField: "_id",
+                  as: "customer_doc",
+                },
+              },
+              { $unwind: { path: "$customer_doc", preserveNullAndEmptyArrays: true } },
+              // Lookup service plan for this product
+              {
+                $lookup: {
+                  from: "serviceplans",
+                  let: { itemId: "$_id" },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $eq: ["$invoice_item_id", "$$itemId"] },
+                            { $eq: ["$deleted_at", null] },
+                          ],
+                        },
+                      },
+                    },
+                    { $limit: 1 },
+                  ],
+                  as: "service_plan_doc",
+                },
+              },
+              { $unwind: { path: "$service_plan_doc", preserveNullAndEmptyArrays: true } },
+              // Lookup next scheduled service for this plan
+              {
+                $lookup: {
+                  from: "serviceschedules",
+                  let: { planId: "$service_plan_doc._id" },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $eq: ["$service_plan_id", "$$planId"] },
+                            { $gte: ["$scheduled_date", now] },
+                            { $in: ["$status", ["PENDING", "RESCHEDULED"]] },
+                            { $eq: ["$deleted_at", null] },
+                          ],
+                        },
+                      },
+                    },
+                    { $sort: { scheduled_date: 1 } },
+                    { $limit: 1 },
+                  ],
+                  as: "next_schedule_doc",
+                },
+              },
+              { $unwind: { path: "$next_schedule_doc", preserveNullAndEmptyArrays: true } },
+            ],
+          },
+        },
       ]);
 
-      // Get service plan data for each product
-      const productsWithService = await Promise.all(
-        products.map(async (product) => {
-          try {
-            // Find service plan for this product
-            const servicePlan = await ServicePlan.findOne({
-              invoice_item_id: product._id,
-              deleted_at: null,
-            });
+      const total = pipelineResult[0]?.metadata[0]?.total || 0;
+      const rawProducts = pipelineResult[0]?.products || [];
 
-            const invoice = product.invoice_id;
-            const invoiceData = invoice
-              ? {
-                  _id: invoice._id,
-                  invoice_number: invoice.invoice_number,
-                  invoice_date: invoice.invoice_date,
-                  total_amount: invoice.total_amount,
-                  payment_status: invoice.payment_status,
-                  amount_paid: invoice.amount_paid,
-                  amount_due: invoice.amount_due,
-                }
-              : null;
-
-            const customerData = invoice?.customer_id
-              ? {
-                  _id: invoice.customer_id._id,
-                  full_name: invoice.customer_id.full_name,
-                  whatsapp_number: invoice.customer_id.whatsapp_number,
-                  address: invoice.customer_id.address,
-                }
-              : null;
-
-            if (!servicePlan) {
-              return {
-                ...product.toObject(),
-                invoice_id: product.invoice_id?._id ?? product.invoice_id,
-                invoice: invoiceData,
-                customer: customerData,
-                hasServicePlan: false,
-                nextServiceDate: null,
-              };
+      // Format products with exact backwards compatibility
+      const productsWithService = rawProducts.map((p) => {
+        const invoiceData = p.invoice_doc
+          ? {
+              _id: p.invoice_doc._id,
+              invoice_number: p.invoice_doc.invoice_number,
+              invoice_date: p.invoice_doc.invoice_date,
+              total_amount: p.invoice_doc.total_amount,
+              payment_status: p.invoice_doc.payment_status,
+              amount_paid: p.invoice_doc.amount_paid,
+              amount_due: p.invoice_doc.amount_due,
             }
+          : null;
 
-            // Find next upcoming service schedule
-            const nextSchedule = await ServiceSchedule.findOne({
-              service_plan_id: servicePlan._id,
-              scheduled_date: { $gte: new Date() },
-              status: { $in: ["PENDING", "RESCHEDULED"] },
-              deleted_at: null,
-            }).sort({ scheduled_date: 1 });
+        const customerData = p.customer_doc
+          ? {
+              _id: p.customer_doc._id,
+              full_name: p.customer_doc.full_name,
+              whatsapp_number: p.customer_doc.whatsapp_number,
+              address: p.customer_doc.address,
+            }
+          : null;
 
-            return {
-              ...product.toObject(),
-              invoice_id: product.invoice_id?._id ?? product.invoice_id,
-              invoice: invoiceData,
-              customer: customerData,
-              hasServicePlan: true,
-              servicePlan: {
+        const servicePlan = p.service_plan_doc;
+        const nextSchedule = p.next_schedule_doc;
+
+        const {
+          invoice_doc,
+          customer_doc,
+          service_plan_doc,
+          next_schedule_doc,
+          ...productFields
+        } = p;
+
+        return {
+          ...productFields,
+          invoice_id: p.invoice_id?._id ?? p.invoice_id,
+          invoice: invoiceData,
+          customer: customerData,
+          hasServicePlan: !!servicePlan,
+          servicePlan: servicePlan
+            ? {
                 _id: servicePlan._id,
                 service_interval_type: servicePlan.service_interval_type,
                 service_interval_value: servicePlan.service_interval_value,
                 total_services: servicePlan.total_services,
                 service_charge: servicePlan.service_charge,
-              },
-              nextServiceDate: nextSchedule
-                ? nextSchedule.scheduled_date
-                : null,
-            };
-          } catch (error) {
-            console.error(
-              `Error getting service data for product ${product._id}:`,
-              error,
-            );
-            return {
-              ...product.toObject(),
-              invoice_id: product.invoice_id?._id ?? product.invoice_id,
-              invoice: null,
-              customer: null,
-              hasServicePlan: false,
-              nextServiceDate: null,
-            };
-          }
-        }),
-      );
+              }
+            : undefined,
+          nextServiceDate: nextSchedule ? nextSchedule.scheduled_date : null,
+        };
+      });
 
       res.json({
         success: true,
         data: {
           products: productsWithService,
           pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
+            page: pageNum,
+            limit: limitNum,
             total,
-            pages: Math.ceil(total / parseInt(limit)),
+            pages: Math.ceil(total / limitNum) || 1,
           },
         },
       });
@@ -570,7 +608,7 @@ export default class ProductController {
     }
   }
 
-  // Autocomplete product names from InvoiceItem history + ProductMaster
+  // Autocomplete product names from InvoiceItem history
   async autocomplete(req, res) {
     const { q = "", limit = "10" } = req.query;
     const shopId = req.user.shopId;
@@ -579,57 +617,40 @@ export default class ProductController {
       return res.json({ success: true, data: { suggestions: [] } });
     }
 
-    const lim = Math.min(parseInt(limit) || 10, 20);
+    const lim = Math.min(parseInt(limit, 10) || 10, 20);
     const escapedQ = q.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(escapedQ, "i");
     const shopObjId = new mongoose.Types.ObjectId(shopId);
 
     try {
-      const [fromItems, fromMaster] = await Promise.all([
-        InvoiceItem.aggregate([
-          {
-            $match: {
-              shop_id: shopObjId,
-              product_name: { $regex: escapedQ, $options: "i" },
-              deleted_at: null,
-            },
+      const fromItems = await InvoiceItem.aggregate([
+        {
+          $match: {
+            shop_id: shopObjId,
+            product_name: { $regex: escapedQ, $options: "i" },
+            deleted_at: null,
           },
-          { $sort: { createdAt: -1 } },
-          {
-            $group: {
-              _id: { $toLower: "$product_name" },
-              product_name: { $first: "$product_name" },
-              product_category: { $first: "$product_category" },
-              company: { $first: "$company" },
-              model_number: { $first: "$model_number" },
-              selling_price: { $first: "$selling_price" },
-              capacity_rating: { $first: "$capacity_rating" },
-              voltage: { $first: "$voltage" },
-              warranty_type: { $first: "$warranty_type" },
-              warranty_duration_months: { $first: "$warranty_duration_months" },
-              count: { $sum: 1 },
-            },
+        },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: { $toLower: "$product_name" },
+            product_name: { $first: "$product_name" },
+            product_category: { $first: "$product_category" },
+            company: { $first: "$company" },
+            model_number: { $first: "$model_number" },
+            selling_price: { $first: "$selling_price" },
+            capacity_rating: { $first: "$capacity_rating" },
+            voltage: { $first: "$voltage" },
+            warranty_type: { $first: "$warranty_type" },
+            warranty_duration_months: { $first: "$warranty_duration_months" },
+            count: { $sum: 1 },
           },
-          { $sort: { count: -1 } },
-          { $limit: lim },
-        ]),
-        ProductMaster.find({ shop_id: shopObjId, product_name: regex })
-          .select(
-            "product_name product_category battery_type company model_number selling_price cost_price capacity_rating voltage warranty_type warranty_duration_months product_images",
-          )
-          .limit(lim)
-          .lean(),
+        },
+        { $sort: { count: -1 } },
+        { $limit: lim },
       ]);
 
-      const seen = new Set(fromItems.map((s) => s.product_name.toLowerCase()));
-      const masterNew = fromMaster
-        .filter((m) => !seen.has(m.product_name.toLowerCase()))
-        .map((m) => ({ ...m, count: 0, source: "master" }));
-
-      const suggestions = [
-        ...fromItems.map((s) => ({ ...s, source: "history" })),
-        ...masterNew,
-      ].slice(0, lim);
+      const suggestions = fromItems.map((s) => ({ ...s, source: "history" }));
 
       return res.json({ success: true, data: { suggestions } });
     } catch (error) {
@@ -637,192 +658,6 @@ export default class ProductController {
       return res
         .status(500)
         .json({ success: false, message: "Autocomplete failed" });
-    }
-  }
-
-  // Upsert a product master entry (creates if new, updates if exists)
-  async saveMaster(req, res) {
-    const { user } = req;
-    const {
-      product_name,
-      product_category,
-      battery_type,
-      company,
-      model_number,
-      selling_price,
-      capacity_rating,
-      voltage,
-      warranty_type,
-      warranty_duration_months,
-      cost_price,
-      stock_quantity,
-      min_stock_alert,
-      product_images,
-    } = req.body;
-
-    if (!product_name?.trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "product_name is required" });
-    }
-
-    const shopId = user.shopId;
-    if (!mongoose.Types.ObjectId.isValid(shopId)) {
-      return res.json({ success: true });
-    }
-    const shopObjId = new mongoose.Types.ObjectId(shopId);
-
-    try {
-      const setFields = {
-        product_name: product_name.trim(),
-        shop_id: shopObjId,
-        auto_saved: req.body.auto_saved !== false,
-      };
-      if (product_category) setFields.product_category = product_category;
-      if (battery_type) setFields.battery_type = battery_type;
-      if (company) setFields.company = company;
-      if (model_number) setFields.model_number = model_number;
-      if (selling_price != null && selling_price > 0)
-        setFields.selling_price = selling_price;
-      if (cost_price != null)
-        setFields.cost_price = cost_price;
-      if (stock_quantity != null)
-        setFields.stock_quantity = stock_quantity;
-      if (min_stock_alert != null)
-        setFields.min_stock_alert = min_stock_alert;
-      if (capacity_rating) setFields.capacity_rating = capacity_rating;
-      if (voltage) setFields.voltage = voltage;
-      if (warranty_type) setFields.warranty_type = warranty_type;
-      if (warranty_duration_months != null && warranty_duration_months > 0)
-        setFields.warranty_duration_months = warranty_duration_months;
-      if (product_images) setFields.product_images = product_images;
-
-      await ProductMaster.findOneAndUpdate(
-        { product_name: product_name.trim(), shop_id: shopObjId },
-        { $set: setFields },
-        { upsert: true, new: true },
-      );
-
-      return res.json({ success: true });
-    } catch (error) {
-      if (error.code === 11000) return res.json({ success: true });
-      console.error("Save master error:", error);
-      return res
-        .status(500)
-        .json({ success: false, message: "Failed to save product master" });
-    }
-  }
-
-  // Get all master products for the shop (Inventory)
-  async getMasterProducts(req, res) {
-    try {
-      const { user } = req;
-      const { page = 1, limit = 10, search, category, stockStatus } = req.query;
-
-      const query = { shop_id: user.shopId };
-
-      if (category) {
-        query.product_category = category;
-      }
-
-      if (stockStatus) {
-        if (stockStatus === "low") {
-          query.$expr = { $lte: ["$stock_quantity", "$min_stock_alert"] };
-          query.stock_quantity = { $gt: 0 }; // Low but not out
-        } else if (stockStatus === "out_of_stock") {
-          query.stock_quantity = { $lte: 0 };
-        } else if (stockStatus === "in_stock") {
-          query.stock_quantity = { $gt: 0 };
-        }
-      }
-
-      if (search) {
-        query.$or = [
-          { product_name: { $regex: search, $options: "i" } },
-          { company: { $regex: search, $options: "i" } },
-          { model_number: { $regex: search, $options: "i" } },
-        ];
-      }
-
-      const skip = (page - 1) * parseInt(limit);
-
-      const [products, total] = await Promise.all([
-        ProductMaster.find(query)
-          .sort({ product_name: 1 })
-          .skip(skip)
-          .limit(parseInt(limit))
-          .lean(),
-        ProductMaster.countDocuments(query),
-      ]);
-
-      res.json({
-        success: true,
-        data: {
-          products,
-          pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
-            total,
-            pages: Math.ceil(total / parseInt(limit)),
-          },
-        },
-      });
-    } catch (error) {
-      console.error("Get master products error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch inventory products",
-      });
-    }
-  }
-
-  // Delete a master product
-  async deleteMasterProduct(req, res) {
-    try {
-      const { user } = req;
-      const { id } = req.params;
-
-      const result = await ProductMaster.findOneAndDelete({
-        _id: id,
-        shop_id: user.shopId,
-      });
-
-      if (!result) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Product not found" });
-      }
-
-      res.json({ success: true, message: "Product deleted from inventory" });
-    } catch (error) {
-      console.error("Delete master product error:", error);
-      res.status(500).json({ success: false, message: "Failed to delete" });
-    }
-  }
-
-  // Update a master product
-  async updateMasterProduct(req, res) {
-    try {
-      const { user } = req;
-      const { id } = req.params;
-      const payload = req.body;
-
-      const product = await ProductMaster.findOneAndUpdate(
-        { _id: id, shop_id: user.shopId },
-        { $set: payload },
-        { new: true },
-      );
-
-      if (!product) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Product not found" });
-      }
-
-      res.json({ success: true, data: { product } });
-    } catch (error) {
-      console.error("Update master product error:", error);
-      res.status(500).json({ success: false, message: "Failed to update" });
     }
   }
 }

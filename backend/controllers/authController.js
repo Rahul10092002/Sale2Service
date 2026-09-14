@@ -1,4 +1,4 @@
-import AuthService from "../service/authService.js";
+import AuthService from "../services/authService.js";
 import User from "../models/User.js";
 import Shop from "../models/Shop.js";
 

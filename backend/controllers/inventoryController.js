@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import InventoryItem from "../models/InventoryItem.js";
 import PurchaseOrder from "../models/PurchaseOrder.js";
-import ProductMaster from "../models/ProductMaster.js";
 import Dealer from "../models/Dealer.js";
 import InventoryAuditLog from "../models/InventoryAuditLog.js";
 import {
@@ -590,6 +589,293 @@ export const updateReceivingSlip = async (req, res) => {
     return res.status(400).json({
       success: false,
       message: error.message || "Failed to update receiving slip",
+    });
+  }
+};
+
+/**
+ * List Grouped Purchases (Receiving Slips) with consolidated items, quantities & serials
+ */
+export const getPurchasesList = async (req, res) => {
+  try {
+    const shopId = req.user.shopId;
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      dealer_id,
+      status,
+      start_date,
+      end_date,
+    } = req.query;
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const limitNum = Number(limit);
+
+    // 1. Build PO query
+    const poQuery = { shop_id: shopId, deleted_at: null };
+    if (dealer_id) poQuery.dealer_id = dealer_id;
+    if (start_date || end_date) {
+      poQuery.purchase_date = {};
+      if (start_date) poQuery.purchase_date.$gte = new Date(start_date);
+      if (end_date) poQuery.purchase_date.$lte = new Date(end_date);
+    }
+
+    // If search term is provided, search in PO fields OR linked item fields (serials, product names) OR dealer name
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), "i");
+
+      // Find matching dealers
+      const matchingDealers = await Dealer.find({
+        shop_id: shopId,
+        name: searchRegex,
+      }).select("_id");
+      const matchingDealerIds = matchingDealers.map((d) => d._id);
+
+      // Find matching inventory items by serial_number or product_name or purchase_invoice_ref
+      const matchingItems = await InventoryItem.find({
+        shop_id: shopId,
+        deleted_at: null,
+        $or: [
+          { serial_number: searchRegex },
+          { product_name: searchRegex },
+          { purchase_invoice_ref: searchRegex },
+        ],
+      }).select("purchase_order_id");
+
+      const itemPOIds = matchingItems
+        .map((i) => i.purchase_order_id)
+        .filter(Boolean);
+
+      poQuery.$or = [
+        { dealer_invoice_no: searchRegex },
+        { notes: searchRegex },
+        { dealer_id: { $in: matchingDealerIds } },
+        { _id: { $in: itemPOIds } },
+      ];
+    }
+
+    // If status filter is provided (e.g. IN_STOCK, SOLD), filter POs having items with that status
+    if (status && status.trim()) {
+      const statusItems = await InventoryItem.find({
+        shop_id: shopId,
+        status: status.trim(),
+        deleted_at: null,
+      }).select("purchase_order_id");
+
+      const statusPOIds = statusItems.map((i) => i.purchase_order_id).filter(Boolean);
+      if (poQuery._id && poQuery._id.$in) {
+        poQuery._id.$in = poQuery._id.$in.filter((id) =>
+          statusPOIds.some((sId) => sId.toString() === id.toString())
+        );
+      } else {
+        poQuery._id = { $in: statusPOIds };
+      }
+    }
+
+    const [purchaseOrders, total] = await Promise.all([
+      PurchaseOrder.find(poQuery)
+        .populate("dealer_id", "name contact_person phone email tax_id deleted_at is_retired")
+        .populate("created_by", "first_name last_name email")
+        .sort({ purchase_date: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      PurchaseOrder.countDocuments(poQuery),
+    ]);
+
+    // Fetch all child items for the retrieved purchase orders in a single batch query
+    const poIds = purchaseOrders.map((po) => po._id);
+    const allItems = await InventoryItem.find({
+      shop_id: shopId,
+      purchase_order_id: { $in: poIds },
+      deleted_at: null,
+    })
+      .populate("product_id", "product_name category company model_number")
+      .populate("invoice_id", "invoice_number invoice_date customer_name")
+      .sort({ createdAt: 1 });
+
+    // Group items by purchase_order_id
+    const itemsByPO = {};
+    allItems.forEach((item) => {
+      const poKey = item.purchase_order_id ? item.purchase_order_id.toString() : "unassigned";
+      if (!itemsByPO[poKey]) {
+        itemsByPO[poKey] = [];
+      }
+      itemsByPO[poKey].push(item);
+    });
+
+    const purchases = purchaseOrders.map((po) => {
+      const poItems = itemsByPO[po._id.toString()] || [];
+
+      // Calculate consolidated products summary
+      const productMap = {};
+      let totalCostCalculated = 0;
+      const serials = [];
+      const statusCounts = {
+        IN_STOCK: 0,
+        SOLD: 0,
+        DEFECTIVE_RMA: 0,
+        RETURNED: 0,
+        UNDER_SERVICE: 0,
+      };
+
+      poItems.forEach((item) => {
+        const prodName = item.product_name || item.product_id?.product_name || "Unknown Product";
+        const cat = item.product_id?.category || item.product_id?.product_category || "General";
+
+        if (!productMap[prodName]) {
+          productMap[prodName] = {
+            product_name: prodName,
+            category: cat,
+            count: 0,
+            unit_price: item.purchase_price || 0,
+            total_price: 0,
+            serials: [],
+            item_ids: [],
+          };
+        }
+        productMap[prodName].count += 1;
+        productMap[prodName].total_price += (item.purchase_price || 0);
+        if (item.serial_number) {
+          productMap[prodName].serials.push(item.serial_number);
+          serials.push(item.serial_number);
+        }
+        productMap[prodName].item_ids.push(item._id);
+
+        totalCostCalculated += (item.purchase_price || 0);
+
+        if (statusCounts[item.status] !== undefined) {
+          statusCounts[item.status] += 1;
+        } else {
+          statusCounts[item.status] = 1;
+        }
+      });
+
+      const productsSummary = Object.values(productMap);
+      const totalUnits = poItems.length > 0 ? poItems.length : (po.total_items_count || 1);
+      const finalTotalCost = po.total_cost > 0 ? po.total_cost : totalCostCalculated;
+
+      return {
+        _id: po._id,
+        purchase_order_id: po._id,
+        dealer_invoice_no: po.dealer_invoice_no,
+        dealer: po.dealer_id,
+        purchase_date: po.purchase_date,
+        total_cost: finalTotalCost,
+        total_items_count: totalUnits,
+        products_summary: productsSummary,
+        serial_numbers: serials,
+        status_breakdown: statusCounts,
+        purchase_bill_image: po.purchase_bill_image || "",
+        purchase_bill_images: po.purchase_bill_images || [],
+        notes: po.notes || "",
+        created_by: po.created_by,
+        first_item_id: poItems[0]?._id || null,
+        created_at: po.createdAt,
+      };
+    });
+
+    // Also include any legacy orphan items (without purchase_order_id) so no old data is omitted
+    const orphanItemsQuery = {
+      shop_id: shopId,
+      purchase_order_id: null,
+      deleted_at: null,
+    };
+    if (dealer_id) orphanItemsQuery.dealer_id = dealer_id;
+    if (status) orphanItemsQuery.status = status;
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), "i");
+      orphanItemsQuery.$or = [
+        { serial_number: searchRegex },
+        { product_name: searchRegex },
+        { purchase_invoice_ref: searchRegex },
+      ];
+    }
+
+    const orphanItems = await InventoryItem.find(orphanItemsQuery)
+      .populate("product_id", "product_name category company model_number")
+      .populate("dealer_id", "name contact_person phone email")
+      .sort({ createdAt: -1 });
+
+    if (orphanItems.length > 0) {
+      // Group orphan items by purchase_invoice_ref or individual item
+      const orphanGroups = {};
+      orphanItems.forEach((item) => {
+        const groupKey = item.purchase_invoice_ref?.trim() || `LEGACY-${item._id}`;
+        if (!orphanGroups[groupKey]) {
+          orphanGroups[groupKey] = {
+            _id: item._id,
+            purchase_order_id: null,
+            dealer_invoice_no: item.purchase_invoice_ref || `PUR-${item.serial_number || item._id.toString().slice(-6)}`,
+            dealer: item.dealer_id,
+            purchase_date: item.purchase_date || item.createdAt,
+            total_cost: 0,
+            total_items_count: 0,
+            products_summary: [],
+            serial_numbers: [],
+            status_breakdown: { IN_STOCK: 0, SOLD: 0, DEFECTIVE_RMA: 0, RETURNED: 0, UNDER_SERVICE: 0 },
+            purchase_bill_image: item.purchase_bill_image || "",
+            purchase_bill_images: item.purchase_bill_images || [],
+            notes: "Direct/Legacy Stock Entry",
+            created_by: null,
+            first_item_id: item._id,
+            created_at: item.createdAt,
+            _temp_items: [],
+          };
+        }
+        orphanGroups[groupKey].total_cost += (item.purchase_price || 0);
+        orphanGroups[groupKey].total_items_count += 1;
+        if (item.serial_number) {
+          orphanGroups[groupKey].serial_numbers.push(item.serial_number);
+        }
+        if (orphanGroups[groupKey].status_breakdown[item.status] !== undefined) {
+          orphanGroups[groupKey].status_breakdown[item.status] += 1;
+        }
+        orphanGroups[groupKey]._temp_items.push(item);
+      });
+
+      Object.values(orphanGroups).forEach((og) => {
+        const prodMap = {};
+        og._temp_items.forEach((item) => {
+          const pName = item.product_name || item.product_id?.product_name || "Product";
+          if (!prodMap[pName]) {
+            prodMap[pName] = {
+              product_name: pName,
+              category: item.product_id?.category || "General",
+              count: 0,
+              unit_price: item.purchase_price || 0,
+              total_price: 0,
+              serials: [],
+              item_ids: [],
+            };
+          }
+          prodMap[pName].count += 1;
+          prodMap[pName].total_price += (item.purchase_price || 0);
+          if (item.serial_number) prodMap[pName].serials.push(item.serial_number);
+          prodMap[pName].item_ids.push(item._id);
+        });
+        og.products_summary = Object.values(prodMap);
+        delete og._temp_items;
+        purchases.push(og);
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      purchases,
+      pagination: {
+        page: Number(page),
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching purchases list:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch purchases list",
+      error: error.message,
     });
   }
 };

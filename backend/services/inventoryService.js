@@ -16,6 +16,7 @@ export const createReceivingSlipIntakeService = async ({
   dealerInvoiceNo,
   purchaseDate,
   purchaseBillImage,
+  purchaseBillImages,
   notes,
   items, // array of { product_id, purchase_price, serial_numbers }
 }) => {
@@ -91,13 +92,21 @@ export const createReceivingSlipIntakeService = async ({
       totalCost += (Number(item.purchase_price) || 0) * count;
     });
 
+    const normalizedImages = Array.isArray(purchaseBillImages)
+      ? purchaseBillImages.filter(Boolean)
+      : purchaseBillImage
+      ? [purchaseBillImage]
+      : [];
+    const primaryBillImage = normalizedImages[0] || (typeof purchaseBillImage === "string" ? purchaseBillImage : "");
+
     // 3. Create PurchaseOrder Header
     const purchaseOrder = new PurchaseOrder({
       shop_id: shopId,
       dealer_id: dealerId,
       dealer_invoice_no: (dealerInvoiceNo || "INTAKE-" + Date.now()).toUpperCase(),
       purchase_date: purchaseDate ? new Date(purchaseDate) : new Date(),
-      purchase_bill_image: purchaseBillImage || "",
+      purchase_bill_image: primaryBillImage,
+      purchase_bill_images: normalizedImages,
       total_cost: totalCost,
       total_items_count: totalItemsCount,
       notes: notes || "",
@@ -111,7 +120,7 @@ export const createReceivingSlipIntakeService = async ({
     for (const item of items) {
       let product = null;
 
-      if (mongoose.Types.ObjectId.isValid(item.product_id)) {
+      if (item.product_id && mongoose.Types.ObjectId.isValid(item.product_id)) {
         product = await ProductMaster.findOne({
           _id: item.product_id,
           shop_id: shopId,
@@ -120,37 +129,40 @@ export const createReceivingSlipIntakeService = async ({
 
       if (!product) {
         let historicalItem = null;
-        if (mongoose.Types.ObjectId.isValid(item.product_id)) {
+        if (item.product_id && mongoose.Types.ObjectId.isValid(item.product_id)) {
           historicalItem = await InvoiceItem.findOne({
             _id: item.product_id,
             shop_id: shopId,
           }).session(session);
         }
 
-        const fallbackName = historicalItem ? historicalItem.product_name : (item.product_name || "").trim();
+        const fallbackName = (historicalItem ? historicalItem.product_name : (item.product_name || "")).trim();
 
         if (fallbackName) {
-          product = await ProductMaster.findOneAndUpdate(
-            { product_name: fallbackName, shop_id: shopId },
-            {
-              $setOnInsert: {
-                product_name: fallbackName,
-                shop_id: shopId,
-                product_category: historicalItem?.product_category || item.product_category || "OTHER",
-                company: historicalItem?.company || item.company || "",
-                model_number: historicalItem?.model_number || item.model_number || "",
-                selling_price: historicalItem?.selling_price || item.selling_price || 0,
-                cost_price: Number(item.purchase_price) || historicalItem?.cost_price || 0,
-                stock_quantity: 0,
-              },
-            },
-            { upsert: true, new: true, session }
-          );
+          // Check if product with same name already exists in this shop (case-insensitive)
+          product = await ProductMaster.findOne({
+            shop_id: shopId,
+            product_name: { $regex: new RegExp(`^${fallbackName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
+          }).session(session);
+
+          if (!product) {
+            product = new ProductMaster({
+              product_name: fallbackName,
+              shop_id: shopId,
+              product_category: historicalItem?.product_category || item.product_category || "OTHER",
+              company: historicalItem?.company || item.company || "",
+              model_number: historicalItem?.model_number || item.model_number || "",
+              selling_price: historicalItem?.selling_price || item.selling_price || 0,
+              cost_price: Number(item.purchase_price) || historicalItem?.cost_price || 0,
+              stock_quantity: 0,
+            });
+            await product.save({ session });
+          }
         }
       }
 
       if (!product) {
-        throw new Error(`Product record for ID '${item.product_id}' could not be resolved.`);
+        throw new Error(`Please provide a valid product name for all received items.`);
       }
 
       const serials = Array.isArray(item.serial_numbers) && item.serial_numbers.length > 0
@@ -170,6 +182,8 @@ export const createReceivingSlipIntakeService = async ({
           purchase_date: purchaseOrder.purchase_date,
           purchase_invoice_ref: purchaseOrder.dealer_invoice_no,
           purchase_price: Number(item.purchase_price) || 0,
+          purchase_bill_image: primaryBillImage,
+          purchase_bill_images: normalizedImages,
           status: "IN_STOCK",
         });
 
@@ -520,6 +534,188 @@ export const reconcileInventoryStatusService = async ({
       success: true,
       message: `Status updated from ${prevStatus} to ${newStatus}`,
       inventoryItem,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
+/**
+ * Updates an existing Receiving Slip (PurchaseOrder) and synchronizes linked InventoryItems.
+ */
+export const updateReceivingSlipService = async ({
+  shopId,
+  userId,
+  slipId,
+  dealerId,
+  dealerInvoiceNo,
+  purchaseDate,
+  purchaseBillImage,
+  purchaseBillImages,
+  notes,
+  rowPrices = {},
+  rowNames = {},
+}) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    let purchaseOrder = null;
+    if (mongoose.Types.ObjectId.isValid(slipId)) {
+      purchaseOrder = await PurchaseOrder.findOne({
+        _id: slipId,
+        shop_id: shopId,
+        deleted_at: null,
+      }).session(session);
+    }
+
+    if (!purchaseOrder) {
+      purchaseOrder = await PurchaseOrder.findOne({
+        dealer_invoice_no: slipId.toString().trim().toUpperCase(),
+        shop_id: shopId,
+        deleted_at: null,
+      }).session(session);
+    }
+
+    let dealer = null;
+    if (dealerId) {
+      dealer = await Dealer.findOne({
+        _id: dealerId,
+        shop_id: shopId,
+      }).session(session);
+
+      if (!dealer) {
+        throw new Error("Selected Dealer / Supplier not found.");
+      }
+    }
+
+    const newInvoiceNo = (dealerInvoiceNo || (purchaseOrder ? purchaseOrder.dealer_invoice_no : "")).trim().toUpperCase();
+
+    // Check duplicate if invoice number changed
+    if (purchaseOrder && newInvoiceNo && newInvoiceNo !== purchaseOrder.dealer_invoice_no) {
+      const existingPO = await PurchaseOrder.findOne({
+        _id: { $ne: purchaseOrder._id },
+        shop_id: shopId,
+        dealer_id: dealerId || purchaseOrder.dealer_id,
+        dealer_invoice_no: newInvoiceNo,
+        deleted_at: null,
+      }).session(session);
+
+      if (existingPO) {
+        throw new Error(`A receiving slip with invoice number '${newInvoiceNo}' already exists for this supplier.`);
+      }
+    }
+
+    const previousInvoiceNo = purchaseOrder ? purchaseOrder.dealer_invoice_no : slipId;
+
+    const normalizedImages = Array.isArray(purchaseBillImages)
+      ? purchaseBillImages.filter(Boolean)
+      : purchaseBillImage
+      ? [purchaseBillImage]
+      : [];
+    const primaryBillImage = normalizedImages[0] || (typeof purchaseBillImage === "string" ? purchaseBillImage : "");
+
+    if (purchaseOrder) {
+      if (dealerId) purchaseOrder.dealer_id = dealerId;
+      if (newInvoiceNo) purchaseOrder.dealer_invoice_no = newInvoiceNo;
+      if (purchaseDate) purchaseOrder.purchase_date = new Date(purchaseDate);
+      if (purchaseBillImage !== undefined || purchaseBillImages !== undefined) {
+        purchaseOrder.purchase_bill_image = primaryBillImage;
+        purchaseOrder.purchase_bill_images = normalizedImages;
+      }
+      if (notes !== undefined) purchaseOrder.notes = notes;
+      await purchaseOrder.save({ session });
+    }
+
+    // Update all linked InventoryItem records
+    const itemQuery = {
+      shop_id: shopId,
+      deleted_at: null,
+    };
+
+    const prevNoRegex = previousInvoiceNo ? new RegExp(`^${previousInvoiceNo.toString().trim()}$`, "i") : null;
+
+    if (purchaseOrder) {
+      itemQuery.$or = [
+        { purchase_order_id: purchaseOrder._id },
+        ...(prevNoRegex ? [{ purchase_invoice_ref: prevNoRegex }] : []),
+      ];
+    } else if (prevNoRegex) {
+      itemQuery.purchase_invoice_ref = prevNoRegex;
+    }
+
+    const linkedItems = await InventoryItem.find(itemQuery).session(session);
+
+    let totalCost = 0;
+    for (const invItem of linkedItems) {
+      if (dealerId) invItem.dealer_id = dealerId;
+      if (newInvoiceNo) invItem.purchase_invoice_ref = newInvoiceNo;
+      if (purchaseDate) invItem.purchase_date = new Date(purchaseDate);
+      if (purchaseBillImage !== undefined || purchaseBillImages !== undefined) {
+        invItem.purchase_bill_image = primaryBillImage;
+        invItem.purchase_bill_images = normalizedImages;
+      }
+      if (purchaseOrder && !invItem.purchase_order_id) invItem.purchase_order_id = purchaseOrder._id;
+
+      // Check if price update was supplied for this product
+      const prodIdStr = invItem.product_id?._id?.toString() || invItem.product_id?.toString();
+      if (prodIdStr && rowPrices[prodIdStr] !== undefined) {
+        invItem.purchase_price = Number(rowPrices[prodIdStr]) || 0;
+      }
+
+      // Check if name update was supplied for this product
+      if (prodIdStr && rowNames[prodIdStr] !== undefined && rowNames[prodIdStr].trim()) {
+        const updatedName = rowNames[prodIdStr].trim();
+        invItem.product_name = updatedName;
+        if (invItem.product_id) {
+          await ProductMaster.findByIdAndUpdate(
+            invItem.product_id,
+            { product_name: updatedName },
+            { session }
+          );
+        }
+      }
+
+      await invItem.save({ session });
+      totalCost += invItem.purchase_price || 0;
+
+      // Audit Log
+      await InventoryAuditLog.create(
+        [
+          {
+            shop_id: shopId,
+            inventory_item_id: invItem._id,
+            user_id: userId,
+            action: "RECEIVING_SLIP_UPDATE",
+            new_state: {
+              dealer_id: dealerId || invItem.dealer_id,
+              purchase_invoice_ref: newInvoiceNo || invItem.purchase_invoice_ref,
+              purchase_price: invItem.purchase_price,
+              product_name: invItem.product_name,
+            },
+            notes: `Receiving slip metadata updated (#${newInvoiceNo || previousInvoiceNo})`,
+          },
+        ],
+        { session }
+      );
+    }
+
+    if (purchaseOrder) {
+      purchaseOrder.total_cost = totalCost;
+      purchaseOrder.total_items_count = linkedItems.length;
+      await purchaseOrder.save({ session });
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      success: true,
+      message: "Receiving slip updated successfully.",
+      purchaseOrder,
+      updatedItemsCount: linkedItems.length,
     };
   } catch (error) {
     await session.abortTransaction();

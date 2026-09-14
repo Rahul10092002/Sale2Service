@@ -1,38 +1,74 @@
 import React, { useState, useRef } from "react";
-import { X, Plus, Trash2, FileSpreadsheet, Building2, Package, ScanLine, Upload, Image as ImageIcon, Camera } from "lucide-react";
+import {
+  X,
+  Plus,
+  Trash2,
+  FileSpreadsheet,
+  Building2,
+  Package,
+  ScanLine,
+  ImagePlus,
+  Camera,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { useGetDealersQuery } from "../../features/dealers/dealerApi.js";
-import { useGetProductsQuery, useGetInventoryProductsQuery } from "../../features/products/productApi.js";
 import { useCreateReceivingSlipMutation } from "../../features/inventory/inventoryApi.js";
 import { Button, LoadingSpinner } from "../../components/ui/index.js";
 import SerialScanner from "../../components/invoice/SerialScanner.jsx";
 import { getToken } from "../../utils/token.js";
 
+const API_BASE_URL =
+  import.meta.env.VITE_ENVIRONMENT === "production"
+    ? import.meta.env.VITE_PROD_API_URL
+    : import.meta.env.VITE_LOCAL_API_URL;
+
+const compressImage = (file) =>
+  new Promise((resolve, reject) => {
+    const MAX_PX = 1200;
+    const QUALITY = 0.8;
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const ratio = Math.min(MAX_PX / img.width, MAX_PX / img.height, 1);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Canvas compression failed"));
+        },
+        "image/jpeg",
+        QUALITY
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Failed to load image for compression"));
+    };
+    img.src = objectUrl;
+  });
+
 const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
   const { data: dealersData } = useGetDealersQuery(undefined, { skip: !isOpen });
-  const { data: productsData } = useGetProductsQuery({}, { skip: !isOpen });
-  const { data: inventoryProductsData } = useGetInventoryProductsQuery({ limit: 100 }, { skip: !isOpen });
   const [createReceivingSlip, { isLoading: isSubmitting }] = useCreateReceivingSlipMutation();
 
   const dealers = dealersData?.dealers || [];
-  
-  // Merge ProductMaster items + InvoiceItem catalog items, deduplicating by _id / name
-  const rawProductsList = [
-    ...(inventoryProductsData?.products || []),
-    ...(productsData?.products || []),
-  ];
-  const seenIds = new Set();
-  const products = rawProductsList.filter((p) => {
-    if (seenIds.has(p._id)) return false;
-    seenIds.add(p._id);
-    return true;
-  });
 
   const [dealerId, setDealerId] = useState("");
   const [dealerInvoiceNo, setDealerInvoiceNo] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState("");
-  const [purchaseBillImage, setPurchaseBillImage] = useState("");
-  const [isUploadingBill, setIsUploadingBill] = useState(false);
+
+  // Photos Tray & Image State (matching ProductCard.jsx)
+  const [photosOpen, setPhotosOpen] = useState(true);
+  const [purchaseBillImages, setPurchaseBillImages] = useState([]);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState(null);
 
   // Scanner state: stores index of active row being scanned, or null
   const [activeScannerRowIndex, setActiveScannerRowIndex] = useState(null);
@@ -41,7 +77,7 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
   const cameraInputRef = useRef(null);
 
   const [rows, setRows] = useState([
-    { product_id: "", purchase_price: "", raw_serials: "" },
+    { product_name: "", purchase_price: "", raw_serials: "" },
   ]);
 
   const [errorMsg, setErrorMsg] = useState("");
@@ -50,7 +86,7 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
   if (!isOpen) return null;
 
   const handleAddRow = () => {
-    setRows([...rows, { product_id: "", purchase_price: "", raw_serials: "" }]);
+    setRows([...rows, { product_name: "", purchase_price: "", raw_serials: "" }]);
   };
 
   const handleRemoveRow = (index) => {
@@ -61,14 +97,6 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
   const handleRowChange = (index, field, value) => {
     const updated = [...rows];
     updated[index][field] = value;
-
-    if (field === "product_id") {
-      const selectedProd = products.find((p) => p._id === value);
-      if (selectedProd && selectedProd.cost_price) {
-        updated[index].purchase_price = selectedProd.cost_price;
-      }
-    }
-
     setRows(updated);
   };
 
@@ -86,41 +114,55 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
     setActiveScannerRowIndex(null);
   };
 
-  const handleBillImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Image change handler matching ProductCard.jsx
+  const handleImageChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    setIsUploadingBill(true);
-    setErrorMsg("");
-
+    setImageError(null);
+    setImageUploading(true);
     try {
       const formData = new FormData();
-      formData.append("product_images", file);
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        formData.append("product_images", compressed, "bill_document.jpg");
+      }
 
-      const API_BASE_URL =
-        import.meta.env.VITE_ENVIRONMENT === "production"
-          ? import.meta.env.VITE_PROD_API_URL
-          : import.meta.env.VITE_LOCAL_API_URL;
-
+      const token = getToken();
       const response = await fetch(`${API_BASE_URL}/files/product-image`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
-      const resData = await response.json();
-      if (response.ok && resData.success && resData.data?.[0]?.image_url) {
-        setPurchaseBillImage(resData.data[0].image_url);
-      } else {
-        throw new Error(resData.message || "Failed to upload purchase bill photo.");
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(json.message || "Failed to upload image");
       }
+
+      // Correctly extract image URLs from json.data.images or fallback formats
+      const newUrls =
+        json.data?.images?.map((img) => img.image_url) ||
+        (Array.isArray(json.data) ? json.data.map((img) => img.image_url) : [json.data?.image_url || json.image_url].filter(Boolean));
+
+      if (!newUrls || newUrls.length === 0) {
+        throw new Error("No image URLs returned from upload server.");
+      }
+
+      setPurchaseBillImages((prev) => [...prev, ...newUrls]);
     } catch (err) {
-      setErrorMsg(err.message || "Image upload failed.");
+      console.error("Receiving slip image upload error:", err);
+      setImageError(err.message || "Image upload failed");
     } finally {
-      setIsUploadingBill(false);
+      setImageUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
     }
+  };
+
+  const removeImage = (urlToRemove) => {
+    setPurchaseBillImages((prev) => prev.filter((url) => url !== urlToRemove));
+    setImageError(null);
   };
 
   const parseSerials = (rawText) => {
@@ -158,13 +200,13 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
     const formattedItems = [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      if (!r.product_id) {
-        setErrorMsg(`Row #${i + 1}: Please select a Product.`);
+      if (!r.product_name || !r.product_name.trim()) {
+        setErrorMsg(`Row #${i + 1}: Please enter a Product Name.`);
         return;
       }
       const serials = parseSerials(r.raw_serials);
       formattedItems.push({
-        product_id: r.product_id,
+        product_name: r.product_name.trim(),
         purchase_price: Number(r.purchase_price) || 0,
         serial_numbers: serials,
       });
@@ -175,7 +217,8 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
         dealer_id: dealerId,
         dealer_invoice_no: dealerInvoiceNo,
         purchase_date: purchaseDate,
-        purchase_bill_image: purchaseBillImage,
+        purchase_bill_image: purchaseBillImages[0] || "",
+        purchase_bill_images: purchaseBillImages,
         notes,
         items: formattedItems,
       }).unwrap();
@@ -184,8 +227,8 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
       setTimeout(() => {
         onClose();
         setSuccessMsg("");
-        setPurchaseBillImage("");
-        setRows([{ product_id: "", purchase_price: "", raw_serials: "" }]);
+        setPurchaseBillImages([]);
+        setRows([{ product_name: "", purchase_price: "", raw_serials: "" }]);
       }, 1500);
     } catch (err) {
       setErrorMsg(err?.data?.message || "Failed to process stock intake.");
@@ -198,54 +241,55 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
     <>
       <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-5xl max-h-[94vh] sm:max-h-[92vh] flex flex-col border border-gray-200 dark:border-gray-700">
-          {/* Header */}
-          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-t-2xl sm:rounded-t-2xl">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 rounded-t-2xl">
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-xl">
                 <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  Receiving Slip Intake
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                  Log Receiving Slip (Stock Intake)
                 </h2>
                 <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
-                  Log supplier shipments & barcode serial numbers
+                  Bulk intake multiple inventory units from a supplier invoice
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              aria-label="Close"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Content */}
-          <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 sm:space-y-6">
+          {/* Form Content */}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
             {errorMsg && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-xl border border-red-200 dark:border-red-800">
+              <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs sm:text-sm rounded-xl font-medium">
                 {errorMsg}
               </div>
             )}
 
             {successMsg && (
-              <div className="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-xl border border-green-200 dark:border-green-800">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm rounded-xl font-medium">
                 {successMsg}
               </div>
             )}
 
-            {/* Supplier & Header Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-gray-50 dark:bg-gray-900/40 p-3.5 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+            {/* Top Row: Dealer, Invoice No, Purchase Date */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-gray-50/70 dark:bg-gray-900/30 p-3.5 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700">
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    Dealer / Supplier *
+                    Supplier / Dealer <span className="text-red-500">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={onOpenDealers}
-                    className="text-xs text-blue-600 font-semibold hover:underline flex items-center gap-0.5"
+                    className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5"
                   >
                     <Plus className="w-3 h-3" /> Add Supplier
                   </button>
@@ -254,7 +298,7 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                   required
                   value={dealerId}
                   onChange={(e) => setDealerId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                 >
                   <option value="">-- Select Supplier --</option>
                   {dealers.map((d) => (
@@ -274,7 +318,7 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                   value={dealerInvoiceNo}
                   onChange={(e) => setDealerInvoiceNo(e.target.value)}
                   placeholder="e.g. INV-DEALER-9921"
-                  className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white uppercase font-medium"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white uppercase font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
 
@@ -286,103 +330,108 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                   type="date"
                   value={purchaseDate}
                   onChange={(e) => setPurchaseDate(e.target.value)}
-                  className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
             </div>
 
-            {/* Purchase Bill Image / Camera Upload Option */}
-            <div className="bg-gray-50 dark:bg-gray-900/40 p-3.5 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
-                <ImageIcon className="w-4 h-4 text-indigo-600" /> Purchase Bill / Invoice Attachment
-              </label>
-
-              {/* File input for browsing gallery/files */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept="image/*"
-                onChange={handleBillImageUpload}
-                className="hidden"
-              />
-
-              {/* Camera input for capturing directly with device camera */}
-              <input
-                type="file"
-                ref={cameraInputRef}
-                accept="image/*"
-                capture="environment"
-                onChange={handleBillImageUpload}
-                className="hidden"
-              />
-
-              {purchaseBillImage ? (
-                <div className="flex items-center gap-4">
-                  <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600 group">
-                    <img
-                      src={purchaseBillImage}
-                      alt="Purchase Bill"
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setPurchaseBillImage("")}
-                      className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-80 hover:opacity-100"
-                      title="Remove image"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                      ✓ Bill Photo Attached
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-xs text-blue-600 font-semibold hover:underline"
-                      >
-                        Upload File
-                      </button>
-                      <span className="text-gray-300 dark:text-gray-600">•</span>
-                      <button
-                        type="button"
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5"
-                      >
-                        <Camera className="w-3 h-3" /> Retake Photo
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    isLoading={isUploadingBill}
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-bold min-h-[44px]"
-                  >
-                    <Camera className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Take Photo with Camera
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    isLoading={isUploadingBill}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs border-dashed border-gray-300 dark:border-gray-600 min-h-[44px]"
-                  >
-                    <Upload className="w-4 h-4 text-gray-500" /> Choose File from Device
-                  </Button>
-
-                  <span className="text-[11px] text-gray-400 text-center sm:text-left sm:ml-2">
-                    Capture photo or upload document for audit records
+            {/* ── Photos Tray Matching ProductCard.jsx (L683-L783) ── */}
+            <div className="rounded-lg border border-gray-200 dark:border-dark-border/70 overflow-hidden bg-gray-50/50 dark:bg-dark-bg/40">
+              <button
+                type="button"
+                id="receiving-slip-photos-tray"
+                aria-expanded={photosOpen}
+                onClick={() => setPhotosOpen(!photosOpen)}
+                className="w-full flex items-center justify-between p-2.5 sm:px-3 text-left hover:bg-gray-100/50 dark:hover:bg-dark-hover/50 transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus:outline-none"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <ImagePlus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span className="text-xs font-semibold text-gray-800 dark:text-slate-200">
+                    Purchase Bill / Invoice Attachment
                   </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200/80 dark:bg-dark-hover text-gray-700 dark:text-slate-300">
+                    Photos ({purchaseBillImages.length})
+                  </span>
+                </div>
+                {photosOpen ? (
+                  <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                )}
+              </button>
+
+              {photosOpen && (
+                <div className="p-2.5 sm:p-3 pt-1 border-t border-gray-100 dark:border-dark-border/50 space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {purchaseBillImages.map((url, idx) => (
+                      <div key={idx} className="relative inline-block">
+                        <img
+                          src={url}
+                          alt={`Bill Document ${idx + 1}`}
+                          className="w-14 h-14 object-cover rounded-lg border border-gray-200 dark:border-dark-border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(url)}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-xs hover:bg-red-600"
+                          title="Remove photo"
+                          aria-label={`Remove photo ${idx + 1}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Upload Button */}
+                    <label className="flex flex-col items-center justify-center min-w-[56px] h-14 px-2 border border-dashed border-gray-300 dark:border-dark-border rounded-lg cursor-pointer hover:bg-gray-100/60 dark:hover:bg-dark-hover active:scale-95 transition">
+                      {imageUploading ? (
+                        <span className="text-[9px] text-indigo-600 font-bold">Uploading…</span>
+                      ) : (
+                        <>
+                          <ImagePlus className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                          <span className="text-[10px] font-semibold text-gray-600 dark:text-slate-300 mt-0.5">
+                            Upload
+                          </span>
+                        </>
+                      )}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={imageUploading}
+                        onChange={handleImageChange}
+                      />
+                    </label>
+
+                    {/* Camera Button */}
+                    <label className="flex flex-col items-center justify-center min-w-[56px] h-14 px-2 border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-lg cursor-pointer hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30 active:scale-95 transition">
+                      {imageUploading ? (
+                        <span className="text-[9px] text-emerald-600 font-bold">Uploading…</span>
+                      ) : (
+                        <>
+                          <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 mt-0.5">
+                            Camera
+                          </span>
+                        </>
+                      )}
+                      <input
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        capture="environment"
+                        className="hidden"
+                        disabled={imageUploading}
+                        onChange={handleImageChange}
+                      />
+                    </label>
+                  </div>
+
+                  {imageError && (
+                    <p className="text-[11px] text-red-600 font-medium">{imageError}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -421,162 +470,154 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                         </button>
                       </div>
 
+                      {/* Product Name Input */}
                       <div>
-                        <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                          Product Catalog Item *
-                        </label>
-                        <select
-                          required
-                          value={row.product_id}
-                          onChange={(e) => handleRowChange(idx, "product_id", e.target.value)}
-                          className="w-full px-2.5 py-2 border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs text-gray-900 dark:text-white font-medium"
-                        >
-                          <option value="">-- Select Product --</option>
-                          {products.map((p) => (
-                            <option key={p._id} value={p._id}>
-                              {p.product_name} ({p.company || "Generic"})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                          Cost Price (₹)
+                        <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                          Product Name <span className="text-red-500">*</span>
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={row.purchase_price}
-                          onChange={(e) => handleRowChange(idx, "purchase_price", e.target.value)}
-                          placeholder="Cost Price"
-                          className="w-full px-2.5 py-2 border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs text-gray-900 dark:text-white font-medium"
+                          type="text"
+                          required
+                          value={row.product_name}
+                          onChange={(e) => handleRowChange(idx, "product_name", e.target.value)}
+                          placeholder="Type product name (e.g. iPhone 15 Pro, HP Laptop)"
+                          className="w-full px-2.5 py-1.5 text-xs border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
                         />
                       </div>
 
+                      {/* Purchase Price & Unit Count */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                            Unit Cost (₹) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            required
+                            min="0"
+                            step="any"
+                            value={row.purchase_price}
+                            onChange={(e) => handleRowChange(idx, "purchase_price", e.target.value)}
+                            placeholder="0.00"
+                            className="w-full px-2.5 py-1.5 text-xs border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-bold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                            Subtotal (₹)
+                          </label>
+                          <div className="px-2.5 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-gray-50 dark:bg-gray-800/80 rounded-lg border border-gray-200 dark:border-gray-700">
+                            ₹{((Number(row.purchase_price) || 0) * (parsedCount > 0 ? parsedCount : 1)).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Serial Numbers Textarea with Integrated Scanner */}
                       <div>
                         <div className="flex justify-between items-center mb-1">
-                          <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300">
-                            Serial Numbers
+                          <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400">
+                            Serial Numbers ({parsedCount} unit{parsedCount === 1 ? "" : "s"})
                           </label>
-                          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
-                            Count: {parsedCount || 1}
-                          </span>
-                        </div>
-                        <div className="space-y-2">
-                          <textarea
-                            rows={2}
-                            value={row.raw_serials}
-                            onChange={(e) => handleRowChange(idx, "raw_serials", e.target.value)}
-                            placeholder="e.g. SN-1001, SN-1002"
-                            className="w-full px-2.5 py-2 border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs text-gray-900 dark:text-white font-mono uppercase"
-                          />
                           <button
                             type="button"
                             onClick={() => setActiveScannerRowIndex(idx)}
-                            className="w-full min-h-[42px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold hover:bg-indigo-200 dark:hover:bg-indigo-900/60 flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 active:scale-98 transition-transform"
+                            className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md"
                           >
-                            <ScanLine className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Scan Barcode with Camera
+                            <ScanLine className="w-3.5 h-3.5" /> Scan Barcode
                           </button>
                         </div>
+                        <textarea
+                          rows={2}
+                          value={row.raw_serials}
+                          onChange={(e) => handleRowChange(idx, "raw_serials", e.target.value)}
+                          placeholder="Paste serial numbers separated by comma or new line (e.g. SN1001, SN1002)..."
+                          className="w-full px-2.5 py-1.5 text-xs font-mono border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white uppercase focus:ring-2 focus:ring-indigo-500"
+                        />
                       </div>
                     </div>
                   );
                 })}
-
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddRow}
-                    className="w-full min-h-[42px] flex items-center justify-center gap-1 font-bold text-xs"
-                  >
-                    <Plus className="w-4 h-4" /> Add Item Row
-                  </Button>
-
-                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-800">
-                    <span>Total Units: <strong className="text-indigo-600 dark:text-indigo-400">{totals.totalItems}</strong></span>
-                    <span>Total Cost: <strong className="text-emerald-600 dark:text-emerald-400">₹{totals.totalCost.toLocaleString("en-IN")}</strong></span>
-                  </div>
-                </div>
               </div>
 
               {/* DESKTOP ITEMS TABLE (≥ md screens) */}
-              <div className="hidden md:block border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-2xs">
+              <div className="hidden md:block overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl">
                 <table className="w-full text-left text-xs text-gray-700 dark:text-gray-200">
                   <thead className="bg-gray-100 dark:bg-gray-900/80 uppercase font-semibold text-gray-600 dark:text-gray-400">
                     <tr>
-                      <th className="p-3 w-12 text-center">#</th>
-                      <th className="p-3">Product Catalog Item *</th>
-                      <th className="p-3 w-32">Cost Price (₹)</th>
-                      <th className="p-3">Serial Numbers (Scan Barcode / Type)</th>
-                      <th className="p-3 w-12 text-center">Action</th>
+                      <th className="p-3 w-8">#</th>
+                      <th className="p-3 w-[30%]">Product Name</th>
+                      <th className="p-3 w-[15%]">Purchase Price (₹)</th>
+                      <th className="p-3 w-[45%]">Serial Numbers (Comma / Line-separated)</th>
+                      <th className="p-3 text-right w-10">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {rows.map((row, idx) => {
                       const parsedCount = parseSerials(row.raw_serials).length;
                       return (
-                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                          <td className="p-3 text-center font-medium text-gray-500">{idx + 1}</td>
+                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                          <td className="p-3 font-bold text-gray-400">{idx + 1}</td>
+
+                          {/* Product Name Input */}
                           <td className="p-3">
-                            <select
+                            <input
+                              type="text"
                               required
-                              value={row.product_id}
-                              onChange={(e) => handleRowChange(idx, "product_id", e.target.value)}
-                              className="w-full px-2.5 py-1.5 border rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
-                            >
-                              <option value="">-- Select Product --</option>
-                              {products.map((p) => (
-                                <option key={p._id} value={p._id}>
-                                  {p.product_name} ({p.company || "Generic"})
-                                </option>
-                              ))}
-                            </select>
+                              value={row.product_name}
+                              onChange={(e) => handleRowChange(idx, "product_name", e.target.value)}
+                              placeholder="Type product name (e.g. iPhone 15 Pro, HP Laptop)"
+                              className="w-full px-2.5 py-1.5 border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
                           </td>
+
+                          {/* Purchase Price */}
                           <td className="p-3">
                             <input
                               type="number"
+                              required
                               min="0"
-                              step="0.01"
+                              step="any"
                               value={row.purchase_price}
                               onChange={(e) => handleRowChange(idx, "purchase_price", e.target.value)}
-                              placeholder="Cost"
-                              className="w-full px-2 py-1.5 border rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
+                              placeholder="0.00"
+                              className="w-full px-2.5 py-1.5 font-bold border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
                             />
                           </td>
+
+                          {/* Serial Numbers & Live Scanner Trigger */}
                           <td className="p-3">
                             <div className="space-y-1">
-                              <div className="flex gap-2 items-center">
-                                <textarea
-                                  rows={2}
-                                  value={row.raw_serials}
-                                  onChange={(e) => handleRowChange(idx, "raw_serials", e.target.value)}
-                                  placeholder="e.g. SN-1001, SN-1002"
-                                  className="flex-1 px-2.5 py-1.5 border rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white text-xs font-mono uppercase"
-                                />
+                              <div className="flex justify-between items-center text-[10px] text-gray-400">
+                                <span>
+                                  Count: <strong className="text-indigo-600 dark:text-indigo-400">{parsedCount || 1}</strong> unit(s)
+                                </span>
                                 <button
                                   type="button"
                                   onClick={() => setActiveScannerRowIndex(idx)}
-                                  className="px-3 py-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold hover:bg-indigo-200 dark:hover:bg-indigo-900/60 flex items-center gap-1.5 shrink-0 border border-indigo-200 dark:border-indigo-800"
-                                  title="Scan Barcode with Camera"
+                                  className="font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.5 rounded"
                                 >
-                                  <ScanLine className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Scan
+                                  <ScanLine className="w-3 h-3" /> Camera Scan
                                 </button>
                               </div>
-                              <div className="text-[10px] text-indigo-600 dark:text-indigo-300 font-semibold">
-                                Count: {parsedCount || 1}
-                              </div>
+                              <textarea
+                                rows={2}
+                                value={row.raw_serials}
+                                onChange={(e) => handleRowChange(idx, "raw_serials", e.target.value)}
+                                placeholder="Paste or type serial numbers (e.g. SN001, SN002)..."
+                                className="w-full px-2 py-1 font-mono text-[11px] border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white uppercase"
+                              />
                             </div>
                           </td>
-                          <td className="p-3 text-center">
+
+                          {/* Remove Row */}
+                          <td className="p-3 text-right">
                             <button
                               type="button"
                               onClick={() => handleRemoveRow(idx)}
                               disabled={rows.length === 1}
-                              className="p-1 text-gray-400 hover:text-red-600 disabled:opacity-30 rounded-md"
+                              className="p-1 text-red-500 hover:text-red-700 disabled:opacity-20 transition"
+                              title="Delete Item Row"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -586,61 +627,80 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
                     })}
                   </tbody>
                 </table>
+              </div>
 
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddRow}
-                    className="flex items-center gap-1"
-                  >
-                    <Plus className="w-4 h-4" /> Add Item Row
-                  </Button>
-
-                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-4">
-                    <span>Total Units: <strong className="text-indigo-600 dark:text-indigo-400 text-sm">{totals.totalItems}</strong></span>
-                    <span>Estimated Total Cost: <strong className="text-emerald-600 dark:text-emerald-400 text-sm">₹{totals.totalCost.toLocaleString("en-IN")}</strong></span>
-                  </div>
-                </div>
+              {/* Add New Item Row Button */}
+              <div className="mt-2.5">
+                <button
+                  type="button"
+                  onClick={handleAddRow}
+                  className="w-full sm:w-auto px-3.5 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 rounded-xl border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center gap-1.5 transition active:scale-98"
+                >
+                  <Plus className="w-4 h-4" /> Add Another Product Row
+                </button>
               </div>
             </div>
 
+            {/* Notes / Memo */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Receiving Notes / Packing Slip Remarks
+                Receiving Slip Notes / Memo (Optional)
               </label>
-              <input
-                type="text"
+              <textarea
+                rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g. Received 1 box via Express Cargo shipment"
-                className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                placeholder="Add supplier delivery memo, driver name, package tracking, etc."
+                className="w-full px-3 py-2 text-xs sm:text-sm border rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             </div>
+          </form>
 
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto min-h-[44px]">
+          {/* Modal Footer Summary & Actions */}
+          <div className="px-4 sm:px-6 py-3.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/60 rounded-b-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-4 text-xs sm:text-sm">
+              <span className="text-gray-600 dark:text-gray-400">
+                Total Units: <strong className="text-gray-900 dark:text-white font-bold">{totals.totalItems}</strong>
+              </span>
+              <span className="text-gray-300 dark:text-gray-700">|</span>
+              <span className="text-gray-600 dark:text-gray-400">
+                Total Cost:{" "}
+                <strong className="text-emerald-600 dark:text-emerald-400 font-black text-sm sm:text-base">
+                  ₹{totals.totalCost.toFixed(2)}
+                </strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="flex-1 sm:flex-initial text-xs sm:text-sm py-2"
+              >
                 Cancel
               </Button>
               <Button
                 type="submit"
+                onClick={handleSubmit}
                 isLoading={isSubmitting}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6"
+                disabled={isSubmitting || imageUploading}
+                className="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm py-2 px-5"
               >
-                Submit Receiving Slip
+                Save & Intake Inventory
               </Button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
 
-      {/* Serial Scanner Camera Modal */}
+      {/* Serial Scanner Modal Dialog */}
       {activeScannerRowIndex !== null && (
         <SerialScanner
-          onScan={handleScanSuccess}
+          isOpen={true}
           onClose={() => setActiveScannerRowIndex(null)}
+          onScanSuccess={handleScanSuccess}
         />
       )}
     </>

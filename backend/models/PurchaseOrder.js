@@ -42,6 +42,10 @@ const purchaseOrderSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    purchase_bill_images: {
+      type: [String],
+      default: [],
+    },
     created_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

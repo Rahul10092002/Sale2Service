@@ -24,6 +24,8 @@ const auditLogSchema = new mongoose.Schema(
         "RETROACTIVE_DEALER_LINK",
         "SERIAL_UPDATE",
         "STATUS_CHANGE",
+        "RECEIVING_SLIP_UPDATE",
+        "SUPPLIER_LINKED",
       ],
       required: true,
     },

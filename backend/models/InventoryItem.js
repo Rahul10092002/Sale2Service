@@ -47,6 +47,14 @@ const inventoryItemSchema = new mongoose.Schema(
       min: 0,
       default: 0,
     },
+    purchase_bill_image: {
+      type: String,
+      default: "",
+    },
+    purchase_bill_images: {
+      type: [String],
+      default: [],
+    },
     status: {
       type: String,
       enum: ["IN_STOCK", "SOLD", "RETURNED", "UNDER_SERVICE", "DEFECTIVE_RMA"],

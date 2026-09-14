@@ -9,10 +9,26 @@ export const inventoryApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Inventory"],
     }),
+    getInventoryItemById: builder.query({
+      query: (itemId) => `/inventory/items/${itemId}`,
+      providesTags: (result, error, itemId) => [{ type: "Inventory", id: itemId }],
+    }),
+    getReceivingSlipById: builder.query({
+      query: (slipId) => `/inventory/receiving-slips/${slipId}`,
+      providesTags: (result, error, slipId) => [{ type: "Inventory", id: slipId }],
+    }),
     createReceivingSlip: builder.mutation({
       query: (payload) => ({
         url: "/inventory/receiving-slip",
         method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: ["Inventory", "Products", "Dashboard"],
+    }),
+    updateReceivingSlip: builder.mutation({
+      query: ({ id, ...payload }) => ({
+        url: `/inventory/receiving-slips/${id}`,
+        method: "PUT",
         body: payload,
       }),
       invalidatesTags: ["Inventory", "Products", "Dashboard"],
@@ -42,8 +58,12 @@ export const inventoryApi = baseApi.injectEndpoints({
 
 export const {
   useGetInventoryItemsQuery,
+  useGetInventoryItemByIdQuery,
+  useGetReceivingSlipByIdQuery,
   useCreateReceivingSlipMutation,
+  useUpdateReceivingSlipMutation,
   useLinkRetroactiveDealerMutation,
   useUpdateInventoryStatusMutation,
   useGetInventoryAuditLogsQuery,
 } = inventoryApi;
+

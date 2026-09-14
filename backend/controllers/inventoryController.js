@@ -879,3 +879,61 @@ export const getPurchasesList = async (req, res) => {
     });
   }
 };
+
+/**
+ * Delete / Soft-Delete Single Inventory Item
+ */
+export const deleteInventoryItem = async (req, res) => {
+  try {
+    const shopId = req.user.shopId;
+    const { itemId } = req.params;
+
+    const item = await InventoryItem.findOne({
+      _id: itemId,
+      shop_id: shopId,
+      deleted_at: null,
+    });
+
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Inventory item not found",
+      });
+    }
+
+    if (item.status === "SOLD") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete an inventory item that is marked as SOLD or linked to an invoice.",
+      });
+    }
+
+    item.deleted_at = new Date();
+    await item.save();
+
+    // Log audit trail
+    await InventoryAuditLog.create({
+      shop_id: shopId,
+      item_id: item._id,
+      product_id: item.product_id,
+      user_id: req.user.userId,
+      action: "DELETED",
+      notes: "Inventory unit deleted",
+      previous_status: item.status,
+      new_status: item.status,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Inventory item deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting inventory item:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete inventory item",
+      error: error.message,
+    });
+  }
+};
+

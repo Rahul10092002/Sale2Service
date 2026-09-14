@@ -56,6 +56,13 @@ export const inventoryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Inventory", "Products"],
     }),
+    deleteInventoryItem: builder.mutation({
+      query: (itemId) => ({
+        url: `/inventory/items/${itemId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Inventory", "Products", "Dashboard"],
+    }),
     getInventoryAuditLogs: builder.query({
       query: (itemId) => `/inventory/items/${itemId}/logs`,
       providesTags: (result, error, itemId) => [{ type: "Inventory", id: itemId }],
@@ -72,6 +79,7 @@ export const {
   useUpdateReceivingSlipMutation,
   useLinkRetroactiveDealerMutation,
   useUpdateInventoryStatusMutation,
+  useDeleteInventoryItemMutation,
   useGetInventoryAuditLogsQuery,
 } = inventoryApi;
 

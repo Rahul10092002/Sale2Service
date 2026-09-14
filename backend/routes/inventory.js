@@ -9,6 +9,7 @@ import {
   getReceivingSlipById,
   linkRetroactiveDealer,
   updateInventoryStatus,
+  deleteInventoryItem,
   getItemAuditLogs,
   getPurchasesList,
 } from "../controllers/inventoryController.js";
@@ -22,6 +23,7 @@ router.put("/receiving-slips/:id", strictMutationRateLimiter, updateReceivingSli
 router.get("/purchases", getPurchasesList);
 router.get("/items", getInventoryItems);
 router.get("/items/:itemId", getInventoryItemById);
+router.delete("/items/:itemId", strictMutationRateLimiter, deleteInventoryItem);
 router.get("/receiving-slips/:id", getReceivingSlipById);
 router.put("/items/:itemId/link-dealer", strictMutationRateLimiter, linkRetroactiveDealer);
 router.put("/items/:itemId/status", strictMutationRateLimiter, updateInventoryStatus);

@@ -30,6 +30,7 @@ import {
   AlertCircle,
   Plus,
   Image as ImageIcon,
+  Trash2,
 } from "lucide-react";
 import { Button, LoadingSpinner, ImageGalleryModal } from "../../components/ui/index.js";
 import {
@@ -41,7 +42,9 @@ import {
 import {
   useGetInventoryItemByIdQuery,
   useUpdateInventoryStatusMutation,
+  useDeleteInventoryItemMutation,
 } from "../../features/inventory/inventoryApi.js";
+import { useDeleteGuard } from "../../context/DeleteGuardContext.jsx";
 import { showToast } from "../../features/ui/uiSlice.js";
 import { formatDate } from "../../utils/date.js";
 import { ROUTES } from "../../utils/constants.js";
@@ -129,6 +132,8 @@ const InventoryItemView = () => {
 
   const { data, isLoading, isError, error, refetch } = useGetInventoryItemByIdQuery(id);
   const [updateStatus, { isLoading: isUpdatingStatus }] = useUpdateInventoryStatusMutation();
+  const [deleteInventoryItem, { isLoading: isDeletingItem }] = useDeleteInventoryItemMutation();
+  const { confirmDelete } = useDeleteGuard();
 
   const item = data?.item;
   const receivingSlipData = data?.receivingSlip;
@@ -165,6 +170,44 @@ const InventoryItemView = () => {
     } catch (err) {
       dispatch(showToast({ type: "error", message: err?.data?.message || "Failed to update status" }));
     }
+  };
+
+  const handleDeleteUnit = () => {
+    if (!item) return;
+    if (item.status === "SOLD") {
+      dispatch(
+        showToast({
+          type: "error",
+          message: "Cannot delete an inventory unit that is marked as SOLD or linked to an invoice.",
+        })
+      );
+      return;
+    }
+
+    confirmDelete({
+      itemName: `${item.product_name}${item.serial_number ? ` (S/N: ${item.serial_number})` : ""}`,
+      itemType: "Inventory Unit",
+      onConfirm: async () => {
+        try {
+          await deleteInventoryItem(item._id).unwrap();
+          dispatch(
+            showToast({
+              type: "success",
+              message: "Inventory unit deleted successfully",
+            })
+          );
+          navigate(location.state?.from || ROUTES.INVENTORY);
+        } catch (err) {
+          console.error("Delete inventory unit error:", err);
+          dispatch(
+            showToast({
+              type: "error",
+              message: err?.data?.message || "Failed to delete inventory unit",
+            })
+          );
+        }
+      },
+    });
   };
 
   if (isLoading) {
@@ -264,6 +307,16 @@ const InventoryItemView = () => {
             >
               <Activity className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
               <span>Update Status</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteUnit}
+              disabled={isDeletingItem}
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs py-2 sm:py-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border-red-200 dark:border-red-900/50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{isDeletingItem ? "Deleting..." : "Delete Unit"}</span>
             </Button>
           </div>
         </div>
@@ -867,6 +920,22 @@ const InventoryItemView = () => {
                     </button>
                   </Link>
                 )}
+
+                <div className="pt-2 border-t border-gray-100 dark:border-dark-border">
+                  <button
+                    type="button"
+                    onClick={handleDeleteUnit}
+                    disabled={isDeletingItem}
+                    className="w-full flex items-center justify-between p-2.5 text-xs font-semibold text-red-700 dark:text-red-300 bg-red-50/70 dark:bg-red-950/30 border border-red-200 dark:border-red-800/80 rounded-lg hover:bg-red-100/80 dark:hover:bg-red-900/40 transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" /> Delete Inventory Unit
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-red-600 dark:text-red-400">
+                      {isDeletingItem ? "Deleting..." : "Delete"}
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

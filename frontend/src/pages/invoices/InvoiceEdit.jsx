@@ -468,15 +468,11 @@ const InvoiceEdit = () => {
               </Button>
               <Button
                 onClick={handleSaveInvoice}
+                loading={isSubmitting}
                 disabled={isSubmitting}
                 className="flex items-center gap-2 text-xs min-h-[42px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5"
               >
-                {isSubmitting ? (
-                  <LoadingSpinner className="w-4 h-4" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                {isSubmitting ? "Updating..." : "Update Invoice"}
+                Update Invoice
               </Button>
             </div>
           </div>

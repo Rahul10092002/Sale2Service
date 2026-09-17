@@ -3,9 +3,8 @@ import ServiceSchedule from "../models/ServiceSchedule.js";
 import ServiceVisit from "../models/ServiceVisit.js";
 import ServicePlan from "../models/ServicePlan.js";
 import InvoiceItem from "../models/InvoiceItem.js";
-import { BaseController } from "./baseController.js";
 
-export default class ServiceController extends BaseController {
+export default class ServiceController {
   /**
    * Get service schedules for a shop using single-pass aggregation pipeline
    */

@@ -47,9 +47,11 @@ const FestivalSchedule = () => {
     search: searchTerm,
   });
 
-  const [createFestival] = useCreateFestivalMutation();
-  const [updateFestival] = useUpdateFestivalMutation();
+  const [createFestival, { isLoading: isCreating }] = useCreateFestivalMutation();
+  const [updateFestival, { isLoading: isUpdating }] = useUpdateFestivalMutation();
   const [deleteFestival] = useDeleteFestivalMutation();
+
+  const isSaving = isCreating || isUpdating;
 
   const schedules = response?.data?.schedules || [];
   const pagination = response?.data?.pagination || {};
@@ -88,12 +90,14 @@ const FestivalSchedule = () => {
   };
 
   const handleCloseModal = () => {
+    if (isSaving) return;
     setShowModal(false);
     setEditingId(null);
     setModalForm({ festival_name: "", schedule_date: "" });
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
     if (!modalForm.festival_name || !modalForm.schedule_date) {
       alert("Please fill all fields");
       return;
@@ -109,9 +113,9 @@ const FestivalSchedule = () => {
         await createFestival(modalForm).unwrap();
       }
       handleCloseModal();
-    } catch (error) {
-      console.error("Error saving festival:", error);
-      alert("Failed to save festival schedule");
+    } catch (err) {
+      console.error("Error saving festival:", err);
+      alert(err?.data?.message || err?.message || "Failed to save festival schedule");
     }
   };
 
@@ -407,6 +411,7 @@ const FestivalSchedule = () => {
               </label>
               <input
                 type="text"
+                disabled={isSaving}
                 value={modalForm.festival_name}
                 onChange={(e) =>
                   setModalForm({
@@ -414,7 +419,7 @@ const FestivalSchedule = () => {
                     festival_name: e.target.value,
                   })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="e.g., Diwali, Holi, Christmas"
               />
             </div>
@@ -425,6 +430,7 @@ const FestivalSchedule = () => {
               </label>
               <input
                 type="date"
+                disabled={isSaving}
                 value={modalForm.schedule_date}
                 onChange={(e) =>
                   setModalForm({
@@ -432,25 +438,30 @@ const FestivalSchedule = () => {
                     schedule_date: e.target.value,
                   })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>
         </DialogBody>
         <DialogFooter>
-          <div className="flex items-center justify-end gap-2  border-t border-gray-200">
-            <button
+          <div className="flex items-center justify-end gap-2 border-t border-gray-200 pt-4">
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleCloseModal}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+              disabled={isSaving}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handleSave}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600"
+              loading={isSaving}
+              disabled={isSaving}
             >
               {editingId ? "Update" : "Create"}
-            </button>
+            </Button>
           </div>
         </DialogFooter>
       </Dialog>

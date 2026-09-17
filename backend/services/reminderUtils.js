@@ -37,17 +37,28 @@ export const getUpcomingWishes = async (shopId, period = "today") => {
     logMap.set(log.entity_id, log.message_status);
   });
 
+  const dateRangeMap = new Map();
+  const dayMatches = [];
+
   for (let i = 0; i <= days; i++) {
     const range = createDateRange(i);
     const istParts = getISTDateParts(range.start);
+    const key = `${istParts.month}-${istParts.date}`;
+    if (!dateRangeMap.has(key)) {
+      dateRangeMap.set(key, { rangeStart: range.start, daysUntil: i });
+      dayMatches.push({ month: istParts.month, day: istParts.date });
+    }
+  }
 
-    // Birthdays
-    const birthdays = await Customer.aggregate([
+  const shopObjId = new mongoose.Types.ObjectId(shopId);
+
+  const [birthdays, anniversaries] = await Promise.all([
+    Customer.aggregate([
       {
         $match: {
           date_of_birth: { $ne: null },
           deleted_at: null,
-          shop_id: new mongoose.Types.ObjectId(shopId),
+          shop_id: shopObjId,
         },
       },
       {
@@ -56,29 +67,14 @@ export const getUpcomingWishes = async (shopId, period = "today") => {
           day: { $dayOfMonth: "$date_of_birth" },
         },
       },
-      { $match: { month: istParts.month, day: istParts.date } },
-    ]);
-
-    birthdays.forEach(c => {
-      wishes.push({
-        id: c._id,
-        type: "birthday",
-        customerName: c.full_name,
-        customerPhone: c.whatsapp_number,
-        date: range.start,
-        daysUntil: i,
-        label: "Birthday",
-        reminderStatus: logMap.get(c.customer_id) || (i === 0 ? "PENDING" : null)
-      });
-    });
-
-    // Anniversaries
-    const anniversaries = await Customer.aggregate([
+      { $match: { $or: dayMatches } },
+    ]),
+    Customer.aggregate([
       {
         $match: {
           anniversary_date: { $exists: true, $ne: null },
           deleted_at: null,
-          shop_id: new mongoose.Types.ObjectId(shopId),
+          shop_id: shopObjId,
         },
       },
       {
@@ -87,22 +83,41 @@ export const getUpcomingWishes = async (shopId, period = "today") => {
           day: { $dayOfMonth: "$anniversary_date" },
         },
       },
-      { $match: { month: istParts.month, day: istParts.date } },
-    ]);
+      { $match: { $or: dayMatches } },
+    ]),
+  ]);
 
-    anniversaries.forEach(c => {
+  birthdays.forEach((c) => {
+    const info = dateRangeMap.get(`${c.month}-${c.day}`);
+    if (info) {
+      wishes.push({
+        id: c._id,
+        type: "birthday",
+        customerName: c.full_name,
+        customerPhone: c.whatsapp_number,
+        date: info.rangeStart,
+        daysUntil: info.daysUntil,
+        label: "Birthday",
+        reminderStatus: logMap.get(c.customer_id) || logMap.get(c._id?.toString()) || (info.daysUntil === 0 ? "PENDING" : null),
+      });
+    }
+  });
+
+  anniversaries.forEach((c) => {
+    const info = dateRangeMap.get(`${c.month}-${c.day}`);
+    if (info) {
       wishes.push({
         id: c._id,
         type: "anniversary",
         customerName: c.full_name,
         customerPhone: c.whatsapp_number,
-        date: range.start,
-        daysUntil: i,
+        date: info.rangeStart,
+        daysUntil: info.daysUntil,
         label: "Anniversary",
-        reminderStatus: logMap.get(c.customer_id) || (i === 0 ? "PENDING" : null)
+        reminderStatus: logMap.get(c.customer_id) || logMap.get(c._id?.toString()) || (info.daysUntil === 0 ? "PENDING" : null),
       });
-    });
-  }
+    }
+  });
 
   return wishes;
 };

@@ -2,6 +2,7 @@ import { PDFGenerator } from "./pdfGenerator.js";
 import path from "path";
 import QRCode from "qrcode";
 import { fileURLToPath } from "url";
+import { mergePdfSettings } from "../constants/pdfSettingsDefaults.js";
 import {
   GST_RATE_PERCENT,
   GST_RATE_DECIMAL,
@@ -198,8 +199,10 @@ export class InvoicePDFService {
         }))
       : [];
     const allItems = [...rawProducts, ...rawServices];
+    const pdfSettings = mergePdfSettings(shop.pdf_settings);
 
     const data = {
+      pdf_settings: pdfSettings,
       // Invoice details
       invoice: {
         number: invoice.invoice_number,
@@ -520,5 +523,80 @@ export class InvoicePDFService {
     } catch (error) {
       throw new Error(`Invoice PDF generation failed: ${error.message}`);
     }
+  }
+
+  // Generate a preview PDF using dummy invoice data and custom shop settings
+  async generatePreviewPDF(shop) {
+    const dummyInvoice = {
+      invoice_number: "INV-PREVIEW-2026",
+      invoice_date: new Date(),
+      due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      payment_mode: "UPI / Online",
+      payment_status: "PAID",
+      notes:
+        "Thank you for shopping with us! Please retain this invoice for warranty registration and service claims.",
+    };
+
+    const dummyCustomer = {
+      full_name: "Rahul Sharma",
+      email: "rahul.sharma@example.com",
+      whatsapp_number: "+91 98112 34567",
+      gst_number: "07BBBPS9081F1ZD",
+      address: "Flat 402, Royal Residency, Sector 14, Dwarka, New Delhi - 110078",
+    };
+
+    const dummyItems = [
+      {
+        item_type: "PRODUCT",
+        product_name: "Luminous 150Ah Inverter Battery",
+        company: "Luminous",
+        modelNumber: "ILTT18048",
+        serialNumber: "LUM-8849-X92",
+        product_category: "BATTERY",
+        battery_type: "INVERTER_BATTERY",
+        hsn_code: "85072000",
+        quantity: 1,
+        unit_price: 14500,
+        warranty_duration_months: 36,
+        warranty_type: "STANDARD",
+        warranty_start_date: new Date(),
+        warranty_end_date: new Date(Date.now() + 36 * 30 * 24 * 60 * 60 * 1000),
+        service_plan_enabled: true,
+        service_plan: {
+          total_services: 4,
+          service_interval_type: "QUARTERLY",
+          service_start_date: new Date(),
+          service_end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        },
+        notes: "Heavy-duty tubular battery. Handle upright.",
+      },
+      {
+        item_type: "SERVICE",
+        product_name: "Solar & Inverter Wiring & Health Checkup Service",
+        service_category: "MAINTENANCE & REPAIR",
+        hsn_code: "998714",
+        quantity: 1,
+        unit_price: 1800,
+        warranty_duration_months: 3,
+        service_warranty: "90 Days Labor Guarantee",
+        notes: "Includes 25-point safety checkup, earthing test & load balancing",
+      },
+      {
+        item_type: "PRODUCT",
+        product_name: "Microtek 1000VA Sine Wave Inverter",
+        company: "Microtek",
+        modelNumber: "SW-1000",
+        serialNumber: "MIC-2026-901",
+        product_category: "INVERTER",
+        hsn_code: "85044090",
+        quantity: 1,
+        unit_price: 7500,
+        warranty_duration_months: 24,
+        warranty_type: "STANDARD",
+        notes: "Pure sine wave system",
+      },
+    ];
+
+    return this.generateInvoicePDF(dummyInvoice, dummyCustomer, dummyItems, shop);
   }
 }

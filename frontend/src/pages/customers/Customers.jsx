@@ -772,9 +772,10 @@ const Customers = () => {
                     type="submit"
                     form="add-customer-form"
                     className="flex-1"
+                    loading={isSubmitting}
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Adding..." : "Add Customer"}
+                    Add Customer
                   </Button>
                 </div>
               </DialogFooter>

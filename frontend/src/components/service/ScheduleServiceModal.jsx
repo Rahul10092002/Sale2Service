@@ -505,18 +505,8 @@ export const ScheduleServiceModal = ({
           >
             Cancel
           </Button>
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? (
-              <>
-                <LoadingSpinner />
-                Creating...
-              </>
-            ) : (
-              <>
-                <Calendar size={16} />
-                Create Service Plan
-              </>
-            )}
+          <Button type="submit" variant="primary" loading={loading} disabled={loading}>
+            Create Service Plan
           </Button>
         </div>
       </form>

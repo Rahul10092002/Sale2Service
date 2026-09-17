@@ -684,7 +684,7 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
               <Button
                 type="submit"
                 onClick={handleSubmit}
-                isLoading={isSubmitting}
+                loading={isSubmitting}
                 disabled={isSubmitting || imageUploading}
                 className="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm py-2 px-5"
               >

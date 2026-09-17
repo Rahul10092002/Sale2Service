@@ -422,9 +422,10 @@ const UserView = () => {
               type="submit"
               form="edit-user-form"
               className="flex-1"
+              loading={isSubmitting}
               disabled={isSubmitting}
             >
-              {isSubmitting ? <LoadingSpinner size="sm" /> : "Save Changes"}
+              Save Changes
             </Button>
           </div>
         </DialogFooter>
@@ -473,9 +474,10 @@ const UserView = () => {
               variant="danger"
               onClick={handleDelete}
               className="flex-1 bg-red-600 hover:bg-red-700"
+              loading={isSubmitting}
               disabled={isSubmitting}
             >
-              {isSubmitting ? <LoadingSpinner size="sm" /> : "Delete"}
+              Delete
             </Button>
           </div>
         </DialogFooter>

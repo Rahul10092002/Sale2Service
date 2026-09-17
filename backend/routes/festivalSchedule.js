@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, authorize, checkPermission } from "../middleware/auth.js";
+import { authenticate, checkPermission } from "../middleware/auth.js";
 import FestivalScheduleController from "../controllers/festivalScheduleController.js";
 
 export const festivalScheduleRouter = Router();

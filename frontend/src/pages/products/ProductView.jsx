@@ -2353,17 +2353,11 @@ const ProductView = () => {
                 <Button
                   variant="primary"
                   onClick={handleUpdateServicePlan}
+                  loading={updatingPlan}
                   disabled={updatingPlan || !planStartDate}
                   className="bg-indigo-600 hover:bg-indigo-700"
                 >
-                  <div className="flex items-center space-x-1">
-                    {updatingPlan ? (
-                      <LoadingSpinner size="xs" />
-                    ) : (
-                      <Settings size={16} />
-                    )}
-                    <span className="text-ink-base dark:text-slate-100">Save Changes</span>
-                  </div>
+                  <span className="text-ink-base dark:text-slate-100">Save Changes</span>
                 </Button>
               </div>
             </div>
@@ -2465,10 +2459,11 @@ const ProductView = () => {
                 </Button>
                 <Button
                   onClick={handleReplaceSerialNumberSubmit}
+                  loading={replacingSerial}
                   disabled={replacingSerial || !newSerialNumber.trim()}
                   className="bg-amber-600 hover:bg-amber-700 text-white"
                 >
-                  {replacingSerial ? <LoadingSpinner size="sm" /> : "Confirm & Replace Serial"}
+                  Confirm & Replace Serial
                 </Button>
               </div>
             </div>

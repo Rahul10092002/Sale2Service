@@ -77,31 +77,35 @@ export const lookupWarranty = async (req, res) => {
       })
       .populate("invoice_item_id");
 
-    // 2. Search via Customers & Invoices if no exact serial match
+const findMatchingInvoiceIds = async (shopId, searchRegex) => {
+  const matchingCustomers = await Customer.find({
+    shop_id: shopId,
+    $or: [
+      { full_name: searchRegex },
+      { whatsapp_number: searchRegex },
+      { alternate_phone: searchRegex },
+      { email: searchRegex },
+    ],
+    deleted_at: null,
+  }).select("_id");
+
+  const customerIds = matchingCustomers.map((c) => c._id);
+
+  const matchingInvoices = await Invoice.find({
+    shop_id: shopId,
+    $or: [
+      { invoice_number: searchRegex },
+      ...(customerIds.length > 0 ? [{ customer_id: { $in: customerIds } }] : []),
+    ],
+    deleted_at: null,
+  }).select("_id");
+
+  return matchingInvoices.map((inv) => inv._id);
+};
+
+// 2. Search via Customers & Invoices if no exact serial match
     if (inventoryItems.length === 0) {
-      const matchingCustomers = await Customer.find({
-        shop_id: shopId,
-        $or: [
-          { full_name: searchRegex },
-          { whatsapp_number: searchRegex },
-          { alternate_phone: searchRegex },
-          { email: searchRegex },
-        ],
-        deleted_at: null,
-      }).select("_id");
-
-      const customerIds = matchingCustomers.map((c) => c._id);
-
-      const matchingInvoices = await Invoice.find({
-        shop_id: shopId,
-        $or: [
-          { invoice_number: searchRegex },
-          ...(customerIds.length > 0 ? [{ customer_id: { $in: customerIds } }] : []),
-        ],
-        deleted_at: null,
-      }).select("_id");
-
-      const invoiceIds = matchingInvoices.map((inv) => inv._id);
+      const invoiceIds = await findMatchingInvoiceIds(shopId, searchRegex);
 
       inventoryItems = await InventoryItem.find({
         shop_id: shopId,
@@ -123,28 +127,7 @@ export const lookupWarranty = async (req, res) => {
 
     // 3. Fallback: Search InvoiceItem records directly (for legacy invoices or replaced serials)
     if (inventoryItems.length === 0) {
-      const matchingCustomers = await Customer.find({
-        shop_id: shopId,
-        $or: [
-          { full_name: searchRegex },
-          { whatsapp_number: searchRegex },
-          { alternate_phone: searchRegex },
-        ],
-        deleted_at: null,
-      }).select("_id");
-
-      const customerIds = matchingCustomers.map((c) => c._id);
-
-      const matchingInvoices = await Invoice.find({
-        shop_id: shopId,
-        $or: [
-          { invoice_number: searchRegex },
-          ...(customerIds.length > 0 ? [{ customer_id: { $in: customerIds } }] : []),
-        ],
-        deleted_at: null,
-      }).select("_id");
-
-      const invoiceIds = matchingInvoices.map((inv) => inv._id);
+      const invoiceIds = await findMatchingInvoiceIds(shopId, searchRegex);
 
       const matchingInvoiceItems = await InvoiceItem.find({
         shop_id: shopId,
@@ -162,51 +145,50 @@ export const lookupWarranty = async (req, res) => {
       });
 
       if (matchingInvoiceItems.length > 0) {
+        const dealerIds = [...new Set(matchingInvoiceItems.map((item) => item.dealer_id).filter(Boolean))];
+        const dealers = dealerIds.length > 0 ? await Dealer.find({ _id: { $in: dealerIds } }) : [];
+        const dealerMap = new Map(dealers.map((d) => [String(d._id), d]));
+
         // Map to virtual lookup response format
-        const results = await Promise.all(
-          matchingInvoiceItems.map(async (item) => {
-            const dealer = item.dealer_id
-              ? await Dealer.findById(item.dealer_id)
-              : null;
+        const results = matchingInvoiceItems.map((item) => {
+          const dealer = item.dealer_id ? dealerMap.get(String(item.dealer_id)) : null;
+          const now = new Date();
+          const endDate = item.warranty_end_date ? new Date(item.warranty_end_date) : null;
+          const isExpired = endDate ? endDate < now : false;
 
-            const now = new Date();
-            const endDate = item.warranty_end_date ? new Date(item.warranty_end_date) : null;
-            const isExpired = endDate ? endDate < now : false;
-
-            return {
-              type: "LEGACY_OR_INVOICE_ITEM",
-              inventory_item_id: item.inventory_item_id || item._id,
-              serial_number: item.serial_number || "N/A (Legacy)",
-              product_name: item.product_name,
-              product_category: item.product_category,
-              company: item.company,
-              model_number: item.model_number,
-              status: item.status,
-              invoice: formatInvoiceCustomer(item.invoice_id),
-              dealer: dealer
-                ? {
-                    _id: dealer._id,
-                    name: dealer.name,
-                    contact_person: dealer.contact_person,
-                    phone: dealer.phone,
-                    email: dealer.email,
-                    address: dealer.address,
-                    tax_id: dealer.tax_id,
-                    is_retired: Boolean(dealer.deleted_at),
-                  }
-                : item.purchase_source
-                ? { name: item.purchase_source, is_retired: false }
-                : null,
-              warranty: {
-                start_date: item.warranty_start_date,
-                end_date: item.warranty_end_date,
-                duration_months: item.warranty_duration_months,
-                warranty_type: item.warranty_type,
-                is_expired: isExpired,
-              },
-            };
-          })
-        );
+          return {
+            type: "LEGACY_OR_INVOICE_ITEM",
+            inventory_item_id: item.inventory_item_id || item._id,
+            serial_number: item.serial_number || "N/A (Legacy)",
+            product_name: item.product_name,
+            product_category: item.product_category,
+            company: item.company,
+            model_number: item.model_number,
+            status: item.status,
+            invoice: formatInvoiceCustomer(item.invoice_id),
+            dealer: dealer
+              ? {
+                  _id: dealer._id,
+                  name: dealer.name,
+                  contact_person: dealer.contact_person,
+                  phone: dealer.phone,
+                  email: dealer.email,
+                  address: dealer.address,
+                  tax_id: dealer.tax_id,
+                  is_retired: Boolean(dealer.deleted_at),
+                }
+              : item.purchase_source
+              ? { name: item.purchase_source, is_retired: false }
+              : null,
+            warranty: {
+              start_date: item.warranty_start_date,
+              end_date: item.warranty_end_date,
+              duration_months: item.warranty_duration_months,
+              warranty_type: item.warranty_type,
+              is_expired: isExpired,
+            },
+          };
+        });
 
         return res.status(200).json({
           success: true,

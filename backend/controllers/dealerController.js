@@ -73,45 +73,37 @@ export const createDealer = async (req, res) => {
       });
     }
 
-    // Check for duplicate active dealer by Phone Number in the same shop
-    const existingByPhone = await Dealer.findOne({
-      shop_id: shopId,
-      phone: trimmedPhone,
-      deleted_at: null,
-    });
-    if (existingByPhone) {
-      return res.status(400).json({
-        success: false,
-        message: `A supplier/dealer with phone number '${trimmedPhone}' already exists (${existingByPhone.name}).`,
-      });
+    const orConditions = [
+      { phone: trimmedPhone },
+      { name: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") } },
+    ];
+    if (trimmedTaxId) {
+      orConditions.push({ tax_id: trimmedTaxId });
     }
 
-    // Check for duplicate active dealer by Name (case-insensitive) in the same shop
-    const existingByName = await Dealer.findOne({
+    const existingDealer = await Dealer.findOne({
       shop_id: shopId,
-      name: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") },
       deleted_at: null,
+      $or: orConditions,
     });
-    if (existingByName) {
+
+    if (existingDealer) {
+      if (existingDealer.phone === trimmedPhone) {
+        return res.status(400).json({
+          success: false,
+          message: `A supplier/dealer with phone number '${trimmedPhone}' already exists (${existingDealer.name}).`,
+        });
+      }
+      if (trimmedTaxId && existingDealer.tax_id === trimmedTaxId) {
+        return res.status(400).json({
+          success: false,
+          message: `A supplier/dealer with GSTIN '${trimmedTaxId}' already exists (${existingDealer.name}).`,
+        });
+      }
       return res.status(400).json({
         success: false,
         message: `A supplier/dealer named '${trimmedName}' already exists.`,
       });
-    }
-
-    // Check for duplicate Tax ID / GSTIN if provided
-    if (trimmedTaxId) {
-      const existingByTaxId = await Dealer.findOne({
-        shop_id: shopId,
-        tax_id: trimmedTaxId,
-        deleted_at: null,
-      });
-      if (existingByTaxId) {
-        return res.status(400).json({
-          success: false,
-          message: `A supplier/dealer with GSTIN '${trimmedTaxId}' already exists (${existingByTaxId.name}).`,
-        });
-      }
     }
 
     const newDealer = await Dealer.create({

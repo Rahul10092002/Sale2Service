@@ -483,8 +483,8 @@ const EditReceivingSlipModal = ({
             <Button variant="outline" type="button" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || imageUploading}>
-              {isSubmitting ? "Saving Changes..." : "Save Changes"}
+            <Button type="submit" loading={isSubmitting} disabled={isSubmitting || imageUploading}>
+              Save Changes
             </Button>
           </div>
         </form>

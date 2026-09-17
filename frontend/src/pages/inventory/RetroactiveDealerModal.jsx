@@ -240,7 +240,7 @@ const RetroactiveDealerModal = ({ isOpen, onClose, item, onSuccess }) => {
             <Button
               type="submit"
               size="sm"
-              isLoading={isSubmitting}
+              loading={isSubmitting}
               disabled={isSubmitting}
               className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-bold"
             >

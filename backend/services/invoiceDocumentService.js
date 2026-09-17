@@ -46,17 +46,20 @@ export class InvoiceDocumentService {
             ...(userId ? [`user_${userId}`] : []),
             ...(invoice.shop_id ? [`shop_${invoice.shop_id}`] : []),
           ],
-          overwrite: false,
+          overwrite: true,
+          invalidate: true,
         },
       );
 
+      const cacheBustedUrl = cloudinaryResult.url ? `${cloudinaryResult.url}?v=${Date.now()}` : null;
+
       await Invoice.findByIdAndUpdate(invoice._id, {
-        invoice_pdf: cloudinaryResult.url,
+        invoice_pdf: cacheBustedUrl,
         pdf_public_id: cloudinaryResult.public_id,
         pdf_error: null,
       }).catch(() => {});
 
-      invoice.invoice_pdf = cloudinaryResult.url;
+      invoice.invoice_pdf = cacheBustedUrl;
       invoice.pdf_public_id = cloudinaryResult.public_id;
       invoice.pdf_error = null;
     } catch (error) {

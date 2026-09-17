@@ -997,8 +997,8 @@ const InventoryItemView = () => {
           <Button variant="outline" onClick={() => setShowStatusModal(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSaveStatus} disabled={isUpdatingStatus}>
-            {isUpdatingStatus ? "Updating..." : "Save Status"}
+          <Button onClick={handleSaveStatus} loading={isUpdatingStatus} disabled={isUpdatingStatus}>
+            Save Status
           </Button>
         </DialogFooter>
       </Modal>

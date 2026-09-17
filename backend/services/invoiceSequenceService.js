@@ -42,18 +42,11 @@ export class InvoiceSequenceService {
       .select("invoice_number")
       .session(session);
 
-    let maxExistingSeq = 0;
-    for (const inv of existingInvoices) {
-      if (inv.invoice_number) {
-        const match = inv.invoice_number.match(/-(\d+)$/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (!isNaN(num) && num > maxExistingSeq) {
-            maxExistingSeq = num;
-          }
-        }
-      }
-    }
+    const maxExistingSeq = existingInvoices.reduce((max, inv) => {
+      const match = inv.invoice_number?.match(/-(\d+)$/);
+      const num = match ? parseInt(match[1], 10) : 0;
+      return !isNaN(num) && num > max ? num : max;
+    }, 0);
 
     // 2. Fast-forward InvoiceCounter if it lags behind existing records
     if (maxExistingSeq > 0) {

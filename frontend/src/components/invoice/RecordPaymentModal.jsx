@@ -113,13 +113,14 @@ export default function RecordPaymentModal({
         <Button
           className="ml-2"
           onClick={handleSubmit}
+          loading={isLoading}
           disabled={
             isLoading ||
             !paymentAmount ||
             parseFloat(paymentAmount) <= 0
           }
         >
-          {isLoading ? "Saving..." : "Record Payment"}
+          Record Payment
         </Button>
       </DialogFooter>
     </Dialog>

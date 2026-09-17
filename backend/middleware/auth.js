@@ -117,31 +117,3 @@ export const checkPermission = (requiredPermission) => {
     }
   };
 };
-
-/**
- * Verify user exists and is active
- */
-export const verifyActiveUser = async (req, res, next) => {
-  try {
-    const user = await User.findOne({
-      _id: req.user.userId,
-      deleted_at: null,
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found or inactive",
-        error_code: "USER_NOT_FOUND",
-      });
-    }
-
-    next();
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Error verifying user",
-      error_code: "SERVER_ERROR",
-    });
-  }
-};

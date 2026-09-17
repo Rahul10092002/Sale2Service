@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { showToast } from "../../features/ui/uiSlice.js";
@@ -309,11 +309,12 @@ const CustomerEdit = () => {
               </Button>
               <Button
                 type="submit"
+                loading={isSubmitting}
                 disabled={isSubmitting}
                 className="inline-flex items-center gap-2"
               >
-                <Save className="w-4 h-4" />
-                {isSubmitting ? "Saving..." : "Save Changes"}
+                {!isSubmitting && <Save className="w-4 h-4" />}
+                Save Changes
               </Button>
             </div>
           </form>

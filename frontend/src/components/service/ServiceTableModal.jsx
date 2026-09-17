@@ -710,17 +710,11 @@ export const ServiceTableModal = ({
                     );
                     markServiceComplete(showCompleteModal);
                   }}
+                  loading={markingComplete}
                   disabled={actionLoading}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  <div className="flex items-center space-x-1">
-                    {actionLoading ? (
-                      <LoadingSpinner size="xs" />
-                    ) : (
-                      <CheckCircle2 size={16} />
-                    )}
-                    <span>Complete Service</span>
-                  </div>
+                  Complete Service
                 </Button>
               </div>
             </div>
@@ -784,17 +778,11 @@ export const ServiceTableModal = ({
                     );
                     rescheduleService(showRescheduleModal);
                   }}
+                  loading={rescheduling}
                   disabled={actionLoading || !rescheduleDate}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  <div className="flex items-center space-x-1">
-                    {actionLoading ? (
-                      <LoadingSpinner size="xs" />
-                    ) : (
-                      <Calendar size={16} />
-                    )}
-                    <span>Reschedule</span>
-                  </div>
+                  Reschedule
                 </Button>
               </div>
             </div>

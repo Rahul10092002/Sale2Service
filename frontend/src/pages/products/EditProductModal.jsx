@@ -712,13 +712,11 @@ const EditProductModal = ({ open, onClose, product, productId }) => {
             <Button
               variant="primary"
               onClick={handleSave}
+              loading={isLoading}
               disabled={isLoading}
               className="bg-indigo-600 hover:bg-indigo-700"
             >
-              <div className="flex items-center space-x-1">
-                {isLoading ? <LoadingSpinner size="xs" /> : <Edit size={16} />}
-                <span>Save Changes</span>
-              </div>
+              Save Changes
             </Button>
           </div>
         </div>

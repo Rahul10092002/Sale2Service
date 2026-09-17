@@ -230,7 +230,7 @@ const DealersModal = ({ isOpen, onClose }) => {
                 <Button
                   type="submit"
                   size="sm"
-                  isLoading={isCreating || isUpdating}
+                  loading={isCreating || isUpdating}
                   disabled={isCreating || isUpdating}
                   className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-bold"
                 >

@@ -447,95 +447,117 @@
         <!-- ── Header ── -->
         <div class="header-main">
             <div class="brand-section">
-                <% if (shop.logo_url) { %>
+                <% if (pdf_settings.show_logo && shop.logo_url) { %>
                 <div class="logo-placeholder">
                     <img src="<%= shop.logo_url %>" alt="<%= shop.name %> Logo" />
                 </div>
                 <% } %>
                 <div class="shop-info">
+                    <% if (pdf_settings.show_shop_name) { %>
                     <h1><%= shop.name %></h1>
+                    <% } %>
                     <div class="shop-meta">
-                        <% if (shop.gstNumber) { %><strong>GSTIN:</strong> <%= shop.gstNumber %><br><% } %>
-                        <%= shop.address.street || '' %><% if (shop.address.street) { %>, <% } %>
-                        <%= [shop.address.city, shop.address.state, shop.address.pincode].filter(Boolean).join(', ') %>
-                        <% if (shop.mobile) { %><br><strong>Phone:</strong> <%= shop.mobile %><% } %>
-                        <% if (shop.email) { %> | <strong>Email:</strong> <%= shop.email %><% } %>
+                        <% if (pdf_settings.show_shop_gst && shop.gstNumber) { %><strong>GSTIN:</strong> <%= shop.gstNumber %><br><% } %>
+                        <% if (pdf_settings.show_shop_address) { %>
+                            <%= shop.address.street || '' %><% if (shop.address.street) { %>, <% } %>
+                            <%= [shop.address.city, shop.address.state, shop.address.pincode].filter(Boolean).join(', ') %>
+                        <% } %>
+                        <% if (pdf_settings.show_shop_phone && shop.mobile) { %><br><strong>Phone:</strong> <%= shop.mobile %><% } %>
+                        <% if (pdf_settings.show_shop_email && shop.email) { %> | <strong>Email:</strong> <%= shop.email %><% } %>
                     </div>
                 </div>
             </div>
 
-            <!-- ── Header Right: Tax Invoice Title & Number (Clean, no box) ── -->
+            <!-- ── Header Right: Tax Invoice Title & Number ── -->
             <div class="header-invoice-title">
-                <h2>TAX INVOICE</h2>
+                <h2><%= pdf_settings.header_title || 'TAX INVOICE' %></h2>
+                <% if (pdf_settings.show_invoice_number) { %>
                 <div class="invoice-num-row">#<%= invoice.number %></div>
+                <% } %>
             </div>
         </div>
 
         <!-- ── Details Grid (Bill To / Invoice Details) ── -->
+        <% const hasCustDetails = (pdf_settings.show_customer_name && customer.name) || (pdf_settings.show_customer_address && customer.address && (customer.address.street || customer.address.city || customer.address.state)) || (pdf_settings.show_customer_mobile && customer.mobile) || (pdf_settings.show_customer_gst && customer.gstNumber) || (pdf_settings.show_customer_email && customer.email); %>
+        <% const hasInvDetails = (pdf_settings.show_invoice_date && invoice.date) || (pdf_settings.show_due_date && invoice.dueDate) || pdf_settings.show_payment_status || (pdf_settings.show_payment_mode && (invoice.payment_status === 'PAID' || invoice.payment_status === 'PARTIAL')) || (pdf_settings.show_reverse_charge && shop.gstNumber); %>
+
+        <% if (hasCustDetails || hasInvDetails) { %>
         <div class="details-grid">
+            <% if (hasCustDetails) { %>
             <div class="info-card">
                 <div class="section-title">Billed To (Customer Details)</div>
+                <% if (pdf_settings.show_customer_name && customer.name) { %>
                 <div class="customer-name"><%= customer.name %></div>
+                <% } %>
                 <div class="shop-meta">
-                    <% if (customer.address && (customer.address.street || customer.address.city || customer.address.state)) { %>
+                    <% if (pdf_settings.show_customer_address && customer.address && (customer.address.street || customer.address.city || customer.address.state)) { %>
                         <%= customer.address.street || '' %><% if (customer.address.street) { %>, <% } %>
                         <%= [customer.address.city, customer.address.state, customer.address.pincode].filter(Boolean).join(', ') %><br>
                     <% } %>
-                    <% if (customer.mobile) { %><strong>Phone / WhatsApp:</strong> <%= customer.mobile %><br><% } %>
-                    <% if (customer.gstNumber) { %><strong>GSTIN:</strong> <%= customer.gstNumber %><br><% } %>
-                    <% if (customer.email) { %><strong>Email:</strong> <%= customer.email %><br><% } %>
+                    <% if (pdf_settings.show_customer_mobile && customer.mobile) { %><strong>Phone / WhatsApp:</strong> <%= customer.mobile %><br><% } %>
+                    <% if (pdf_settings.show_customer_gst && customer.gstNumber) { %><strong>GSTIN:</strong> <%= customer.gstNumber %><br><% } %>
+                    <% if (pdf_settings.show_customer_email && customer.email) { %><strong>Email:</strong> <%= customer.email %><br><% } %>
                 </div>
             </div>
+            <% } %>
 
+            <% if (hasInvDetails) { %>
             <div class="info-card">
                 <div class="section-title">Invoice Details</div>
+                <% if (pdf_settings.show_invoice_date && invoice.date) { %>
                 <div class="info-row">
                     <span>Invoice Date:</span>
                     <strong><%= invoice.date %></strong>
                 </div>
-                <% if (invoice.dueDate) { %>
+                <% } %>
+                <% if (pdf_settings.show_due_date && invoice.dueDate) { %>
                 <div class="info-row">
                     <span>Due Date:</span>
                     <strong style="color: <%= invoice.isOverdue ? '#b91c1c' : '#0f172a' %>;"><%= invoice.dueDate %></strong>
                 </div>
                 <% } %>
+                <% if (pdf_settings.show_payment_status) { %>
                 <div class="info-row" style="align-items: center; margin-top: 3px; margin-bottom: 3px;">
                     <span>Payment Status:</span>
                     <span class="status-badge status-<%= (invoice.payment_status || 'UNPAID').toLowerCase() %>"><%= invoice.payment_status || 'UNPAID' %></span>
                 </div>
-                <% if (invoice.payment_status === 'PAID' || invoice.payment_status === 'PARTIAL') { %>
+                <% } %>
+                <% if (pdf_settings.show_payment_mode && (invoice.payment_status === 'PAID' || invoice.payment_status === 'PARTIAL')) { %>
                 <div class="info-row">
                     <span>Payment Mode:</span>
                     <strong><%= invoice.paymentMode %></strong>
                 </div>
                 <% } %>
-                <% if (shop.gstNumber) { %>
+                <% if (pdf_settings.show_reverse_charge && shop.gstNumber) { %>
                 <div class="info-row">
                     <span>Reverse Charge:</span>
                     <strong>No</strong>
                 </div>
                 <% } %>
             </div>
+            <% } %>
         </div>
+        <% } %>
 
         <!-- ── Items Table ── -->
+        <% const visibleColCount = 2 + (pdf_settings.show_hsn_column ? 1 : 0) + (pdf_settings.show_qty_column ? 1 : 0) + (pdf_settings.show_rate_column ? 1 : 0) + (pdf_settings.show_taxable_column ? 1 : 0) + (pdf_settings.show_tax_column ? 1 : 0); %>
         <table class="items-table">
             <thead>
                 <tr>
                     <th style="width: 28px; text-align: center;">#</th>
                     <th>Item & Description</th>
-                    <th style="width: 72px; text-align: center;">HSN / SAC</th>
-                    <th style="width: 40px; text-align: center;">Qty</th>
-                    <th style="width: 70px; text-align: right;">Rate</th>
-                    <th style="width: 70px; text-align: right;">Taxable</th>
-                    <th style="width: 65px; text-align: right;">Tax</th>
+                    <% if (pdf_settings.show_hsn_column) { %><th style="width: 72px; text-align: center;">HSN / SAC</th><% } %>
+                    <% if (pdf_settings.show_qty_column) { %><th style="width: 40px; text-align: center;">Qty</th><% } %>
+                    <% if (pdf_settings.show_rate_column) { %><th style="width: 70px; text-align: right;">Rate</th><% } %>
+                    <% if (pdf_settings.show_taxable_column) { %><th style="width: 70px; text-align: right;">Taxable</th><% } %>
+                    <% if (pdf_settings.show_tax_column) { %><th style="width: 65px; text-align: right;">Tax</th><% } %>
                     <th style="width: 80px; text-align: right;">Amount</th>
                 </tr>
             </thead>
             <tbody>
                 <% if (!items || items.length === 0) { %>
                 <tr>
-                    <td colspan="8" style="text-align: center; color: #64748b; padding: 16px;">No items in this invoice</td>
+                    <td colspan="<%= visibleColCount %>" style="text-align: center; color: #64748b; padding: 16px;">No items in this invoice</td>
                 </tr>
                 <% } else { %>
                     <% items.forEach(function(item, i) { %>
@@ -544,7 +566,7 @@
                         <td>
                             <div class="item-title">
                                 <%= item.productName %>
-                                <% if (item.company && item.company !== 'N/A' && !item.productName.toLowerCase().includes(item.company.toLowerCase())) { %>
+                                <% if (pdf_settings.show_item_brand && item.company && item.company !== 'N/A' && !item.productName.toLowerCase().includes(item.company.toLowerCase())) { %>
                                     <span class="item-brand">(<%= item.company %>)</span>
                                 <% } %>
                                 <% if (item.isService) { %>
@@ -553,8 +575,8 @@
                             </div>
 
                             <% const specParts = []; %>
-                            <% if (item.modelNumber && item.modelNumber !== 'N/A') { specParts.push('Model: ' + item.modelNumber); } %>
-                            <% if (item.serialNumber && item.serialNumber !== 'N/A' && !item.serialNumber.startsWith('SRV-')) { specParts.push('S/N: ' + item.serialNumber); } %>
+                            <% if (pdf_settings.show_item_model && item.modelNumber && item.modelNumber !== 'N/A') { specParts.push('Model: ' + item.modelNumber); } %>
+                            <% if (pdf_settings.show_item_serial && item.serialNumber && item.serialNumber !== 'N/A' && !item.serialNumber.startsWith('SRV-')) { specParts.push('S/N: ' + item.serialNumber); } %>
                             <% if (item.capacityRating || item.voltage) { specParts.push([item.capacityRating, item.voltage].filter(Boolean).join(' · ')); } %>
                             <% if (specParts.length > 0) { %>
                                 <div class="item-spec-line"><%= specParts.join(' | ') %></div>
@@ -564,7 +586,7 @@
                                 <div class="item-spec-line"><%= item.batteryLine %></div>
                             <% } %>
 
-                            <% if (item.warrantyText) { %>
+                            <% if (pdf_settings.show_item_warranty && item.warrantyText) { %>
                                 <div>
                                     <span class="item-tag tag-warranty">Warranty: <%= item.warrantyText %></span>
                                     <% if (item.proWarrantyText) { %>
@@ -573,13 +595,13 @@
                                 </div>
                             <% } %>
 
-                            <% if (item.servicePlanSummary) { %>
+                            <% if (pdf_settings.show_item_service_plan && item.servicePlanSummary) { %>
                                 <div>
                                     <span class="item-tag tag-service-plan"><%= item.servicePlanSummary %></span>
                                 </div>
                             <% } %>
 
-                            <% if (item.notes) { %>
+                            <% if (pdf_settings.show_item_notes && item.notes) { %>
                                 <div class="item-notes">Note: <%= item.notes %></div>
                             <% } %>
 
@@ -587,11 +609,11 @@
                                 <div class="item-notes" style="color: #15803d; font-weight: 700;">Service Warranty: <%= item.warrantyPeriod %></div>
                             <% } %>
                         </td>
-                        <td style="text-align: center; color: #475569; font-size: 8pt;"><%= item.hsnCode || '—' %></td>
-                        <td style="text-align: center; font-weight: 600;"><%= item.quantity %></td>
-                        <td style="text-align: right;"><%= item.unitPrice %></td>
-                        <td style="text-align: right;"><%= item.taxableAmount || (item.unitPriceRaw !== undefined ? (item.unitPriceRaw * item.quantity).toFixed(2) : item.unitPrice) %></td>
-                        <td style="text-align: right;"><%= item.taxAmount %></td>
+                        <% if (pdf_settings.show_hsn_column) { %><td style="text-align: center; color: #475569; font-size: 8pt;"><%= item.hsnCode || '—' %></td><% } %>
+                        <% if (pdf_settings.show_qty_column) { %><td style="text-align: center; font-weight: 600;"><%= item.quantity %></td><% } %>
+                        <% if (pdf_settings.show_rate_column) { %><td style="text-align: right;"><%= item.unitPrice %></td><% } %>
+                        <% if (pdf_settings.show_taxable_column) { %><td style="text-align: right;"><%= item.taxableAmount || (item.unitPriceRaw !== undefined ? (item.unitPriceRaw * item.quantity).toFixed(2) : item.unitPrice) %></td><% } %>
+                        <% if (pdf_settings.show_tax_column) { %><td style="text-align: right;"><%= item.taxAmount %></td><% } %>
                         <td style="text-align: right; font-weight: 700;"><%= item.amount %></td>
                     </tr>
                     <% }); %>
@@ -603,16 +625,19 @@
         <div class="bottom-grid">
             <div class="bottom-left-section">
                 <% const hasBankInfo = shop.bank_details && (shop.bank_details.account_number || shop.bank_details.bank_name || shop.bank_details.ifsc_code || shop.bank_details.upi_id); %>
-                <% if (upiQRCode || hasBankInfo) { %>
+                <% const showBank = pdf_settings.show_bank_details && hasBankInfo; %>
+                <% const showQr = pdf_settings.show_upi_qr && upiQRCode; %>
+                <% if (showQr || showBank) { %>
                 <div class="info-card" style="margin-bottom: 8px;">
                     <div class="section-title">Payment & Bank Details</div>
                     <div style="display: flex; gap: 12px; align-items: center;">
-                        <% if (upiQRCode) { %>
+                        <% if (showQr) { %>
                         <div style="text-align: center; flex-shrink: 0;">
                             <img src="<%= upiQRCode %>" alt="UPI QR Code" style="width: 95px; height: 95px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px; background: #fff; display: block; margin: 0 auto;" />
                             <div style="font-size: 7.5pt; font-weight: 700; color: #1e293b; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.03em;">Scan & Pay UPI</div>
                         </div>
                         <% } %>
+                        <% if (showBank) { %>
                         <div style="flex: 1; min-width: 0;">
                             <% if (shop.bank_details?.account_holder_name) { %>
                             <div class="info-row"><span>A/C Holder:</span><strong><%= shop.bank_details.account_holder_name %></strong></div>
@@ -630,11 +655,12 @@
                             <div class="info-row"><span>UPI ID:</span><strong style="color: #2563eb;"><%= shop.bank_details.upi_id %></strong></div>
                             <% } %>
                         </div>
+                        <% } %>
                     </div>
                 </div>
                 <% } %>
 
-                <% if (invoice.notes) { %>
+                <% if (pdf_settings.show_notes && invoice.notes) { %>
                 <div class="info-card">
                     <div class="section-title">Invoice Notes</div>
                     <p style="font-size: 8pt; color: #475569; white-space: pre-line;"><%= invoice.notes %></p>
@@ -643,48 +669,56 @@
             </div>
 
             <!-- Right: Totals Block -->
+            <% const hasTotalsVisible = pdf_settings.show_subtotal || pdf_settings.show_discount || pdf_settings.show_exchange_price || pdf_settings.show_tax_breakdown || pdf_settings.show_amount_paid || pdf_settings.show_balance_due || pdf_settings.show_amount_in_words; %>
+            <% if (hasTotalsVisible) { %>
             <div class="totals-card">
                 <div>
                     <div class="section-title">Summary & Tax Breakdown</div>
+                    <% if (pdf_settings.show_subtotal) { %>
                     <div class="total-line">
                         <span>Subtotal:</span>
                         <strong><%= totals.subtotal %></strong>
                     </div>
+                    <% } %>
 
-                    <% if (totals.discountRaw > 0) { %>
+                    <% if (pdf_settings.show_discount && totals.discountRaw > 0) { %>
                     <div class="total-line">
                         <span>Discount:</span>
                         <strong style="color: #b91c1c;">-<%= totals.discount %></strong>
                     </div>
                     <% } %>
 
-                    <% if (totals.oldItemExchangePriceRaw > 0) { %>
+                    <% if (pdf_settings.show_exchange_price && totals.oldItemExchangePriceRaw > 0) { %>
                     <div class="total-line">
                         <span>Old Item / Exchange:</span>
                         <strong style="color: #c2410c;">-<%= totals.oldItemExchangePrice %></strong>
                     </div>
                     <% } %>
 
+                    <% if (pdf_settings.show_taxable_column) { %>
                     <div class="total-line">
                         <span>Taxable Amount:</span>
                         <strong><%= totals.taxableAmount || totals.subtotal %></strong>
                     </div>
+                    <% } %>
 
-                    <% if (totals.isInterState) { %>
-                    <div class="total-line">
-                        <span>IGST (<%= totals.igstRate %>):</span>
-                        <strong><%= totals.igstAmount %></strong>
-                    </div>
-                    <% } else { %>
-                    <div class="total-line">
-                        <span>CGST (<%= totals.cgstRate %>):</span>
-                        <strong><%= totals.cgstAmount %></strong>
-                    </div>
+                    <% if (pdf_settings.show_tax_breakdown) { %>
+                        <% if (totals.isInterState) { %>
+                        <div class="total-line">
+                            <span>IGST (<%= totals.igstRate %>):</span>
+                            <strong><%= totals.igstAmount %></strong>
+                        </div>
+                        <% } else { %>
+                        <div class="total-line">
+                            <span>CGST (<%= totals.cgstRate %>):</span>
+                            <strong><%= totals.cgstAmount %></strong>
+                        </div>
 
-                    <div class="total-line">
-                        <span>SGST (<%= totals.sgstRate %>):</span>
-                        <strong><%= totals.sgstAmount %></strong>
-                    </div>
+                        <div class="total-line">
+                            <span>SGST (<%= totals.sgstRate %>):</span>
+                            <strong><%= totals.sgstAmount %></strong>
+                        </div>
+                        <% } %>
                     <% } %>
 
                     <!-- Grand Total -->
@@ -693,14 +727,14 @@
                         <strong><%= totals.total %></strong>
                     </div>
 
-                    <% if (payment.amountPaidRaw > 0) { %>
+                    <% if (pdf_settings.show_amount_paid && payment.amountPaidRaw > 0) { %>
                     <div class="total-line" style="margin-top: 6px; padding-top: 4px; border-top: 1px solid #e2e8f0;">
                         <span>Amount Paid:</span>
                         <strong style="color: #15803d;"><%= payment.amount_paid %></strong>
                     </div>
                     <% } %>
 
-                    <% if (payment.amountDueRaw > 0) { %>
+                    <% if (pdf_settings.show_balance_due && payment.amountDueRaw > 0) { %>
                     <div class="balance-due-line">
                         <span>Balance Due</span>
                         <strong><%= payment.amount_due %></strong>
@@ -708,27 +742,46 @@
                     <% } %>
                 </div>
 
-                <% if (totals.amountInWords) { %>
+                <% if (pdf_settings.show_amount_in_words && totals.amountInWords) { %>
                 <div class="amount-in-words">
                     <strong>Amount in Words:</strong>
                     <%= totals.amountInWords %>
                 </div>
                 <% } %>
             </div>
+            <% } %>
         </div>
 
         <!-- ── Footer: Terms & Authorized Signatory ── -->
+        <% const showTermsSection = pdf_settings.show_terms && pdf_settings.terms_and_conditions && pdf_settings.terms_and_conditions.length > 0; %>
+        <% const showSigSection = pdf_settings.show_signature; %>
+        <% if (showTermsSection || showSigSection) { %>
         <div class="footer-section">
             <div class="terms-box">
+                <% if (showTermsSection) { %>
+                    <strong>Terms & Conditions</strong>
+                    <ul>
+                        <% pdf_settings.terms_and_conditions.forEach(function(term) { %>
+                            <li><%= term %></li>
+                        <% }); %>
+                    </ul>
+                <% } %>
             </div>
 
+            <% if (showSigSection) { %>
             <div class="signature-box">
                 <div>For <strong><%= shop.name %></strong></div>
                 <div class="signature-line">Authorised Signatory</div>
             </div>
+            <% } %>
         </div>
+        <% } %>
 
-       
+        <% if (pdf_settings.show_footer_note && pdf_settings.footer_note) { %>
+        <div class="computer-generated">
+            <%= pdf_settings.footer_note %>
+        </div>
+        <% } %>
     </div>
 </body>
 </html>

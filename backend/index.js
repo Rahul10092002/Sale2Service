@@ -50,6 +50,7 @@ app.get("/health", (req, res) => {
 // API Routes
 app.use("/v1/auth", authRouter);
 app.use("/v1/shop", shopRouter);
+app.use("/api/shop", shopRouter);
 app.use("/v1/users", userRouter);
 app.use("/v1/roles", roleRouter);
 app.use("/v1/invoices", invoiceRouter);

@@ -17,6 +17,23 @@ export default class FestivalScheduleController {
         });
       }
 
+      // Check for duplicate schedule for the same date for this shop
+      const dateStr = String(schedule_date).split("T")[0];
+      const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
+      const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
+
+      const existingSchedule = await FestivalSchedule.findOne({
+        shop_id: user.shopId,
+        schedule_date: { $gte: startOfDay, $lte: endOfDay },
+      });
+
+      if (existingSchedule) {
+        return res.status(400).json({
+          success: false,
+          message: `A festival schedule already exists for this date (${existingSchedule.festival_name})`,
+        });
+      }
+
       const newSchedule = await FestivalSchedule.create({
         shop_id: user.shopId,
         festival_name,
@@ -147,6 +164,25 @@ export default class FestivalScheduleController {
           message:
             "At least one field (festival_name or schedule_date) is required for update",
         });
+      }
+
+      if (schedule_date) {
+        const dateStr = String(schedule_date).split("T")[0];
+        const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
+        const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
+
+        const existingSchedule = await FestivalSchedule.findOne({
+          shop_id: user.shopId,
+          _id: { $ne: id },
+          schedule_date: { $gte: startOfDay, $lte: endOfDay },
+        });
+
+        if (existingSchedule) {
+          return res.status(400).json({
+            success: false,
+            message: `A festival schedule already exists for this date (${existingSchedule.festival_name})`,
+          });
+        }
       }
 
       const updateData = {};

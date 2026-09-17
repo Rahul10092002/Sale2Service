@@ -52,18 +52,6 @@ export const formatDateForMessage = (date) => {
   return `${day}-${month}-${year}`;
 };
 
-/**
- * Check if a date is within a specific range (inclusive)
- * @param {Date} targetDate - Date to check
- * @param {Date} rangeStart - Start of range
- * @param {Date} rangeEnd - End of range
- * @returns {boolean} - True if date is within range
- */
-export const isDateInRange = (targetDate, rangeStart, rangeEnd) => {
-  if (!targetDate || !rangeStart || !rangeEnd) return false;
-  return targetDate >= rangeStart && targetDate < rangeEnd;
-};
-
 // India Standard Time offset: UTC+5:30
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 

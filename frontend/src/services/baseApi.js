@@ -141,6 +141,27 @@ export const baseApi = createApi({
       },
     }),
 
+    regenerateInvoicesPdf: build.mutation({
+      query: () => ({
+        url: "/shop/regenerate-invoices-pdf",
+        method: "POST",
+      }),
+    }),
+
+    getPdfRegenerationStatus: build.query({
+      query: () => "/shop/regenerate-invoices-pdf/status",
+      providesTags: ["ShopPdfJob"],
+    }),
+
+    previewPdfSettings: build.mutation({
+      query: (data) => ({
+        url: "/shop/preview-pdf",
+        method: "POST",
+        body: data,
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
+
     // Logs API endpoints
     getReminderLogs: build.query({
       query: (params = {}) => {
@@ -220,6 +241,9 @@ export const {
   useUpdateShopProfileMutation,
   useUploadShopLogoMutation,
   useDeleteShopLogoMutation,
+  useRegenerateInvoicesPdfMutation,
+  useGetPdfRegenerationStatusQuery,
+  usePreviewPdfSettingsMutation,
   useGetReminderLogsQuery,
   useGetReminderStatsQuery,
   useGetMessageLogsQuery,

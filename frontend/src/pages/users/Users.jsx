@@ -628,9 +628,10 @@ const Users = () => {
               <Button
                 type="submit"
                 className="flex-1"
+                loading={isSubmitting}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? <LoadingSpinner size="sm" /> : (editingUser ? "Update User" : "Create User")}
+                {editingUser ? "Update User" : "Create User"}
               </Button>
             </div>
           </form>
@@ -737,9 +738,10 @@ const Users = () => {
               <Button
                 type="submit"
                 className="flex-1"
+                loading={isSubmitting}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? <LoadingSpinner size="sm" /> : (editingRole ? "Update Role" : "Create Role")}
+                {editingRole ? "Update Role" : "Create Role"}
               </Button>
             </div>
           </form>

@@ -3,9 +3,8 @@ import InvoiceItem from "../models/InvoiceItem.js";
 import ServicePlan from "../models/ServicePlan.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
 import Invoice from "../models/Invoice.js";
-import { BaseController } from "./baseController.js";
 
-export default class ProductController extends BaseController {
+export default class ProductController {
   // Create product (invoice item)
   async createProduct(req, res) {
     try {

@@ -7,7 +7,8 @@
  * Usage: node test-api.js
  */
 
-const API_BASE_URL = "http://localhost:5000/v1";
+const PORT = process.env.PORT || 8000;
+const API_BASE_URL = process.env.API_BASE_URL || `http://localhost:${PORT}/v1`;
 let authToken = "";
 let shopId = "";
 let userId = "";
@@ -60,7 +61,7 @@ async function test1_SignupOwner() {
   const result = await makeRequest("POST", "/auth/signup-owner", {
     owner_name: "Test Owner",
     email: `test${Date.now()}@example.com`,
-    phone: "9876543210",
+    phone: `9${Math.floor(100000000 + Math.random() * 900000000)}`,
     password: "TestPass@123",
     shop_name: "Test Shop",
     business_type: "Testing",
@@ -139,14 +140,23 @@ async function test4_UpdateShopProfile() {
 async function test5_AddStaffUser() {
   log("\n=== Test 5: Add Staff User ===", "cyan");
 
+  const rolesRes = await makeRequest("GET", "/roles", null, authToken);
+  const roleId = rolesRes.data?.data?.[0]?._id;
+
+  if (!roleId) {
+    log("✗ No roles found to assign staff", "red");
+    return false;
+  }
+
   const result = await makeRequest(
     "POST",
     "/users",
     {
       name: "Test Staff",
       email: `staff${Date.now()}@example.com`,
-      phone: "8888888888",
-      role: "STAFF",
+      phone: `8${Math.floor(100000000 + Math.random() * 900000000)}`,
+      role: roleId,
+      password: "Password123!",
     },
     authToken,
   );

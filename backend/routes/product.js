@@ -1,6 +1,6 @@
 import { Router } from "express";
 import ProductController from "../controllers/productController.js";
-import { authenticate, authorize, checkPermission } from "../middleware/auth.js";
+import { authenticate, checkPermission } from "../middleware/auth.js";
 import { strictMutationRateLimiter } from "../middleware/rateLimiter.js";
 
 export const productRouter = Router();

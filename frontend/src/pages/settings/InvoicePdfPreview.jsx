@@ -47,7 +47,6 @@ export const InvoicePdfPreview = ({ form, zoomLevel = 100 }) => {
       warranty: "36 Months Warranty",
       servicePlan: "2 Free Maintenance Visits/Year",
       notes: "Heavy-duty tubular battery. Handle upright.",
-      hsn: "85072000",
       qty: 1,
       rate: 14500,
       taxable: 14500,
@@ -63,7 +62,6 @@ export const InvoicePdfPreview = ({ form, zoomLevel = 100 }) => {
       serviceWarranty: "90 Days Labor Guarantee",
       servicePlan: "Annual AMC Plan (4 Visits)",
       notes: "Includes 25-point safety checkup, earthing test & load balancing.",
-      hsn: "998714",
       qty: 1,
       rate: 1800,
       taxable: 1800,
@@ -80,7 +78,6 @@ export const InvoicePdfPreview = ({ form, zoomLevel = 100 }) => {
       warranty: "24 Months Warranty",
       servicePlan: null,
       notes: "Pure sine wave system",
-      hsn: "85044090",
       qty: 1,
       rate: 7500,
       taxable: 7500,
@@ -92,7 +89,6 @@ export const InvoicePdfPreview = ({ form, zoomLevel = 100 }) => {
 
   // Dynamic visible columns count for responsive table header & cell spanning
   let colCount = 2; // S.No + Item Description always present
-  if (pdf.show_hsn_column !== false) colCount++;
   if (pdf.show_qty_column !== false) colCount++;
   if (pdf.show_rate_column !== false) colCount++;
   if (pdf.show_taxable_column !== false) colCount++;
@@ -257,9 +253,6 @@ export const InvoicePdfPreview = ({ form, zoomLevel = 100 }) => {
                 <tr className="bg-slate-900 text-white font-bold uppercase text-[9px] tracking-wider">
                   <th className="p-2 border-b border-slate-900 w-8 text-center">#</th>
                   <th className="p-2 border-b border-slate-900">Item & Service Details</th>
-                  {pdf.show_hsn_column !== false && (
-                    <th className="p-2 border-b border-slate-900 text-center">HSN/SAC</th>
-                  )}
                   {pdf.show_qty_column !== false && (
                     <th className="p-2 border-b border-slate-900 text-center">Qty</th>
                   )}
@@ -335,9 +328,6 @@ export const InvoicePdfPreview = ({ form, zoomLevel = 100 }) => {
                       )}
                     </td>
 
-                    {pdf.show_hsn_column !== false && (
-                      <td className="p-2 text-center font-mono text-slate-600">{item.hsn}</td>
-                    )}
                     {pdf.show_qty_column !== false && (
                       <td className="p-2 text-center font-semibold text-slate-800">{item.qty}</td>
                     )}

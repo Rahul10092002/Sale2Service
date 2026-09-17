@@ -75,7 +75,6 @@ const shopSchema = new mongoose.Schema(
       show_reverse_charge: { type: Boolean, default: true },
 
       // Items Table Columns & Specifications
-      show_hsn_column: { type: Boolean, default: true },
       show_qty_column: { type: Boolean, default: true },
       show_rate_column: { type: Boolean, default: true },
       show_taxable_column: { type: Boolean, default: true },

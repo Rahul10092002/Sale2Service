@@ -161,7 +161,6 @@ export const PdfSettingsTab = ({
   ];
 
   const itemsKeys = [
-    "show_hsn_column",
     "show_qty_column",
     "show_rate_column",
     "show_taxable_column",
@@ -377,12 +376,6 @@ export const PdfSettingsTab = ({
         onToggleAll={() => toggleSection(itemsKeys)}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
-          <CheckboxTile
-            label="HSN/SAC Column"
-            description="Show HSN/SAC code column"
-            checked={Boolean(form.pdf_settings?.show_hsn_column)}
-            onChange={(val) => handlePdfSettingToggle("show_hsn_column", val)}
-          />
           <CheckboxTile
             label="Quantity Column"
             description="Show item quantity column"

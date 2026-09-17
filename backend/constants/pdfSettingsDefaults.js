@@ -24,7 +24,6 @@ export const DEFAULT_PDF_SETTINGS = {
   show_reverse_charge: true,
 
   // Items Table Columns & Specifications
-  show_hsn_column: true,
   show_qty_column: true,
   show_rate_column: true,
   show_taxable_column: true,
@@ -98,7 +97,6 @@ export const mergePdfSettings = (inputSettings = {}) => {
     show_reverse_charge: getBool(settings, "show_reverse_charge"),
 
     // Items Table Columns & Specifications
-    show_hsn_column: getBool(settings, "show_hsn_column"),
     show_qty_column: getBool(settings, "show_qty_column"),
     show_rate_column: getBool(settings, "show_rate_column"),
     show_taxable_column: getBool(settings, "show_taxable_column"),

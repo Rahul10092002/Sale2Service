@@ -210,10 +210,10 @@ const SerialScanner = ({ onScan, onClose }) => {
           // Cancel pending auto-enhance — we got a result.
           clearTimeout(autoEnhanceTimerRef.current);
 
-          // Freeze the last good frame immediately so the UI doesn't
-          // keep "re-scanning" while the parent reacts to onScan.
+          // Freeze the decode loop immediately without showing html5-qrcode's
+          // "Scanner paused" banner overlay (passing false keeps video live & clean).
           try {
-            scanner.pause(true);
+            scanner.pause(false);
           } catch {
             // ignore pause errors
           }
@@ -347,15 +347,14 @@ const SerialScanner = ({ onScan, onClose }) => {
         scannerRef.current = html5Qrcode;
 
         try {
-          // Explicitly ask for the sensor's max usable resolution first.
-          // Without this, many browsers default the preview stream to a
-          // modest resolution (often 640x480) chosen for smooth video, not
-          // decode accuracy — on an already low-megapixel camera that
-          // leaves almost no pixels across the barcode's bars.
+          // Request 1280x720 (720p) ideal resolution.
+          // 720p is the optimal balance for barcode decoding: sharp enough for fine
+          // barcodes while avoiding heavy 1080p/4K frame sizes that slow down JS decode
+          // and trigger auto-enhance timeouts on high-res mobile cameras.
           await runStart(html5Qrcode, {
             ...baseCameraConfig,
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
           });
         } catch (highResErr) {
           // A failed start can leave this instance mid-transition —
@@ -551,7 +550,8 @@ const SerialScanner = ({ onScan, onClose }) => {
 
     setEnhancing(true);
     try {
-      scanner.pause(true);
+      // Pause decoding without hiding/freezing the live video or showing the banner overlay
+      scanner.pause(false);
     } catch {
       // ignore
     }
@@ -570,8 +570,17 @@ const SerialScanner = ({ onScan, onClose }) => {
         }
       }
 
-      const width = bitmap?.width || videoEl.videoWidth;
-      const height = bitmap?.height || videoEl.videoHeight;
+      let width = bitmap?.width || videoEl.videoWidth || 1280;
+      let height = bitmap?.height || videoEl.videoHeight || 720;
+
+      // Cap high-res snapshot dimensions to max 1280px for fast CPU contrast stretch & decode
+      const MAX_DIM = 1280;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
@@ -694,7 +703,15 @@ const SerialScanner = ({ onScan, onClose }) => {
         </div>
 
         {/* Viewfinder area */}
-        <div className="p-4 bg-gray-950">
+        <div className="p-4 bg-gray-950 relative">
+          <style>{`
+            #${readerId} #html5-qrcode-paum-message {
+              display: none !important;
+            }
+            #${readerId} video {
+              object-fit: cover;
+            }
+          `}</style>
           <div
             id={readerId}
             onClick={handleViewfinderTap}

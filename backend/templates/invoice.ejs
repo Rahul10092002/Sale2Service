@@ -543,13 +543,12 @@
         <% } %>
 
         <!-- ── Items Table ── -->
-        <% const visibleColCount = 2 + (pdf_settings.show_hsn_column ? 1 : 0) + (pdf_settings.show_qty_column ? 1 : 0) + (pdf_settings.show_rate_column ? 1 : 0) + (pdf_settings.show_taxable_column ? 1 : 0) + (pdf_settings.show_tax_column ? 1 : 0); %>
+        <% const visibleColCount = 2 + (pdf_settings.show_qty_column ? 1 : 0) + (pdf_settings.show_rate_column ? 1 : 0) + (pdf_settings.show_taxable_column ? 1 : 0) + (pdf_settings.show_tax_column ? 1 : 0); %>
         <table class="items-table">
             <thead>
                 <tr>
                     <th style="width: 28px; text-align: center;">#</th>
                     <th>Item & Description</th>
-                    <% if (pdf_settings.show_hsn_column) { %><th style="width: 72px; text-align: center;">HSN / SAC</th><% } %>
                     <% if (pdf_settings.show_qty_column) { %><th style="width: 40px; text-align: center;">Qty</th><% } %>
                     <% if (pdf_settings.show_rate_column) { %><th style="width: 70px; text-align: right;">Rate</th><% } %>
                     <% if (pdf_settings.show_taxable_column) { %><th style="width: 70px; text-align: right;">Taxable</th><% } %>
@@ -612,7 +611,6 @@
                                 <div class="item-notes" style="color: #15803d; font-weight: 700;">Service Warranty: <%= item.warrantyPeriod %></div>
                             <% } %>
                         </td>
-                        <% if (pdf_settings.show_hsn_column) { %><td style="text-align: center; color: #475569; font-size: 8pt;"><%= item.hsnCode || '—' %></td><% } %>
                         <% if (pdf_settings.show_qty_column) { %><td style="text-align: center; font-weight: 600;"><%= item.quantity %></td><% } %>
                         <% if (pdf_settings.show_rate_column) { %><td style="text-align: right;"><%= item.unitPrice %></td><% } %>
                         <% if (pdf_settings.show_taxable_column) { %><td style="text-align: right;"><%= item.taxableAmount || (item.unitPriceRaw !== undefined ? (item.unitPriceRaw * item.quantity).toFixed(2) : item.unitPrice) %></td><% } %>

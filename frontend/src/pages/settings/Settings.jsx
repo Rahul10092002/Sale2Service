@@ -70,7 +70,6 @@ const DEFAULT_PDF_SETTINGS = {
   show_reverse_charge: true,
 
   // Items Table Columns & Specifications
-  show_hsn_column: true,
   show_qty_column: true,
   show_rate_column: true,
   show_taxable_column: true,

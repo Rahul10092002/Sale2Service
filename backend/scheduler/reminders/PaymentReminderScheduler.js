@@ -2,7 +2,7 @@ import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import Invoice from "../../models/Invoice.js";
 import InvoiceItem from "../../models/InvoiceItem.js";
-import { createDateRange, formatDateForMessage } from "../core/utils.js";
+import { createDateRange, formatDateForMessage, formatPhoneNumber } from "../core/utils.js";
 import Shop from "../../models/Shop.js";
 import { getShopName, getShopContactInfo } from "../core/utils.js";
 /**
@@ -13,6 +13,26 @@ export default class PaymentReminderScheduler extends BaseScheduler {
   constructor() {
     super();
     this.messageSender = new MessageSender();
+    this.dailySummaryMap = {};
+  }
+
+  /**
+   * Track a successfully-sent reminder so we can summarise later for the shop owner.
+   * @param {Object} invoice - Invoice with populated customer_id
+   * @param {string} statusLabel - Human label ("due today", "3 days before due", "overdue")
+   */
+  addToPaymentSummary(invoice, statusLabel) {
+    const shopId = String(invoice.shop_id);
+    if (!this.dailySummaryMap[shopId]) {
+      this.dailySummaryMap[shopId] = [];
+    }
+    this.dailySummaryMap[shopId].push({
+      customerName: invoice.customer_id?.full_name || invoice.customer_name || "ग्राहक",
+      invoiceNumber: invoice.invoice_number || "N/A",
+      amountDue: invoice.amount_due ?? invoice.total_amount ?? 0,
+      dueDate: invoice.due_date,
+      statusLabel,
+    });
   }
 
   /**
@@ -44,11 +64,15 @@ export default class PaymentReminderScheduler extends BaseScheduler {
   async processPaymentReminders() {
     try {
       this.logInfo("Processing payment reminders...");
+      this.dailySummaryMap = {}; // reset for this run
 
       await Promise.all([
         this.processDueDateReminders(),
         this.processOverdueReminders(),
       ]);
+
+      // After all individual reminders, send daily summary to each shop owner
+      await this.sendAllPaymentSummaries();
 
       this.logInfo("Payment reminders processing completed");
     } catch (error) {
@@ -242,6 +266,17 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       });
 
       if (result.success) {
+        // Track for daily owner summary
+        let statusTextHi;
+        if (daysAfterInvoice === 0) {
+          statusTextHi = "आज देय";
+        } else if (daysAfterInvoice > 0) {
+          statusTextHi = `${daysAfterInvoice} दिन बाकी`;
+        } else {
+          statusTextHi = "अतिदेय";
+        }
+        this.addToPaymentSummary(invoice, statusTextHi);
+
         this.logInfo(`Payment reminder sent successfully`, {
           customer: customer.full_name,
           invoiceNumber: invoice.invoice_number,
@@ -349,5 +384,123 @@ export default class PaymentReminderScheduler extends BaseScheduler {
     const totalAmount = parseFloat(invoice.total_amount) || 0;
     const paidAmount = parseFloat(invoice.paid_amount) || 0;
     return Math.max(0, totalAmount - paidAmount);
+  }
+
+  // ─── Daily Payment Summary to Shop Owner ──────────────────────────
+
+  /**
+   * Send payment summaries to all shops that had reminders today
+   */
+  async sendAllPaymentSummaries() {
+    const shopIds = Object.keys(this.dailySummaryMap);
+    if (shopIds.length === 0) {
+      this.logInfo("No payment summaries to send");
+      return;
+    }
+
+    await Promise.all(
+      shopIds.map((shopId) =>
+        this.sendPaymentDailySummary(
+          shopId,
+          this.dailySummaryMap[shopId],
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Send a consolidated payment-due summary to the shop owner in Hindi.
+   * Template: "daily_payment_summary" (MSG91)
+   *
+   * Variables layout:
+   *   1 → Shop name (Hindi)
+   *   2 → Today's date
+   *   3 → Total reminders sent count
+   *   4 → Total pending amount (₹)
+   *   5 → Customer-wise list (max 10, pipe-separated)
+   *
+   * Note: Template footer/body includes:
+   * "अधिक जानकारी के लिए WarrantyDesk डैशबोर्ड पर चेक करें।"
+   */
+  async sendPaymentDailySummary(shopId, entries) {
+    try {
+      if (!entries || entries.length === 0) return;
+
+      const shop = await Shop.findById(shopId);
+      if (!shop) return;
+
+      if (!shop.phone) {
+        this.logError(
+          "sendPaymentDailySummary",
+          new Error("Missing shop phone number"),
+          { shopId },
+        );
+        return;
+      }
+
+      const shopName = getShopName(shop);
+
+      // 📅 Date in Hindi locale
+      const today = new Date();
+      const formattedDate = today.toLocaleDateString("hi-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+
+      // 💰 Total pending amount
+      const totalAmount = entries.reduce(
+        (sum, e) => sum + (parseFloat(e.amountDue) || 0),
+        0,
+      );
+
+      // 📋 Customer list (max 10)
+      const limitedEntries = entries.slice(0, 10);
+      let customerList = limitedEntries
+        .map(
+          (e) =>
+            `• ${e.customerName} — ₹${parseFloat(e.amountDue || 0).toLocaleString("en-IN")} (${e.statusLabel})`,
+        )
+        .join(" | ");
+
+      if (entries.length > 10) {
+        customerList += ` | +${entries.length - 10} अन्य ग्राहक`;
+      }
+
+      // 📦 MSG91 template variables
+      const variables = {
+        1: shopName,
+        2: formattedDate,
+        3: String(entries.length),
+        4: `₹${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+        5: customerList || "-",
+      };
+
+      const to = formatPhoneNumber(shop.phone);
+      if (!to) {
+        this.logError(
+          "sendPaymentDailySummary",
+          new Error("Invalid shop phone number"),
+          { shopId },
+        );
+        return;
+      }
+
+      await this.messageSender.sendTemplateMessage({
+        to,
+        templateName: "daily_payment_summary",
+        variables,
+        metadata: {
+          campaignName: "daily_payment_summary",
+          type: "summary",
+        },
+      });
+
+      this.logInfo(
+        `Payment daily summary sent to shop ${shopName} (${entries.length} reminders, ₹${totalAmount.toFixed(2)})`,
+      );
+    } catch (error) {
+      this.logError("sendPaymentDailySummary", error);
+    }
   }
 }

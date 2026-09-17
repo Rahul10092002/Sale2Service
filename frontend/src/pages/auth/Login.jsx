@@ -116,19 +116,19 @@ const Login = () => {
       </div>
 
       {/* RIGHT SIDE (Login Form) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 px-6 py-12">
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 dark:bg-dark-bg px-6 py-12 transition-colors">
         <div className="w-full max-w-md">
           {/* Title */}
           <div className="mb-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
               Welcome Back 👋
             </h2>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 dark:text-slate-400 text-sm">
               Login to continue your dashboard
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
+          <div className="bg-white dark:bg-dark-card p-6 rounded-2xl shadow-md border border-gray-200 dark:border-dark-border transition-colors">
             {successMessage && (
               <Alert variant="success" className="mb-4">
                 {successMessage}
@@ -163,16 +163,17 @@ const Login = () => {
               />
 
               <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-gray-700 dark:text-slate-300">
                   <input
                     type="checkbox"
                     checked={showPassword}
                     onChange={() => setshowPassword((p) => !p)}
+                    className="rounded border-gray-300 dark:border-dark-border text-primary focus:ring-primary"
                   />
                   Show password
                 </label>
 
-                <span className="text-blue-600 cursor-pointer hover:underline">
+                <span className="text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
                   Forgot?
                 </span>
               </div>
@@ -182,9 +183,9 @@ const Login = () => {
               </Button>
             </form>
 
-            <p className="text-sm text-center mt-5 text-gray-600">
+            <p className="text-sm text-center mt-5 text-gray-600 dark:text-slate-400">
               Don’t have an account?{" "}
-              <Link to={ROUTES.SIGNUP} className="text-blue-600 font-medium">
+              <Link to={ROUTES.SIGNUP} className="text-blue-600 dark:text-blue-400 font-medium">
                 Sign up
               </Link>
             </p>

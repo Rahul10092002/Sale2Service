@@ -105,19 +105,19 @@ const Signup = () => {
       </div>
 
       {/* RIGHT SIDE */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 px-6 py-12">
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 dark:bg-dark-bg px-6 py-12 transition-colors">
         <div className="w-full max-w-md">
           {/* Heading */}
           <div className="mb-6 text-center">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
               Create Your Account
             </h2>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 dark:text-slate-400 text-sm">
               Start managing your shop digitally
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
+          <div className="bg-white dark:bg-dark-card p-6 rounded-2xl shadow-md border border-gray-200 dark:border-dark-border transition-colors">
             {signupError && (
               <Alert variant="error" className="mb-4">
                 {getErrorMessage()}
@@ -179,9 +179,9 @@ const Signup = () => {
               </Button>
             </form>
 
-            <p className="text-sm text-center mt-5 text-gray-600">
+            <p className="text-sm text-center mt-5 text-gray-600 dark:text-slate-400">
               Already have an account?{" "}
-              <Link to={ROUTES.LOGIN} className="text-blue-600 font-medium">
+              <Link to={ROUTES.LOGIN} className="text-blue-600 dark:text-blue-400 font-medium">
                 Login
               </Link>
             </p>

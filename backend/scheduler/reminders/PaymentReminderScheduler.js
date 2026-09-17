@@ -26,8 +26,17 @@ export default class PaymentReminderScheduler extends BaseScheduler {
     if (!this.dailySummaryMap[shopId]) {
       this.dailySummaryMap[shopId] = [];
     }
+    const customer = invoice.customer_id;
+    const customerPhone =
+      customer?.whatsapp_number ||
+      customer?.mobile_number ||
+      customer?.phone ||
+      invoice.customer_phone ||
+      "";
+
     this.dailySummaryMap[shopId].push({
-      customerName: invoice.customer_id?.full_name || invoice.customer_name || "ग्राहक",
+      customerName: customer?.full_name || invoice.customer_name || "ग्राहक",
+      customerPhone,
       invoiceNumber: invoice.invoice_number || "N/A",
       amountDue: invoice.amount_due ?? invoice.total_amount ?? 0,
       dueDate: invoice.due_date,
@@ -457,10 +466,10 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       // 📋 Customer list (max 10)
       const limitedEntries = entries.slice(0, 10);
       let customerList = limitedEntries
-        .map(
-          (e) =>
-            `• ${e.customerName} — ₹${parseFloat(e.amountDue || 0).toLocaleString("en-IN")} (${e.statusLabel})`,
-        )
+        .map((e) => {
+          const phoneStr = e.customerPhone ? ` (${e.customerPhone})` : "";
+          return `• ${e.customerName}${phoneStr} — ₹${parseFloat(e.amountDue || 0).toLocaleString("en-IN")} (${e.statusLabel})`;
+        })
         .join(" | ");
 
       if (entries.length > 10) {

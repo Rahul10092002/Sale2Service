@@ -334,7 +334,7 @@ export class InvoicePDFService {
 
         let proWarrantyText = "";
         if (!isService && proWarrantyEndDate) {
-          proWarrantyText = `Pro-Rata Warranty till ${proWarrantyEndDate}`;
+          proWarrantyText = `Pro-Data Warranty till ${proWarrantyEndDate}`;
         }
 
         // Service Plan formatting

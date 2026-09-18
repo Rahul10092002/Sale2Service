@@ -47,7 +47,7 @@ const Customers = () => {
   const location = useLocation();
   const { canCreate } = usePermissions();
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const dispatch = useDispatch();
@@ -61,6 +61,7 @@ const Customers = () => {
     page,
     limit,
     search: searchTerm,
+    sort: "name_asc",
   });
 
   const [createCustomer] = useCreateCustomerMutation();
@@ -126,10 +127,18 @@ const Customers = () => {
     }
   };
 
-  const customers = response?.customers || [];
+  const rawCustomers = response?.customers || [];
+  const customers = useMemo(() => {
+    return [...rawCustomers].sort((a, b) =>
+      (a.full_name || "").localeCompare(b.full_name || "", undefined, {
+        sensitivity: "base",
+      })
+    );
+  }, [rawCustomers]);
+
   const pagination = response?.pagination || {
     page: 1,
-    limit: 10,
+    limit: 25,
     total: 0,
     pages: 1,
   };
@@ -270,7 +279,7 @@ const Customers = () => {
                 <div className="flex items-center justify-between gap-2 mt-1.5 pt-1.5 border-t border-gray-100 dark:border-dark-border/40">
                   <div className="flex items-center gap-1.5 flex-wrap text-[10.5px] text-slate-500 dark:text-slate-400">
                     <span className="font-mono text-[10px] text-slate-400">
-                      #{(page - 1) * 10 + index + 1}
+                      #{(page - 1) * pagination.limit + index + 1}
                     </span>
                   </div>
 
@@ -298,7 +307,7 @@ const Customers = () => {
 
             {/* ── Desktop Row ── */}
             <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-2 items-center p-4">
-              <div className="text-ink-secondary dark:text-slate-400">{(page - 1) * 10 + index + 1}</div>
+              <div className="text-ink-secondary dark:text-slate-400">{(page - 1) * pagination.limit + index + 1}</div>
               <div className="flex gap-3 items-center">
                 <div
                   className="cursor-pointer"
@@ -438,7 +447,7 @@ const Customers = () => {
                       className="px-2 py-1 text-xs border border-gray-300 dark:border-dark-border rounded-md bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                     >
                       <option value={10}>10</option>
-                      <option value={20}>20</option>
+                      <option value={25}>25</option>
                       <option value={50}>50</option>
                       <option value={100}>100</option>
                     </select>

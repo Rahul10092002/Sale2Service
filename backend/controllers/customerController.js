@@ -48,10 +48,10 @@ export const createCustomer = async (req, res) => {
 export const getCustomers = async (req, res) => {
   try {
     const { user } = req;
-    const { page = 1, limit = 10, search } = req.query;
+    const { page = 1, limit = 25, search, sort = "name_asc" } = req.query;
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 10), 100);
+    const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 25), 100);
     const skip = (pageNum - 1) * limitNum;
 
     const matchQuery = {
@@ -68,13 +68,20 @@ export const getCustomers = async (req, res) => {
       ];
     }
 
+    let sortStage = { full_name: 1, createdAt: -1 };
+    if (sort === "createdAt_desc") {
+      sortStage = { createdAt: -1 };
+    } else if (sort === "name_desc") {
+      sortStage = { full_name: -1, createdAt: -1 };
+    }
+
     const result = await Customer.aggregate([
       { $match: matchQuery },
       {
         $facet: {
           metadata: [{ $count: "total" }],
           customers: [
-            { $sort: { createdAt: -1 } },
+            { $sort: sortStage },
             { $skip: skip },
             { $limit: limitNum },
           ],

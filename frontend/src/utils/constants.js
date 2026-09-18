@@ -30,6 +30,7 @@ export const ROUTES = {
   LOGS: "/logs",
   FESTIVAL_SCHEDULE: "/festival-schedule",
   SETTINGS: "/settings",
+  RECYCLE_BIN: "/recycle-bin",
   PRIVACY_POLICY: "/privacy-policy",
   NEW_INVOICE: "/invoices/new",
 };

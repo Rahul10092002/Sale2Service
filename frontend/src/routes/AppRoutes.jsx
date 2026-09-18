@@ -35,6 +35,7 @@ import { lazy, Suspense } from "react";
 import FestivalSchedule from "../pages/festival/Festival.jsx";
 import LandingPage from "../pages/landingpage/LandingPage.jsx";
 import PrivacyPolicy from "../pages/legal/PrivacyPolicy.jsx";
+import RecycleBin from "../pages/recycleBin/RecycleBin.jsx";
 
 // Lazy load the Logs component to avoid build issues
 const LogsPage = lazy(() => import("../pages/logs/Logs.jsx"));
@@ -266,6 +267,14 @@ const AppRoutes = () => {
         element={
           <PrivateRoute>
             <Settings />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path={ROUTES.RECYCLE_BIN}
+        element={
+          <PrivateRoute>
+            <RecycleBin />
           </PrivateRoute>
         }
       />

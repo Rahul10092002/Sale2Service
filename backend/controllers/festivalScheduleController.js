@@ -24,6 +24,7 @@ export default class FestivalScheduleController {
 
       const existingSchedule = await FestivalSchedule.findOne({
         shop_id: user.shopId,
+        deleted_at: null,
         schedule_date: { $gte: startOfDay, $lte: endOfDay },
       });
 
@@ -63,7 +64,7 @@ export default class FestivalScheduleController {
       const { user } = req;
       const { page = 1, limit = 10, search } = req.query;
 
-      const query = { shop_id: user.shopId };
+      const query = { shop_id: user.shopId, deleted_at: null };
 
       if (search) {
         query.festival_name = { $regex: search, $options: "i" };
@@ -119,6 +120,7 @@ export default class FestivalScheduleController {
       const schedule = await FestivalSchedule.findOne({
         _id: id,
         shop_id: user.shopId,
+        deleted_at: null,
       });
 
       if (!schedule) {
@@ -174,6 +176,7 @@ export default class FestivalScheduleController {
         const existingSchedule = await FestivalSchedule.findOne({
           shop_id: user.shopId,
           _id: { $ne: id },
+          deleted_at: null,
           schedule_date: { $gte: startOfDay, $lte: endOfDay },
         });
 
@@ -190,7 +193,7 @@ export default class FestivalScheduleController {
       if (schedule_date) updateData.schedule_date = schedule_date;
 
       const updatedSchedule = await FestivalSchedule.findOneAndUpdate(
-        { _id: id, shop_id: user.shopId },
+        { _id: id, shop_id: user.shopId, deleted_at: null },
         updateData,
         { new: true, runValidators: true },
       );
@@ -232,22 +235,26 @@ export default class FestivalScheduleController {
         });
       }
 
-      const deletedSchedule = await FestivalSchedule.findOneAndDelete({
+      const schedule = await FestivalSchedule.findOne({
         _id: id,
         shop_id: user.shopId,
+        deleted_at: null,
       });
 
-      if (!deletedSchedule) {
+      if (!schedule) {
         return res.status(404).json({
           success: false,
           message: "Festival schedule not found",
         });
       }
 
+      schedule.deleted_at = new Date();
+      await schedule.save();
+
       return res.json({
         success: true,
         message: "Festival schedule deleted successfully",
-        data: deletedSchedule,
+        data: schedule,
       });
     } catch (error) {
       console.error("deleteSchedule error:", error);

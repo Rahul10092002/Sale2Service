@@ -63,6 +63,7 @@ export const baseApi = createApi({
     "WarrantyReminders",
     "Dealer",
     "Inventory",
+    "RecycleBin",
     "Warranty",
     "DeletePasswordStatus",
   ],

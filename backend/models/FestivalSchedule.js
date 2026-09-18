@@ -25,9 +25,15 @@ const festivalScheduleSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    deleted_at: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );
+
+festivalScheduleSchema.index({ shop_id: 1, deleted_at: 1 });
 
 const FestivalSchedule =
   mongoose.models.FestivalSchedule ||

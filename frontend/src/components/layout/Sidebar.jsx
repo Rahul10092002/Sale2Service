@@ -9,6 +9,7 @@ import {
   Activity,
   Table,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "../../utils/constants.js";
@@ -90,6 +91,13 @@ const navItems = [
     label: "Settings",
     icon: <Settings className="w-4 h-4" />,
     path: ROUTES.SETTINGS,
+    permission: "settings_view",
+  },
+  {
+    key: "recycle-bin",
+    label: "Recycle Bin",
+    icon: <Trash2 className="w-4 h-4 text-red-500" />,
+    path: ROUTES.RECYCLE_BIN,
     permission: "settings_view",
   },
 ];

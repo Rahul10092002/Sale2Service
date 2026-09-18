@@ -12,6 +12,7 @@ import {
   Table,
   Wrench,
   ShieldCheck,
+  Trash2,
   X,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -77,6 +78,7 @@ export default function MobileBottomNav() {
     { icon: Wrench, label: "Schedules", path: ROUTES.FESTIVAL_SCHEDULE, permission: "schedules_view" },
     { icon: Activity, label: "Audit Logs", path: ROUTES.LOGS, permission: "logs_view" },
     { icon: Settings, label: "Settings", path: ROUTES.SETTINGS, permission: "settings_view" },
+    { icon: Trash2, label: "Recycle Bin", path: ROUTES.RECYCLE_BIN, permission: "settings_view" },
   ].filter((item) => hasPermission(item.permission));
 
   // Determine if a secondary drawer item is currently active

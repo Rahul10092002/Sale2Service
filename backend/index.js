@@ -19,6 +19,7 @@ import { roleRouter } from "./routes/role.js";
 import dealerRouter from "./routes/dealer.js";
 import inventoryRouter from "./routes/inventory.js";
 import warrantyRouter from "./routes/warranty.js";
+import recycleBinRouter from "./routes/recycleBin.js";
 import { validateEnv } from "./utils/validateEnv.js";
 
 dotenv.config();
@@ -65,6 +66,7 @@ app.use("/v1/dashboard", dashboardRouter);
 app.use("/v1/files", fileUploadRouter);
 app.use("/v1/logs", logsRouter);
 app.use("/v1/festival-schedule", festivalScheduleRouter);
+app.use("/v1/recycle-bin", recycleBinRouter);
 // Dev-only debug endpoints
 app.use("/v1/debug", debugRouter);
 

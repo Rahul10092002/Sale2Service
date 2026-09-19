@@ -84,9 +84,10 @@ function enhanceContrast(imageData) {
  *
  * Props:
  *  onScan(decodedText)  – called once per successful scan (deduped)
+ *  onScanSuccess        – alias for onScan
  *  onClose()            – called when the user dismisses the scanner
  */
-const SerialScanner = ({ onScan, onClose }) => {
+const SerialScanner = ({ onScan, onScanSuccess, onClose }) => {
   const [error, setError] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
@@ -110,11 +111,12 @@ const SerialScanner = ({ onScan, onClose }) => {
   // mounts once (StrictMode-safe camera lifecycle) — reading through a ref
   // means it always calls the current onScan/onClose instead of whatever
   // was passed in on first render.
-  const onScanRef = useRef(onScan);
+  const scanCallback = onScan || onScanSuccess;
+  const onScanRef = useRef(scanCallback);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
-    onScanRef.current = onScan;
-  }, [onScan]);
+    onScanRef.current = onScan || onScanSuccess;
+  }, [onScan, onScanSuccess]);
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
@@ -202,7 +204,9 @@ const SerialScanner = ({ onScan, onClose }) => {
           if (navigator.vibrate) navigator.vibrate(80);
           playBeep();
 
-          onScanRef.current(decodedText.trim());
+          if (typeof onScanRef.current === "function") {
+            onScanRef.current(decodedText.trim());
+          }
         };
 
         const runStart = (scanner, cameraConfig) =>
@@ -486,7 +490,9 @@ const SerialScanner = ({ onScan, onClose }) => {
       hasScannedRef.current = true;
       if (navigator.vibrate) navigator.vibrate(80);
       playBeep();
-      onScanRef.current(decodedText.trim());
+      if (typeof onScanRef.current === "function") {
+        onScanRef.current(decodedText.trim());
+      }
     } catch {
       // Still couldn't decode — hand control back to the live scanner.
       try {
@@ -509,7 +515,9 @@ const SerialScanner = ({ onScan, onClose }) => {
   const submitManual = () => {
     const trimmed = manualValue.trim();
     if (!trimmed) return;
-    onScanRef.current(trimmed);
+    if (typeof onScanRef.current === "function") {
+      onScanRef.current(trimmed);
+    }
   };
 
   return (

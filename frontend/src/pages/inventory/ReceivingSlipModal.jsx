@@ -700,6 +700,7 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
         <SerialScanner
           isOpen={true}
           onClose={() => setActiveScannerRowIndex(null)}
+          onScan={handleScanSuccess}
           onScanSuccess={handleScanSuccess}
         />
       )}

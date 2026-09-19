@@ -105,15 +105,6 @@ const SerialScanner = ({ onScan, onClose }) => {
   // something explicitly pauses/stops it.
   const hasScannedRef = useRef(false);
   const closeBtnRef = useRef(null);
-  // Auto-enhance: fires tryHarder() after prolonged scan failure so shop
-  // staff don't need to discover the manual button.
-  const autoEnhanceFiredRef = useRef(false);
-  const autoEnhanceTimerRef = useRef(null);
-  // Collision guard — prevents tryHarder() and auto-enhance from
-  // manipulating the scanner instance simultaneously.
-  const busyRef = useRef(false);
-  // Latest tryHarder closure for the auto-enhance timer callback.
-  const tryHarderRef = useRef(null);
 
   // Always-latest callback refs. The start() effect below intentionally
   // mounts once (StrictMode-safe camera lifecycle) — reading through a ref
@@ -180,8 +171,6 @@ const SerialScanner = ({ onScan, onClose }) => {
       // StrictMode's mount → cleanup → remount cycle in development).
       isStoppingRef.current = false;
       hasScannedRef.current = false;
-      autoEnhanceFiredRef.current = false;
-      clearTimeout(autoEnhanceTimerRef.current);
 
       // Wipe any leftover DOM nodes html5-qrcode injected in a previous run
       // (StrictMode re-mount, HMR, etc.) so we never get two stacked videos.
@@ -189,17 +178,12 @@ const SerialScanner = ({ onScan, onClose }) => {
       if (container) container.innerHTML = "";
 
       try {
-        // ── Fix 1: JS decoder only ─────────────────────────────────
-        // Native BarcodeDetector (Chrome Shape Detection API) is fast
-        // but unreliable on budget Android — Google Play Services'
-        // barcode module is often missing/outdated, causing silent
-        // decode failures (window.BarcodeDetector exists, feature-detect
-        // passes, but decode returns nothing). The zxing JS decoder is
-        // slightly slower but works consistently on every device.
         const buildScanner = () =>
           new Html5Qrcode(readerId, {
             formatsToSupport: SERIAL_FORMATS,
-            experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+            // Use Chrome/Edge native BarcodeDetector API when available —
+            // dramatically more accurate and faster than the JS fallback.
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
             verbose: false,
           });
 
@@ -207,13 +191,10 @@ const SerialScanner = ({ onScan, onClose }) => {
           if (unmounted || hasScannedRef.current) return;
           hasScannedRef.current = true;
 
-          // Cancel pending auto-enhance — we got a result.
-          clearTimeout(autoEnhanceTimerRef.current);
-
-          // Freeze the decode loop immediately without showing html5-qrcode's
-          // "Scanner paused" banner overlay (passing false keeps video live & clean).
+          // Freeze the last good frame immediately so the UI doesn't
+          // keep "re-scanning" while the parent reacts to onScan.
           try {
-            scanner.pause(false);
+            scanner.pause(true);
           } catch {
             // ignore pause errors
           }
@@ -229,11 +210,11 @@ const SerialScanner = ({ onScan, onClose }) => {
             cameraConfig,
             {
               // Lower than a "smooth video" fps on purpose. On weaker phone
-              // CPUs the zxing JS decoder needs real time per frame;
-              // requesting frames faster than the decoder can finish just
-              // causes drops and wasted work. 10 leaves more budget per
-              // frame for the binarizer to actually resolve blurred bar
-              // edges.
+              // CPUs, especially without native BarcodeDetector support, a
+              // blurry/noisy frame takes real decode time; requesting
+              // frames faster than the decoder can finish just causes
+              // drops and wasted work. 10 leaves more budget per frame for
+              // the binarizer to actually resolve blurred bar edges.
               fps: 10,
               // Computed from the ACTUAL rendered viewfinder size rather
               // than fixed pixels. html5-qrcode throws if a fixed qrbox
@@ -248,9 +229,7 @@ const SerialScanner = ({ onScan, onClose }) => {
                   height: Math.floor(Math.min(edge * 0.5, 140)),
                 };
               },
-              // Fix 3: Removed hardcoded 16:9 aspectRatio — budget phones
-              // expose non-standard sensor ratios that cause awkward crops.
-              // Let the browser pick the sensor's natural aspect ratio.
+              aspectRatio: 1.7777778, // 16:9 — higher camera resolution
               // Rear camera footage never needs a mirrored decode pass —
               // skipping it roughly halves decode attempts per frame.
               disableFlip: true,
@@ -261,100 +240,19 @@ const SerialScanner = ({ onScan, onClose }) => {
             },
           );
 
-        // ── Fix 2: Smart camera lens selection ─────────────────────
-        // facingMode: "environment" lets the browser choose which rear
-        // lens on multi-camera phones — often picks ultra-wide, which
-        // renders the barcode too small at typical 15-20cm distance.
-        // Enumerate cameras and prefer the main (non-ultra-wide) lens.
-        let cameras = [];
-        try {
-          cameras = await Html5Qrcode.getCameras();
-        } catch {
-          // getCameras() can fail on some browsers — fall through to
-          // facingMode fallback below.
-        }
-
-        // Permission priming: getCameras() returns empty labels before
-        // the user grants camera permission. Use a hidden throwaway div
-        // (not the visible container) to avoid a camera flash/flicker.
-        if (cameras.length && !cameras[0]?.label) {
-          const tempId = `${readerId}-perm`;
-          let tempDiv = document.getElementById(tempId);
-          if (!tempDiv) {
-            tempDiv = document.createElement("div");
-            tempDiv.id = tempId;
-            tempDiv.style.cssText =
-              "position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;";
-            document.body.appendChild(tempDiv);
-          }
-          try {
-            const tempScanner = new Html5Qrcode(tempId, { verbose: false });
-            await tempScanner.start(
-              { facingMode: "environment" },
-              { fps: 1, qrbox: { width: 1, height: 1 } },
-              () => {},
-              () => {},
-            );
-            await tempScanner.stop();
-            await tempScanner.clear();
-          } catch {
-            // Permission denied or camera unavailable — proceed with
-            // facingMode fallback.
-          } finally {
-            tempDiv?.remove();
-          }
-          try {
-            cameras = await Html5Qrcode.getCameras();
-          } catch {
-            cameras = [];
-          }
-        }
-
-        const selectPreferredCamera = (cams) => {
-          if (!cams.length || !cams[0]?.label) return null;
-          const backCams = cams.filter((c) =>
-            /back|rear|environment/i.test(c.label),
-          );
-          if (!backCams.length) return null;
-          // Prefer "wide" (main lens on Samsung/Pixel) but NOT ultra-wide.
-          // Many OEMs label the main sensor "wide" or "wide angle".
-          return (
-            backCams.find(
-              (c) =>
-                /\bwide\b/i.test(c.label) &&
-                !/ultra|tele|macro|depth|ir/i.test(c.label),
-            ) ||
-            backCams.find(
-              (c) => !/ultra|tele|macro|depth|ir/i.test(c.label),
-            ) ||
-            backCams[0]
-          );
-        };
-
-        const preferred = selectPreferredCamera(cameras);
-        const baseCameraConfig = preferred?.id
-          ? { deviceId: { exact: preferred.id } }
-          : { facingMode: "environment" };
-
-        if (preferred?.id) {
-          console.info(
-            "SerialScanner: selected camera —",
-            preferred.label || preferred.id,
-          );
-        }
-
         let html5Qrcode = buildScanner();
         scannerRef.current = html5Qrcode;
 
         try {
-          // Request 1280x720 (720p) ideal resolution.
-          // 720p is the optimal balance for barcode decoding: sharp enough for fine
-          // barcodes while avoiding heavy 1080p/4K frame sizes that slow down JS decode
-          // and trigger auto-enhance timeouts on high-res mobile cameras.
+          // Explicitly ask for the sensor's max usable resolution first.
+          // Without this, many browsers default the preview stream to a
+          // modest resolution (often 640x480) chosen for smooth video, not
+          // decode accuracy — on an already low-megapixel camera that
+          // leaves almost no pixels across the barcode's bars.
           await runStart(html5Qrcode, {
-            ...baseCameraConfig,
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 },
+            facingMode: "environment",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
           });
         } catch (highResErr) {
           // A failed start can leave this instance mid-transition —
@@ -376,26 +274,11 @@ const SerialScanner = ({ onScan, onClose }) => {
 
           html5Qrcode = buildScanner();
           scannerRef.current = html5Qrcode;
-          await runStart(html5Qrcode, baseCameraConfig);
+          await runStart(html5Qrcode, { facingMode: "environment" });
         }
 
         if (unmounted) return;
         setScanning(true);
-
-        // ── Fix 5: Auto-enhance after 15s of no decode ────────────
-        // Shop staff may not notice the manual "enhance" button.
-        // Automatically trigger tryHarder() once if no barcode is
-        // decoded within 15s — gives a second chance without user
-        // intervention.
-        autoEnhanceTimerRef.current = setTimeout(() => {
-          if (unmounted || hasScannedRef.current || autoEnhanceFiredRef.current)
-            return;
-          autoEnhanceFiredRef.current = true;
-          console.info(
-            "SerialScanner: auto-enhance triggered after 15s of no decode",
-          );
-          tryHarderRef.current?.();
-        }, 15_000);
 
         // Best-effort focus/exposure/zoom tuning. Not all browsers expose
         // these track capabilities, so every step here is optional and
@@ -452,7 +335,6 @@ const SerialScanner = ({ onScan, onClose }) => {
 
     return () => {
       unmounted = true;
-      clearTimeout(autoEnhanceTimerRef.current);
       // Cleanup runs when parent removes the component (e.g. after handleClose
       // already called stopCamera). stopCamera's guard prevents a double-stop.
       stopCamera();
@@ -545,13 +427,11 @@ const SerialScanner = ({ onScan, onClose }) => {
   const tryHarder = async () => {
     const scanner = scannerRef.current;
     const videoEl = document.getElementById(readerId)?.querySelector("video");
-    if (!scanner || !videoEl || enhancing || busyRef.current) return;
-    busyRef.current = true;
+    if (!scanner || !videoEl || enhancing) return;
 
     setEnhancing(true);
     try {
-      // Pause decoding without hiding/freezing the live video or showing the banner overlay
-      scanner.pause(false);
+      scanner.pause(true);
     } catch {
       // ignore
     }
@@ -570,17 +450,8 @@ const SerialScanner = ({ onScan, onClose }) => {
         }
       }
 
-      let width = bitmap?.width || videoEl.videoWidth || 1280;
-      let height = bitmap?.height || videoEl.videoHeight || 720;
-
-      // Cap high-res snapshot dimensions to max 1280px for fast CPU contrast stretch & decode
-      const MAX_DIM = 1280;
-      if (width > MAX_DIM || height > MAX_DIM) {
-        const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
-        width = Math.round(width * scale);
-        height = Math.round(height * scale);
-      }
-
+      const width = bitmap?.width || videoEl.videoWidth;
+      const height = bitmap?.height || videoEl.videoHeight;
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
@@ -631,16 +502,9 @@ const SerialScanner = ({ onScan, onClose }) => {
           // ignore
         }
       }
-      busyRef.current = false;
       setEnhancing(false);
     }
   };
-
-  // Keep tryHarderRef in sync with the latest tryHarder closure so the
-  // auto-enhance timer (set once at mount) always calls the current version.
-  useEffect(() => {
-    tryHarderRef.current = tryHarder;
-  });
 
   const submitManual = () => {
     const trimmed = manualValue.trim();
@@ -703,15 +567,7 @@ const SerialScanner = ({ onScan, onClose }) => {
         </div>
 
         {/* Viewfinder area */}
-        <div className="p-4 bg-gray-950 relative">
-          <style>{`
-            #${readerId} #html5-qrcode-paum-message {
-              display: none !important;
-            }
-            #${readerId} video {
-              object-fit: cover;
-            }
-          `}</style>
+        <div className="p-4 bg-gray-950">
           <div
             id={readerId}
             onClick={handleViewfinderTap}

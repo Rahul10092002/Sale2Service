@@ -219,7 +219,9 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
     setSuccessMsg("");
 
     if (!dealerId) {
-      setErrorMsg("Please select a Dealer.");
+      const msg = "Please select a Dealer / Supplier.";
+      setErrorMsg(msg);
+      dispatch(showToast({ message: msg, type: "error" }));
       return;
     }
 
@@ -229,7 +231,9 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (!r.product_name || !r.product_name.trim()) {
-        setErrorMsg(`Row #${i + 1}: Please enter a Product Name.`);
+        const msg = `Row #${i + 1}: Please enter a Product Name.`;
+        setErrorMsg(msg);
+        dispatch(showToast({ message: msg, type: "error" }));
         return;
       }
       const serials = parseSerials(r.raw_serials);
@@ -262,7 +266,10 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
         items: formattedItems,
       }).unwrap();
 
-      setSuccessMsg(res.message || "Receiving Slip intake created successfully!");
+      const successText = res.message || "Receiving Slip intake created successfully!";
+      setSuccessMsg(successText);
+      dispatch(showToast({ message: successText, type: "success" }));
+
       setTimeout(() => {
         onClose();
         setSuccessMsg("");
@@ -270,7 +277,9 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
         setRows([{ product_name: "", purchase_price: "", raw_serials: "" }]);
       }, 1500);
     } catch (err) {
-      setErrorMsg(err?.data?.message || "Failed to process stock intake.");
+      const errorText = err?.data?.message || err?.message || "Failed to process stock intake.";
+      setErrorMsg(errorText);
+      dispatch(showToast({ message: errorText, type: "error" }));
     }
   };
 

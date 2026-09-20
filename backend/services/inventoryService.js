@@ -39,7 +39,8 @@ export const createReceivingSlipIntakeService = async ({
       const existingPO = await PurchaseOrder.findOne({
         shop_id: shopId,
         dealer_id: dealerId,
-        dealer_invoice_no: formattedInvoiceNo,
+        dealer_invoice_no: new RegExp(`^${formattedInvoiceNo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+        deleted_at: null,
       }).session(session);
 
       if (existingPO) {
@@ -65,11 +66,14 @@ export const createReceivingSlipIntakeService = async ({
       }
     });
 
-    // Check database for pre-existing serial numbers in shop
+    // Check database for pre-existing serial numbers in shop (case-insensitive regex check)
     if (allSerials.length > 0) {
+      const serialRegexes = allSerials.map(
+        (s) => new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
+      );
       const existingSerialDocs = await InventoryItem.find({
         shop_id: shopId,
-        serial_number: { $in: allSerials },
+        serial_number: { $in: serialRegexes },
         deleted_at: null,
       }).session(session);
 
@@ -90,6 +94,23 @@ export const createReceivingSlipIntakeService = async ({
       totalItemsCount += count;
       totalCost += (Number(item.purchase_price) || 0) * count;
     });
+
+    // 2b. Rapid Double Intake Protection (Prevent duplicate submit within 60s window)
+    const sixtySecsAgo = new Date(Date.now() - 60 * 1000);
+    const recentDuplicatePO = await PurchaseOrder.findOne({
+      shop_id: shopId,
+      dealer_id: dealerId,
+      total_cost: totalCost,
+      total_items_count: totalItemsCount,
+      createdAt: { $gte: sixtySecsAgo },
+      deleted_at: null,
+    }).session(session);
+
+    if (recentDuplicatePO) {
+      throw new Error(
+        `A purchase intake for supplier '${dealer.name}' with identical items (${totalItemsCount} units, ₹${totalCost}) was already processed moments ago (Ref: ${recentDuplicatePO.dealer_invoice_no}).`
+      );
+    }
 
     const normalizedImages = Array.isArray(purchaseBillImages)
       ? purchaseBillImages.filter(Boolean)

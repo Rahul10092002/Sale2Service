@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { useDispatch } from "react-redux";
 import {
   X,
   Plus,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { useGetDealersQuery } from "../../features/dealers/dealerApi.js";
 import { useCreateReceivingSlipMutation } from "../../features/inventory/inventoryApi.js";
+import { showToast } from "../../features/ui/uiSlice.js";
 import { Button, LoadingSpinner } from "../../components/ui/index.js";
 import SerialScanner from "../../components/invoice/SerialScanner.jsx";
 import { getToken } from "../../utils/token.js";
@@ -54,6 +56,7 @@ const compressImage = (file) =>
   });
 
 const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
+  const dispatch = useDispatch();
   const { data: dealersData } = useGetDealersQuery(undefined, { skip: !isOpen });
   const [createReceivingSlip, { isLoading: isSubmitting }] = useCreateReceivingSlipMutation();
 
@@ -101,15 +104,38 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
   };
 
   const handleScanSuccess = (scannedCode) => {
+    if (!scannedCode || !scannedCode.trim()) {
+      setActiveScannerRowIndex(null);
+      return;
+    }
+
+    const trimmedCode = scannedCode.trim();
+    const normalizedCode = trimmedCode.toUpperCase();
+
+    // Check for duplicate scan across all item rows
+    const allSerials = rows.flatMap((r) => parseSerials(r.raw_serials));
+    const isDuplicate = allSerials.some(
+      (s) => s.trim().toUpperCase() === normalizedCode
+    );
+
+    if (isDuplicate) {
+      const msg = `Duplicate barcode scan! Serial "${trimmedCode}" has already been scanned.`;
+      setErrorMsg(msg);
+      dispatch(showToast({ message: msg, type: "error" }));
+      setActiveScannerRowIndex(null);
+      return;
+    }
+
     if (activeScannerRowIndex !== null && activeScannerRowIndex < rows.length) {
       const updated = [...rows];
       const currentVal = updated[activeScannerRowIndex].raw_serials.trim();
       if (currentVal) {
-        updated[activeScannerRowIndex].raw_serials = `${currentVal}, ${scannedCode}`;
+        updated[activeScannerRowIndex].raw_serials = `${currentVal}, ${trimmedCode}`;
       } else {
-        updated[activeScannerRowIndex].raw_serials = scannedCode;
+        updated[activeScannerRowIndex].raw_serials = trimmedCode;
       }
       setRows(updated);
+      setErrorMsg("");
     }
     setActiveScannerRowIndex(null);
   };
@@ -198,6 +224,8 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
     }
 
     const formattedItems = [];
+    const seenSerials = new Set();
+
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (!r.product_name || !r.product_name.trim()) {
@@ -205,6 +233,17 @@ const ReceivingSlipModal = ({ isOpen, onClose, onOpenDealers }) => {
         return;
       }
       const serials = parseSerials(r.raw_serials);
+      for (const s of serials) {
+        const norm = s.toUpperCase();
+        if (seenSerials.has(norm)) {
+          const msg = `Duplicate serial number detected: "${s}". Each unit must have a unique serial number.`;
+          setErrorMsg(msg);
+          dispatch(showToast({ message: msg, type: "error" }));
+          return;
+        }
+        seenSerials.add(norm);
+      }
+
       formattedItems.push({
         product_name: r.product_name.trim(),
         purchase_price: Number(r.purchase_price) || 0,

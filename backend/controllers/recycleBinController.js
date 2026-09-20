@@ -4,6 +4,7 @@ import InvoiceItem from "../models/InvoiceItem.js";
 import Customer from "../models/Customer.js";
 import Dealer from "../models/Dealer.js";
 import InventoryItem from "../models/InventoryItem.js";
+import PurchaseOrder from "../models/PurchaseOrder.js";
 import FestivalSchedule from "../models/FestivalSchedule.js";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
@@ -198,6 +199,13 @@ export const restoreItem = async (req, res) => {
         { invoice_id: id, shop_id: shopId },
         { deleted_at: null }
       );
+    }
+
+    // If restoring an inventory item, also restore parent purchase order if soft-deleted
+    if (entity_type === "inventory" && item.purchase_order_id) {
+      await PurchaseOrder.findByIdAndUpdate(item.purchase_order_id, {
+        deleted_at: null,
+      });
     }
 
     return res.json({

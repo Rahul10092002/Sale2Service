@@ -120,7 +120,7 @@ export const getInventoryItemById = async (req, res) => {
       });
     }
 
-    const item = await InventoryItem.findOne({
+    let item = await InventoryItem.findOne({
       _id: itemId,
       shop_id: shopId,
       deleted_at: null,
@@ -135,9 +135,38 @@ export const getInventoryItemById = async (req, res) => {
       .populate("invoice_item_id");
 
     if (!item) {
+      // Fallback: If itemId is a PurchaseOrder ID, locate the first active InventoryItem under this PurchaseOrder
+      const purchaseOrder = await PurchaseOrder.findOne({
+        _id: itemId,
+        shop_id: shopId,
+        deleted_at: null,
+      });
+
+      if (purchaseOrder) {
+        const firstActiveItem = await InventoryItem.findOne({
+          shop_id: shopId,
+          purchase_order_id: purchaseOrder._id,
+          deleted_at: null,
+        })
+          .populate("product_id")
+          .populate("dealer_id")
+          .populate("purchase_order_id")
+          .populate({
+            path: "invoice_id",
+            populate: { path: "customer_id" },
+          })
+          .populate("invoice_item_id");
+
+        if (firstActiveItem) {
+          item = firstActiveItem;
+        }
+      }
+    }
+
+    if (!item) {
       return res.status(404).json({
         success: false,
-        message: "Inventory item not found",
+        message: "Inventory item not found or has been deleted",
       });
     }
 
@@ -704,8 +733,11 @@ export const getPurchasesList = async (req, res) => {
       itemsByPO[poKey].push(item);
     });
 
-    const purchases = purchaseOrders.map((po) => {
+    const purchases = [];
+    
+    purchaseOrders.forEach((po) => {
       const poItems = itemsByPO[po._id.toString()] || [];
+      if (poItems.length === 0) return; // Omit empty purchase orders whose items have all been deleted
 
       // Calculate consolidated products summary
       const productMap = {};
@@ -755,7 +787,7 @@ export const getPurchasesList = async (req, res) => {
       const totalUnits = poItems.length > 0 ? poItems.length : (po.total_items_count || 1);
       const finalTotalCost = po.total_cost > 0 ? po.total_cost : totalCostCalculated;
 
-      return {
+      purchases.push({
         _id: po._id,
         purchase_order_id: po._id,
         dealer_invoice_no: po.dealer_invoice_no,
@@ -772,7 +804,7 @@ export const getPurchasesList = async (req, res) => {
         created_by: po.created_by,
         first_item_id: poItems[0]?._id || null,
         created_at: po.createdAt,
-      };
+      });
     });
 
     // Also include any legacy orphan items (without purchase_order_id) so no old data is omitted
@@ -910,6 +942,21 @@ export const deleteInventoryItem = async (req, res) => {
 
     item.deleted_at = new Date();
     await item.save();
+
+    // If item belonged to a PurchaseOrder, soft-delete PurchaseOrder if no active items remain
+    if (item.purchase_order_id) {
+      const activeCount = await InventoryItem.countDocuments({
+        shop_id: shopId,
+        purchase_order_id: item.purchase_order_id,
+        deleted_at: null,
+      });
+
+      if (activeCount === 0) {
+        await PurchaseOrder.findByIdAndUpdate(item.purchase_order_id, {
+          deleted_at: new Date(),
+        });
+      }
+    }
 
     // Log audit trail
     await InventoryAuditLog.create({

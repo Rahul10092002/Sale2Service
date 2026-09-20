@@ -26,6 +26,8 @@ const auditLogSchema = new mongoose.Schema(
         "STATUS_CHANGE",
         "RECEIVING_SLIP_UPDATE",
         "SUPPLIER_LINKED",
+        "DELETED",
+        "RESTORED",
       ],
       required: true,
     },

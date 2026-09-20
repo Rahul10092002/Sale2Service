@@ -961,13 +961,18 @@ export const deleteInventoryItem = async (req, res) => {
     // Log audit trail
     await InventoryAuditLog.create({
       shop_id: shopId,
-      item_id: item._id,
-      product_id: item.product_id,
+      inventory_item_id: item._id,
       user_id: req.user.userId,
       action: "DELETED",
+      previous_state: {
+        status: item.status,
+        product_name: item.product_name,
+        serial_number: item.serial_number,
+      },
+      new_state: {
+        deleted_at: item.deleted_at,
+      },
       notes: "Inventory unit deleted",
-      previous_status: item.status,
-      new_status: item.status,
     });
 
     return res.status(200).json({

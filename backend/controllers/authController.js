@@ -67,7 +67,7 @@ export default class AuthController {
       }
 
       const shop = user.shop_id
-        ? await Shop.findById(user.shop_id).select("shop_name")
+        ? await Shop.findById(user.shop_id).select("shop_name shop_name_hi")
         : null;
 
       return res.status(200).json({
@@ -79,7 +79,14 @@ export default class AuthController {
             role: user.role?.name || "No Role",
             permissions: user.role?.permissions || [],
           },
-          shop: shop ? { id: shop._id, name: shop.shop_name } : null,
+          shop: shop
+            ? {
+                id: shop._id,
+                name: shop.shop_name,
+                shop_name_hi: shop.shop_name_hi || "",
+                name_hi: shop.shop_name_hi || "",
+              }
+            : null,
         },
       });
     } catch (error) {

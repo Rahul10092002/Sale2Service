@@ -24,6 +24,19 @@ export const customerApi = baseApi.injectEndpoints({
       transformResponse: (response) => response.data,
     }),
 
+    getCustomerLedger: builder.query({
+      query: ({ id, ...params }) => ({
+        url: `/customers/${id}/ledger`,
+        params: params || {},
+      }),
+      providesTags: (result, error, { id }) => [
+        { type: "Customer", id: `${id}-LEDGER` },
+        { type: "Invoice", id: "LIST" },
+      ],
+      keepUnusedDataFor: 180,
+      transformResponse: (response) => response.data,
+    }),
+
     createCustomer: builder.mutation({
       query: (payload) => ({
         url: "/customers",
@@ -66,6 +79,7 @@ baseApi.enhanceEndpoints({ addTagTypes: ["Customer"] });
 export const {
   useGetCustomersQuery,
   useGetCustomerByIdQuery,
+  useGetCustomerLedgerQuery,
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,

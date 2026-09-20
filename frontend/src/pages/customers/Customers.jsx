@@ -225,17 +225,28 @@ const Customers = () => {
                   <p className="font-bold text-xs text-ink-base dark:text-slate-100 truncate hover:text-blue-600 dark:hover:text-blue-400">
                     {customer.full_name}
                   </p>
-                  <span
-                    className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${
-                      customer.customer_type === "BUSINESS"
-                        ? "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
-                        : customer.customer_type === "DEALER"
-                        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                        : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                    }`}
-                  >
-                    {customer.customer_type || "RETAIL"}
-                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {customer.total_due > 0 ? (
+                      <span className="text-[9.5px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        Due: ₹{customer.total_due.toLocaleString("en-IN")}
+                      </span>
+                    ) : customer.total_invoiced > 0 ? (
+                      <span className="text-[9.5px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        Paid Up
+                      </span>
+                    ) : null}
+                    <span
+                      className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                        customer.customer_type === "BUSINESS"
+                          ? "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                          : customer.customer_type === "DEALER"
+                          ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                          : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                      }`}
+                    >
+                      {customer.customer_type || "RETAIL"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Meta Row: Phone · Email · GST */}
@@ -281,6 +292,11 @@ const Customers = () => {
                     <span className="font-mono text-[10px] text-slate-400">
                       #{(page - 1) * pagination.limit + index + 1}
                     </span>
+                    {customer.total_invoices > 0 && (
+                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded">
+                        {customer.total_invoices} Invoices (₹{(customer.total_invoiced || 0).toLocaleString("en-IN")})
+                      </span>
+                    )}
                   </div>
 
                   <div
@@ -306,7 +322,7 @@ const Customers = () => {
             </div>
 
             {/* ── Desktop Row ── */}
-            <div className="hidden md:grid grid-cols-[60px_2fr_1fr_120px] gap-2 items-center p-4">
+            <div className="hidden md:grid grid-cols-[60px_2fr_1fr_140px] gap-2 items-center p-4">
               <div className="text-ink-secondary dark:text-slate-400">{(page - 1) * pagination.limit + index + 1}</div>
               <div className="flex gap-3 items-center">
                 <div
@@ -322,8 +338,19 @@ const Customers = () => {
                   </div>
                 </div>
                 <div>
-                  <div className="font-bold text-ink-base dark:text-slate-100 text-base">
-                    {customer.full_name}
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-ink-base dark:text-slate-100 text-base">
+                      {customer.full_name}
+                    </span>
+                    {customer.total_due > 0 ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        Due: ₹{customer.total_due.toLocaleString("en-IN")}
+                      </span>
+                    ) : customer.total_invoiced > 0 ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        Paid Up
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-sm text-ink-secondary dark:text-slate-400">
                     Phone: {customer.whatsapp_number}
@@ -339,27 +366,16 @@ const Customers = () => {
                 </div>
               </div>
               <div className="text-ink-secondary dark:text-slate-400">
-                <div className="text-sm">
+                <div className="text-sm space-y-1">
                   {(customer.address?.line1 || customer.address?.city) && (
                     <p>
                       Address: {customer.address.line1}
                       {customer.address?.city && `, ${customer.address.city}`}
                     </p>
                   )}
-                  {customer.date_of_birth && (
-                    <p>
-                      DOB:{" "}
-                      {new Date(customer.date_of_birth).toLocaleDateString(
-                        "en-IN",
-                      )}
-                    </p>
-                  )}
-                  {customer.anniversary_date && (
-                    <p>
-                      Anniversary:{" "}
-                      {new Date(customer.anniversary_date).toLocaleDateString(
-                        "en-IN",
-                      )}
+                  {customer.total_invoices !== undefined && (
+                    <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
+                      Billed: ₹{(customer.total_invoiced || 0).toLocaleString("en-IN")} ({customer.total_invoices} invoices)
                     </p>
                   )}
                 </div>

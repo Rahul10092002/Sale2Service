@@ -3,6 +3,7 @@ import {
   createCustomer,
   getCustomers,
   getCustomerById,
+  getCustomerLedger,
   updateCustomer,
   deleteCustomer,
 } from "../controllers/customerController.js";
@@ -18,6 +19,9 @@ customerRouter.post("/", checkPermission("customers_create"), createCustomer);
 
 // Get customers list
 customerRouter.get("/", checkPermission("customers_view"), getCustomers);
+
+// Get customer financial ledger
+customerRouter.get("/:id/ledger", checkPermission("customers_view"), getCustomerLedger);
 
 // Get single customer and their invoices
 customerRouter.get("/:id", checkPermission("customers_view"), getCustomerById);

@@ -67,11 +67,12 @@ export const authApi = baseApi.injectEndpoints({
       query: () => "/auth/me",
       providesTags: ["User", "Auth"],
       transformResponse: (response) => {
-        // Handle both { data: { user, shop_id } } and direct { user } shapes
+        // Handle both { data: { user, shop, shop_id } } and direct { user } shapes
         const data = response?.data || response;
         return {
           user: data?.user || data,
-          shopId: data?.shop_id || data?.shopId,
+          shop: data?.shop || null,
+          shopId: data?.shop_id || data?.shopId || data?.shop?.id,
         };
       },
     }),

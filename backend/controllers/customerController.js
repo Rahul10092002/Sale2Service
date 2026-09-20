@@ -84,6 +84,38 @@ export const getCustomers = async (req, res) => {
             { $sort: sortStage },
             { $skip: skip },
             { $limit: limitNum },
+            {
+              $lookup: {
+                from: "invoices",
+                let: { customerId: "$_id" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          { $eq: ["$customer_id", "$$customerId"] },
+                          { $eq: ["$deleted_at", null] },
+                        ],
+                      },
+                    },
+                  },
+                ],
+                as: "invoices_summary",
+              },
+            },
+            {
+              $addFields: {
+                total_invoiced: { $sum: "$invoices_summary.total_amount" },
+                total_paid: { $sum: "$invoices_summary.amount_paid" },
+                total_due: { $sum: "$invoices_summary.amount_due" },
+                total_invoices: { $size: "$invoices_summary" },
+              },
+            },
+            {
+              $project: {
+                invoices_summary: 0,
+              },
+            },
           ],
         },
       },
@@ -224,5 +256,123 @@ export const deleteCustomer = async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to delete customer" });
+  }
+};
+
+// Get detailed financial ledger for a single customer
+export const getCustomerLedger = async (req, res) => {
+  try {
+    const { user } = req;
+    const { id } = req.params;
+    const { startDate, endDate, status } = req.query;
+
+    const customer = await Customer.findOne({
+      _id: id,
+      shop_id: user.shopId,
+      deleted_at: null,
+    });
+
+    if (!customer) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found" });
+    }
+
+    const matchQuery = {
+      customer_id: new mongoose.Types.ObjectId(id),
+      shop_id: new mongoose.Types.ObjectId(user.shopId),
+      deleted_at: null,
+    };
+
+    if (startDate || endDate) {
+      matchQuery.invoice_date = {};
+      if (startDate) matchQuery.invoice_date.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchQuery.invoice_date.$lte = end;
+      }
+    }
+
+    if (status && status !== "ALL") {
+      matchQuery.payment_status = status.toUpperCase();
+    }
+
+    // Fetch invoices sorted chronologically for correct running balance calculation
+    const rawInvoices = await Invoice.find(matchQuery)
+      .sort({ invoice_date: 1, createdAt: 1 })
+      .lean();
+
+    let cumulativeBalance = 0;
+    let totalInvoiced = 0;
+    let totalPaid = 0;
+    let totalDue = 0;
+    let paidCount = 0;
+    let partialCount = 0;
+    let unpaidCount = 0;
+
+    const ledgerEntries = rawInvoices.map((inv) => {
+      const debit = Number(inv.total_amount || 0);
+      const credit = Number(inv.amount_paid || 0);
+      const invoiceBalance = Math.max(0, debit - credit);
+
+      cumulativeBalance += invoiceBalance;
+      totalInvoiced += debit;
+      totalPaid += credit;
+      totalDue += invoiceBalance;
+
+      if (inv.payment_status === "PAID") paidCount++;
+      else if (inv.payment_status === "PARTIAL") partialCount++;
+      else unpaidCount++;
+
+      // Construct a concise items summary string
+      let itemsSummary = "";
+      if (Array.isArray(inv.services) && inv.services.length > 0) {
+        itemsSummary = inv.services.map((s) => s.product_name).join(", ");
+      } else {
+        itemsSummary = "Standard Invoice";
+      }
+
+      return {
+        _id: inv._id,
+        invoice_number: inv.invoice_number,
+        invoice_date: inv.invoice_date || inv.createdAt,
+        payment_mode: inv.payment_mode || "CASH",
+        payment_status: inv.payment_status || "UNPAID",
+        items_summary: itemsSummary,
+        debit,
+        credit,
+        invoice_balance: invoiceBalance,
+        running_balance: cumulativeBalance,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        customer: {
+          _id: customer._id,
+          full_name: customer.full_name,
+          whatsapp_number: customer.whatsapp_number,
+          email: customer.email,
+          gst_number: customer.gst_number,
+        },
+        summary: {
+          total_invoiced: totalInvoiced,
+          total_paid: totalPaid,
+          total_due: totalDue,
+          total_invoices: rawInvoices.length,
+          paid_count: paidCount,
+          partial_count: partialCount,
+          unpaid_count: unpaidCount,
+        },
+        ledger_entries: ledgerEntries,
+      },
+    });
+  } catch (error) {
+    console.error("Get customer ledger error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch customer ledger" });
   }
 };

@@ -8,6 +8,9 @@ import PurchaseOrder from "../models/PurchaseOrder.js";
 import FestivalSchedule from "../models/FestivalSchedule.js";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
+import ServicePlan from "../models/ServicePlan.js";
+import ServiceSchedule from "../models/ServiceSchedule.js";
+import ServiceVisit from "../models/ServiceVisit.js";
 
 const MODEL_MAP = {
   invoices: {
@@ -201,6 +204,35 @@ export const restoreItem = async (req, res) => {
       );
     }
 
+    // If restoring a customer, also restore customer's invoices and details
+    if (entity_type === "customers") {
+      const customerInvoices = await Invoice.find({ customer_id: id, shop_id: shopId });
+      const invoiceIds = customerInvoices.map((inv) => inv._id);
+      await Invoice.updateMany({ customer_id: id, shop_id: shopId }, { deleted_at: null });
+
+      if (invoiceIds.length > 0) {
+        const invoiceItems = await InvoiceItem.find({ invoice_id: { $in: invoiceIds }, shop_id: shopId });
+        const itemIds = invoiceItems.map((item) => item._id);
+        await InvoiceItem.updateMany({ invoice_id: { $in: invoiceIds }, shop_id: shopId }, { deleted_at: null });
+
+        if (itemIds.length > 0) {
+          const servicePlans = await ServicePlan.find({ invoice_item_id: { $in: itemIds }, shop_id: shopId });
+          const planIds = servicePlans.map((p) => p._id);
+          await ServicePlan.updateMany({ invoice_item_id: { $in: itemIds }, shop_id: shopId }, { deleted_at: null });
+
+          if (planIds.length > 0) {
+            const serviceSchedules = await ServiceSchedule.find({ service_plan_id: { $in: planIds }, shop_id: shopId });
+            const scheduleIds = serviceSchedules.map((s) => s._id);
+            await ServiceSchedule.updateMany({ service_plan_id: { $in: planIds }, shop_id: shopId }, { deleted_at: null });
+
+            if (scheduleIds.length > 0) {
+              await ServiceVisit.updateMany({ service_schedule_id: { $in: scheduleIds }, shop_id: shopId }, { deleted_at: null });
+            }
+          }
+        }
+      }
+    }
+
     // If restoring an inventory item, also restore parent purchase order if soft-deleted
     if (entity_type === "inventory" && item.purchase_order_id) {
       await PurchaseOrder.findByIdAndUpdate(item.purchase_order_id, {
@@ -256,6 +288,35 @@ export const permanentlyDeleteItem = async (req, res) => {
     // If permanently deleting an invoice, also delete child invoice items
     if (entity_type === "invoices") {
       await InvoiceItem.deleteMany({ invoice_id: id, shop_id: shopId });
+    }
+
+    // If permanently deleting a customer, also delete child invoices, items, plans, schedules, visits
+    if (entity_type === "customers") {
+      const invoices = await Invoice.find({ customer_id: id, shop_id: shopId });
+      const invoiceIds = invoices.map((i) => i._id);
+
+      if (invoiceIds.length > 0) {
+        const invoiceItems = await InvoiceItem.find({ invoice_id: { $in: invoiceIds }, shop_id: shopId });
+        const itemIds = invoiceItems.map((item) => item._id);
+
+        if (itemIds.length > 0) {
+          const servicePlans = await ServicePlan.find({ invoice_item_id: { $in: itemIds }, shop_id: shopId });
+          const planIds = servicePlans.map((p) => p._id);
+
+          if (planIds.length > 0) {
+            const serviceSchedules = await ServiceSchedule.find({ service_plan_id: { $in: planIds }, shop_id: shopId });
+            const scheduleIds = serviceSchedules.map((s) => s._id);
+
+            if (scheduleIds.length > 0) {
+              await ServiceVisit.deleteMany({ service_schedule_id: { $in: scheduleIds }, shop_id: shopId });
+            }
+            await ServiceSchedule.deleteMany({ service_plan_id: { $in: planIds }, shop_id: shopId });
+          }
+          await ServicePlan.deleteMany({ invoice_item_id: { $in: itemIds }, shop_id: shopId });
+        }
+        await InvoiceItem.deleteMany({ invoice_id: { $in: invoiceIds }, shop_id: shopId });
+        await Invoice.deleteMany({ customer_id: id, shop_id: shopId });
+      }
     }
 
     return res.json({

@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import Customer from "../models/Customer.js";
 import Invoice from "../models/Invoice.js";
+import InvoiceItem from "../models/InvoiceItem.js";
+import ServicePlan from "../models/ServicePlan.js";
+import ServiceSchedule from "../models/ServiceSchedule.js";
+import ServiceVisit from "../models/ServiceVisit.js";
 
 // Create a new customer
 export const createCustomer = async (req, res) => {
@@ -247,10 +251,92 @@ export const deleteCustomer = async (req, res) => {
         .json({ success: false, message: "Customer not found" });
     }
 
-    customer.deleted_at = new Date();
+    const deleteDate = new Date();
+    customer.deleted_at = deleteDate;
     await customer.save();
 
-    res.json({ success: true, message: "Customer deleted successfully" });
+    // Cascade soft delete associated invoices and details
+    const customerInvoices = await Invoice.find({
+      customer_id: customer._id,
+      shop_id: user.shopId,
+      deleted_at: null,
+    });
+
+    if (customerInvoices.length > 0) {
+      const invoiceIds = customerInvoices.map((inv) => inv._id);
+
+      // Soft delete invoices
+      await Invoice.updateMany(
+        { _id: { $in: invoiceIds }, shop_id: user.shopId },
+        { deleted_at: deleteDate }
+      );
+
+      // Find associated invoice items
+      const invoiceItems = await InvoiceItem.find({
+        invoice_id: { $in: invoiceIds },
+        shop_id: user.shopId,
+        deleted_at: null,
+      });
+
+      if (invoiceItems.length > 0) {
+        const itemIds = invoiceItems.map((item) => item._id);
+
+        // Soft delete invoice items
+        await InvoiceItem.updateMany(
+          { _id: { $in: itemIds }, shop_id: user.shopId },
+          { deleted_at: deleteDate }
+        );
+
+        // Find associated service plans
+        const servicePlans = await ServicePlan.find({
+          invoice_item_id: { $in: itemIds },
+          shop_id: user.shopId,
+          deleted_at: null,
+        });
+
+        if (servicePlans.length > 0) {
+          const planIds = servicePlans.map((plan) => plan._id);
+
+          // Soft delete service plans
+          await ServicePlan.updateMany(
+            { _id: { $in: planIds }, shop_id: user.shopId },
+            { deleted_at: deleteDate }
+          );
+
+          // Find associated service schedules
+          const serviceSchedules = await ServiceSchedule.find({
+            service_plan_id: { $in: planIds },
+            shop_id: user.shopId,
+            deleted_at: null,
+          });
+
+          if (serviceSchedules.length > 0) {
+            const scheduleIds = serviceSchedules.map((sch) => sch._id);
+
+            // Soft delete service schedules
+            await ServiceSchedule.updateMany(
+              { _id: { $in: scheduleIds }, shop_id: user.shopId },
+              { deleted_at: deleteDate }
+            );
+
+            // Soft delete service visits
+            await ServiceVisit.updateMany(
+              {
+                service_schedule_id: { $in: scheduleIds },
+                shop_id: user.shopId,
+                deleted_at: null,
+              },
+              { deleted_at: deleteDate }
+            );
+          }
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: "Customer and associated invoices and details deleted successfully",
+    });
   } catch (error) {
     console.error("Delete customer error:", error);
     res

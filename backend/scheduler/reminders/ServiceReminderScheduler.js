@@ -2,7 +2,7 @@ import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import ServiceSchedule from "../../models/ServiceSchedule.js";
 import Shop from "../../models/Shop.js";
-import { formatDateForMessage, getShopName, getShopContactInfo } from "../core/utils.js";
+import { formatDateForMessage, getShopName, getShopContactInfo, getFirstName } from "../core/utils.js";
 
 export default class ServiceReminderScheduler extends BaseScheduler {
   constructor() {
@@ -199,20 +199,20 @@ export default class ServiceReminderScheduler extends BaseScheduler {
     return map[n - 1] || `${n}वीं`;
   };
         variables = {
-    1: customer.full_name,                     // {{1}}
-    2: invoiceItem.product_name,               // {{2}}
-    3: invoiceItem.serial_number || "",     // {{3}} ✅ ADD THIS FIELD IN DB
-    4: getServiceCountHindi(service.service_number || 1), // {{4}}
-    5: shopContact,                            // {{5}}
-    6: getShopName(shop),                      // {{6}}
-  };
+          1: getFirstName(customer?.full_name),                     // {{1}}
+          2: invoiceItem.product_name,               // {{2}}
+          3: invoiceItem.serial_number || "",     // {{3}} ✅ ADD THIS FIELD IN DB
+          4: getServiceCountHindi(service.service_number || 1), // {{4}}
+          5: shopContact,                            // {{5}}
+          6: getShopName(shop),                      // {{6}}
+        };
         break;
 
       case "MISSED":
       case "FOLLOWUP":
         templateName = "service_missed_v1";
         variables = {
-          1: customer.full_name,
+          1: getFirstName(customer?.full_name),
           2: invoiceItem.product_name,
           3: getShopName(shop),
         };

@@ -2,9 +2,15 @@ import BaseScheduler from "../core/BaseScheduler.js";
 import MessageSender from "../messaging/MessageSender.js";
 import Invoice from "../../models/Invoice.js";
 import InvoiceItem from "../../models/InvoiceItem.js";
-import { createDateRange, formatDateForMessage, formatPhoneNumber } from "../core/utils.js";
+import {
+  createDateRange,
+  formatDateForMessage,
+  formatPhoneNumber,
+  getShopName,
+  getShopContactInfo,
+  getFirstName,
+} from "../core/utils.js";
 import Shop from "../../models/Shop.js";
-import { getShopName, getShopContactInfo } from "../core/utils.js";
 /**
  * Payment-specific reminder scheduler
  * Handles pending payment reminders at different intervals
@@ -35,7 +41,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       "";
 
     this.dailySummaryMap[shopId].push({
-      customerName: customer?.full_name || invoice.customer_name || "ग्राहक",
+      customerName: getFirstName(customer?.full_name || invoice.customer_name, "ग्राहक"),
       customerPhone,
       invoiceNumber: invoice.invoice_number || "N/A",
       amountDue: invoice.amount_due ?? invoice.total_amount ?? 0,
@@ -346,8 +352,9 @@ export default class PaymentReminderScheduler extends BaseScheduler {
     const serialNumber = invoiceItems?.[0]?.serial_number || "N/A";
     const shopContact = getShopContactInfo(shop) || "";
 
-    const customerName =
-      invoice.customer_id?.full_name || invoice.customer_name || "";
+    const customerName = getFirstName(
+      invoice.customer_id?.full_name || invoice.customer_name || ""
+    );
 
     if (templateName === "payment_missed") {
       return {

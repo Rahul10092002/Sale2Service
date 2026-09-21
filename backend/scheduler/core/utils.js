@@ -3,6 +3,19 @@
  */
 
 /**
+ * Extract first name from a full name string
+ * @param {string} name - Full name
+ * @param {string} fallback - Fallback value if name is empty
+ * @returns {string} - First name or fallback
+ */
+export const getFirstName = (name, fallback = "") => {
+  if (!name || typeof name !== "string") return fallback;
+  const trimmed = name.trim();
+  if (!trimmed) return fallback;
+  return trimmed.split(/\s+/)[0];
+};
+
+/**
  * Format and validate phone number for WhatsApp
  * @param {string} phoneNumber - Raw phone number
  * @param {string} defaultCountryCode - Default country code (default: "91")

@@ -8,6 +8,7 @@ import {
   getISTDateParts,
   getShopName,
   formatPhoneNumber,
+  getFirstName,
 } from "../core/utils.js";
 
 /**
@@ -216,7 +217,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
       // Prepare template variables for birthday_wish
       // {{1}}: Customer name, {{2}}: Shop name
       const variables = {
-        1: customer.full_name,
+        1: getFirstName(customer?.full_name),
         2: getShopName(shop),
       };
 
@@ -307,7 +308,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
       // Prepare template variables for anniversary_wish
       // {{1}}: Customer name, {{2}}: Shop name
       const variables = {
-        1: customer.full_name,
+        1: getFirstName(customer?.full_name),
         2: getShopName(shop),
       };
 
@@ -464,7 +465,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
       // {{2}} Festival Name
       // {{3}} Shop Name
       const variables = {
-        1: customer.full_name,
+        1: getFirstName(customer?.full_name),
         2: festival.festival_name,
         3: getShopName(shop),
       };
@@ -552,12 +553,12 @@ ${variables[3]} की ओर से`;
       // 👥 Customer List (limit 5)
       const allCustomers = [
         ...todayBirthdays.map((c) => ({
-          name: c.full_name,
+          name: getFirstName(c.full_name),
           whatsapp_number: c.whatsapp_number,
           type: "जन्मदिन",
         })),
         ...todayAnniversaries.map((c) => ({
-          name: c.full_name,
+          name: getFirstName(c.full_name),
           whatsapp_number: c.whatsapp_number,
           type: "वर्षगाँठ",
         })),

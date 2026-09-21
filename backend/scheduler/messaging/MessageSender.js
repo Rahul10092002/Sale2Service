@@ -1,5 +1,6 @@
 import { sendWhatsappMessageViaMSG91 } from "../../config/msg91.js";
 import ReminderLog from "../../models/ReminderLog.js";
+import { getFirstName } from "../core/utils.js";
 
 /**
  * Centralized message sender using MSG91 only
@@ -38,7 +39,7 @@ export default class MessageSender {
         buttons: buttons,
         campaignName: metadata.campaignName || templateName,
         hospitalId: metadata.shopId || null,
-        userName: metadata.customerName || "",
+        userName: getFirstName(metadata.customerName) || metadata.customerName || "",
         messageType: metadata.messageType || templateName,
       };
 

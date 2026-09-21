@@ -6,6 +6,7 @@ import {
   createDateRange,
   getShopName,
   getShopContactInfo,
+  getFirstName,
 } from "../core/utils.js";
 /**
  * Warranty-specific reminder scheduler
@@ -343,12 +344,13 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
     const contactInfo =
       getShopContactInfo(shop) ||
       "";
+    const firstName = getFirstName(customer?.full_name, "Customer");
 
     if (daysUntilExpiry !== null) {
       // For warranty_expiring template: customer_name, product_name, days_remaining, contact_info, shop_name
       return {
         variables: {
-          1: customer.full_name || "Customer",
+          1: firstName,
           2: invoiceItem.product_name || "Product",
           3: daysUntilExpiry.toString(),
           4: contactInfo,
@@ -360,7 +362,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
       // For warranty_expired template: customer_name, product_name, contact_info, shop_name
       return {
         variables: {
-          1: customer.full_name || "Customer",
+          1: firstName,
           2: invoiceItem.product_name || "Product",
           3: contactInfo,
           4: shopName,

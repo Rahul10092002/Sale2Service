@@ -56,7 +56,7 @@ async function testPaymentReminders() {
       6: TEST_SHOP_PHONE,
       7: "राजदीप पावर",
     },
-    buttons: [{ subtype: "quick_reply", value: TEST_SHOP_PHONE }],
+    buttons: [{ subtype: "url", value: TEST_SHOP_PHONE }],
     campaignName: "test_payment_reminders",
   };
 

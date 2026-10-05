@@ -386,6 +386,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
         5: formatDateForMessage(invoice.due_date),
         6: shopContact,
         7: shop?.shop_name_hi || shop?.shop_name || "",
+      },
       buttons: [{ subtype: "url", value: shopContact }],
     };
   }

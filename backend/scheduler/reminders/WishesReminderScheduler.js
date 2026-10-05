@@ -66,6 +66,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
   async processWishesReminders() {
     try {
       this.logInfo("Processing wishes reminders...");
+      this.dailySummaryMap = {};
 
       await Promise.all([
         this.processBirthdayWishes(),
@@ -549,6 +550,10 @@ ${variables[3]} की ओर से`;
       const birthdayCount = todayBirthdays.length;
       const anniversaryCount = todayAnniversaries.length;
       const total = birthdayCount + anniversaryCount;
+
+      if (total === 0) {
+        return;
+      }
 
       // 👥 Customer List (limit 5)
       const allCustomers = [

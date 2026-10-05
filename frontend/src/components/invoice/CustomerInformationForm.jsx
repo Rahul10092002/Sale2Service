@@ -25,35 +25,49 @@ const CustomerInformationForm = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
   const debounceRef = useRef(null);
+  const isJustSelectedRef = useRef(false);
   const [queryParams, setQueryParams] = useState(null);
 
   const { customer } = currentInvoice;
 
-  // Handle customer search by WhatsApp
-  const handleCustomerSearch = useCallback(() => {
-    if (!customer.whatsapp_number || customer.whatsapp_number.length < 4)
-      return;
-    setQueryParams({ search: customer.whatsapp_number });
-  }, [customer.whatsapp_number]);
+  // Handle typing in any customer search field (first_name, last_name, whatsapp_number)
+  const handleFieldChange = (field, value) => {
+    updateCustomerData({ [field]: value });
 
-  // Debounce input and set query params for RTK Query
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    if (!customer.whatsapp_number || customer.whatsapp_number.length < 4) {
+    if (isJustSelectedRef.current) {
+      isJustSelectedRef.current = false;
       setQueryParams(null);
       setSuggestions([]);
       return;
     }
 
-    debounceRef.current = setTimeout(() => {
-      setQueryParams({ search: customer.whatsapp_number });
-    }, 400);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [customer.whatsapp_number]);
+    const term = (value || "").trim();
+    if (term.length >= 3) {
+      debounceRef.current = setTimeout(() => {
+        setQueryParams({ search: term });
+        setIsFocused(true);
+      }, 350);
+    } else {
+      setQueryParams(null);
+      setSuggestions([]);
+    }
+  };
+
+  // Manual search trigger
+  const handleCustomerSearch = useCallback(() => {
+    const term = (
+      customer.first_name ||
+      customer.last_name ||
+      customer.whatsapp_number ||
+      customer.full_name ||
+      ""
+    ).trim();
+    if (term.length < 3) return;
+    setQueryParams({ search: term });
+    setIsFocused(true);
+  }, [customer.whatsapp_number, customer.first_name, customer.last_name, customer.full_name]);
 
   // Execute query using RTK Query hook
   const { data, isFetching: isFetchingCustomers } = useGetCustomersQuery(
@@ -69,7 +83,7 @@ const CustomerInformationForm = () => {
 
   useEffect(() => {
     const customersList = data && data.customers ? data.customers : [];
-    if (customersList.length > 0) {
+    if (customersList.length > 0 && !isJustSelectedRef.current) {
       setSuggestions(customersList);
     } else {
       setSuggestions([]);
@@ -77,9 +91,19 @@ const CustomerInformationForm = () => {
   }, [data]);
 
   const handleSelectSuggestion = (c) => {
-    updateCustomerData(c);
+    isJustSelectedRef.current = true;
+    const fn = c.first_name || (c.full_name ? c.full_name.trim().split(/\s+/)[0] : "");
+    const ln = c.last_name || (c.full_name ? c.full_name.trim().split(/\s+/).slice(1).join(" ") : "");
+    updateCustomerData({
+      ...c,
+      first_name: fn,
+      last_name: ln,
+      full_name: c.full_name || [fn, ln].filter(Boolean).join(" "),
+    });
     updateCustomerAddressData(c.address || {});
+    setQueryParams(null);
     setSuggestions([]);
+    setIsFocused(false);
   };
 
   // Auto-expand optional section if it has validation errors
@@ -118,7 +142,7 @@ const CustomerInformationForm = () => {
               Customer Information
             </h2>
             <p className="text-[11px] text-ink-muted dark:text-slate-400 mt-0.5">
-              Enter or search customer details for billing & warranty
+              Enter or search customer details by Name or Phone for billing & warranty
             </p>
           </div>
         </div>
@@ -126,9 +150,9 @@ const CustomerInformationForm = () => {
 
       <div className="space-y-3">
         {/* Primary Contact Details */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 relative">
           {/* WhatsApp Number with Quick Search */}
-          <div className="col-span-1 relative">
+          <div className="col-span-1">
             <label className="block text-xs font-bold text-ink-secondary dark:text-slate-200 mb-1">
               WhatsApp Number *
             </label>
@@ -146,11 +170,10 @@ const CustomerInformationForm = () => {
                     inputMode="tel"
                     value={customer.whatsapp_number || ""}
                     onChange={(e) =>
-                      updateCustomerData({ whatsapp_number: e.target.value })
+                      handleFieldChange("whatsapp_number", e.target.value)
                     }
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => {
-                      handleCustomerSearch();
                       setTimeout(() => setIsFocused(false), 200);
                     }}
                     placeholder="+91 9876543210"
@@ -161,6 +184,7 @@ const CustomerInformationForm = () => {
                       type="button"
                       onClick={() => {
                         updateCustomerData({ whatsapp_number: "" });
+                        setQueryParams(null);
                         setSuggestions([]);
                       }}
                       className="p-1 mr-1 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-full transition-colors"
@@ -174,9 +198,9 @@ const CustomerInformationForm = () => {
                 <button
                   type="button"
                   onClick={handleCustomerSearch}
-                  disabled={isSearching || !customer.whatsapp_number}
+                  disabled={isSearching}
                   className="h-full px-2.5 sm:px-3 flex items-center justify-center border-l border-gray-200 dark:border-dark-border bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors font-medium text-xs gap-1 disabled:opacity-50 shrink-0"
-                  aria-label="Search customer by WhatsApp"
+                  aria-label="Search customer by Phone or Name"
                 >
                   {isSearching ? (
                     <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-indigo-600 border-t-transparent" />
@@ -201,52 +225,74 @@ const CustomerInformationForm = () => {
                   {errors["customer.whatsapp_number"]}
                 </p>
               )}
-
-              {/* Suggestions Dropdown */}
-              {suggestions && suggestions.length > 0 && isFocused && (
-                <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
-                  {suggestions.map((s) => (
-                    <button
-                      key={s._id || s.id || s.whatsapp_number}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleSelectSuggestion(s)}
-                      className="w-full text-left p-2.5 sm:p-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 dark:text-slate-100 flex items-center gap-2.5 active:scale-98 transition-transform min-h-[44px]"
-                    >
-                      <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0">
-                        <User size={14} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                          {s.full_name || "Unnamed"}
-                        </div>
-                        <div className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
-                          {s.whatsapp_number} {s.address?.city ? `· ${s.address.city}` : ""}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Full Name */}
+          {/* First Name */}
           <div className="col-span-1">
             <label className="block text-xs font-bold text-ink-secondary dark:text-slate-200 mb-1">
-              Full Name *
+              First Name *
             </label>
             <Input
               type="text"
-              value={customer.full_name || ""}
-              onChange={(e) =>
-                updateCustomerData({ full_name: e.target.value })
-              }
-              placeholder="Customer full name"
-              error={errors["customer.full_name"]}
+              value={customer.first_name || ""}
+              onChange={(e) => handleFieldChange("first_name", e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => {
+                setTimeout(() => setIsFocused(false), 200);
+              }}
+              placeholder="First name"
+              error={errors["customer.first_name"] || errors["customer.full_name"]}
               inputClassName="h-9 sm:h-8 text-xs font-semibold"
             />
           </div>
+
+          {/* Last Name */}
+          <div className="col-span-1">
+            <label className="block text-xs font-bold text-ink-secondary dark:text-slate-200 mb-1">
+              Last Name
+            </label>
+            <Input
+              type="text"
+              value={customer.last_name || ""}
+              onChange={(e) => handleFieldChange("last_name", e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => {
+                setTimeout(() => setIsFocused(false), 200);
+              }}
+              placeholder="Last name"
+              inputClassName="h-9 sm:h-8 text-xs font-semibold"
+            />
+          </div>
+
+          {/* Search Suggestions Dropdown */}
+          {suggestions && suggestions.length > 0 && isFocused && (
+            <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+              {suggestions.map((s) => (
+                <button
+                  key={s._id || s.id || s.whatsapp_number}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSelectSuggestion(s)}
+                  className="w-full text-left p-2.5 sm:p-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 dark:text-slate-100 flex items-center gap-2.5 active:scale-98 transition-transform min-h-[44px]"
+                >
+                  <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0">
+                    <User size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                      {s.first_name
+                        ? `${s.first_name} ${s.last_name || ""}`.trim()
+                        : s.full_name || "Unnamed"}
+                    </div>
+                    <div className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
+                      {s.whatsapp_number} {s.address?.city ? `· ${s.address.city}` : ""}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Address Fields */}

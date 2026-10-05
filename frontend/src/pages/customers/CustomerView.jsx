@@ -135,6 +135,8 @@ const CustomerView = () => {
     }
 
     const dueVal = ledgerSummary.total_due || 0;
+    const isCredit = dueVal < 0;
+    const absDueStr = Math.abs(dueVal).toLocaleString("en-IN");
     const dueStr = dueVal.toLocaleString("en-IN");
     const paidStr = (ledgerSummary.total_paid || 0).toLocaleString("en-IN");
     const totalStr = (ledgerSummary.total_invoiced || 0).toLocaleString("en-IN");
@@ -155,8 +157,12 @@ const CustomerView = () => {
     msg += `-----------------------------------\n`;
     msg += `*भुगतान की जानकारी*\n`;
     msg += `• कुल बिल: ₹${totalStr}\n`;
-    msg += `• कुल भुगतान: ₹${paidStr}\n`;
-    msg += `• *बकाया राशि: ₹${dueStr}*\n`;
+    msg += `• कुल भुगतान/जमा: ₹${paidStr}\n`;
+    if (isCredit) {
+      msg += `• *स्टोर क्रेडिट / अग्रिम संतुलन: ₹${absDueStr} (क्रेडिट)*\n`;
+    } else {
+      msg += `• *बकाया राशि: ₹${dueStr}*\n`;
+    }
     msg += `-----------------------------------\n`;
     msg += `*हाल के लेन-देन*\n`;
 
@@ -168,15 +174,19 @@ const CustomerView = () => {
         const invDate = formatDate(item.invoice_date);
         const invBilled = (item.debit || 0).toLocaleString("en-IN");
         const invPaid = (item.credit || 0).toLocaleString("en-IN");
-        const invBal = (item.invoice_balance || 0).toLocaleString("en-IN");
+        const invBal = item.invoice_balance < 0 
+          ? `-₹${Math.abs(item.invoice_balance).toLocaleString("en-IN")} (क्रेडिट)`
+          : `₹${(item.invoice_balance || 0).toLocaleString("en-IN")}`;
         msg += `• *${item.invoice_number}* (${invDate})\n`;
-        msg += `   बिल: ₹${invBilled} | भुगतान: ₹${invPaid} | बकाया: ₹${invBal}\n`;
+        msg += `   बिल: ₹${invBilled} | जमा/क्रेडिट: ₹${invPaid} | संतुलन: ${invBal}\n`;
       });
     }
 
     msg += `-----------------------------------\n`;
     if (dueVal > 0) {
       msg += `*सूचना:* कृपया *₹${dueStr}* की बकाया राशि जल्द से जल्द जमा करने का कष्ट करें。\n\n`;
+    } else if (isCredit) {
+      msg += `*सूचना:* आपके पास *₹${absDueStr}* का स्टोर क्रेडिट / एक्सचेंज बैलेंस उपलब्ध है।\n\n`;
     }
 
     if (shopNameHindi) {
@@ -334,6 +344,11 @@ const CustomerView = () => {
                   <AlertTriangle className="w-4 h-4 text-amber-600" />
                   <span>Outstanding: ₹{ledgerSummary.total_due.toLocaleString("en-IN")}</span>
                 </div>
+              ) : ledgerSummary.total_due < 0 ? (
+                <div className="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 text-xs font-bold flex items-center gap-1.5">
+                  <Coins className="w-4 h-4 text-indigo-600" />
+                  <span>Store Credit: ₹{Math.abs(ledgerSummary.total_due).toLocaleString("en-IN")}</span>
+                </div>
               ) : (
                 <div className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs font-bold flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -446,33 +461,49 @@ const CustomerView = () => {
             </div>
           </div>
 
-          {/* Card 3: Net Outstanding Balance */}
+          {/* Card 3: Net Outstanding Balance / Store Credit */}
           <div className={`p-3.5 rounded-xl border shadow-xs flex items-center justify-between transition-colors ${
             ledgerSummary.total_due > 0
               ? "bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+              : ledgerSummary.total_due < 0
+              ? "bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800"
               : "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800"
           }`}>
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-slate-300">
-                Net Outstanding Dues
+                {ledgerSummary.total_due < 0 ? "Store Credit / Advance" : "Net Outstanding Dues"}
               </p>
               <p className={`text-lg font-bold mt-0.5 ${
                 ledgerSummary.total_due > 0
                   ? "text-amber-700 dark:text-amber-300"
+                  : ledgerSummary.total_due < 0
+                  ? "text-indigo-700 dark:text-indigo-300"
                   : "text-emerald-700 dark:text-emerald-300"
               }`}>
-                ₹{ledgerSummary.total_due.toLocaleString("en-IN")}
+                {ledgerSummary.total_due < 0
+                  ? `₹${Math.abs(ledgerSummary.total_due).toLocaleString("en-IN")}`
+                  : `₹${ledgerSummary.total_due.toLocaleString("en-IN")}`}
               </p>
               <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
-                {ledgerSummary.total_due > 0 ? "Pending customer payment" : "All dues settled"}
+                {ledgerSummary.total_due > 0
+                  ? "Pending customer payment"
+                  : ledgerSummary.total_due < 0
+                  ? "Available customer credit balance"
+                  : "All dues settled"}
               </p>
             </div>
             <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
               ledgerSummary.total_due > 0
                 ? "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
+                : ledgerSummary.total_due < 0
+                ? "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
                 : "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
             }`}>
-              <AlertTriangle className="w-4 h-4" />
+              {ledgerSummary.total_due < 0 ? (
+                <Coins className="w-4 h-4" />
+              ) : (
+                <AlertTriangle className="w-4 h-4" />
+              )}
             </div>
           </div>
 
@@ -612,13 +643,15 @@ const CustomerView = () => {
                         <span className="font-bold text-gray-900 dark:text-white">₹{entry.debit}</span>
                       </div>
                       <div>
-                        <span className="block text-[10px] text-emerald-600">Credit (Paid)</span>
+                        <span className="block text-[10px] text-emerald-600">Credit (Paid/Exch)</span>
                         <span className="font-bold text-emerald-600">₹{entry.credit}</span>
                       </div>
                       <div>
                         <span className="block text-[10px] text-indigo-600">Running Bal</span>
-                        <span className="font-bold text-indigo-700 dark:text-indigo-300">
-                          ₹{entry.running_balance}
+                        <span className={`font-bold ${entry.running_balance < 0 ? "text-indigo-600 dark:text-indigo-400" : "text-indigo-700 dark:text-indigo-300"}`}>
+                          {entry.running_balance < 0
+                            ? `-₹${Math.abs(entry.running_balance)} (Cr)`
+                            : `₹${entry.running_balance}`}
                         </span>
                       </div>
                     </div>
@@ -635,7 +668,7 @@ const CustomerView = () => {
                       <th className="py-2.5 px-3 font-semibold">Invoice No</th>
                       <th className="py-2.5 px-3 font-semibold">Services / Description</th>
                       <th className="py-2.5 px-3 font-semibold text-right">Debit (Billed)</th>
-                      <th className="py-2.5 px-3 font-semibold text-right">Credit (Paid)</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">Credit (Paid/Exch)</th>
                       <th className="py-2.5 px-3 font-semibold text-right">Inv. Balance</th>
                       <th className="py-2.5 px-3 font-semibold text-right bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300">
                         Running Balance
@@ -671,12 +704,33 @@ const CustomerView = () => {
                         </td>
                         <td className="py-2.5 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                           ₹{entry.credit.toLocaleString("en-IN")}
+                          {entry.excess_exchange_credit > 0 && (
+                            <span className="block text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
+                              (₹{entry.excess_exchange_credit} Exch. Cr)
+                            </span>
+                          )}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">
-                          ₹{entry.invoice_balance.toLocaleString("en-IN")}
+                        <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                          {entry.invoice_balance < 0 ? (
+                            <span className="text-indigo-600 dark:text-indigo-400">
+                              -₹{Math.abs(entry.invoice_balance).toLocaleString("en-IN")}
+                            </span>
+                          ) : (
+                            <span className="text-amber-600 dark:text-amber-400">
+                              ₹{entry.invoice_balance.toLocaleString("en-IN")}
+                            </span>
+                          )}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50/40 dark:bg-indigo-950/30 whitespace-nowrap">
-                          ₹{entry.running_balance.toLocaleString("en-IN")}
+                        <td className="py-2.5 px-3 text-right font-extrabold bg-indigo-50/40 dark:bg-indigo-950/30 whitespace-nowrap">
+                          {entry.running_balance < 0 ? (
+                            <span className="text-indigo-600 dark:text-indigo-300">
+                              -₹{Math.abs(entry.running_balance).toLocaleString("en-IN")} (Cr)
+                            </span>
+                          ) : (
+                            <span className="text-indigo-700 dark:text-indigo-300">
+                              ₹{entry.running_balance.toLocaleString("en-IN")}
+                            </span>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full ${

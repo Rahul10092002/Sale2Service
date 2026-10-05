@@ -67,6 +67,8 @@ const Customers = () => {
   const [createCustomer] = useCreateCustomerMutation();
 
   const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
     full_name: "",
     whatsapp_number: "",
     alternate_phone: "",
@@ -86,13 +88,22 @@ const Customers = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    // support nested address fields using dot notation
     if (name && name.startsWith("address.")) {
       const key = name.split(".")[1];
       setFormData((prev) => ({
         ...prev,
         address: { ...prev.address, [key]: value },
       }));
+    } else if (name === "first_name" || name === "last_name") {
+      setFormData((prev) => {
+        const fn = name === "first_name" ? value : prev.first_name;
+        const ln = name === "last_name" ? value : prev.last_name;
+        return {
+          ...prev,
+          [name]: value,
+          full_name: [fn, ln].filter(Boolean).join(" "),
+        };
+      });
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -105,6 +116,8 @@ const Customers = () => {
       await createCustomer(formData).unwrap();
       setShowAddModal(false);
       setFormData({
+        first_name: "",
+        last_name: "",
         full_name: "",
         whatsapp_number: "",
         alternate_phone: "",
@@ -545,18 +558,30 @@ const Customers = () => {
                       </h4>
                     </div>
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="sm:col-span-2 space-y-1.5">
+                      <div className="space-y-1.5">
                         <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
-                          Full Name{" "}
+                          First Name{" "}
                           <span className="text-red-400 ml-0.5">*</span>
                         </label>
                         <input
-                          name="full_name"
-                          value={formData.full_name}
+                          name="first_name"
+                          value={formData.first_name}
                           onChange={handleInputChange}
-                          placeholder="e.g. Ramesh Kumar"
+                          placeholder="e.g. Ramesh"
                           className={inputCls}
                           required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-sm font-medium text-ink-secondary dark:text-slate-300">
+                          Last Name
+                        </label>
+                        <input
+                          name="last_name"
+                          value={formData.last_name}
+                          onChange={handleInputChange}
+                          placeholder="e.g. Kumar"
+                          className={inputCls}
                         />
                       </div>
                       <div className="space-y-1.5">

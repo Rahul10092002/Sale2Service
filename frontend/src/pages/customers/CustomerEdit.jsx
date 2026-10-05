@@ -24,6 +24,8 @@ const CustomerEdit = () => {
   const [updateCustomer] = useUpdateCustomerMutation();
 
   const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
     full_name: "",
     whatsapp_number: "",
     alternate_phone: "",
@@ -41,8 +43,12 @@ const CustomerEdit = () => {
   useEffect(() => {
     if (customerResp?.customer) {
       const customer = customerResp.customer;
+      const fn = customer.first_name || (customer.full_name ? customer.full_name.split(" ")[0] : "");
+      const ln = customer.last_name || (customer.full_name ? customer.full_name.split(" ").slice(1).join(" ") : "");
       setFormData({
-        full_name: customer.full_name || "",
+        first_name: fn,
+        last_name: ln,
+        full_name: customer.full_name || [fn, ln].filter(Boolean).join(" "),
         whatsapp_number: customer.whatsapp_number || "",
         alternate_phone: customer.alternate_phone || "",
         email: customer.email || "",
@@ -69,13 +75,22 @@ const CustomerEdit = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    // support nested address fields using dot notation
     if (name && name.startsWith("address.")) {
       const key = name.split(".")[1];
       setFormData((prev) => ({
         ...prev,
         address: { ...prev.address, [key]: value },
       }));
+    } else if (name === "first_name" || name === "last_name") {
+      setFormData((prev) => {
+        const fn = name === "first_name" ? value : prev.first_name;
+        const ln = name === "last_name" ? value : prev.last_name;
+        return {
+          ...prev,
+          [name]: value,
+          full_name: [fn, ln].filter(Boolean).join(" "),
+        };
+      });
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -149,12 +164,19 @@ const CustomerEdit = () => {
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <Input
-                  label="Full Name *"
-                  name="full_name"
+                  label="First Name *"
+                  name="first_name"
                   type="text"
-                  value={formData.full_name}
+                  value={formData.first_name}
                   onChange={handleInputChange}
                   required
+                />
+                <Input
+                  label="Last Name"
+                  name="last_name"
+                  type="text"
+                  value={formData.last_name}
+                  onChange={handleInputChange}
                 />
                 <Input
                   label="WhatsApp Number *"

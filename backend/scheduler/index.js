@@ -86,6 +86,22 @@ export default class SchedulerService {
       ist,
     );
 
+    // Every 15 minutes — recovery check for unsent invoice PDFs / WhatsApp messages
+    cron.schedule(
+      "*/15 * * * *",
+      async () => {
+        try {
+          const { processUnsentPdfInvoices } = await import(
+            "../services/invoicePdfRetryService.js"
+          );
+          await processUnsentPdfInvoices();
+        } catch (err) {
+          console.error("[SchedulerService] Unsent PDF recovery check error:", err);
+        }
+      },
+      ist,
+    );
+
     this.isRunning = true;
     console.log("[SchedulerService] Reminder scheduler started successfully");
     console.log("[SchedulerService] Schedule:");
@@ -93,6 +109,7 @@ export default class SchedulerService {
     console.log("  - 7 AM IST: Service reminders");
     console.log("  - 8 AM IST: Warranty reminders");
     console.log("  - 9 AM IST: Payment reminders");
+    console.log("  - Every 15 mins: Unsent invoice PDF recovery");
   }
 
   /**

@@ -16,6 +16,7 @@ import {
   calculateInvoiceTotals,
 } from "../../shared/invoiceMath.js";
 import { validateInvoicePayload } from "../utils/invoiceValidation.js";
+import { schedulePdfAndWhatsappRetry, tempPdfRetryStore } from "../services/invoicePdfRetryService.js";
 
 const getNextInvoiceSequence = async (shopId, datePart, session) => {
   const counter = await InvoiceCounter.findOneAndUpdate(
@@ -159,7 +160,9 @@ export default class InvoiceController {
 
       if (existingCustomer) {
         // Update existing customer with any new information
-        existingCustomer.full_name = customer.full_name;
+        if (customer.first_name !== undefined) existingCustomer.first_name = customer.first_name;
+        if (customer.last_name !== undefined) existingCustomer.last_name = customer.last_name;
+        if (customer.full_name) existingCustomer.full_name = customer.full_name;
         existingCustomer.email = customer.email || existingCustomer.email;
         existingCustomer.alternate_phone =
           customer.alternate_phone || existingCustomer.alternate_phone;
@@ -178,6 +181,8 @@ export default class InvoiceController {
       } else {
         // Create new customer
         const newCustomer = new Customer({
+          first_name: customer.first_name,
+          last_name: customer.last_name,
           full_name: customer.full_name,
           whatsapp_number: customer.whatsapp_number,
           email: customer.email,
@@ -204,7 +209,13 @@ export default class InvoiceController {
       // Step 2: Validate serial numbers are unique (for PRODUCT items)
       for (const item of invoice_items) {
         const itemType = String(item.item_type || "PRODUCT").toUpperCase();
-        if (itemType === "PRODUCT" && item.serial_number) {
+        const isNoSerial = Boolean(
+          item.has_no_serial ||
+            (item.serial_number &&
+              String(item.serial_number).trim().toUpperCase().startsWith("NS-")),
+        );
+
+        if (itemType === "PRODUCT" && item.serial_number && !isNoSerial) {
           const existingItem = await InvoiceItem.findOne({
             serial_number: item.serial_number.toUpperCase(),
             shop_id: user.shopId,
@@ -279,6 +290,7 @@ export default class InvoiceController {
         subtotal,
         discount,
         old_item_exchange_price: oldItemExchangePrice,
+        excess_exchange_credit: totals.excess_exchange_credit || 0,
         tax,
         total_amount: totalAmount,
         amount_paid: amountPaid,
@@ -345,11 +357,18 @@ export default class InvoiceController {
             }
           : {};
 
+        const isNoSerial = Boolean(
+          item.has_no_serial ||
+            (item.serial_number &&
+              String(item.serial_number).trim().toUpperCase().startsWith("NS-")),
+        );
+
         const invoiceItem = new InvoiceItem({
           invoice_id: newInvoice._id,
           shop_id: user.shopId,
           item_type: "PRODUCT",
           serial_number: (item.serial_number || "").toUpperCase(),
+          has_no_serial: isNoSerial,
           product_name: item.product_name,
           product_category: item.product_category || "BATTERY",
           ...batteryPayload,
@@ -642,13 +661,34 @@ export default class InvoiceController {
               filename: `Invoice_${invoiceNumber}.pdf`,
             };
             await sendWhatsappMessageViaMSG91(msgConfig);
+
+            // Mark invoice as sent successfully via WhatsApp
+            await Invoice.findByIdAndUpdate(newInvoice._id, {
+              whatsapp_sent: true,
+              whatsapp_sent_at: new Date(),
+              pdf_error: null,
+            }).catch(() => {});
           } else {
             console.warn(
-              `Skipping WhatsApp invoice_created for ${invoiceNumber}: No valid PDF document URL available for DOCUMENT header.`,
+              `Skipping immediate WhatsApp invoice_created for ${invoiceNumber}: PDF URL unavailable. Scheduling delayed retry in 90 seconds...`,
             );
+            schedulePdfAndWhatsappRetry({
+              invoiceId: newInvoice._id,
+              shopId: user.shopId,
+              userId: user.userId,
+              delayMs: 90000, // 90 seconds (1.5 minutes)
+              attempt: 1,
+            });
           }
         } catch (waErr) {
           console.error("WhatsApp send error (non-fatal):", waErr);
+          schedulePdfAndWhatsappRetry({
+            invoiceId: newInvoice._id,
+            shopId: user.shopId,
+            userId: user.userId,
+            delayMs: 90000, // 90 seconds (1.5 minutes)
+            attempt: 1,
+          });
         }
       })();
     } catch (error) {
@@ -677,7 +717,7 @@ export default class InvoiceController {
   async servePublicPdf(req, res) {
     try {
       const { token } = req.params;
-      const entry = tempPdfStore.get(token);
+      const entry = tempPdfStore.get(token) || tempPdfRetryStore.get(token);
       if (entry && entry.buffer && entry.expires >= Date.now()) {
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader(
@@ -1807,38 +1847,48 @@ export default class InvoiceController {
   }
 
   /**
-   * Search customer by WhatsApp number
+   * Search customer by WhatsApp number, First Name, Last Name, or Full Name
    */
   async searchCustomer(req, res) {
     try {
       const { user } = req;
-      const { whatsapp_number } = req.body;
+      const { whatsapp_number, query, name, search } = req.body;
+      const searchTerm = (search || query || whatsapp_number || name || "").trim();
 
-      if (!whatsapp_number) {
+      if (!searchTerm) {
         return res.status(400).json({
           success: false,
-          message: "WhatsApp number is required",
+          message: "Search query or WhatsApp number is required",
         });
       }
 
-      const customer = await Customer.findOne({
-        whatsapp_number: whatsapp_number,
+      const regex = new RegExp(searchTerm, "i");
+      const customers = await Customer.find({
         shop_id: user.shopId,
         deleted_at: null,
-      });
+        $or: [
+          { whatsapp_number: regex },
+          { first_name: regex },
+          { last_name: regex },
+          { full_name: regex },
+          { email: regex },
+        ],
+      }).limit(10);
+
+      const customer = customers.length > 0 ? customers[0] : null;
 
       if (!customer) {
         return res.status(404).json({
           success: false,
           message: "Customer not found",
-          data: { customer: null },
+          data: { customer: null, customers: [] },
         });
       }
 
       res.json({
         success: true,
         message: "Customer found",
-        data: { customer },
+        data: { customer, customers },
       });
     } catch (error) {
       console.error("Search customer error:", error);
@@ -1917,7 +1967,9 @@ export default class InvoiceController {
       }
 
       // Update customer details
-      existingCustomer.full_name = customer.full_name;
+      if (customer.first_name !== undefined) existingCustomer.first_name = customer.first_name;
+      if (customer.last_name !== undefined) existingCustomer.last_name = customer.last_name;
+      if (customer.full_name) existingCustomer.full_name = customer.full_name;
       existingCustomer.whatsapp_number = customer.whatsapp_number;
 
       // Address may be sent as a string (legacy clients) or an object.
@@ -2039,6 +2091,12 @@ export default class InvoiceController {
             }
           : {};
 
+        const isNoSerial = Boolean(
+          item.has_no_serial ||
+            (item.serial_number &&
+              String(item.serial_number).trim().toUpperCase().startsWith("NS-")),
+        );
+
         const invoiceItem = new InvoiceItem({
           invoice_id: id,
           shop_id: user.shopId,
@@ -2046,6 +2104,7 @@ export default class InvoiceController {
           serial_number: item.serial_number
             ? item.serial_number.toUpperCase()
             : undefined,
+          has_no_serial: isNoSerial,
           product_name:
             item.product_name ||
             [item.company, item.model_number].filter(Boolean).join(" ").trim() ||
@@ -2140,6 +2199,7 @@ export default class InvoiceController {
       existingInvoice.subtotal = totals.subtotal;
       existingInvoice.discount = totals.discount;
       existingInvoice.old_item_exchange_price = totals.old_item_exchange_price;
+      existingInvoice.excess_exchange_credit = totals.excess_exchange_credit || 0;
       existingInvoice.tax = totals.tax;
       existingInvoice.total_amount = totals.total_amount;
       existingInvoice.amount_paid = totals.amount_paid;

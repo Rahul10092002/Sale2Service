@@ -137,8 +137,8 @@ export default function MobileInvoiceSummaryBar({
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                   Navigate Pages
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Switch to any module (your form input is saved)
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                  <span>Draft saved automatically in session</span>
                 </p>
               </div>
             </div>
@@ -183,10 +183,13 @@ export default function MobileInvoiceSummaryBar({
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
-                <Link
+                <button
                   key={item.path}
-                  to={item.path}
-                  onClick={() => setShowNavDrawer(false)}
+                  type="button"
+                  onClick={() => {
+                    setShowNavDrawer(false);
+                    navigate(item.path);
+                  }}
                   className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 text-center active:scale-95 transition-all"
                 >
                   <div className={`p-2 rounded-xl ${item.color}`}>
@@ -195,7 +198,7 @@ export default function MobileInvoiceSummaryBar({
                   <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 leading-tight truncate max-w-full">
                     {item.label}
                   </span>
-                </Link>
+                </button>
               );
             })}
           </div>
@@ -371,6 +374,19 @@ export default function MobileInvoiceSummaryBar({
                 <div className="pt-1.5 border-t border-dashed border-amber-200 dark:border-amber-900/50 flex justify-between items-center text-xs font-bold text-amber-700 dark:text-amber-400">
                   <span>Remaining Balance Due</span>
                   <span>{formatCurrency(invoice.amount_due)}</span>
+                </div>
+              )}
+
+              {/* Excess Exchange Credit badge */}
+              {invoice.excess_exchange_credit > 0 && (
+                <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-900 dark:text-indigo-200 space-y-0.5">
+                  <div className="flex justify-between font-bold">
+                    <span>Exchange Credit to Ledger</span>
+                    <span>+{formatCurrency(invoice.excess_exchange_credit)}</span>
+                  </div>
+                  <p className="text-[10px] text-indigo-700 dark:text-indigo-300">
+                    Will be added to customer store credit ledger.
+                  </p>
                 </div>
               )}
             </div>

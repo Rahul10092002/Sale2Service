@@ -284,37 +284,76 @@ const ProductCard = React.memo(function ProductCard({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
           {/* Serial Number & Quick Scan */}
           <div className="col-span-1">
-            <label className="block text-xs font-bold text-ink-secondary dark:text-slate-200 mb-1">
-              Serial Number *
-            </label>
-            <div className="flex gap-1.5 items-center">
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  value={item.serial_number || ""}
-                  onChange={(e) =>
-                    updateItem(item.id, { serial_number: e.target.value })
-                  }
-                  placeholder="Enter or scan serial"
-                  error={errors[`item.${item.id}.serial_number`]}
-                  inputClassName="h-9 sm:h-8 text-xs font-semibold"
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-ink-secondary dark:text-slate-200">
+                Serial Number {!item.has_no_serial && "*"}
+              </label>
+              <label className="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
+                <input
+                  type="checkbox"
+                  checked={Boolean(item.has_no_serial || (item.serial_number && item.serial_number.startsWith("NS-")))}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    if (checked) {
+                      const autoSerial = `NS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+                      updateItemImmediate(item.id, {
+                        has_no_serial: true,
+                        serial_number: autoSerial,
+                      });
+                    } else {
+                      updateItemImmediate(item.id, {
+                        has_no_serial: false,
+                        serial_number: "",
+                      });
+                    }
+                  }}
+                  className="w-3.5 h-3.5 text-indigo-600 rounded border-gray-300 dark:border-gray-700 focus:ring-indigo-500 cursor-pointer"
                 />
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowScanner(true)}
-                title="Scan barcode / QR code"
-                className="shrink-0 h-9 sm:h-8 px-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-lg flex items-center gap-1 shadow-2xs transition-transform active:scale-95"
-                aria-label="Scan barcode with camera"
-              >
-                <ScanLine className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Scan</span>
-              </button>
+                <span>No Serial Number</span>
+              </label>
             </div>
-            {showScanner && (
+
+            {item.has_no_serial || (item.serial_number && item.serial_number.startsWith("NS-")) ? (
+              <div className="h-9 sm:h-8 px-2.5 bg-gray-100 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 font-medium">
+                <span className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
+                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                  No Serial Number
+                </span>
+                <span className="text-[10px] font-mono text-gray-400 dark:text-slate-500">
+                  (Ref: {item.serial_number || "Auto-assigned"})
+                </span>
+              </div>
+            ) : (
+              <div className="flex gap-1.5 items-center">
+                <div className="flex-1">
+                  <Input
+                    type="text"
+                    value={item.serial_number || ""}
+                    onChange={(e) =>
+                      updateItem(item.id, { serial_number: e.target.value })
+                    }
+                    placeholder="Enter or scan serial"
+                    error={errors[`item.${item.id}.serial_number`]}
+                    inputClassName="h-9 sm:h-8 text-xs font-semibold"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  title="Scan barcode / QR code"
+                  className="shrink-0 h-9 sm:h-8 px-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-lg flex items-center gap-1 shadow-2xs transition-transform active:scale-95"
+                  aria-label="Scan barcode with camera"
+                >
+                  <ScanLine className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Scan</span>
+                </button>
+              </div>
+            )}
+
+            {showScanner && !(item.has_no_serial || (item.serial_number && item.serial_number.startsWith("NS-"))) && (
               <SerialScanner
                 onScan={(value) => {
-                  updateItemImmediate(item.id, { serial_number: value });
+                  updateItemImmediate(item.id, { serial_number: value, has_no_serial: false });
                   setShowScanner(false);
                 }}
                 onClose={() => setShowScanner(false)}

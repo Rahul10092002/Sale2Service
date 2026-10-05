@@ -42,8 +42,8 @@ export const validateInvoicePayload = ({
     };
   }
 
-  if (isBlank(customer.full_name)) {
-    errors.push("Customer full name is required");
+  if (isBlank(customer.first_name) && isBlank(customer.full_name)) {
+    errors.push("Customer first name is required");
   }
 
   if (isBlank(customer.whatsapp_number)) {
@@ -149,7 +149,21 @@ export const validateInvoicePayload = ({
       }
     } else {
       // PRODUCT validation
-      if (isBlank(item.serial_number)) {
+      const isNoSerial = Boolean(
+        item.has_no_serial ||
+          (item.serial_number &&
+            String(item.serial_number).trim().toUpperCase().startsWith("NS-")),
+      );
+      item.has_no_serial = isNoSerial;
+
+      if (isNoSerial) {
+        if (
+          isBlank(item.serial_number) ||
+          !String(item.serial_number).trim().toUpperCase().startsWith("NS-")
+        ) {
+          item.serial_number = `NS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        }
+      } else if (isBlank(item.serial_number)) {
         errors.push(`${label}: serial number is required`);
       } else {
         const normalizedSerial = String(item.serial_number).trim().toUpperCase();

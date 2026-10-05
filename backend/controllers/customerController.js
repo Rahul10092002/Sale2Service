@@ -12,10 +12,10 @@ export const createCustomer = async (req, res) => {
     const { user } = req;
     const payload = req.body;
 
-    if (!payload.full_name || !payload.whatsapp_number) {
+    if ((!payload.first_name && !payload.full_name) || !payload.whatsapp_number) {
       return res.status(400).json({
         success: false,
-        message: "full_name and whatsapp_number are required",
+        message: "Customer name and whatsapp_number are required",
       });
     }
 
@@ -66,6 +66,8 @@ export const getCustomers = async (req, res) => {
     if (search && search.trim()) {
       const regex = new RegExp(search.trim(), "i");
       matchQuery.$or = [
+        { first_name: regex },
+        { last_name: regex },
         { full_name: regex },
         { whatsapp_number: regex },
         { email: regex },
@@ -111,7 +113,18 @@ export const getCustomers = async (req, res) => {
               $addFields: {
                 total_invoiced: { $sum: "$invoices_summary.total_amount" },
                 total_paid: { $sum: "$invoices_summary.amount_paid" },
-                total_due: { $sum: "$invoices_summary.amount_due" },
+                total_exchange_credit: { $sum: { $ifNull: ["$invoices_summary.excess_exchange_credit", 0] } },
+                total_due: {
+                  $subtract: [
+                    { $sum: "$invoices_summary.total_amount" },
+                    {
+                      $add: [
+                        { $sum: "$invoices_summary.amount_paid" },
+                        { $sum: { $ifNull: ["$invoices_summary.excess_exchange_credit", 0] } },
+                      ],
+                    },
+                  ],
+                },
                 total_invoices: { $size: "$invoices_summary" },
               },
             },
@@ -200,6 +213,8 @@ export const updateCustomer = async (req, res) => {
     }
 
     const ALLOWED_FIELDS = [
+      "first_name",
+      "last_name",
       "full_name",
       "whatsapp_number",
       "email",
@@ -392,20 +407,22 @@ export const getCustomerLedger = async (req, res) => {
     let cumulativeBalance = 0;
     let totalInvoiced = 0;
     let totalPaid = 0;
-    let totalDue = 0;
+    let totalExchangeCredit = 0;
     let paidCount = 0;
     let partialCount = 0;
     let unpaidCount = 0;
 
     const ledgerEntries = rawInvoices.map((inv) => {
       const debit = Number(inv.total_amount || 0);
-      const credit = Number(inv.amount_paid || 0);
-      const invoiceBalance = Math.max(0, debit - credit);
+      const amountPaid = Number(inv.amount_paid || 0);
+      const excessCredit = Number(inv.excess_exchange_credit || 0);
+      const credit = amountPaid + excessCredit;
+      const netBalance = debit - credit;
 
-      cumulativeBalance += invoiceBalance;
+      cumulativeBalance += netBalance;
       totalInvoiced += debit;
-      totalPaid += credit;
-      totalDue += invoiceBalance;
+      totalPaid += amountPaid;
+      totalExchangeCredit += excessCredit;
 
       if (inv.payment_status === "PAID") paidCount++;
       else if (inv.payment_status === "PARTIAL") partialCount++;
@@ -428,10 +445,14 @@ export const getCustomerLedger = async (req, res) => {
         items_summary: itemsSummary,
         debit,
         credit,
-        invoice_balance: invoiceBalance,
+        amount_paid: amountPaid,
+        excess_exchange_credit: excessCredit,
+        invoice_balance: netBalance,
         running_balance: cumulativeBalance,
       };
     });
+
+    const totalDue = cumulativeBalance;
 
     res.json({
       success: true,
@@ -446,7 +467,9 @@ export const getCustomerLedger = async (req, res) => {
         summary: {
           total_invoiced: totalInvoiced,
           total_paid: totalPaid,
+          total_exchange_credit: totalExchangeCredit,
           total_due: totalDue,
+          store_credit_balance: totalDue < 0 ? Math.abs(totalDue) : 0,
           total_invoices: rawInvoices.length,
           paid_count: paidCount,
           partial_count: partialCount,

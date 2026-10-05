@@ -35,6 +35,10 @@ const invoiceItemSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
+    has_no_serial: {
+      type: Boolean,
+      default: false,
+    },
     product_name: {
       type: String,
       required: false,

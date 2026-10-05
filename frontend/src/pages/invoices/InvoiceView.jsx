@@ -664,6 +664,8 @@ const InvoiceView = () => {
                               <span className="font-mono font-bold text-xs uppercase text-gray-800 dark:text-gray-200 truncate block">
                                 {isService && (!item.serial_number || item.serial_number.startsWith("SRV-"))
                                   ? "N/A"
+                                  : item.has_no_serial || (item.serial_number && item.serial_number.startsWith("NS-"))
+                                  ? "No Serial Number"
                                   : item.serial_number || "N/A"}
                               </span>
                             </div>
@@ -828,6 +830,8 @@ const InvoiceView = () => {
                                 <span className="break-all text-xs">
                                   {isService && (!item.serial_number || item.serial_number.startsWith("SRV-"))
                                     ? "N/A"
+                                    : item.has_no_serial || (item.serial_number && item.serial_number.startsWith("NS-"))
+                                    ? <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-sans text-[11px] font-bold">No Serial</span>
                                     : item.serial_number || "N/A"}
                                 </span>
                               </td>
@@ -952,6 +956,12 @@ const InvoiceView = () => {
                     <div className="flex justify-between text-amber-600 font-medium">
                       <span>Old Item / Exchange</span>
                       <span>-{formatCurrency(invoiceObj.old_item_exchange_price)}</span>
+                    </div>
+                  )}
+                  {invoiceObj.excess_exchange_credit > 0 && (
+                    <div className="flex justify-between text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40 p-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                      <span>Exchange Credit to Ledger</span>
+                      <span>+{formatCurrency(invoiceObj.excess_exchange_credit)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-sm border-t border-gray-300 dark:border-gray-600 pt-2 text-gray-900 dark:text-white">

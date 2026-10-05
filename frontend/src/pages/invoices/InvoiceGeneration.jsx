@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { Save, X, ChevronDown, ChevronUp, Calculator, ArrowLeft } from "lucide-react";
+import { Save, X, ChevronDown, ChevronUp, Calculator, ArrowLeft, AlertTriangle } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 import {
@@ -20,6 +20,8 @@ const InvoiceGenerationPage = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const customerId = searchParams.get("customer_id") || location.state?.customer_id;
+  const hasLoadedCustomerRef = useRef(false);
+  const [navConfirmTarget, setNavConfirmTarget] = useState(null);
 
   const {
     currentInvoice,
@@ -33,12 +35,31 @@ const InvoiceGenerationPage = () => {
     updateCustomerAddressData,
   } = useInvoiceForm();
 
+  const isFormDirty = Boolean(
+    currentInvoice.customer.full_name?.trim() ||
+    currentInvoice.customer.whatsapp_number?.trim() ||
+    currentInvoice.invoice_items?.length > 0
+  );
+
+  // Prompt user before page refresh or tab close if form has unsaved edits
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isFormDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isFormDirty]);
+
   const { data: customerResp } = useGetCustomerByIdQuery(customerId, {
     skip: !customerId,
   });
 
   useEffect(() => {
-    if (customerResp?.customer) {
+    if (customerResp?.customer && !hasLoadedCustomerRef.current) {
+      hasLoadedCustomerRef.current = true;
       const c = customerResp.customer;
       updateCustomerData({
         _id: c._id,
@@ -162,7 +183,12 @@ const InvoiceGenerationPage = () => {
           }
         } else {
           // PRODUCT validation
-          if (!item.serial_number?.trim()) {
+          const isNoSerial = Boolean(
+            item.has_no_serial ||
+              (item.serial_number && item.serial_number.startsWith("NS-")),
+          );
+
+          if (!isNoSerial && !item.serial_number?.trim()) {
             newErrors[`item.${item.id}.serial_number`] =
               "Serial number is required";
           }
@@ -266,6 +292,14 @@ const InvoiceGenerationPage = () => {
     }
     return isValid;
   }, [currentInvoice, setErrors]);
+
+  const handleNavClick = (targetPath) => {
+    if (isFormDirty) {
+      setNavConfirmTarget(targetPath);
+    } else {
+      navigate(targetPath);
+    }
+  };
 
   // Submit invoice
   const handleSubmit = useCallback(async () => {
@@ -397,7 +431,7 @@ const InvoiceGenerationPage = () => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => navigate(ROUTES.INVOICES)}
+                onClick={() => handleNavClick(ROUTES.INVOICES)}
                 className="flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 py-1 px-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 active:scale-95 transition-all"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -405,7 +439,7 @@ const InvoiceGenerationPage = () => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate(ROUTES.DASHBOARD)}
+                onClick={() => handleNavClick(ROUTES.DASHBOARD)}
                 className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 py-1 px-2 active:scale-95 transition-all"
               >
                 Dashboard
@@ -415,6 +449,23 @@ const InvoiceGenerationPage = () => {
               New Invoice
             </span>
           </div>
+
+          {/* Draft Restoration / Auto-save Indicator */}
+          {isFormDirty && (
+            <div className="mb-3 px-3 py-2 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-800 dark:text-emerald-200 font-semibold shadow-2xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="truncate">Draft auto-saved in session. Progress persists across page refreshes.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => reset()}
+                className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline px-2 py-0.5 rounded bg-white dark:bg-dark-card border border-rose-200 dark:border-rose-900 shrink-0"
+              >
+                Clear Form
+              </button>
+            </div>
+          )}
 
           {/* Main Form Content */}
           <div className="space-y-4">
@@ -584,6 +635,58 @@ const InvoiceGenerationPage = () => {
               </div>
             </div>
           </div>
+
+        {/* Navigation Exit Confirmation Modal */}
+        {navConfirmTarget && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl p-5 max-w-sm w-full shadow-xl space-y-4 animate-in fade-in zoom-in-95">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                    Unsaved Invoice Progress
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    Your draft is saved in session. Would you like to leave?
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 pt-1">
+                <Button
+                  onClick={() => {
+                    const target = navConfirmTarget;
+                    setNavConfirmTarget(null);
+                    navigate(target);
+                  }}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 rounded-xl"
+                >
+                  Leave Page (Keep Saved Draft)
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const target = navConfirmTarget;
+                    setNavConfirmTarget(null);
+                    reset();
+                    navigate(target);
+                  }}
+                  className="w-full text-rose-600 border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold py-2 rounded-xl"
+                >
+                  Discard Draft & Leave
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setNavConfirmTarget(null)}
+                  className="w-full text-xs font-bold py-1.5 text-gray-600 dark:text-slate-300"
+                >
+                  Stay Here & Keep Editing
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Mobile Sticky Bottom Action Bar (< lg screens) */}
         <MobileInvoiceSummaryBar

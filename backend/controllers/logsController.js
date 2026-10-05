@@ -390,18 +390,36 @@ export const getMessageLogs = async (req, res) => {
       limit = 20,
       status,
       messageType,
+      campaignName,
+      delivery_status,
+      search,
       start_date,
       end_date,
       destination,
     } = req.query;
 
-    const skip = (page - 1) * limit;
+    const limitNum = parseInt(limit, 10) || 20;
+    const pageNum = parseInt(page, 10) || 1;
+    const skip = (pageNum - 1) * limitNum;
     const query = {};
 
     // Apply filters
     if (status) query.status = status;
     if (messageType) query.messageType = messageType;
-    if (destination) {
+    if (campaignName) query.campaignName = campaignName;
+    if (delivery_status) {
+      if (["read", "delivered", "sent", "failed"].includes(delivery_status)) {
+        query["meta.delivery_status"] = delivery_status;
+      }
+    }
+
+    if (search) {
+      query.$or = [
+        { destination: { $regex: search, $options: "i" } },
+        { userName: { $regex: search, $options: "i" } },
+        { campaignName: { $regex: search, $options: "i" } },
+      ];
+    } else if (destination) {
       query.destination = { $regex: destination, $options: "i" };
     }
 
@@ -412,24 +430,92 @@ export const getMessageLogs = async (req, res) => {
       if (end_date) query.createdAt.$lte = new Date(end_date);
     }
 
-    const [logs, total] = await Promise.all([
+    const [logs, total, templates, summaryStats] = await Promise.all([
       MessageLog.find(query)
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit))
+        .limit(limitNum)
         .lean(),
       MessageLog.countDocuments(query),
+      MessageLog.distinct("campaignName"),
+      MessageLog.aggregate([
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            sent: {
+              $sum: {
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ["$meta.delivery_status", "sent"] },
+                      {
+                        $and: [
+                          { $eq: ["$status", "success"] },
+                          {
+                            $or: [
+                              { $eq: [{ $ifNull: ["$meta.delivery_status", null] }, null] },
+                              { $eq: ["$meta.delivery_status", ""] }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              },
+            },
+            delivered: {
+              $sum: {
+                $cond: [{ $eq: ["$meta.delivery_status", "delivered"] }, 1, 0],
+              },
+            },
+            read: {
+              $sum: {
+                $cond: [{ $eq: ["$meta.delivery_status", "read"] }, 1, 0],
+              },
+            },
+            failed: {
+              $sum: {
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ["$meta.delivery_status", "failed"] },
+                      { $eq: ["$status", "failed"] },
+                      { $eq: ["$status", "error"] },
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              },
+            },
+          },
+        },
+      ]),
     ]);
+
+    const summary = summaryStats[0] || {
+      total: 0,
+      sent: 0,
+      delivered: 0,
+      read: 0,
+      failed: 0,
+    };
 
     res.json({
       success: true,
       data: {
         logs,
+        summary,
+        templates: templates.filter(Boolean),
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: limitNum,
           total,
-          pages: Math.ceil(total / limit),
+          pages: Math.ceil(total / limitNum),
         },
       },
     });

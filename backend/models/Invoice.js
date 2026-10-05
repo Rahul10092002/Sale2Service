@@ -52,6 +52,11 @@ const invoiceSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    excess_exchange_credit: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     tax: {
       type: Number,
       default: 0,
@@ -80,12 +85,22 @@ const invoiceSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    // Attachments
+    // Attachments & WhatsApp Status
     invoice_pdf: {
       type: String, // Cloudinary URL
     },
     pdf_public_id: {
       type: String, // Cloudinary public ID for deletion/management
+    },
+    pdf_error: {
+      type: String, // Recorded error message if PDF auto-generation failed
+    },
+    whatsapp_sent: {
+      type: Boolean,
+      default: false,
+    },
+    whatsapp_sent_at: {
+      type: Date,
     },
     signed_invoice: {
       type: String,

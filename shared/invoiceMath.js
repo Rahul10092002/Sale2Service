@@ -88,7 +88,9 @@ export const calculateInvoiceTotals = ({
   }
 
   const totalDeductions = discount + oldItemExchangePrice;
-  const totalAmount = Math.max(0, totalBeforeDiscount - totalDeductions);
+  const netAmount = totalBeforeDiscount - totalDeductions;
+  const totalAmount = Math.max(0, netAmount);
+  const excessExchangeCredit = netAmount < 0 ? roundCurrency(Math.abs(netAmount)) : 0;
 
   const explicitStatus = String(invoice.payment_status || "").toUpperCase();
   let amountPaid = roundCurrency(Math.max(0, toNumber(invoice.amount_paid, 0)));
@@ -117,6 +119,7 @@ export const calculateInvoiceTotals = ({
     subtotal: roundCurrency(subtotal),
     discount,
     old_item_exchange_price: oldItemExchangePrice,
+    excess_exchange_credit: excessExchangeCredit,
     tax: roundCurrency(tax),
     total_amount: roundCurrency(totalAmount),
     amount_paid: amountPaid,

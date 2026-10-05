@@ -8,6 +8,14 @@ const customerSchema = new mongoose.Schema(
       unique: true,
       default: () => new mongoose.Types.ObjectId().toString(),
     },
+    first_name: {
+      type: String,
+      trim: true,
+    },
+    last_name: {
+      type: String,
+      trim: true,
+    },
     full_name: {
       type: String,
       required: true,
@@ -115,6 +123,21 @@ const customerSchema = new mongoose.Schema(
   },
 );
 
+// Auto-sync first_name, last_name, and full_name before validation
+customerSchema.pre("validate", function (next) {
+  if (this.first_name || this.last_name) {
+    this.full_name = [this.first_name, this.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+  } else if (this.full_name) {
+    const parts = this.full_name.trim().split(/\s+/);
+    this.first_name = parts[0] || "";
+    this.last_name = parts.slice(1).join(" ") || "";
+  }
+  next();
+});
+
 // Indexes
 customerSchema.index(
   { whatsapp_number: 1, shop_id: 1, deleted_at: 1 },
@@ -123,7 +146,7 @@ customerSchema.index(
 customerSchema.index({ customer_id: 1, deleted_at: 1 });
 customerSchema.index({ shop_id: 1, deleted_at: 1, createdAt: -1 });
 customerSchema.index({ shop_id: 1, deleted_at: 1 });
-customerSchema.index({ full_name: "text" });
+customerSchema.index({ full_name: "text", first_name: "text", last_name: "text" });
 
 // Virtual for active customers
 customerSchema.virtual("isActive").get(function () {

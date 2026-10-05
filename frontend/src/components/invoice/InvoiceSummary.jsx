@@ -94,6 +94,18 @@ const InvoiceSummary = ({ className = "" }) => {
             </div>
           )}
 
+          {invoice.excess_exchange_credit > 0 && (
+            <div className="p-2 rounded-lg bg-indigo-50/90 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-900 dark:text-indigo-200 space-y-0.5">
+              <div className="flex justify-between font-bold">
+                <span>Exchange Credit to Ledger</span>
+                <span>+{formatCurrency(invoice.excess_exchange_credit)}</span>
+              </div>
+              <p className="text-[10px] text-indigo-700 dark:text-indigo-300">
+                Excess exchange value will be added to customer store credit balance.
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <span className="text-ink-secondary dark:text-slate-300">
               GST (18% {invoice.is_tax_inclusive !== false ? "inclusive" : "added"})

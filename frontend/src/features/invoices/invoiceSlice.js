@@ -1,44 +1,86 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { calculateInvoiceTotals as calculateSharedInvoiceTotals } from "../../../../shared/invoiceMath.js";
 
+const DRAFT_KEY = "warranty_desk_invoice_draft";
+
+const defaultCurrentInvoice = {
+  customer: {
+    first_name: "",
+    last_name: "",
+    full_name: "",
+    whatsapp_number: "",
+    alternate_phone: "",
+    email: "",
+    date_of_birth: "",
+    anniversary_date: "",
+    preferred_language: "ENGLISH",
+    gst_number: "",
+    customer_type: "RETAIL",
+    notes: "",
+    address: {
+      line1: "",
+      line2: "",
+      city: "",
+      state: "",
+      pincode: "",
+    },
+  },
+  invoice: {
+    invoice_date: new Date().toISOString().split("T")[0],
+    payment_status: "UNPAID",
+    payment_mode: "CASH",
+    is_tax_inclusive: true,
+    subtotal: 0,
+    discount: 0,
+    old_item_exchange_price: 0,
+    tax: 0,
+    total_amount: 0,
+    amount_paid: 0,
+    amount_due: 0,
+    due_date: "",
+  },
+  invoice_items: [],
+};
+
+const loadSavedDraft = () => {
+  try {
+    const saved = sessionStorage.getItem(DRAFT_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (
+        parsed &&
+        parsed.customer &&
+        parsed.invoice &&
+        Array.isArray(parsed.invoice_items)
+      ) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load invoice draft:", e);
+  }
+  return null;
+};
+
+const saveDraft = (currentInvoice) => {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(currentInvoice));
+  } catch (e) {
+    console.error("Failed to save invoice draft:", e);
+  }
+};
+
+const clearDraft = () => {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch (e) {
+    console.error("Failed to clear invoice draft:", e);
+  }
+};
+
 const initialState = {
   // Current invoice being created/edited
-  currentInvoice: {
-    customer: {
-      full_name: "",
-      whatsapp_number: "",
-      alternate_phone: "",
-      email: "",
-      date_of_birth: "",
-      anniversary_date: "",
-      preferred_language: "ENGLISH",
-      gst_number: "",
-      customer_type: "RETAIL",
-      notes: "",
-      address: {
-        line1: "",
-        line2: "",
-        city: "",
-        state: "",
-        pincode: "",
-      },
-    },
-    invoice: {
-      invoice_date: new Date().toISOString().split("T")[0],
-      payment_status: "UNPAID",
-      payment_mode: "CASH",
-      is_tax_inclusive: true,
-      subtotal: 0,
-      discount: 0,
-      old_item_exchange_price: 0,
-      tax: 0,
-      total_amount: 0,
-      amount_paid: 0,
-      amount_due: 0,
-      due_date: "",
-    },
-    invoice_items: [],
-  },
+  currentInvoice: loadSavedDraft() || defaultCurrentInvoice,
   // UI state
   isSubmitting: false,
   errors: {},
@@ -71,14 +113,34 @@ const invoiceSlice = createSlice({
   reducers: {
     // Customer data
     updateCustomer: (state, action) => {
-      state.currentInvoice.customer = {
+      const updated = {
         ...state.currentInvoice.customer,
         ...action.payload,
       };
+
+      // Auto-sync first_name, last_name, and full_name
+      if ("first_name" in action.payload || "last_name" in action.payload) {
+        const fn = updated.first_name || "";
+        const ln = updated.last_name || "";
+        updated.full_name = [fn, ln].filter(Boolean).join(" ");
+      } else if ("full_name" in action.payload && action.payload.full_name) {
+        const parts = action.payload.full_name.trim().split(/\s+/);
+        if (!("first_name" in action.payload)) {
+          updated.first_name = parts[0] || "";
+        }
+        if (!("last_name" in action.payload)) {
+          updated.last_name = parts.slice(1).join(" ") || "";
+        }
+      }
+
+      state.currentInvoice.customer = updated;
       // Clear related errors
       Object.keys(action.payload).forEach((key) => {
         delete state.errors[`customer.${key}`];
       });
+      delete state.errors["customer.first_name"];
+      delete state.errors["customer.full_name"];
+      saveDraft(state.currentInvoice);
     },
 
     updateCustomerAddress: (state, action) => {
@@ -90,6 +152,7 @@ const invoiceSlice = createSlice({
       Object.keys(action.payload).forEach((key) => {
         delete state.errors[`customer.address.${key}`];
       });
+      saveDraft(state.currentInvoice);
     },
 
     // Invoice data
@@ -105,10 +168,12 @@ const invoiceSlice = createSlice({
 
       // Auto-recalculate totals after updating invoice data
       calculateInvoiceTotals(state);
+      saveDraft(state.currentInvoice);
     },
 
     setInvoiceNumber: (state, action) => {
       state.currentInvoice.invoice.invoice_number = action.payload;
+      saveDraft(state.currentInvoice);
     },
 
     // Invoice items
@@ -143,6 +208,7 @@ const invoiceSlice = createSlice({
       };
       state.currentInvoice.invoice_items.push(newItem);
       calculateInvoiceTotals(state);
+      saveDraft(state.currentInvoice);
     },
 
     addServiceItem: (state, action) => {
@@ -167,6 +233,7 @@ const invoiceSlice = createSlice({
       };
       state.currentInvoice.invoice_items.push(newItem);
       calculateInvoiceTotals(state);
+      saveDraft(state.currentInvoice);
     },
 
     updateInvoiceItem: (state, action) => {
@@ -195,6 +262,7 @@ const invoiceSlice = createSlice({
       Object.keys(data).forEach((key) => {
         delete state.errors[`item.${id}.${key}`];
       });
+      saveDraft(state.currentInvoice);
     },
 
     removeInvoiceItem: (state, action) => {
@@ -210,11 +278,13 @@ const invoiceSlice = createSlice({
 
       delete state.expandedSections.productMetadata[itemId];
       calculateInvoiceTotals(state);
+      saveDraft(state.currentInvoice);
     },
 
     // Calculations
     recalculateInvoice: (state) => {
       calculateInvoiceTotals(state);
+      saveDraft(state.currentInvoice);
     },
 
     // UI state
@@ -248,12 +318,13 @@ const invoiceSlice = createSlice({
     },
 
     resetForm: (state) => {
-      state.currentInvoice = initialState.currentInvoice;
+      state.currentInvoice = defaultCurrentInvoice;
       state.errors = {};
       state.expandedSections = {
         customerOptional: false,
         productMetadata: {},
       };
+      clearDraft();
     },
 
     setInvoiceData: (state, action) => {
@@ -262,6 +333,7 @@ const invoiceSlice = createSlice({
         ...action.payload,
       };
       calculateInvoiceTotals(state);
+      saveDraft(state.currentInvoice);
     },
 
     loadCustomerData: (state, action) => {
@@ -269,6 +341,7 @@ const invoiceSlice = createSlice({
         ...state.currentInvoice.customer,
         ...action.payload,
       };
+      saveDraft(state.currentInvoice);
     },
   },
 });

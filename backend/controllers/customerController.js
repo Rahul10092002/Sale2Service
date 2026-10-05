@@ -582,31 +582,26 @@ export const recordCustomerPayment = async (req, res) => {
       remainingPayment -= paymentForThisInv;
 
       let whatsappSent = false;
-      // Send WhatsApp payment receipt/status template for each updated invoice if enabled
+      // Send WhatsApp payment_received template for each updated invoice if enabled
       if (send_whatsapp && customer.whatsapp_number) {
         const formattedPhone = formatPhoneNumber(customer.whatsapp_number);
         if (formattedPhone && isValidWhatsAppNumber(formattedPhone)) {
           try {
-            const shopContact = formatPhoneNumber(shop?.phone) || formattedPhone;
             const templateVars = {
-              1: customer.full_name || "Customer",
-              2: typeof newAmountDue === "number" ? newAmountDue.toFixed(2) : String(newAmountDue),
-              3: inv.invoice_number || "N/A",
-              4: inv.invoice_items?.[0]?.serial_number || "N/A",
-              5: formatDateForMessage(inv.due_date || new Date()),
-              6: shopContact,
-              7: shop.shop_name_hi || shop.shop_name || "WarrantyDesk",
+              1: paymentForThisInv.toFixed(2),
+              2: inv.invoice_number || "N/A",
+              3: formatDateForMessage(payment_date ? new Date(payment_date) : new Date()),
+              4: shop.shop_name_hi || shop.shop_name || "",
             };
 
             const msgConfig = {
-              templateName: "payment_reminders",
+              templateName: "payment_received",
               to: formattedPhone,
               components: templateVars,
-              buttons: [{ subtype: "url", value: shopContact }],
-              campaignName: "payment_receipt",
+              campaignName: "payment_received",
               hospitalId: shop._id,
               userName: customer.full_name || "",
-              messageType: "payment_receipt",
+              messageType: "payment_received",
             };
 
             const waResp = await sendWhatsappMessageViaMSG91(msgConfig);

@@ -124,7 +124,7 @@ const customerSchema = new mongoose.Schema(
 );
 
 // Auto-sync first_name, last_name, and full_name before validation
-customerSchema.pre("validate", function (next) {
+customerSchema.pre("validate", function () {
   if (this.first_name || this.last_name) {
     this.full_name = [this.first_name, this.last_name]
       .filter(Boolean)
@@ -135,7 +135,6 @@ customerSchema.pre("validate", function (next) {
     this.first_name = parts[0] || "";
     this.last_name = parts.slice(1).join(" ") || "";
   }
-  next();
 });
 
 // Indexes

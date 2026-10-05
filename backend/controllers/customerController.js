@@ -5,6 +5,7 @@ import InvoiceItem from "../models/InvoiceItem.js";
 import ServicePlan from "../models/ServicePlan.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
 import ServiceVisit from "../models/ServiceVisit.js";
+import Shop from "../models/Shop.js";
 
 // Create a new customer
 export const createCustomer = async (req, res) => {
@@ -483,5 +484,165 @@ export const getCustomerLedger = async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to fetch customer ledger" });
+  }
+};
+
+// Record bulk payment for customer across unpaid invoices (FIFO)
+export const recordCustomerPayment = async (req, res) => {
+  try {
+    const { user } = req;
+    const { id } = req.params;
+    const {
+      amount,
+      payment_method = "CASH",
+      payment_date = new Date(),
+      notes = "",
+      send_whatsapp = true,
+    } = req.body;
+
+    const numAmount = Number(amount);
+    if (!numAmount || numAmount <= 0 || isNaN(numAmount)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid positive payment amount is required",
+      });
+    }
+
+    const customer = await Customer.findOne({
+      _id: id,
+      shop_id: user.shopId,
+      deleted_at: null,
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const shop = await Shop.findById(user.shopId);
+    if (!shop) {
+      return res.status(404).json({
+        success: false,
+        message: "Shop not found",
+      });
+    }
+
+    // Fetch unpaid or partially paid invoices sorted by oldest invoice_date first (FIFO)
+    const unpaidInvoices = await Invoice.find({
+      customer_id: id,
+      shop_id: user.shopId,
+      deleted_at: null,
+      payment_status: { $in: ["UNPAID", "PARTIAL"] },
+    }).sort({ invoice_date: 1, createdAt: 1 });
+
+    if (unpaidInvoices.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer has no unpaid or partially paid invoices",
+      });
+    }
+
+    let remainingPayment = numAmount;
+    const updatedInvoices = [];
+    const { formatPhoneNumber, isValidWhatsAppNumber, formatDateForMessage } = await import("../scheduler/core/utils.js");
+    const { sendWhatsappMessageViaMSG91 } = await import("../config/msg91.js");
+
+    for (const inv of unpaidInvoices) {
+      if (remainingPayment <= 0) break;
+
+      const currentPaid = Number(inv.amount_paid || 0);
+      const excessCredit = Number(inv.excess_exchange_credit || 0);
+      const netDue = Number(inv.total_amount || 0) - (currentPaid + excessCredit);
+
+      if (netDue <= 0) continue;
+
+      const paymentForThisInv = Math.min(remainingPayment, netDue);
+      const newAmountPaid = currentPaid + paymentForThisInv;
+      const newAmountDue = Math.max(0, Number(inv.total_amount || 0) - (newAmountPaid + excessCredit));
+      const newStatus = newAmountDue === 0 ? "PAID" : "PARTIAL";
+
+      // Add payment log to invoice
+      inv.payments = inv.payments || [];
+      inv.payments.push({
+        amount: paymentForThisInv,
+        payment_method,
+        payment_date: payment_date ? new Date(payment_date) : new Date(),
+        notes: notes || "Lump sum customer ledger payment",
+        recorded_by: user.userId,
+      });
+
+      inv.amount_paid = newAmountPaid;
+      inv.amount_due = newAmountDue;
+      inv.payment_status = newStatus;
+      inv.payment_mode = payment_method;
+
+      await inv.save();
+      remainingPayment -= paymentForThisInv;
+
+      let whatsappSent = false;
+      // Send WhatsApp payment receipt/status template for each updated invoice if enabled
+      if (send_whatsapp && customer.whatsapp_number) {
+        const formattedPhone = formatPhoneNumber(customer.whatsapp_number);
+        if (formattedPhone && isValidWhatsAppNumber(formattedPhone)) {
+          try {
+            const shopContact = formatPhoneNumber(shop?.phone) || formattedPhone;
+            const templateVars = {
+              1: customer.full_name || "Customer",
+              2: typeof newAmountDue === "number" ? newAmountDue.toFixed(2) : String(newAmountDue),
+              3: inv.invoice_number || "N/A",
+              4: inv.invoice_items?.[0]?.serial_number || "N/A",
+              5: formatDateForMessage(inv.due_date || new Date()),
+              6: shopContact,
+              7: shop.shop_name_hi || shop.shop_name || "WarrantyDesk",
+            };
+
+            const msgConfig = {
+              templateName: "payment_reminders",
+              to: formattedPhone,
+              components: templateVars,
+              buttons: [{ subtype: "url", value: shopContact }],
+              campaignName: "payment_receipt",
+              hospitalId: shop._id,
+              userName: customer.full_name || "",
+              messageType: "payment_receipt",
+            };
+
+            const waResp = await sendWhatsappMessageViaMSG91(msgConfig);
+            if (waResp) whatsappSent = true;
+          } catch (waErr) {
+            console.error(`Failed to send WhatsApp payment notification for invoice ${inv.invoice_number}:`, waErr);
+          }
+        }
+      }
+
+      updatedInvoices.push({
+        invoice_id: inv._id,
+        invoice_number: inv.invoice_number,
+        amount_applied: paymentForThisInv,
+        remaining_due: newAmountDue,
+        payment_status: newStatus,
+        whatsapp_sent: whatsappSent,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `Payment of ₹${numAmount.toLocaleString("en-IN")} recorded across ${updatedInvoices.length} invoice(s)`,
+      data: {
+        total_received: numAmount,
+        total_applied: numAmount - remainingPayment,
+        excess_balance: remainingPayment > 0 ? remainingPayment : 0,
+        updated_invoices: updatedInvoices,
+      },
+    });
+  } catch (error) {
+    console.error("Record customer payment error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to record customer payment",
+      error: error.message,
+    });
   }
 };

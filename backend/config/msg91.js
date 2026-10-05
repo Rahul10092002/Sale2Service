@@ -211,7 +211,7 @@ export default sendWhatsappMessageViaMSG91;
  * Send plain text WhatsApp message via MSG91
  * Expects same env vars as template sender
  */
-export const sendTextMessageViaMSG91 = async ({ to, message }) => {
+export const sendTextMessageViaMSG91 = async ({ to, message, campaignName = "payment_receipt", userName = "" }) => {
   try {
     const payload = {
       integrated_number: process.env.MSG91_NUMBER,
@@ -233,12 +233,51 @@ export const sendTextMessageViaMSG91 = async ({ to, message }) => {
       timeout: 15000,
     });
 
-    return resp.data;
+    const respData = resp?.data;
+    const successFlag = Boolean(
+      respData &&
+      (respData.success === true ||
+        respData.status === "success" ||
+        respData?.hasError === false),
+    );
+
+    try {
+      if (mongoose.connection && mongoose.connection.readyState === 1) {
+        await MessageLog.create({
+          hospitalId: null,
+          campaignName: campaignName || "text_message",
+          destination: to,
+          userName: userName || "",
+          status: successFlag ? "success" : "failed",
+          messageType: "text",
+          meta: { response: respData, text_body: message },
+        });
+      }
+    } catch (logErr) {
+      console.error("Failed to create MessageLog for text message:", logErr);
+    }
+
+    return respData;
   } catch (error) {
     console.error(
       "MSG91 text send error:",
       error?.response?.data || error.message,
     );
+    try {
+      if (mongoose.connection && mongoose.connection.readyState === 1) {
+        await MessageLog.create({
+          hospitalId: null,
+          campaignName: campaignName || "text_message",
+          destination: to,
+          userName: userName || "",
+          status: "error",
+          messageType: "text",
+          meta: { error: error?.response?.data || error.message, text_body: message },
+        });
+      }
+    } catch (logErr) {
+      console.error("Failed to create MessageLog for text message error:", logErr);
+    }
     throw error;
   }
 };

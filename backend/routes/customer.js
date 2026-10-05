@@ -4,6 +4,7 @@ import {
   getCustomers,
   getCustomerById,
   getCustomerLedger,
+  recordCustomerPayment,
   updateCustomer,
   deleteCustomer,
 } from "../controllers/customerController.js";
@@ -22,6 +23,9 @@ customerRouter.get("/", checkPermission("customers_view"), getCustomers);
 
 // Get customer financial ledger
 customerRouter.get("/:id/ledger", checkPermission("customers_view"), getCustomerLedger);
+
+// Record bulk customer payment across unpaid invoices (FIFO)
+customerRouter.post("/:id/record-payment", checkPermission("customers_edit"), recordCustomerPayment);
 
 // Get single customer and their invoices
 customerRouter.get("/:id", checkPermission("customers_view"), getCustomerById);

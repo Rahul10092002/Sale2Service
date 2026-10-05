@@ -70,6 +70,20 @@ export const customerApi = baseApi.injectEndpoints({
         { type: "Customer", id: "LIST" },
       ],
     }),
+
+    recordCustomerPayment: builder.mutation({
+      query: ({ id, ...payload }) => ({
+        url: `/customers/${id}/record-payment`,
+        method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Customer", id },
+        { type: "Customer", id: `${id}-LEDGER` },
+        { type: "Customer", id: "LIST" },
+        { type: "Invoice", id: "LIST" },
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -83,4 +97,5 @@ export const {
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
+  useRecordCustomerPaymentMutation,
 } = customerApi;

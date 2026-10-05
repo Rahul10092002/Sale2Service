@@ -1062,13 +1062,11 @@ export default class InvoiceController {
         };
       }
 
-      const buttonSubtype = templateName === "payment_missed" ? "url" : "quick_reply";
-
       const msgConfig = {
         templateName: templateName,
         to: phoneNumber,
         components: vars,
-        buttons: [{ subtype: buttonSubtype, value: shopContact }],
+        buttons: [{ subtype: "url", value: shopContact }],
         campaignName: templateName,
         hospitalId: shop._id,
         userName: customer.full_name || "",

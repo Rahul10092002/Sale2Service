@@ -63,13 +63,25 @@ export const sendWhatsappMessageViaMSG91 = async ({
       ? components
       : Object.values(components || {});
 
-    // Decrypt or sanitize components
+    // Helper: sanitize parameter text for Meta WhatsApp compliance
+    // (Meta forbids newlines, tabs, or 4+ consecutive spaces in template parameters)
+    const sanitizeParamText = (val) => {
+      if (val == null) return "";
+      let str = String(val);
+      // Replace newlines and tabs with a single space
+      str = str.replace(/[\r\n\t]+/g, " ");
+      // Collapse 4 or more consecutive spaces to a single space
+      str = str.replace(/ {4,}/g, " ");
+      return str.trim();
+    };
+
+    // Decrypt and sanitize components
     const decryptedComponents = compArray.map((c) => safeDecrypt(c));
 
     decryptedComponents.forEach((value, index) => {
       componentPayload[`body_${index + 1}`] = {
         type: "text",
-        value: value || "",
+        value: sanitizeParamText(value),
       };
     });
 
@@ -78,12 +90,12 @@ export const sendWhatsappMessageViaMSG91 = async ({
       buttons.forEach((btn, index) => {
         const isObj = typeof btn === "object" && btn !== null;
         const btnSubtype = isObj && btn.subtype ? btn.subtype : "url";
-        const btnValue = isObj ? (btn.value || "") : (btn || "");
+        const rawValue = isObj ? (btn.value || "") : (btn || "");
 
         componentPayload[`button_${index + 1}`] = {
           subtype: btnSubtype,
           type: "text",
-          value: btnValue,
+          value: sanitizeParamText(rawValue),
         };
       });
     }

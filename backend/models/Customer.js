@@ -53,17 +53,17 @@ const customerSchema = new mongoose.Schema(
       },
       city: {
         type: String,
-        required: true,
+        required: false,
         trim: true,
       },
       state: {
         type: String,
-        required: true,
+        required: false,
         trim: true,
       },
       pincode: {
         type: String,
-        required: true,
+        required: false,
         trim: true,
       },
     },

@@ -118,18 +118,6 @@ const InvoiceGenerationPage = () => {
       newErrors["customer.address.line1"] = "Address is required";
     }
 
-    if (!customer.address.city?.trim()) {
-      newErrors["customer.address.city"] = "City is required";
-    }
-
-    if (!customer.address.state?.trim()) {
-      newErrors["customer.address.state"] = "State is required";
-    }
-
-    if (!customer.address.pincode?.trim()) {
-      newErrors["customer.address.pincode"] = "Pincode is required";
-    }
-
     if (customer.email && !/\S+@\S+\.\S+/.test(customer.email)) {
       newErrors["customer.email"] = "Enter a valid email address";
     }

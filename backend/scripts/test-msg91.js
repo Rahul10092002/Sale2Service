@@ -19,22 +19,30 @@ console.log("MSG91_API_ENDPOINT:", process.env.MSG91_API_ENDPOINT);
 async function run() {
   const to = "918085035032"; // replace with real number
 
-  const components = [
-    "INV-2026-045", // {{1}} invoice number
-    "27-02-2026", // {{2}} date
-    "2500", // {{3}} total amount
-    "05-03-2026", // {{4}} due date
-    "राजदीप पावर पॉइंट", // {{5}} shop name
-  ];
+  const components = {
+    1: "Rahul Patidar", // customerName
+    2: "Rajdeep Power Point", // shop name
+    3: "INV-2026-045", // invoice number
+    4: "27/02/2026", // invoice date
+    5: "5000.00", // total amount
+    6: "2000.00", // amount paid
+    7: "3000.00", // amount due
+    8: "Partial", // payment status
+    9: "9893705221", // shop contact number
+  };
 
   try {
     const resp = await sendWhatsappMessageViaMSG91({
-      templateName: "invoice_created",
+      templateName: "invoice_generated_notification",
       to,
       components,
-      campaignName: "invoice_created",
+      campaignName: "invoice_generated_notification",
       userName: process.env.TEST_USER || "System",
-      messageType: "invoice_created",
+      messageType: "invoice_generated_notification",
+      media: {
+        url: "https://example.com/invoices/Invoice-INV-2026-045.pdf",
+        filename: "Invoice-INV-2026-045.pdf",
+      },
     });
 
     console.log("MSG91 response:", resp);

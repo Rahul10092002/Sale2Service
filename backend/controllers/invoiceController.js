@@ -188,11 +188,11 @@ export default class InvoiceController {
           email: customer.email,
           alternate_phone: customer.alternate_phone,
           address: {
-            line1: customer.address.line1,
-            line2: customer.address.line2,
-            city: customer.address.city,
-            state: customer.address.state,
-            pincode: customer.address.pincode,
+            line1: customer.address?.line1 || "",
+            line2: customer.address?.line2 || "",
+            city: customer.address?.city || "",
+            state: customer.address?.state || "",
+            pincode: customer.address?.pincode || "",
           },
           date_of_birth: customer.date_of_birth,
           gst_number: customer.gst_number,
@@ -578,49 +578,42 @@ export default class InvoiceController {
           //   5: shop.shop_name_hi || shop.shop_name || "",
           // };
 
-         const vars = {
-           1: customerName || "",
-
-           2: invoiceNumber,
-
-           3: new Date(newInvoice.invoice_date).toLocaleDateString("hi-IN"),
-
-           4:
-             typeof newInvoice.total_amount === "number"
-               ? newInvoice.total_amount.toFixed(2)
-               : String(newInvoice.total_amount),
-
-           5:
-             typeof newInvoice.amount_paid === "number"
-               ? newInvoice.amount_paid.toFixed(2)
-               : "0",
-
-           6:
-             typeof newInvoice.amount_due === "number"
-               ? newInvoice.amount_due.toFixed(2)
-               : (
-                   (newInvoice.total_amount || 0) -
-                   (newInvoice.amount_paid || 0)
-                 ).toFixed(2),
-
-           7: {
-             PAID: "Paid",
-             PARTIAL: "Partial",
-             UNPAID: "Unpaid",
-           }[newInvoice.payment_status] || "Pending",
-
-           8: shop.contact_number || shop.mobile || shop.phone || "",
-
-           9: shop.shop_name_hi || shop.shop_name || "",
-         };
+          const vars = {
+            1: customerName || "",
+            2: shop.shop_name_hi || shop.shop_name || "",
+            3: invoiceNumber,
+            4: new Date(newInvoice.invoice_date).toLocaleDateString("hi-IN"),
+            5:
+              typeof newInvoice.total_amount === "number"
+                ? newInvoice.total_amount.toFixed(2)
+                : String(newInvoice.total_amount),
+            6:
+              typeof newInvoice.amount_paid === "number"
+                ? newInvoice.amount_paid.toFixed(2)
+                : "0",
+            7:
+              typeof newInvoice.amount_due === "number"
+                ? newInvoice.amount_due.toFixed(2)
+                : (
+                    (newInvoice.total_amount || 0) -
+                    (newInvoice.amount_paid || 0)
+                  ).toFixed(2),
+            8:
+              {
+                PAID: "Paid",
+                PARTIAL: "Partial",
+                UNPAID: "Unpaid",
+              }[newInvoice.payment_status] || "Pending",
+            9: shop.contact_number || shop.mobile || shop.phone || "",
+          };
           const msgConfig = {
-            templateName: "invoice_created",
+            templateName: "invoice_generated_notification",
             to: formattedNumber,
             components: vars,
-            campaignName: "invoice_created",
+            campaignName: "invoice_generated_notification",
             hospitalId: shop._id,
             userName: newInvoice.customer_id?.full_name || "",
-            messageType: "invoice_created",
+            messageType: "invoice_generated_notification",
           };
 
           const backendUrl = (process.env.BACKEND_URL || "").replace(
@@ -648,7 +641,7 @@ export default class InvoiceController {
             const token = `${newInvoice._id}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
             tempPdfStore.set(token, {
               buffer: pdfBuffer,
-              filename: `Invoice_${invoiceNumber}.pdf`,
+              filename: `Invoice-${invoiceNumber}.pdf`,
               expires: Date.now() + 60 * 60 * 1000,
             });
             setTimeout(() => tempPdfStore.delete(token), 60 * 60 * 1000);
@@ -658,7 +651,7 @@ export default class InvoiceController {
           if (mediaUrl) {
             msgConfig.media = {
               url: mediaUrl,
-              filename: `Invoice_${invoiceNumber}.pdf`,
+              filename: `Invoice-${invoiceNumber}.pdf`,
             };
             await sendWhatsappMessageViaMSG91(msgConfig);
 
@@ -670,7 +663,7 @@ export default class InvoiceController {
             }).catch(() => {});
           } else {
             console.warn(
-              `Skipping immediate WhatsApp invoice_created for ${invoiceNumber}: PDF URL unavailable. Scheduling delayed retry in 90 seconds...`,
+              `Skipping immediate WhatsApp invoice_generated_notification for ${invoiceNumber}: PDF URL unavailable. Scheduling delayed retry in 90 seconds...`,
             );
             schedulePdfAndWhatsappRetry({
               invoiceId: newInvoice._id,
@@ -881,24 +874,20 @@ export default class InvoiceController {
 
       const vars = {
         1: customer?.full_name || "",
-
-        2: invoice.invoice_number,
-
-        3: new Date(invoice.invoice_date).toLocaleDateString("hi-IN"),
-
-        4:
+        2: shop.shop_name_hi || shop.shop_name || "",
+        3: invoice.invoice_number,
+        4: new Date(invoice.invoice_date).toLocaleDateString("hi-IN"),
+        5:
           typeof invoice.total_amount === "number"
             ? invoice.total_amount.toFixed(2)
             : String(invoice.total_amount),
-
-        5:
+        6:
           typeof invoice.amount_paid === "number"
             ? invoice.amount_paid.toFixed(2)
             : typeof invoice.paid_amount === "number"
               ? invoice.paid_amount.toFixed(2)
               : "0",
-
-        6:
+        7:
           typeof invoice.amount_due === "number"
             ? invoice.amount_due.toFixed(2)
             : typeof invoice.due_amount === "number"
@@ -907,29 +896,26 @@ export default class InvoiceController {
                   (invoice.total_amount || 0) -
                   (invoice.amount_paid || invoice.paid_amount || 0)
                 ).toFixed(2),
-
-        7: {
-             PAID: "Paid",
-             PARTIAL: "Partial",
-             UNPAID: "Unpaid",
-           }[invoice.payment_status] || "Pending",
-
-        8: shop.phone || shop.mobile || shop.contact_number || "",
-
-        9: shop.shop_name_hi || shop.shop_name || "",
+        8:
+          {
+            PAID: "Paid",
+            PARTIAL: "Partial",
+            UNPAID: "Unpaid",
+          }[invoice.payment_status] || "Pending",
+        9: shop.contact_number || shop.mobile || shop.phone || "",
       };
-      // invoice_created template always requires header_1 document
+      // invoice_generated_notification template always requires header_1 document
       const msgConfig = {
-        templateName: "invoice_created",
+        templateName: "invoice_generated_notification",
         to: customerNumber,
         components: vars,
-        campaignName: "invoice_created",
+        campaignName: "invoice_generated_notification",
         hospitalId: shop._id,
         userName: customer?.full_name || "",
-        messageType: "invoice_created",
+        messageType: "invoice_generated_notification",
         media: {
           url: pdfUrl,
-          filename: `Invoice_${invoice.invoice_number}.pdf`,
+          filename: `Invoice-${invoice.invoice_number}.pdf`,
         },
       };
 

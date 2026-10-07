@@ -157,6 +157,7 @@ function Logs() {
   const formatTemplateName = (name) => {
     if (!name) return "General Message";
     const templatesMap = {
+      invoice_generated_notification: "Invoice Generated Notification",
       invoice_created: "Invoice Created",
       payment_reminder: "Payment Reminder",
       service_reminder: "Service Reminder",
@@ -356,13 +357,13 @@ function Logs() {
                             className="w-full mt-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-ink-base dark:text-slate-200"
                           >
                             <option value="">All Templates</option>
-                            <option value="invoice_created">Invoice Created</option>
+                            <option value="invoice_generated_notification">Invoice Generated Notification</option>
                             <option value="payment_reminder">Payment Reminder</option>
                             <option value="service_reminder">Service Reminder</option>
                             <option value="birthday_wish">Birthday Wish</option>
                             <option value="anniversary_wish">Anniversary Wish</option>
                             {availableTemplates.map((tpl) => (
-                              !["invoice_created", "payment_reminder", "service_reminder", "birthday_wish", "anniversary_wish"].includes(tpl) && (
+                              !["invoice_generated_notification", "invoice_created", "payment_reminder", "service_reminder", "birthday_wish", "anniversary_wish"].includes(tpl) && (
                                 <option key={tpl} value={tpl}>
                                   {formatTemplateName(tpl)}
                                 </option>

@@ -7,6 +7,7 @@ export const sendWhatsappMessageViaMSG91 = async ({
   to,
   components = [],
   media = null,
+  languageCode = "hi",
   // optional metadata for logging
   hospitalId = null,
   campaignName = null,
@@ -129,7 +130,7 @@ export const sendWhatsappMessageViaMSG91 = async ({
         template: {
           name: templateName,
           language: {
-            code: "en",
+            code: languageCode || "hi",
             policy: "deterministic",
           },
           namespace: process.env.MSG91_NAMESPACE,

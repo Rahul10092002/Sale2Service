@@ -302,72 +302,20 @@ const CustomerInformationForm = () => {
             Address Information
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-            <div className="sm:col-span-2 lg:col-span-4">
-              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                Address Line 1 *
-              </label>
-              <Input
-                type="text"
-                value={customer.address.line1 || ""}
-                onChange={(e) =>
-                  updateCustomerAddressData({ line1: e.target.value })
-                }
-                placeholder="Building, Street, Area"
-                error={errors["customer.address.line1"]}
-                inputClassName="h-9 sm:h-8 text-xs"
-              />
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                City *
-              </label>
-              <Input
-                type="text"
-                value={customer.address.city || ""}
-                onChange={(e) =>
-                  updateCustomerAddressData({ city: e.target.value })
-                }
-                placeholder="City"
-                error={errors["customer.address.city"]}
-                inputClassName="h-9 sm:h-8 text-xs"
-              />
-            </div>
-
-            <div className="col-span-1">
-              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                State *
-              </label>
-              <Input
-                type="text"
-                value={customer.address.state || ""}
-                onChange={(e) =>
-                  updateCustomerAddressData({ state: e.target.value })
-                }
-                placeholder="State"
-                error={errors["customer.address.state"]}
-                inputClassName="h-9 sm:h-8 text-xs"
-              />
-            </div>
-
-            <div className="sm:col-span-2 lg:col-span-2">
-              <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
-                Pincode *
-              </label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={customer.address.pincode || ""}
-                onChange={(e) =>
-                  updateCustomerAddressData({ pincode: e.target.value })
-                }
-                placeholder="400001"
-                error={errors["customer.address.pincode"]}
-                inputClassName="h-9 sm:h-8 text-xs"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+              Address *
+            </label>
+            <Input
+              type="text"
+              value={customer.address.line1 || ""}
+              onChange={(e) =>
+                updateCustomerAddressData({ line1: e.target.value })
+              }
+              placeholder="Building, Street, Area, City, State, Pincode"
+              error={errors["customer.address.line1"]}
+              inputClassName="h-9 sm:h-8 text-xs"
+            />
           </div>
         </div>
 

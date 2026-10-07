@@ -139,7 +139,7 @@ export function schedulePdfAndWhatsappRetry({
         const token = `${invoice._id}_${Date.now()}`;
         tempPdfRetryStore.set(token, {
           buffer: pdfBuffer,
-          filename: `Invoice_${invoice.invoice_number}.pdf`,
+          filename: `Invoice-${invoice.invoice_number}.pdf`,
           expires: Date.now() + 60 * 60 * 1000,
         });
         setTimeout(() => tempPdfRetryStore.delete(token), 60 * 60 * 1000);
@@ -150,45 +150,45 @@ export function schedulePdfAndWhatsappRetry({
       if (mediaUrl) {
         const vars = {
           1: customerName || "",
-          2: invoice.invoice_number,
-          3: new Date(invoice.invoice_date || invoice.createdAt).toLocaleDateString(
+          2: shop.shop_name_hi || shop.shop_name || "",
+          3: invoice.invoice_number,
+          4: new Date(invoice.invoice_date || invoice.createdAt).toLocaleDateString(
             "hi-IN",
           ),
-          4:
+          5:
             typeof invoice.total_amount === "number"
               ? invoice.total_amount.toFixed(2)
               : String(invoice.total_amount),
-          5:
+          6:
             typeof invoice.amount_paid === "number"
               ? invoice.amount_paid.toFixed(2)
               : "0",
-          6:
+          7:
             typeof invoice.amount_due === "number"
               ? invoice.amount_due.toFixed(2)
               : (
                   (invoice.total_amount || 0) - (invoice.amount_paid || 0)
                 ).toFixed(2),
-          7:
+          8:
             {
               PAID: "Paid",
               PARTIAL: "Partial",
               UNPAID: "Unpaid",
             }[invoice.payment_status] || "Pending",
-          8: shop.contact_number || shop.mobile || shop.phone || "",
-          9: shop.shop_name_hi || shop.shop_name || "",
+          9: shop.contact_number || shop.mobile || shop.phone || "",
         };
 
         const msgConfig = {
-          templateName: "invoice_created",
+          templateName: "invoice_generated_notification",
           to: formattedNumber,
           components: vars,
-          campaignName: "invoice_created",
+          campaignName: "invoice_generated_notification",
           hospitalId: shop._id,
           userName: customerName,
-          messageType: "invoice_created",
+          messageType: "invoice_generated_notification",
           media: {
             url: mediaUrl,
-            filename: `Invoice_${invoice.invoice_number}.pdf`,
+            filename: `Invoice-${invoice.invoice_number}.pdf`,
           },
         };
 

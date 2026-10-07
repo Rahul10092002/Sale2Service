@@ -16,8 +16,15 @@ const MODEL_MAP = {
   invoices: {
     model: Invoice,
     label: "Invoice",
+    populate: { path: "customer_id", select: "full_name whatsapp_number" },
     getDisplayName: (item) => `Invoice #${item.invoice_number || item._id}`,
-    getSubtitle: (item) => `Customer: ${item.customer_name || "N/A"} | Total: ₹${item.grand_total ?? item.total_amount ?? 0}`,
+    getSubtitle: (item) => {
+      const customerName =
+        (typeof item.customer_id === "object" && item.customer_id?.full_name) ||
+        item.customer_name ||
+        "N/A";
+      return `Customer: ${customerName} | Total: ₹${item.grand_total ?? item.total_amount ?? 0}`;
+    },
   },
   customers: {
     model: Customer,
@@ -29,7 +36,7 @@ const MODEL_MAP = {
     model: InvoiceItem,
     label: "Product / Line Item",
     getDisplayName: (item) => item.product_name || "Unnamed Product",
-    getSubtitle: (item) => `Serial: ${item.serial_number || "N/A"} | Price: ₹${item.unit_price || 0}`,
+    getSubtitle: (item) => `Serial: ${item.serial_number || "N/A"} | Price: ₹${item.selling_price ?? item.unit_price ?? 0}`,
   },
   inventory: {
     model: InventoryItem,
@@ -91,10 +98,11 @@ export const getRecycleBinItems = async (req, res) => {
         deleted_at: { $ne: null },
       };
 
-      const docs = await config.model
-        .find(query)
-        .lean()
-        .exec();
+      let queryExec = config.model.find(query);
+      if (config.populate) {
+        queryExec = queryExec.populate(config.populate);
+      }
+      const docs = await queryExec.lean().exec();
 
       for (const doc of docs) {
         const displayName = config.getDisplayName(doc);

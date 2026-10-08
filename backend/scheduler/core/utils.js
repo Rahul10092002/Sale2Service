@@ -155,3 +155,81 @@ export const getShopContactInfo = (shop) => {
   const formatted = formatPhoneNumber(shop.phone);
   return formatted || null;
 };
+
+/**
+ * Process items in concurrent batches with a rate-limit pool and optional delay between batches.
+ * Perfect for sending bulk messages (e.g. 5,000+ WhatsApp messages) without overwhelming DB or API rate limits.
+ *
+ * @param {Object} options
+ * @param {Array} options.items - Array of items to process
+ * @param {number} [options.batchSize=100] - Items per chunk
+ * @param {number} [options.concurrencyLimit=15] - Maximum parallel workers per chunk
+ * @param {Function} options.processorFn - Async function (item, index) => Promise
+ * @param {Function} [options.onBatchComplete] - Callback on batch finish ({ processedCount, totalCount, successCount, failureCount })
+ * @param {number} [options.batchDelayMs=50] - Delay between chunks in ms
+ * @returns {Promise<{ total: number, processedCount: number, successCount: number, failureCount: number, results: Array }>}
+ */
+export async function processInConcurrentBatches({
+  items = [],
+  batchSize = 100,
+  concurrencyLimit = 15,
+  processorFn,
+  onBatchComplete = null,
+  batchDelayMs = 50,
+}) {
+  if (!items || items.length === 0) {
+    return { total: 0, processedCount: 0, successCount: 0, failureCount: 0, results: [] };
+  }
+
+  let processedCount = 0;
+  let successCount = 0;
+  let failureCount = 0;
+  const results = [];
+
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = [];
+
+    // Process chunk with worker concurrency
+    for (let j = 0; j < batch.length; j += concurrencyLimit) {
+      const chunk = batch.slice(j, j + concurrencyLimit);
+      const chunkPromises = chunk.map(async (item, idx) => {
+        try {
+          const res = await processorFn(item, i + j + idx);
+          return { success: true, item, res };
+        } catch (err) {
+          return { success: false, item, error: err };
+        }
+      });
+
+      const chunkRes = await Promise.all(chunkPromises);
+      batchResults.push(...chunkRes);
+    }
+
+    for (const r of batchResults) {
+      processedCount++;
+      if (r.success && r.res !== false && r.res?.success !== false) {
+        successCount++;
+      } else {
+        failureCount++;
+      }
+      results.push(r);
+    }
+
+    if (typeof onBatchComplete === "function") {
+      await onBatchComplete({
+        processedCount,
+        totalCount: items.length,
+        batchSuccessCount: batchResults.filter((r) => r.success && r.res !== false && r.res?.success !== false).length,
+        batchFailureCount: batchResults.filter((r) => !r.success || r.res === false || r.res?.success === false).length,
+      });
+    }
+
+    if (batchDelayMs > 0 && i + batchSize < items.length) {
+      await new Promise((resolve) => setTimeout(resolve, batchDelayMs));
+    }
+  }
+
+  return { total: items.length, processedCount, successCount, failureCount, results };
+}
+

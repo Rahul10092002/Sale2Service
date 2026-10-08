@@ -86,12 +86,21 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
           `Found ${expiringWarranties.length} warranties expiring in ${days} days`,
         );
 
+        if (expiringWarranties.length === 0) continue;
+
         const shopMap = await this.getShopMapForInvoiceItems(expiringWarranties);
-        await Promise.all(
-          expiringWarranties.map((item) =>
-            this.sendWarrantyExpiryReminder(item, days, shopMap[String(item.invoice_id?.shop_id)]),
-          ),
-        );
+        await processInConcurrentBatches({
+          items: expiringWarranties,
+          batchSize: 50,
+          concurrencyLimit: 10,
+          processorFn: async (item) => {
+            return await this.sendWarrantyExpiryReminder(
+              item,
+              days,
+              shopMap[String(item.invoice_id?.shop_id)],
+            );
+          },
+        });
       }
     } catch (error) {
       this.logError("processWarrantyExpiry", error);
@@ -122,12 +131,20 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
         `Found ${expiredWarranties.length} recently expired warranties`,
       );
 
+      if (expiredWarranties.length === 0) return;
+
       const shopMap = await this.getShopMapForInvoiceItems(expiredWarranties);
-      await Promise.all(
-        expiredWarranties.map((item) =>
-          this.sendWarrantyExpiredReminder(item, shopMap[String(item.invoice_id?.shop_id)]),
-        ),
-      );
+      await processInConcurrentBatches({
+        items: expiredWarranties,
+        batchSize: 50,
+        concurrencyLimit: 10,
+        processorFn: async (item) => {
+          return await this.sendWarrantyExpiredReminder(
+            item,
+            shopMap[String(item.invoice_id?.shop_id)],
+          );
+        },
+      });
     } catch (error) {
       this.logError("processExpiredWarranties", error);
     }

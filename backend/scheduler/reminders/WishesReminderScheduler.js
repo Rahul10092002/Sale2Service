@@ -9,17 +9,20 @@ import {
   getShopName,
   formatPhoneNumber,
   getFirstName,
+  processInConcurrentBatches,
 } from "../core/utils.js";
 
 /**
  * Wishes-specific reminder scheduler
- * Handles birthday and anniversary wishes to customers
+ * Handles birthday, anniversary, and festival bulk wishes to customers at scale (up to 50k+ customers)
  */
 export default class WishesReminderScheduler extends BaseScheduler {
   constructor() {
     super();
     this.messageSender = new MessageSender();
     this.dailySummaryMap = {};
+    this.BATCH_SIZE = 100; // Batch size per worker chunk
+    this.CONCURRENCY_LIMIT = 15; // Parallel workers for MSG91 HTTP requests
   }
 
   /**
@@ -38,12 +41,13 @@ export default class WishesReminderScheduler extends BaseScheduler {
 
     if (shopIds.length === 0) return {};
 
-    const shops = await Shop.find({ _id: { $in: shopIds } });
+    const shops = await Shop.find({ _id: { $in: shopIds } }).lean();
     return shops.reduce((map, shop) => {
       map[String(shop._id)] = shop;
       return map;
     }, {});
   }
+
   addToSummary(customer, type) {
     const shopId = String(customer.shop_id);
 
@@ -60,6 +64,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
       this.dailySummaryMap[shopId].anniversaries.push(customer);
     }
   }
+
   /**
    * Process all wishes reminders
    */
@@ -74,11 +79,11 @@ export default class WishesReminderScheduler extends BaseScheduler {
         this.processFestivalWishes(),
       ]);
 
-       await Promise.all(
-         Object.entries(this.dailySummaryMap).map(([shopId, data]) =>
-           this.sendDailySummary(shopId, data.birthdays, data.anniversaries),
-         ),
-       );
+      await Promise.all(
+        Object.entries(this.dailySummaryMap).map(([shopId, data]) =>
+          this.sendDailySummary(shopId, data.birthdays, data.anniversaries),
+        ),
+      );
 
       this.logInfo("Wishes reminders processing completed");
     } catch (error) {
@@ -87,16 +92,13 @@ export default class WishesReminderScheduler extends BaseScheduler {
   }
 
   /**
-   * Process birthday wishes (send on birthday)
+   * Process birthday wishes (send on birthday in IST)
    */
   async processBirthdayWishes() {
     try {
-      // Use IST date parts to avoid UTC/IST mismatch (server runs UTC)
-      const { month: todayMonth, date: todayDate } = getISTTodayParts();
-
-      // Find customers whose birthday is today
       const today = getISTTodayParts();
 
+      // MongoDB server-side aggregation for birthdays in IST timezone (+05:30)
       const birthdayCustomers = await Customer.aggregate([
         {
           $match: {
@@ -106,72 +108,126 @@ export default class WishesReminderScheduler extends BaseScheduler {
         },
         {
           $addFields: {
-            month: { $month: "$date_of_birth" },
-            day: { $dayOfMonth: "$date_of_birth" },
+            dobParts: {
+              $dateToParts: { date: "$date_of_birth", timezone: "+05:30" },
+            },
           },
         },
         {
           $match: {
-            month: today.month,
-            day: today.date,
+            "dobParts.month": today.month,
+            "dobParts.day": today.date,
           },
         },
       ]);
 
-      // Filter by month and date in IST (ignoring year and time)
-      const todayBirthdays = birthdayCustomers.filter((customer) => {
-        const { month, date } = getISTDateParts(customer.date_of_birth);
-        return month === todayMonth && date === todayDate;
-      });
-
       this.logInfo(
-        `Found ${todayBirthdays.length} customers with birthdays today`,
+        `Found ${birthdayCustomers.length} customers with birthdays today`,
       );
 
-      const shopMap = await this.getShopMapForCustomers(todayBirthdays);
-      await Promise.all(
-        todayBirthdays.map((customer) =>
-          this.sendBirthdayWish(customer, shopMap[String(customer.shop_id)]),
-        ),
+      if (birthdayCustomers.length === 0) return;
+
+      const shopMap = await this.getShopMapForCustomers(birthdayCustomers);
+
+      // Bulk fetch sent log keys to eliminate N+1 DB checks
+      const customerIds = birthdayCustomers.map((c) => c.customer_id);
+      const sentSet = await this.getSentReminderLogsBatch(
+        customerIds,
+        "birthday_wish",
+        24,
       );
+
+      await processInConcurrentBatches({
+        items: birthdayCustomers,
+        batchSize: this.BATCH_SIZE,
+        concurrencyLimit: this.CONCURRENCY_LIMIT,
+        processorFn: async (customer) => {
+          const sentKey = `${customer.customer_id}:birthday_wish`;
+          if (sentSet.has(sentKey)) {
+            this.logInfo(
+              `Birthday wish already sent to customer ${customer.full_name}`,
+            );
+            return { success: true, skipped: true };
+          }
+
+          return await this.sendBirthdayWish(
+            customer,
+            shopMap[String(customer.shop_id)],
+            { skipAlreadySentCheck: true },
+          );
+        },
+      });
     } catch (error) {
       this.logError("processBirthdayWishes", error);
     }
   }
 
   /**
-   * Process anniversary wishes (send on anniversary)
+   * Process anniversary wishes (send on anniversary in IST)
    */
   async processAnniversaryWishes() {
     try {
-      // Use IST date parts to avoid UTC/IST mismatch (server runs UTC)
-      const { month: todayMonth, date: todayDate } = getISTTodayParts();
+      const today = getISTTodayParts();
 
-      // Find customers whose anniversary is today
-      const anniversaryCustomers = await Customer.find({
-        anniversary_date: {
-          $exists: true,
-          $ne: null,
+      // MongoDB server-side aggregation for anniversaries in IST timezone (+05:30)
+      const anniversaryCustomers = await Customer.aggregate([
+        {
+          $match: {
+            anniversary_date: { $ne: null },
+            deleted_at: null,
+          },
         },
-        deleted_at: null,
-      });
-
-      // Filter by month and date in IST (ignoring year and time)
-      const todayAnniversaries = anniversaryCustomers.filter((customer) => {
-        const { month, date } = getISTDateParts(customer.anniversary_date);
-        return month === todayMonth && date === todayDate;
-      });
+        {
+          $addFields: {
+            annivParts: {
+              $dateToParts: { date: "$anniversary_date", timezone: "+05:30" },
+            },
+          },
+        },
+        {
+          $match: {
+            "annivParts.month": today.month,
+            "annivParts.day": today.date,
+          },
+        },
+      ]);
 
       this.logInfo(
-        `Found ${todayAnniversaries.length} customers with anniversaries today`,
+        `Found ${anniversaryCustomers.length} customers with anniversaries today`,
       );
 
-      const shopMap = await this.getShopMapForCustomers(todayAnniversaries);
-      await Promise.all(
-        todayAnniversaries.map((customer) =>
-          this.sendAnniversaryWish(customer, shopMap[String(customer.shop_id)]),
-        ),
+      if (anniversaryCustomers.length === 0) return;
+
+      const shopMap = await this.getShopMapForCustomers(anniversaryCustomers);
+
+      // Bulk fetch sent log keys to eliminate N+1 DB checks
+      const customerIds = anniversaryCustomers.map((c) => c.customer_id);
+      const sentSet = await this.getSentReminderLogsBatch(
+        customerIds,
+        "anniversary_wish",
+        24,
       );
+
+      await processInConcurrentBatches({
+        items: anniversaryCustomers,
+        batchSize: this.BATCH_SIZE,
+        concurrencyLimit: this.CONCURRENCY_LIMIT,
+        processorFn: async (customer) => {
+          const sentKey = `${customer.customer_id}:anniversary_wish`;
+          if (sentSet.has(sentKey)) {
+            this.logInfo(
+              `Anniversary wish already sent to customer ${customer.full_name}`,
+            );
+            return { success: true, skipped: true };
+          }
+
+          return await this.sendAnniversaryWish(
+            customer,
+            shopMap[String(customer.shop_id)],
+            { skipAlreadySentCheck: true },
+          );
+        },
+      });
     } catch (error) {
       this.logError("processAnniversaryWishes", error);
     }
@@ -180,8 +236,10 @@ export default class WishesReminderScheduler extends BaseScheduler {
   /**
    * Send birthday wish to customer
    * @param {Object} customer - Customer object
+   * @param {Object} [cachedShop] - Pre-fetched shop object
+   * @param {Object} [options] - Options
    */
-  async sendBirthdayWish(customer, cachedShop = null) {
+  async sendBirthdayWish(customer, cachedShop = null, options = {}) {
     try {
       const templateName = "birthday_wish";
 
@@ -191,41 +249,38 @@ export default class WishesReminderScheduler extends BaseScheduler {
           customer: customer.full_name,
           customerId: customer.customer_id,
         });
-        return;
+        return { success: false, error: phoneValidation.error };
       }
 
-      const alreadySent = await this.isReminderAlreadySent(
-        customer.customer_id,
-        "CUSTOMER",
-        templateName,
-        24, // Only check last 24 hours for wishes
-        customer.shop_id,
-        phoneValidation.formattedNumber,
-      );
-
-      if (alreadySent) {
-        this.logInfo(
-          `Birthday wish already sent to customer ${customer.full_name}`,
+      if (!options.skipAlreadySentCheck) {
+        const alreadySent = await this.isReminderAlreadySent(
+          customer.customer_id,
+          "CUSTOMER",
+          templateName,
+          24,
+          customer.shop_id,
+          phoneValidation.formattedNumber,
         );
-        return;
+
+        if (alreadySent) {
+          this.logInfo(
+            `Birthday wish already sent to customer ${customer.full_name}`,
+          );
+          return { success: true, skipped: true };
+        }
       }
 
-      // Fetch shop name from preloaded map or fallback to DB lookup
       const shop =
         cachedShop ||
-        (customer.shop_id ? await Shop.findById(customer.shop_id) : null);
+        (customer.shop_id ? await Shop.findById(customer.shop_id).lean() : null);
 
-      // Prepare template variables for birthday_wish
-      // {{1}}: Customer name, {{2}}: Shop name
       const variables = {
         1: getFirstName(customer?.full_name),
         2: getShopName(shop),
       };
 
-      // Build message content for logging
       const messageContent = `नमस्ते ${variables[1]},\n\nआपको जन्मदिन की हार्दिक शुभकामनाएँ 🎉\n\nईश्वर आपको स्वस्थ, सुखी और सफल जीवन प्रदान करें।\nआपका दिन खुशियों और सफलता से भरा रहे।\n\nसादर,\n${variables[2]} की ओर से`;
 
-      // Create reminder log
       const reminderLog = await this.createReminderLog({
         entityId: customer.customer_id,
         entityType: "CUSTOMER",
@@ -236,7 +291,6 @@ export default class WishesReminderScheduler extends BaseScheduler {
         templateName: templateName,
       });
 
-      // Send WhatsApp message
       const result = await this.messageSender.sendTemplateMessage({
         to: phoneValidation.formattedNumber,
         templateName: templateName,
@@ -250,29 +304,30 @@ export default class WishesReminderScheduler extends BaseScheduler {
       });
 
       if (result.success) {
-        // this.logInfo(`Birthday wish sent successfully`, {
-        //   customer: customer.full_name,
-        //   date: new Date(customer.date_of_birth).toLocaleDateString(),
-        // });
         this.addToSummary(customer, "birthday");
+        return { success: true };
       } else {
         this.logError("sendBirthdayWish", new Error(result.error), {
           customer: customer.full_name,
           customerId: customer.customer_id,
         });
+        return { success: false, error: result.error };
       }
     } catch (error) {
       this.logError("sendBirthdayWish", error, {
         customerId: customer.customer_id,
       });
+      return { success: false, error: error.message };
     }
   }
 
   /**
    * Send anniversary wish to customer
    * @param {Object} customer - Customer object
+   * @param {Object} [cachedShop] - Preloaded shop object
+   * @param {Object} [options] - Options
    */
-  async sendAnniversaryWish(customer, cachedShop = null) {
+  async sendAnniversaryWish(customer, cachedShop = null, options = {}) {
     try {
       const templateName = "anniversary_wish";
 
@@ -282,41 +337,38 @@ export default class WishesReminderScheduler extends BaseScheduler {
           customer: customer.full_name,
           customerId: customer.customer_id,
         });
-        return;
+        return { success: false, error: phoneValidation.error };
       }
 
-      const alreadySent = await this.isReminderAlreadySent(
-        customer.customer_id,
-        "CUSTOMER",
-        templateName,
-        24,
-        customer.shop_id,
-        phoneValidation.formattedNumber,
-      );
-
-      if (alreadySent) {
-        this.logInfo(
-          `Anniversary wish already sent to customer ${customer.full_name}`,
+      if (!options.skipAlreadySentCheck) {
+        const alreadySent = await this.isReminderAlreadySent(
+          customer.customer_id,
+          "CUSTOMER",
+          templateName,
+          24,
+          customer.shop_id,
+          phoneValidation.formattedNumber,
         );
-        return;
+
+        if (alreadySent) {
+          this.logInfo(
+            `Anniversary wish already sent to customer ${customer.full_name}`,
+          );
+          return { success: true, skipped: true };
+        }
       }
 
-      // Fetch shop name from preloaded map or fallback to DB lookup
       const shop =
         cachedShop ||
-        (customer.shop_id ? await Shop.findById(customer.shop_id) : null);
+        (customer.shop_id ? await Shop.findById(customer.shop_id).lean() : null);
 
-      // Prepare template variables for anniversary_wish
-      // {{1}}: Customer name, {{2}}: Shop name
       const variables = {
         1: getFirstName(customer?.full_name),
         2: getShopName(shop),
       };
 
-      // Build message content for logging
       const messageContent = `नमस्ते ${variables[1]} जी,\n\nआपको विवाह वर्षगाँठ की हार्दिक शुभकामनाएँ 💐\n\nईश्वर से प्रार्थना है कि आपका जीवन प्रेम, विश्वास और खुशियों से सदा भरा रहे।\nआप दोनों का साथ यूँ ही बना रहे।\n\nसादर,\n${variables[2]} की ओर से।`;
 
-      // Create reminder log
       const reminderLog = await this.createReminderLog({
         entityId: customer.customer_id,
         entityType: "CUSTOMER",
@@ -327,7 +379,6 @@ export default class WishesReminderScheduler extends BaseScheduler {
         templateName: templateName,
       });
 
-      // Send WhatsApp message
       const result = await this.messageSender.sendTemplateMessage({
         to: phoneValidation.formattedNumber,
         templateName: templateName,
@@ -341,58 +392,74 @@ export default class WishesReminderScheduler extends BaseScheduler {
       });
 
       if (result.success) {
-        // this.logInfo(`Anniversary wish sent successfully`, {
-        //   customer: customer.full_name,
-        //   date: new Date(customer.anniversary_date).toLocaleDateString(),
-        // });
         this.addToSummary(customer, "anniversary");
+        return { success: true };
       } else {
         this.logError("sendAnniversaryWish", new Error(result.error), {
           customer: customer.full_name,
           customerId: customer.customer_id,
         });
+        return { success: false, error: result.error };
       }
     } catch (error) {
       this.logError("sendAnniversaryWish", error, {
         customerId: customer.customer_id,
       });
+      return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Process pending festival wishes
+   */
   async processFestivalWishes() {
     try {
       this.logInfo("Processing festival wishes...");
 
       const today = getISTTodayParts();
       const festivals = await FestivalSchedule.find({
-        status: "Pending",
-      });
+        status: { $in: ["Pending", "Processing"] },
+      }).lean();
+
       const todayFestivals = festivals.filter((festival) => {
         const { date, month, year } = getISTDateParts(festival.schedule_date);
-
-        return (
-          date === today.date && month === today.month && year === today.year // 🔥 IMPORTANT
-        );
+        return date === today.date && month === today.month && year === today.year;
       });
-      this.logInfo(`Found ${festivals.length} festival schedules for today`);
 
-      await Promise.all(
-        todayFestivals.map((festival) => this.processFestivalForShop(festival)),
-      );
+      this.logInfo(`Found ${todayFestivals.length} festival schedules for today`);
+
+      for (const festival of todayFestivals) {
+        await this.processFestivalForShop(festival);
+      }
     } catch (error) {
       this.logError("processFestivalWishes", error);
     }
   }
+
+  /**
+   * Process festival wishes for a shop with high-performance batch streaming (up to 5k+ customers)
+   * @param {Object} festival - FestivalSchedule object
+   */
   async processFestivalForShop(festival) {
     try {
+      this.logInfo(
+        `Starting festival wish campaign "${festival.festival_name}" for shop ${festival.shop_id}`,
+      );
+
+      // Pre-fetch shop details once
+      const shop = await Shop.findById(festival.shop_id).lean();
+
+      // Query customers in lightweight lean mode
       const customers = await Customer.find({
         shop_id: festival.shop_id,
         deleted_at: null,
-      });
+      })
+        .select("_id customer_id full_name whatsapp_number shop_id")
+        .lean();
 
-      if (!customers.length) {
+      const totalCustomers = customers.length;
+      if (totalCustomers === 0) {
         this.logInfo(`No customers found for shop ${festival.shop_id}`);
-
-        // Update status as completed with 0 count
         await FestivalSchedule.findByIdAndUpdate(festival._id, {
           festival_wishes_sent: 0,
           status: "Completed",
@@ -400,28 +467,47 @@ export default class WishesReminderScheduler extends BaseScheduler {
         return;
       }
 
-      const shop = await Shop.findById(festival.shop_id);
-      let successCount = 0;
-
-      await Promise.all(
-        customers.map(async (customer) => {
-          try {
-            await this.sendFestivalWish(customer, shop, festival);
-            successCount++;
-          } catch (err) {
-            this.logError("sendFestivalWish failed", err, {
-              customerId: customer._id,
-            });
-          }
-        }),
-      );
-
+      // Mark status as Processing
       await FestivalSchedule.findByIdAndUpdate(festival._id, {
-        festival_wishes_sent: successCount,
+        status: "Processing",
+      });
+
+      const templateName = "festival_wish";
+      const customTemplateKey = `${templateName}_${festival._id}`;
+      let totalSentCount = festival.festival_wishes_sent || 0;
+
+      // Process in concurrent batches (100 customers per batch, 15 concurrent workers)
+      await processInConcurrentBatches({
+        items: customers,
+        batchSize: this.BATCH_SIZE,
+        concurrencyLimit: this.CONCURRENCY_LIMIT,
+        batchDelayMs: 50,
+        processorFn: async (customerChunk, chunkStartIndex) => {
+          // Chunk is processed inside worker pool
+          return await this.sendFestivalWish(customerChunk, shop, festival, {
+            templateKey: customTemplateKey,
+          });
+        },
+        onBatchComplete: async ({ processedCount, batchSuccessCount }) => {
+          totalSentCount += batchSuccessCount;
+          // Progress update on FestivalSchedule
+          await FestivalSchedule.findByIdAndUpdate(festival._id, {
+            festival_wishes_sent: totalSentCount,
+          });
+          this.logInfo(
+            `Festival "${festival.festival_name}" Progress: ${processedCount}/${totalCustomers} processed (${totalSentCount} sent)`,
+          );
+        },
+      });
+
+      // Mark completed
+      await FestivalSchedule.findByIdAndUpdate(festival._id, {
+        festival_wishes_sent: totalSentCount,
         status: "Completed",
       });
+
       this.logInfo(
-        `Festival processed: ${successCount}/${customers.length} wishes sent`,
+        `Festival "${festival.festival_name}" completed: ${totalSentCount}/${totalCustomers} wishes sent`,
       );
     } catch (error) {
       this.logError("processFestivalForShop", error, {
@@ -429,62 +515,54 @@ export default class WishesReminderScheduler extends BaseScheduler {
       });
     }
   }
-  async sendFestivalWish(customer, cachedShop = null, festival) {
+
+  /**
+   * Send single festival wish to customer
+   * @param {Object} customer - Customer object
+   * @param {Object} cachedShop - Preloaded shop object
+   * @param {Object} festival - Festival object
+   * @param {Object} [options] - Options
+   */
+  async sendFestivalWish(customer, cachedShop = null, festival, options = {}) {
     try {
       const templateName = "festival_wish";
+      const customTemplateKey = options.templateKey || `${templateName}_${festival._id}`;
 
       const phoneValidation = this.validateCustomerPhoneNumber(customer);
       if (!phoneValidation.isValid) {
         this.logError("sendFestivalWish", new Error(phoneValidation.error), {
           customer: customer.full_name,
         });
-        return;
+        return { success: false, error: phoneValidation.error };
       }
 
-      const alreadySent = await this.isReminderAlreadySent(
-        customer.customer_id,
-        "CUSTOMER",
-        `${templateName}_${festival._id}`, // unique per festival
-        24,
-        festival.shop_id,
-        phoneValidation.formattedNumber,
-      );
-
-      if (alreadySent) {
-        this.logInfo(
-          `Festival wish already sent to ${customer.full_name} for ${festival.festival_name}`,
+      if (!options.skipAlreadySentCheck) {
+        const alreadySent = await this.isReminderAlreadySent(
+          customer.customer_id,
+          "CUSTOMER",
+          customTemplateKey,
+          24,
+          festival.shop_id,
+          phoneValidation.formattedNumber,
         );
-        return;
+
+        if (alreadySent) {
+          return { success: true, skipped: true };
+        }
       }
 
       const shop =
         cachedShop ||
-        (customer.shop_id ? await Shop.findById(customer.shop_id) : null);
+        (customer.shop_id ? await Shop.findById(customer.shop_id).lean() : null);
 
-      // Template variables
-      // {{1}} Customer Name
-      // {{2}} Festival Name
-      // {{3}} Shop Name
       const variables = {
         1: getFirstName(customer?.full_name),
         2: festival.festival_name,
         3: getShopName(shop),
       };
 
-      const messageContent = `नमस्ते ${variables[1]} जी 😊
+      const messageContent = `नमस्ते ${variables[1]} जी 😊\n\n✨ आपको और आपके परिवार को ${variables[2]} की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${variables[3]} की ओर से`;
 
-✨ आपको और आपके परिवार को ${variables[2]} की हार्दिक शुभकामनाएं! ✨
-
-ईश्वर से प्रार्थना है कि यह पावन अवसर आपके जीवन में
-खुशियां, समृद्धि और सफलता लेकर आए 🙏
-
-🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।
-इसी तरह अपना स्नेह बनाए रखें ❤️
-
-धन्यवाद!
-${variables[3]} की ओर से`;
-
-      // Create log
       const reminderLog = await this.createReminderLog({
         entityId: customer.customer_id,
         entityType: "CUSTOMER",
@@ -492,10 +570,9 @@ ${variables[3]} की ओर से`;
         recipientNumber: phoneValidation.formattedNumber,
         recipientName: customer.full_name,
         messageContent,
-        templateName: `${templateName}_${festival._id}`, // IMPORTANT
+        templateName: customTemplateKey,
       });
 
-      // Send message
       const result = await this.messageSender.sendTemplateMessage({
         to: phoneValidation.formattedNumber,
         templateName: templateName,
@@ -510,35 +587,37 @@ ${variables[3]} की ओर से`;
       });
 
       if (result.success) {
-        this.logInfo(
-          `Festival wish sent: ${festival.festival_name} → ${customer.full_name}`,
-        );
+        return { success: true };
       } else {
-        this.logError("sendFestivalWish", new Error(result.error));
+        this.logError("sendFestivalWish", new Error(result.error), {
+          customerId: customer.customer_id,
+        });
+        return { success: false, error: result.error };
       }
     } catch (error) {
       this.logError("sendFestivalWish", error, {
         customerId: customer.customer_id,
       });
+      return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Send daily summary of birthdays/anniversaries to shop owner
+   */
   async sendDailySummary(shopId, todayBirthdays, todayAnniversaries) {
     try {
-      const shop = await Shop.findById(shopId);
-      if (!shop) return;
-      if (!shop.phone) {
+      const shop = await Shop.findById(shopId).lean();
+      if (!shop || !shop.phone) {
         this.logError(
           "sendDailySummary",
-          new Error("Missing shop phone number"),
-          {
-            shopId,
-          },
+          new Error("Missing shop or phone number"),
+          { shopId },
         );
         return;
       }
       const shopName = getShopName(shop);
 
-      // 📅 Date
       const today = new Date();
       const formattedDate = today.toLocaleDateString("hi-IN", {
         day: "numeric",
@@ -546,16 +625,12 @@ ${variables[3]} की ओर से`;
         year: "numeric",
       });
 
-      // 📊 Counts
       const birthdayCount = todayBirthdays.length;
       const anniversaryCount = todayAnniversaries.length;
       const total = birthdayCount + anniversaryCount;
 
-      if (total === 0) {
-        return;
-      }
+      if (total === 0) return;
 
-      // 👥 Customer List (limit 5)
       const allCustomers = [
         ...todayBirthdays.map((c) => ({
           name: getFirstName(c.full_name),
@@ -568,7 +643,6 @@ ${variables[3]} की ओर से`;
           type: "वर्षगाँठ",
         })),
       ];
-      console.log("allCustomers", allCustomers);
 
       const limitedCustomers = allCustomers.slice(0, 5);
 
@@ -580,7 +654,6 @@ ${variables[3]} की ओर से`;
         customerList += `\n+${allCustomers.length - 5} अन्य ग्राहक`;
       }
 
-      // 📦 MSG91 Variables
       const variables = {
         1: formattedDate,
         2: shopName,
@@ -590,18 +663,11 @@ ${variables[3]} की ओर से`;
         6: customerList || "-",
       };
 
-      // 📩 Send to shop owner
-     
-
       const to = formatPhoneNumber(shop.phone);
-
-      if (!to) {
-        console.error("MSG91 ERROR: Missing 'to' number");
-        return null;
-      }
+      if (!to) return null;
 
       await this.messageSender.sendTemplateMessage({
-        to: to, // owner number
+        to: to,
         templateName: "daily_wishes_summary",
         variables,
         metadata: {

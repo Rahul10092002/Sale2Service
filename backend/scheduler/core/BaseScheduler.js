@@ -75,6 +75,61 @@ export default class BaseScheduler {
   }
 
   /**
+   * Bulk check sent reminder logs for a list of entity IDs to optimize 5k+ batch queries.
+   * Reduces DB queries from N to 1 per batch.
+   *
+   * @param {Array<string>} entityIds - Array of entity IDs
+   * @param {string|Object} templateName - Template name or regex/query
+   * @param {number} hoursBuffer - Buffer in hours (default: 24)
+   * @param {mongoose.Types.ObjectId|string|null} shopId - Shop scope
+   * @returns {Promise<Set<string>>} - Set of sent keys ("entity_id:template_name" or "entity_id:phone:template_name")
+   */
+  async getSentReminderLogsBatch(
+    entityIds = [],
+    templateName = null,
+    hoursBuffer = 24,
+    shopId = null,
+  ) {
+    if (!entityIds || entityIds.length === 0) return new Set();
+
+    const query = {
+      entity_id: { $in: entityIds.map(String) },
+      message_status: { $in: ["SENT", "DELIVERED", "READ"] },
+      createdAt: {
+        $gte: new Date(Date.now() - hoursBuffer * 60 * 60 * 1000),
+      },
+    };
+
+    if (templateName) {
+      query.template_name = templateName;
+    }
+
+    const shopOid = normalizeShopObjectId(shopId);
+    if (shopOid) {
+      query.$or = [
+        { shop_id: shopOid },
+        { shop_id: null },
+        { shop_id: { $exists: false } },
+      ];
+    }
+
+    const logs = await ReminderLog.find(query)
+      .select("entity_id recipient_number template_name")
+      .lean();
+
+    const sentSet = new Set();
+    for (const log of logs) {
+      const tName = log.template_name || "";
+      sentSet.add(`${log.entity_id}:${tName}`);
+      if (log.recipient_number) {
+        sentSet.add(`${log.entity_id}:${log.recipient_number}:${tName}`);
+      }
+    }
+    return sentSet;
+  }
+
+
+  /**
    * Validate customer and phone number
    * @param {Object} customer - Customer object
    * @returns {Object} - Validation result with isValid flag and formattedNumber

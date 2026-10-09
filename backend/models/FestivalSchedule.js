@@ -12,6 +12,11 @@ const festivalScheduleSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    template_name: {
+      type: String,
+      default: "festival_wish",
+      trim: true,
+    },
     schedule_date: {
       type: Date,
       required: true,

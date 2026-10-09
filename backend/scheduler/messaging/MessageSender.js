@@ -22,6 +22,7 @@ export default class MessageSender {
     templateName,
     variables = {},
     buttons = [],
+    languageCode = "hi",
     reminderLogId = null,
     metadata = {},
   }) {
@@ -37,6 +38,7 @@ export default class MessageSender {
         to,
         components: componentArray,
         buttons: buttons,
+        languageCode: languageCode || "hi",
         campaignName: metadata.campaignName || templateName,
         hospitalId: metadata.shopId || null,
         userName: getFirstName(metadata.customerName) || metadata.customerName || "",

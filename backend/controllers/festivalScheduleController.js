@@ -7,7 +7,7 @@ export default class FestivalScheduleController {
    */
   async createSchedule(req, res) {
     try {
-      const { festival_name, schedule_date } = req.body;
+      const { festival_name, schedule_date, template_name } = req.body;
       const { user } = req;
 
       if (!festival_name || !schedule_date) {
@@ -39,6 +39,7 @@ export default class FestivalScheduleController {
         shop_id: user.shopId,
         festival_name,
         schedule_date,
+        template_name: template_name || "festival_wish",
       });
 
       return res.status(201).json({
@@ -150,7 +151,7 @@ export default class FestivalScheduleController {
   async updateSchedule(req, res) {
     try {
       const { id } = req.params;
-      const { festival_name, schedule_date } = req.body;
+      const { festival_name, schedule_date, template_name } = req.body;
       const { user } = req;
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -160,11 +161,11 @@ export default class FestivalScheduleController {
         });
       }
 
-      if (!festival_name && !schedule_date) {
+      if (!festival_name && !schedule_date && !template_name) {
         return res.status(400).json({
           success: false,
           message:
-            "At least one field (festival_name or schedule_date) is required for update",
+            "At least one field (festival_name, schedule_date or template_name) is required for update",
         });
       }
 
@@ -191,6 +192,7 @@ export default class FestivalScheduleController {
       const updateData = {};
       if (festival_name) updateData.festival_name = festival_name;
       if (schedule_date) updateData.schedule_date = schedule_date;
+      if (template_name !== undefined) updateData.template_name = template_name;
 
       const updatedSchedule = await FestivalSchedule.findOneAndUpdate(
         { _id: id, shop_id: user.shopId, deleted_at: null },

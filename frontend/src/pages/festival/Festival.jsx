@@ -8,6 +8,10 @@ import {
   Edit2,
   Trash2,
   Calendar,
+  Sparkles,
+  MessageSquare,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import {
   useGetFestivalsQuery,
@@ -23,6 +27,57 @@ import {
   DialogFooter,
 } from "../../components/ui/Modal.jsx";
 
+const FESTIVAL_PRESETS = [
+  {
+    key: "navratri_wish",
+    name: "नवरात्रि",
+    label: "1. नवरात्रि (navratri_wish)",
+    preview: `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को नवरात्रि की हार्दिक शुभकामनाएं! ✨\n\nमाँ दुर्गा से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nशक्ति, खुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n{{Shop Name}} की ओर से`,
+  },
+  {
+    key: "pushyanakshatra_wish",
+    name: "पुष्य नक्षत्र",
+    label: "2. पुष्य नक्षत्र (pushyanakshatra_wish)",
+    preview: `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को शुभ पुष्य नक्षत्र की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि इस शुभ दिन की गई खरीदारी आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n{{Shop Name}} की ओर से`,
+  },
+  {
+    key: "dussehra_wish",
+    name: "दशहरा",
+    label: "3. दशहरा (dussehra_wish)",
+    preview: `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को विजयादशमी (दशहरा) की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि बुराई पर अच्छाई की जीत का यह पावन पर्व आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n{{Shop Name}} की ओर से`,
+  },
+  {
+    key: "dhanteras_wish",
+    name: "धनतेरस",
+    label: "4. धनतेरस (dhanteras_wish)",
+    preview: `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को धनतेरस की हार्दिक शुभकामनाएं! ✨\n\nमाँ लक्ष्मी और भगवान धन्वंतरि से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और अच्छा स्वास्थ्य लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n{{Shop Name}} की ओर से`,
+  },
+  {
+    key: "diwali_wish",
+    name: "दीपावली",
+    label: "5. दीपावली (diwali_wish)",
+    preview: `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को दीपावली की हार्दिक शुभकामनाएं! ✨\n\nमाँ लक्ष्मी और भगवान गणेश से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n{{Shop Name}} की ओर से`,
+  },
+  {
+    key: "govardhan_wish",
+    name: "गोवर्धन पूजा",
+    label: "6. गोवर्धन पूजा (govardhan_wish)",
+    preview: `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को गोवर्धन पूजा की हार्दिक शुभकामनाएं! ✨\n\nभगवान श्रीकृष्ण से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n{{Shop Name}} की ओर से`,
+  },
+  {
+    key: "bhaidooj_wish",
+    name: "भाई दूज",
+    label: "7. भाई दूज (bhaidooj_wish)",
+    preview: `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को भाई दूज की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि भाई-बहन का यह पावन प्रेम आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n{{Shop Name}} की ओर से`,
+  },
+  {
+    key: "festival_wish",
+    name: "",
+    label: "अन्य / Custom Festival Template (festival_wish)",
+    preview: `नमस्ते {{Customer Name}} जी 😊\n\n✨ आपको और आपके परिवार को {{Festival Name}} की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n{{Shop Name}} की ओर से`,
+  },
+];
+
 const FestivalSchedule = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,6 +87,7 @@ const FestivalSchedule = () => {
   const [editingId, setEditingId] = useState(null);
   const [modalForm, setModalForm] = useState({
     festival_name: "",
+    template_name: "navratri_wish",
     schedule_date: "",
   });
   const filterRef = useRef(null);
@@ -80,11 +136,17 @@ const FestivalSchedule = () => {
       setEditingId(festival._id);
       setModalForm({
         festival_name: festival.festival_name,
-        schedule_date: festival.schedule_date.split("T")[0],
+        template_name: festival.template_name || "festival_wish",
+        schedule_date: festival.schedule_date ? festival.schedule_date.split("T")[0] : "",
       });
     } else {
       setEditingId(null);
-      setModalForm({ festival_name: "", schedule_date: "" });
+      const defaultPreset = FESTIVAL_PRESETS[0];
+      setModalForm({
+        festival_name: defaultPreset.name,
+        template_name: defaultPreset.key,
+        schedule_date: "",
+      });
     }
     setShowModal(true);
   };
@@ -93,13 +155,23 @@ const FestivalSchedule = () => {
     if (isSaving) return;
     setShowModal(false);
     setEditingId(null);
-    setModalForm({ festival_name: "", schedule_date: "" });
+    setModalForm({ festival_name: "", template_name: "navratri_wish", schedule_date: "" });
+  };
+
+  const handlePresetChange = (e) => {
+    const selectedKey = e.target.value;
+    const preset = FESTIVAL_PRESETS.find((p) => p.key === selectedKey);
+    setModalForm((prev) => ({
+      ...prev,
+      template_name: selectedKey,
+      festival_name: preset && preset.name ? preset.name : prev.festival_name,
+    }));
   };
 
   const handleSave = async () => {
     if (isSaving) return;
     if (!modalForm.festival_name || !modalForm.schedule_date) {
-      alert("Please fill all fields");
+      alert("Please fill all required fields");
       return;
     }
 
@@ -149,6 +221,28 @@ const FestivalSchedule = () => {
     }
   };
 
+  const selectedPreset =
+    FESTIVAL_PRESETS.find((p) => p.key === modalForm.template_name) ||
+    FESTIVAL_PRESETS[FESTIVAL_PRESETS.length - 1];
+
+  const getTemplateBadge = (templateKey) => {
+    const preset = FESTIVAL_PRESETS.find((p) => p.key === templateKey);
+    if (preset && preset.key !== "festival_wish") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+          <Sparkles className="w-3 h-3" />
+          {preset.name} Template
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+        <MessageSquare className="w-3 h-3" />
+        Standard Template
+      </span>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-dark-bg py-6">
@@ -187,7 +281,7 @@ const FestivalSchedule = () => {
                     Filter festivals
                   </div>
                   <p className="text-xs text-ink-muted dark:text-slate-500">
-                    Use search bar above to filter by festival name
+                    Use search bar to filter by festival name
                   </p>
                 </div>
               )}
@@ -209,10 +303,10 @@ const FestivalSchedule = () => {
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-sm font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            Add Festival
+            Add Festival Schedule
           </button>
         </div>
 
@@ -229,24 +323,25 @@ const FestivalSchedule = () => {
             <div className="p-12 text-center">
               <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-ink-base dark:text-slate-100 mb-2">
-                No festivals found
+                No festivals scheduled
               </h3>
               <p className="text-ink-secondary dark:text-slate-400 mb-6">
                 {searchTerm
                   ? "No festivals match your search."
-                  : "Get started by adding your first festival schedule."}
+                  : "Select a festival template and schedule wishes for your customers."}
               </p>
               <Button onClick={() => handleOpenModal()}>
-                Add First Festival
+                Add First Festival Schedule
               </Button>
             </div>
           ) : (
             <div>
               {/* Desktop Header */}
-              <div className="hidden md:grid grid-cols-4 gap-4 text-gray-500 dark:text-slate-400 text-sm font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
+              <div className="hidden md:grid grid-cols-6 gap-4 text-gray-500 dark:text-slate-400 text-sm font-semibold bg-gray-100 dark:bg-dark-subtle p-4 rounded-t-lg">
                 <div>S No.</div>
-                <div>Festival Name</div>
+                <div className="col-span-2">Festival Name & Template</div>
                 <div>Schedule Date</div>
+                <div>Status</div>
                 <div>Actions</div>
               </div>
 
@@ -256,30 +351,51 @@ const FestivalSchedule = () => {
                   key={festival._id}
                   className={`${
                     index !== schedules.length - 1 ? "border-b" : ""
-                  } border-gray-200`}
+                  } border-gray-200 dark:border-dark-border`}
                 >
-                  <div className="hidden md:grid grid-cols-4 gap-4 p-4 items-center hover:bg-gray-50 transition-colors">
-                    <div className="text-sm text-gray-900 font-medium">
-                      {index+1 + (pagination.page - 1) * pagination.limit}
+                  <div className="hidden md:grid grid-cols-6 gap-4 p-4 items-center hover:bg-gray-50 dark:hover:bg-dark-subtle/50 transition-colors">
+                    <div className="text-sm text-gray-900 dark:text-slate-200 font-medium">
+                      {index + 1 + (pagination.page - 1) * pagination.limit}
                     </div>
-                    <div className="text-sm text-blue-900  font-bold font-xl">
-                      {festival.festival_name}
+                    <div className="col-span-2 space-y-1">
+                      <div className="text-sm text-blue-900 dark:text-blue-400 font-bold">
+                        {festival.festival_name}
+                      </div>
+                      <div>{getTemplateBadge(festival.template_name)}</div>
                     </div>
-                    <div className="text-sm text-gray-600 flex items-center gap-2">
+                    <div className="text-sm text-gray-600 dark:text-slate-300 flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       {formatDate(festival.schedule_date)}
+                    </div>
+                    <div>
+                      {festival.status === "Completed" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Sent ({festival.festival_wishes_sent || 0})
+                        </span>
+                      ) : festival.status === "Processing" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 animate-pulse">
+                          <Clock className="w-3.5 h-3.5" />
+                          Processing ({festival.festival_wishes_sent || 0})
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                          <Clock className="w-3.5 h-3.5" />
+                          Pending
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenModal(festival)}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition-colors"
                         title="Edit"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(festival._id)}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -288,27 +404,28 @@ const FestivalSchedule = () => {
                   </div>
 
                   {/* Mobile View */}
-                  <div className="md:hidden p-4 space-y-3 hover:bg-gray-50 transition-colors">
+                  <div className="md:hidden p-4 space-y-3 hover:bg-gray-50 dark:hover:bg-dark-subtle/50 transition-colors">
                     <div className="flex justify-between items-start gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-gray-900 dark:text-slate-100">
                           {festival.festival_name}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                        <div>{getTemplateBadge(festival.template_name)}</div>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1 pt-1">
+                          <Calendar className="w-3.5 h-3.5" />
                           {formatDate(festival.schedule_date)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleOpenModal(festival)}
-                          className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(festival._id)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -401,13 +518,33 @@ const FestivalSchedule = () => {
 
       <Dialog open={showModal} onClose={handleCloseModal} maxWidth="md">
         <DialogHeader>
-          {editingId ? "Edit Festival" : "Add Festival"}
+          {editingId ? "Edit Festival Schedule" : "Add Festival Schedule"}
         </DialogHeader>
         <DialogBody>
-          <div className=" space-y-4">
+          <div className="space-y-4">
+            {/* Festival Preset Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Festival Name (Hindi)
+              <label className="block text-sm font-semibold text-gray-800 dark:text-slate-200 mb-1">
+                Select Festival / Template
+              </label>
+              <select
+                value={modalForm.template_name}
+                onChange={handlePresetChange}
+                disabled={isSaving}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-md text-sm bg-white dark:bg-dark-input text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800"
+              >
+                {FESTIVAL_PRESETS.map((preset) => (
+                  <option key={preset.key} value={preset.key}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Festival Name (Hindi / Custom) */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 dark:text-slate-200 mb-1">
+                Festival Name
               </label>
               <input
                 type="text"
@@ -419,13 +556,14 @@ const FestivalSchedule = () => {
                     festival_name: e.target.value,
                   })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                placeholder="e.g., Diwali, Holi, Christmas"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-md text-sm bg-white dark:bg-dark-input text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                placeholder="e.g. नवरात्रि, धनतेरस, दीपावली"
               />
             </div>
 
+            {/* Schedule Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-800 dark:text-slate-200 mb-1">
                 Schedule Date
               </label>
               <input
@@ -438,13 +576,26 @@ const FestivalSchedule = () => {
                     schedule_date: e.target.value,
                   })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-md text-sm bg-white dark:bg-dark-input text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-800"
               />
+            </div>
+
+            {/* Template WhatsApp Live Preview */}
+            <div className="mt-4 p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                  Template Message Preview ({modalForm.template_name})
+                </span>
+              </div>
+              <div className="whitespace-pre-wrap font-sans text-xs text-emerald-950 dark:text-emerald-100 bg-white dark:bg-dark-card p-3 rounded border border-emerald-100 dark:border-emerald-900 leading-relaxed shadow-inner">
+                {selectedPreset?.preview}
+              </div>
             </div>
           </div>
         </DialogBody>
         <DialogFooter>
-          <div className="flex items-center justify-end gap-2 border-t border-gray-200 pt-4">
+          <div className="flex items-center justify-end gap-2 border-t border-gray-200 dark:border-dark-border pt-4">
             <Button
               variant="secondary"
               size="sm"
@@ -460,7 +611,7 @@ const FestivalSchedule = () => {
               loading={isSaving}
               disabled={isSaving}
             >
-              {editingId ? "Update" : "Create"}
+              {editingId ? "Update Schedule" : "Create Schedule"}
             </Button>
           </div>
         </DialogFooter>

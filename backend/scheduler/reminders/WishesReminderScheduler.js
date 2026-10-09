@@ -472,7 +472,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         status: "Processing",
       });
 
-      const templateName = "festival_wish";
+      const templateName = festival.template_name || "festival_wish";
       const customTemplateKey = `${templateName}_${festival._id}`;
       let totalSentCount = festival.festival_wishes_sent || 0;
 
@@ -525,7 +525,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
    */
   async sendFestivalWish(customer, cachedShop = null, festival, options = {}) {
     try {
-      const templateName = "festival_wish";
+      const templateName = festival.template_name || "festival_wish";
       const customTemplateKey = options.templateKey || `${templateName}_${festival._id}`;
 
       const phoneValidation = this.validateCustomerPhoneNumber(customer);
@@ -555,13 +555,61 @@ export default class WishesReminderScheduler extends BaseScheduler {
         cachedShop ||
         (customer.shop_id ? await Shop.findById(customer.shop_id).lean() : null);
 
-      const variables = {
-        1: getFirstName(customer?.full_name),
-        2: festival.festival_name,
-        3: getShopName(shop),
+      const shopName = getShopName(shop);
+
+      let variables;
+      let messageContent;
+
+      const presetTemplates = {
+        navratri_wish: {
+          getMessageContent: (sName) =>
+            `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को नवरात्रि की हार्दिक शुभकामनाएं! ✨\n\nमाँ दुर्गा से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nशक्ति, खुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${sName} की ओर से`,
+          variables: (sName) => ({ 1: sName }),
+        },
+        pushyanakshatra_wish: {
+          getMessageContent: (sName) =>
+            `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को शुभ पुष्य नक्षत्र की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि इस शुभ दिन की गई खरीदारी आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${sName} की ओर से`,
+          variables: (sName) => ({ 1: sName }),
+        },
+        dussehra_wish: {
+          getMessageContent: (sName) =>
+            `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को विजयादशमी (दशहरा) की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि बुराई पर अच्छाई की जीत का यह पावन पर्व आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${sName} की ओर से`,
+          variables: (sName) => ({ 1: sName }),
+        },
+        dhanteras_wish: {
+          getMessageContent: (sName) =>
+            `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को धनतेरस की हार्दिक शुभकामनाएं! ✨\n\nमाँ लक्ष्मी और भगवान धन्वंतरि से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और अच्छा स्वास्थ्य लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${sName} की ओर से`,
+          variables: (sName) => ({ 1: sName }),
+        },
+        diwali_wish: {
+          getMessageContent: (sName) =>
+            `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को दीपावली की हार्दिक शुभकामनाएं! ✨\n\nमाँ लक्ष्मी और भगवान गणेश से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${sName} की ओर से`,
+          variables: (sName) => ({ 1: sName }),
+        },
+        govardhan_wish: {
+          getMessageContent: (sName) =>
+            `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को गोवर्धन पूजा की हार्दिक शुभकामनाएं! ✨\n\nभगवान श्रीकृष्ण से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${sName} की ओर से`,
+          variables: (sName) => ({ 1: sName }),
+        },
+        bhaidooj_wish: {
+          getMessageContent: (sName) =>
+            `नमस्ते आदरणीय ग्राहक 😊\n\n✨ आपको और आपके परिवार को भाई दूज की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि भाई-बहन का यह पावन प्रेम आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${sName} की ओर से`,
+          variables: (sName) => ({ 1: sName }),
+        },
       };
 
-      const messageContent = `नमस्ते ${variables[1]} जी 😊\n\n✨ आपको और आपके परिवार को ${variables[2]} की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${variables[3]} की ओर से`;
+      if (presetTemplates[templateName]) {
+        const preset = presetTemplates[templateName];
+        variables = preset.variables(shopName);
+        messageContent = preset.getMessageContent(shopName);
+      } else {
+        variables = {
+          1: getFirstName(customer?.full_name),
+          2: festival.festival_name,
+          3: shopName,
+        };
+        messageContent = `नमस्ते ${variables[1]} जी 😊\n\n✨ आपको और आपके परिवार को ${variables[2]} की हार्दिक शुभकामनाएं! ✨\n\nईश्वर से प्रार्थना है कि यह पावन अवसर आपके जीवन में\nखुशियां, समृद्धि और सफलता लेकर आए 🙏\n\n🎁 आपका साथ और विश्वास हमारे लिए अनमोल है।\nइसी तरह अपना स्नेह बनाए रखें ❤️\n\nधन्यवाद!\n${variables[3]} की ओर से`;
+      }
 
       const reminderLog = await this.createReminderLog({
         entityId: customer.customer_id,
@@ -576,13 +624,14 @@ export default class WishesReminderScheduler extends BaseScheduler {
       const result = await this.messageSender.sendTemplateMessage({
         to: phoneValidation.formattedNumber,
         templateName: templateName,
+        languageCode: "hi",
         variables,
         reminderLogId: reminderLog._id,
         metadata: {
-          campaignName: "festival_wish",
+          campaignName: templateName,
           customerName: customer.full_name,
           festivalName: festival.festival_name,
-          messageType: "festival_wish",
+          messageType: templateName,
         },
       });
 

@@ -361,7 +361,7 @@ export default class WarrantyReminderScheduler extends BaseScheduler {
     const contactInfo =
       getShopContactInfo(shop) ||
       "";
-    const firstName = getFirstName(customer?.full_name, "Customer");
+    const firstName = getFirstName(customer, "Customer");
 
     if (daysUntilExpiry !== null) {
       // For warranty_expiring template: customer_name, product_name, days_remaining, contact_info, shop_name

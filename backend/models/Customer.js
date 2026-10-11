@@ -91,6 +91,11 @@ const customerSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    advance_balance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     // Shop reference
     shop_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -123,8 +128,28 @@ const customerSchema = new mongoose.Schema(
   },
 );
 
-// Auto-sync first_name, last_name, and full_name before validation
+// Auto-sync first_name, last_name, and full_name before validation, and normalize phone numbers
 customerSchema.pre("validate", function () {
+  if (this.whatsapp_number) {
+    let clean = String(this.whatsapp_number).replace(/[^\d]/g, "").trim();
+    if (clean.startsWith("91") && clean.length === 12) {
+      clean = clean.substring(2);
+    } else if (clean.startsWith("0") && clean.length === 11) {
+      clean = clean.substring(1);
+    }
+    this.whatsapp_number = clean;
+  }
+
+  if (this.alternate_phone) {
+    let cleanAlt = String(this.alternate_phone).replace(/[^\d]/g, "").trim();
+    if (cleanAlt.startsWith("91") && cleanAlt.length === 12) {
+      cleanAlt = cleanAlt.substring(2);
+    } else if (cleanAlt.startsWith("0") && cleanAlt.length === 11) {
+      cleanAlt = cleanAlt.substring(1);
+    }
+    this.alternate_phone = cleanAlt;
+  }
+
   if (this.first_name || this.last_name) {
     this.full_name = [this.first_name, this.last_name]
       .filter(Boolean)

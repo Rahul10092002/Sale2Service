@@ -114,6 +114,30 @@ const invoiceSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    payments: [
+      {
+        amount: {
+          type: Number,
+          required: true,
+        },
+        payment_method: {
+          type: String,
+          default: "CASH",
+        },
+        payment_date: {
+          type: Date,
+          default: Date.now,
+        },
+        notes: {
+          type: String,
+          trim: true,
+        },
+        recorded_by: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+      },
+    ],
     // Standalone Service Items (for billing & repairs)
     services: [
       {

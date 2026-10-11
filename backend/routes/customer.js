@@ -7,6 +7,7 @@ import {
   recordCustomerPayment,
   updateCustomer,
   deleteCustomer,
+  mergeCustomers,
 } from "../controllers/customerController.js";
 import { authenticate, checkPermission } from "../middleware/auth.js";
 
@@ -17,6 +18,9 @@ customerRouter.use(authenticate);
 
 // Create customer
 customerRouter.post("/", checkPermission("customers_create"), createCustomer);
+
+// Merge duplicate customers
+customerRouter.post("/merge", checkPermission("customers_edit"), mergeCustomers);
 
 // Get customers list
 customerRouter.get("/", checkPermission("customers_view"), getCustomers);

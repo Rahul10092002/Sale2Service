@@ -41,7 +41,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
       "";
 
     this.dailySummaryMap[shopId].push({
-      customerName: getFirstName(customer?.full_name || invoice.customer_name, "ग्राहक"),
+      customerName: getFirstName(customer || invoice.customer_name, "ग्राहक"),
       customerPhone,
       invoiceNumber: invoice.invoice_number || "N/A",
       amountDue: invoice.amount_due ?? invoice.total_amount ?? 0,
@@ -353,7 +353,7 @@ export default class PaymentReminderScheduler extends BaseScheduler {
     const shopContact = getShopContactInfo(shop) || "";
 
     const customerName = getFirstName(
-      invoice.customer_id?.full_name || invoice.customer_name || ""
+      invoice.customer_id || invoice.customer_name || ""
     );
 
     if (templateName === "payment_missed") {

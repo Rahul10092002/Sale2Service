@@ -218,10 +218,11 @@ async function runImport() {
     }
 
     try {
-      // Find existing customer by shop_id and whatsapp_number
+      // Find existing customer by shop_id and whatsapp_number (matching prefix variations)
+      const phoneVariations = [mainPhone, `91${mainPhone}`, `+91${mainPhone}`, `0${mainPhone}`];
       const existing = await Customer.findOne({
         shop_id: shopObjectId,
-        whatsapp_number: mainPhone,
+        whatsapp_number: { $in: phoneVariations },
         deleted_at: null,
       });
 

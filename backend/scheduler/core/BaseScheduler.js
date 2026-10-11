@@ -198,4 +198,13 @@ export default class BaseScheduler {
   logInfo(message, context = {}) {
     console.log(`[${this.constructor.name}] ${message}`, context);
   }
+
+  /**
+   * Log warning message
+   * @param {string} message - Warning message
+   * @param {Object} context - Additional context
+   */
+  logWarn(message, context = {}) {
+    console.warn(`[${this.constructor.name}] [WARN] ${message}`, context);
+  }
 }

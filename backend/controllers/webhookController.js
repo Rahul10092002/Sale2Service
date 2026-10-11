@@ -1,6 +1,7 @@
 import MessageLog from "../models/MessageLog.js";
 import Invoice from "../models/Invoice.js";
 import Customer from "../models/Customer.js";
+import ReminderLog from "../models/ReminderLog.js";
 
 /**
  * Handle incoming MSG91 WhatsApp Delivery Report (DLR) Webhook
@@ -40,6 +41,30 @@ export const handleMsg91WhatsappWebhook = async (req, res) => {
             "meta.webhook_received_at": new Date(),
           },
         }).catch(() => {});
+
+        // Sync with ReminderLog for scheduler tracking
+        const reminderQuery = {};
+        if (requestId) {
+          reminderQuery.provider_message_id = requestId;
+        } else if (destination) {
+          const cleanPhone = destination.replace(/[^\d]/g, "").slice(-10);
+          reminderQuery.recipient_number = new RegExp(cleanPhone, "i");
+        }
+
+        const reminderUpdate = {};
+        if (normalizedStatus === "delivered") {
+          reminderUpdate.message_status = "DELIVERED";
+          reminderUpdate.delivered_at = new Date();
+        } else if (normalizedStatus === "read") {
+          reminderUpdate.message_status = "READ";
+        } else if (normalizedStatus === "failed" || (reason && /spam|rate limit|131048/i.test(reason))) {
+          reminderUpdate.message_status = "FAILED";
+          reminderUpdate.failure_reason = reason || "Delivery failed via webhook";
+        }
+
+        if (Object.keys(reminderUpdate).length > 0) {
+          await ReminderLog.updateMany(reminderQuery, { $set: reminderUpdate }).catch(() => {});
+        }
       }
 
       // 2. Update Invoice WhatsApp delivery status if matching customer

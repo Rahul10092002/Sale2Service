@@ -91,7 +91,7 @@ export const sendWhatsappMessageViaMSG91 = async ({
       buttons.forEach((btn, index) => {
         const isObj = typeof btn === "object" && btn !== null;
         const btnSubtype = isObj && btn.subtype ? btn.subtype : "url";
-        const rawValue = isObj ? (btn.value || "") : (btn || "");
+        const rawValue = isObj ? btn.value || "" : btn || "";
 
         componentPayload[`button_${index + 1}`] = {
           subtype: btnSubtype,
@@ -143,7 +143,7 @@ export const sendWhatsappMessageViaMSG91 = async ({
         },
       },
     };
- 
+
     const resp = await axios.post(process.env.MSG91_API_ENDPOINT, payload, {
       headers: {
         "Content-Type": "application/json",
@@ -185,12 +185,24 @@ export const sendWhatsappMessageViaMSG91 = async ({
       console.error("Failed to create MessageLog for MSG91 response", logErr);
     }
 
-    return respData;
+    const isRateLimit =
+      /rate limit|spam|131048|too many requests/i.test(JSON.stringify(respData || ""));
+
+    return {
+      ...(typeof respData === "object" && respData !== null ? respData : { raw: respData }),
+      success: successFlag && !isRateLimit,
+      isRateLimit,
+    };
   } catch (error) {
     console.error(
       "MSG91 WhatsApp Error:",
       error?.response?.data || error.message,
     );
+
+    const errPayload = error?.response?.data || error.message;
+    const isRateLimit =
+      error?.response?.status === 429 ||
+      /rate limit|spam|131048|too many requests/i.test(JSON.stringify(errPayload || ""));
 
     // In case of error, attempt to log only if mongoose connected
     try {
@@ -203,7 +215,7 @@ export const sendWhatsappMessageViaMSG91 = async ({
             userName || (Array.isArray(components) && components[0]) || "",
           status: "error",
           messageType: messageType || undefined,
-          meta: { error: error?.response?.data || error.message },
+          meta: { error: errPayload, isRateLimit },
         });
       } else {
         console.warn(
@@ -214,7 +226,14 @@ export const sendWhatsappMessageViaMSG91 = async ({
       console.error("Failed to create MessageLog for MSG91 error", logErr);
     }
 
-    return null;
+    return {
+      success: false,
+      status: "error",
+      hasError: true,
+      message: typeof errPayload === "string" ? errPayload : JSON.stringify(errPayload),
+      error: errPayload,
+      isRateLimit,
+    };
   }
 };
 
@@ -224,7 +243,12 @@ export default sendWhatsappMessageViaMSG91;
  * Send plain text WhatsApp message via MSG91
  * Expects same env vars as template sender
  */
-export const sendTextMessageViaMSG91 = async ({ to, message, campaignName = "payment_receipt", userName = "" }) => {
+export const sendTextMessageViaMSG91 = async ({
+  to,
+  message,
+  campaignName = "payment_receipt",
+  userName = "",
+}) => {
   try {
     const payload = {
       integrated_number: process.env.MSG91_NUMBER,
@@ -285,11 +309,17 @@ export const sendTextMessageViaMSG91 = async ({ to, message, campaignName = "pay
           userName: userName || "",
           status: "error",
           messageType: "text",
-          meta: { error: error?.response?.data || error.message, text_body: message },
+          meta: {
+            error: error?.response?.data || error.message,
+            text_body: message,
+          },
         });
       }
     } catch (logErr) {
-      console.error("Failed to create MessageLog for text message error:", logErr);
+      console.error(
+        "Failed to create MessageLog for text message error:",
+        logErr,
+      );
     }
     throw error;
   }

@@ -49,9 +49,30 @@ export default class SchedulerService {
       "0 6 * * *", 
       async () => {
         console.log(
-          "[SchedulerService] Running daily wishes (birthday/anniversary)...",
+          "[SchedulerService] Running daily wishes (birthday/anniversary/festivals)...",
         );
         await this.wishesScheduler.processWishesReminders();
+      },
+      ist,
+    );
+
+    // Every 10 minutes between 6:00 AM and 7:00 AM IST (6:10, 6:20, 6:30, 6:40, 6:50) — resume active festival campaign if interrupted
+    cron.schedule(
+      "*/10 6 * * *",
+      async () => {
+        try {
+          if (!this.wishesScheduler.isFestivalRunning) {
+            console.log(
+              "[SchedulerService] Checking for pending/in-progress festival wishes in 6-7 AM window...",
+            );
+            await this.wishesScheduler.processFestivalWishes();
+          }
+        } catch (err) {
+          console.error(
+            "[SchedulerService] Error in festival wishes resume check:",
+            err,
+          );
+        }
       },
       ist,
     );

@@ -6,6 +6,7 @@ import ServicePlan from "../models/ServicePlan.js";
 import ServiceSchedule from "../models/ServiceSchedule.js";
 import ServiceVisit from "../models/ServiceVisit.js";
 import Shop from "../models/Shop.js";
+import ReminderLog from "../models/ReminderLog.js";
 
 // Create a new customer
 export const createCustomer = async (req, res) => {
@@ -20,8 +21,15 @@ export const createCustomer = async (req, res) => {
       });
     }
 
+    let cleanPhone = String(payload.whatsapp_number).replace(/[^\d]/g, "").trim();
+    if (cleanPhone.startsWith("91") && cleanPhone.length === 12) {
+      cleanPhone = cleanPhone.substring(2);
+    } else if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
+      cleanPhone = cleanPhone.substring(1);
+    }
+
     const existing = await Customer.findOne({
-      whatsapp_number: payload.whatsapp_number,
+      whatsapp_number: { $in: [cleanPhone, `91${cleanPhone}`, `+91${cleanPhone}`] },
       shop_id: user.shopId,
       deleted_at: null,
     });
@@ -35,6 +43,7 @@ export const createCustomer = async (req, res) => {
 
     const customer = new Customer({
       ...payload,
+      whatsapp_number: cleanPhone,
       shop_id: user.shopId,
     });
 
@@ -538,9 +547,18 @@ export const recordCustomerPayment = async (req, res) => {
     }).sort({ invoice_date: 1, createdAt: 1 });
 
     if (unpaidInvoices.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Customer has no unpaid or partially paid invoices",
+      customer.advance_balance = Number(customer.advance_balance || 0) + numAmount;
+      await customer.save();
+      return res.json({
+        success: true,
+        message: `Customer has no pending dues. ₹${numAmount.toLocaleString("en-IN")} credited to customer advance balance.`,
+        data: {
+          total_received: numAmount,
+          total_applied: 0,
+          excess_balance: numAmount,
+          advance_balance: customer.advance_balance,
+          updated_invoices: [],
+        },
       });
     }
 
@@ -622,22 +640,175 @@ export const recordCustomerPayment = async (req, res) => {
       });
     }
 
+    let advanceCredited = 0;
+    if (remainingPayment > 0) {
+      advanceCredited = remainingPayment;
+      customer.advance_balance = Number(customer.advance_balance || 0) + remainingPayment;
+      await customer.save();
+    }
+
+    let summaryMsg = `Payment of ₹${numAmount.toLocaleString("en-IN")} recorded across ${updatedInvoices.length} invoice(s)`;
+    if (advanceCredited > 0) {
+      summaryMsg += ` and ₹${advanceCredited.toLocaleString("en-IN")} credited to advance balance`;
+    }
+
     return res.json({
       success: true,
-      message: `Payment of ₹${numAmount.toLocaleString("en-IN")} recorded across ${updatedInvoices.length} invoice(s)`,
+      message: summaryMsg,
       data: {
         total_received: numAmount,
         total_applied: numAmount - remainingPayment,
-        excess_balance: remainingPayment > 0 ? remainingPayment : 0,
+        excess_balance: advanceCredited,
+        advance_balance: customer.advance_balance || 0,
         updated_invoices: updatedInvoices,
       },
     });
+    } catch (error) {
+      console.error("Record customer payment error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to record customer payment",
+        error: error.message,
+      });
+    }
+  };
+
+// Merge duplicate customers into a single primary customer
+export const mergeCustomers = async (req, res) => {
+  try {
+    const { user } = req;
+    const { primaryCustomerId, duplicateCustomerIds, updateFields = {} } = req.body;
+
+    if (!primaryCustomerId || !Array.isArray(duplicateCustomerIds) || duplicateCustomerIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "primaryCustomerId and duplicateCustomerIds array are required",
+      });
+    }
+
+    // Find primary customer
+    const primaryCustomer = await Customer.findOne({
+      _id: primaryCustomerId,
+      shop_id: user.shopId,
+      deleted_at: null,
+    });
+
+    if (!primaryCustomer) {
+      return res.status(404).json({
+        success: false,
+        message: "Primary customer not found",
+      });
+    }
+
+    // Filter duplicate customer IDs to prevent merging with primary itself
+    const filteredDuplicateIds = duplicateCustomerIds.filter(
+      (id) => id.toString() !== primaryCustomerId.toString()
+    );
+
+    if (filteredDuplicateIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid duplicate customer IDs provided",
+      });
+    }
+
+    const duplicates = await Customer.find({
+      _id: { $in: filteredDuplicateIds },
+      shop_id: user.shopId,
+    });
+
+    if (duplicates.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No matching duplicate customers found",
+      });
+    }
+
+    const duplicateObjectIds = duplicates.map((d) => d._id);
+    const duplicateCustomerIdStrings = duplicates
+      .map((d) => d.customer_id)
+      .filter(Boolean);
+
+    // 1. Relink all invoices to primary customer
+    const invoiceUpdate = await Invoice.updateMany(
+      { customer_id: { $in: duplicateObjectIds }, shop_id: user.shopId },
+      { $set: { customer_id: primaryCustomer._id } }
+    );
+
+    // 2. Relink ReminderLogs
+    const allDuplicateRefStrings = [
+      ...duplicateObjectIds.map((id) => id.toString()),
+      ...duplicateCustomerIdStrings,
+    ];
+
+    await ReminderLog.updateMany(
+      {
+        entity_id: { $in: allDuplicateRefStrings },
+        shop_id: user.shopId,
+        entity_type: "CUSTOMER",
+      },
+      {
+        $set: {
+          entity_id: primaryCustomer.customer_id,
+          recipient_name: primaryCustomer.full_name,
+        },
+      }
+    );
+
+    // 3. Update primary customer with any provided overrides (e.g. name, address, phone)
+    const ALLOWED_FIELDS = [
+      "first_name",
+      "last_name",
+      "full_name",
+      "whatsapp_number",
+      "email",
+      "alternate_phone",
+      "address",
+      "date_of_birth",
+      "anniversary_date",
+      "gst_number",
+      "customer_type",
+      "preferred_language",
+      "notes",
+    ];
+
+    ALLOWED_FIELDS.forEach((field) => {
+      if (updateFields[field] !== undefined) {
+        primaryCustomer[field] = updateFields[field];
+      }
+    });
+
+    primaryCustomer.updated_at = new Date();
+    await primaryCustomer.save();
+
+    // 4. Soft delete duplicates
+    const deleteDate = new Date();
+    await Customer.updateMany(
+      { _id: { $in: duplicateObjectIds }, shop_id: user.shopId },
+      {
+        $set: {
+          deleted_at: deleteDate,
+          notes: `Merged into customer ${primaryCustomer._id} on ${deleteDate.toISOString()}`,
+        },
+      }
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully merged ${duplicates.length} customer(s) into ${primaryCustomer.full_name}`,
+      data: {
+        primary_customer: primaryCustomer,
+        merged_count: duplicates.length,
+        invoices_relinked: invoiceUpdate.modifiedCount,
+      },
+    });
   } catch (error) {
-    console.error("Record customer payment error:", error);
-    return res.status(500).json({
+    console.error("Merge customers error:", error);
+    res.status(500).json({
       success: false,
-      message: "Failed to record customer payment",
+      message: "Failed to merge customers",
       error: error.message,
     });
   }
 };
+

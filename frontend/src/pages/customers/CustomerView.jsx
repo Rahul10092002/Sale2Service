@@ -48,6 +48,7 @@ import Alert from "../../components/ui/Alert.jsx";
 import { useDeleteGuard } from "../../context/DeleteGuardContext.jsx";
 import { ROUTES } from "../../utils/constants.js";
 import { formatDate } from "../../utils/date.js";
+import CustomerPaymentModal from "../../components/customer/CustomerPaymentModal.jsx";
 
 const CustomerView = () => {
   const { id } = useParams();
@@ -66,13 +67,6 @@ const CustomerView = () => {
 
   // Record Payment Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("CASH");
-  const [paymentDate, setPaymentDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-  const [paymentNotes, setPaymentNotes] = useState("");
-  const [sendWhatsapp, setSendWhatsapp] = useState(true);
 
   const routeLabels = {
     "/products": "Products",
@@ -125,61 +119,22 @@ const CustomerView = () => {
 
   const ledgerEntries = ledgerResp?.ledger_entries || [];
 
-  // Filter out unpaid/partially paid entries for payment distribution preview
-  const unpaidLedgerEntries = (ledgerEntries || []).filter(
-    (e) => (e.invoice_balance || 0) > 0
-  );
-
-  const getPaymentPreviewList = () => {
-    let remaining = parseFloat(paymentAmount) || 0;
-    return unpaidLedgerEntries.map((inv) => {
-      const due = inv.invoice_balance || 0;
-      const applied = Math.min(remaining, due);
-      const remDue = Math.max(0, due - applied);
-      remaining -= applied;
-      return {
-        ...inv,
-        applied,
-        remaining_due: remDue,
-        status_after:
-          remDue === 0 ? "PAID" : applied > 0 ? "PARTIAL" : inv.payment_status,
-      };
-    });
-  };
-
-  const handleRecordBulkPayment = async (e) => {
-    e.preventDefault();
-    const numAmount = parseFloat(paymentAmount);
-    if (!numAmount || numAmount <= 0 || isNaN(numAmount)) {
-      dispatch(
-        showToast({
-          message: "Please enter a valid positive payment amount",
-          type: "error",
-        })
-      );
-      return;
-    }
-
+  const handleRecordBulkPayment = async (paymentPayload) => {
     try {
       const res = await recordCustomerPayment({
         id,
-        amount: numAmount,
-        payment_method: paymentMethod,
-        payment_date: paymentDate,
-        notes: paymentNotes,
-        send_whatsapp: sendWhatsapp,
+        ...paymentPayload,
       }).unwrap();
 
       dispatch(
         showToast({
           message:
             res.message ||
-            `Recorded ₹${numAmount.toLocaleString("en-IN")} payment successfully`,
+            `Recorded ₹${Number(paymentPayload.amount).toLocaleString("en-IN")} payment successfully`,
           type: "success",
         })
       );
       setIsPaymentModalOpen(false);
-      setPaymentNotes("");
       refetchLedger();
     } catch (err) {
       console.error("Bulk payment error:", err);
@@ -340,8 +295,6 @@ const CustomerView = () => {
         .join(", ")
     : "No address specified";
 
-  const previewList = getPaymentPreviewList();
-
   return (
     <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg py-3">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 space-y-3">
@@ -362,12 +315,9 @@ const CustomerView = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            {ledgerSummary.total_due > 0 && canEdit("customers") && (
+            {canEdit("customers") && (
               <button
-                onClick={() => {
-                  setPaymentAmount(String(ledgerSummary.total_due));
-                  setIsPaymentModalOpen(true);
-                }}
+                onClick={() => setIsPaymentModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-2xs transition-all"
               >
                 <Coins className="w-3.5 h-3.5 text-blue-200" /> Receive Payment
@@ -617,10 +567,7 @@ const CustomerView = () => {
               </p>
               {ledgerSummary.total_due > 0 && canEdit("customers") ? (
                 <button
-                  onClick={() => {
-                    setPaymentAmount(String(ledgerSummary.total_due));
-                    setIsPaymentModalOpen(true);
-                  }}
+                  onClick={() => setIsPaymentModalOpen(true)}
                   className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-900/60 px-2 py-0.5 rounded hover:bg-amber-300 transition-colors"
                 >
                   <Coins className="w-3 h-3" /> Receive Payment
@@ -966,246 +913,16 @@ const CustomerView = () => {
       </div>
 
       {/* ── RECORD BULK CUSTOMER PAYMENT MODAL ── */}
-      {isPaymentModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in duration-150">
-            {/* Modal Header */}
-            <div className="px-5 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <Coins className="w-5 h-5 text-amber-300" />
-                <div>
-                  <h3 className="font-bold text-sm">Record Customer Payment</h3>
-                  <p className="text-[11px] text-blue-100">
-                    Apply lump sum payment across unpaid invoices (FIFO)
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsPaymentModalOpen(false)}
-                className="p-1 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleRecordBulkPayment} className="p-5 space-y-4 text-xs">
-              {/* Customer Info Box */}
-              <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 p-3 rounded-xl flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-gray-900 dark:text-white text-xs">
-                    {customer.full_name}
-                  </p>
-                  <p className="text-[11px] text-gray-500 dark:text-slate-400 font-mono">
-                    📱 {customer.whatsapp_number}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-amber-800 dark:text-amber-400 block">
-                    Total Dues
-                  </span>
-                  <span className="font-extrabold text-sm text-amber-700 dark:text-amber-300 font-mono">
-                    ₹{ledgerSummary.total_due.toLocaleString("en-IN")}
-                  </span>
-                </div>
-              </div>
-
-              {/* Amount Input */}
-              <div className="space-y-1">
-                <label className="font-bold text-gray-700 dark:text-slate-300 block">
-                  Received Amount (₹) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 font-bold text-gray-400">
-                    ₹
-                  </span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    required
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder="Enter received payment amount..."
-                    className="w-full pl-7 pr-3 py-2 text-sm font-bold border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                {/* Quick Amount Chips */}
-                <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
-                  <span className="text-[11px] text-gray-400">Quick set:</span>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentAmount(String(ledgerSummary.total_due))}
-                    className="px-2 py-0.5 text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 rounded-md hover:bg-blue-200"
-                  >
-                    Full: ₹{ledgerSummary.total_due.toLocaleString("en-IN")}
-                  </button>
-                  {ledgerSummary.total_due > 10000 && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentAmount("10000")}
-                      className="px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 rounded-md hover:bg-gray-200"
-                    >
-                      ₹10,000
-                    </button>
-                  )}
-                  {ledgerSummary.total_due > 20000 && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentAmount("20000")}
-                      className="px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 rounded-md hover:bg-gray-200"
-                    >
-                      ₹20,000
-                    </button>
-                  )}
-                  {ledgerSummary.total_due > 30000 && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentAmount("30000")}
-                      className="px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 rounded-md hover:bg-gray-200"
-                    >
-                      ₹30,000
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Payment Method & Date Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-gray-700 dark:text-slate-300 block mb-1">
-                    Payment Method
-                  </label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-gray-900 dark:text-white font-medium"
-                  >
-                    <option value="CASH">Cash 💵</option>
-                    <option value="UPI">UPI / QR Code 📲</option>
-                    <option value="CARD">Card 💳</option>
-                    <option value="NET_BANKING">Net Banking 🏦</option>
-                    <option value="CHEQUE">Cheque 📝</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-gray-700 dark:text-slate-300 block mb-1">
-                    Payment Date
-                  </label>
-                  <input
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-gray-900 dark:text-white font-medium"
-                  />
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="font-bold text-gray-700 dark:text-slate-300 block mb-1">
-                  Notes / Reference (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. UTR number, cheque no, or payment notes"
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-gray-900 dark:text-white"
-                />
-              </div>
-
-              {/* WhatsApp Receipt Checkbox */}
-              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-2.5 rounded-xl flex items-center gap-2.5">
-                <input
-                  type="checkbox"
-                  id="sendWhatsapp"
-                  checked={sendWhatsapp}
-                  onChange={(e) => setSendWhatsapp(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
-                />
-                <label
-                  htmlFor="sendWhatsapp"
-                  className="text-xs font-semibold text-emerald-900 dark:text-emerald-200 cursor-pointer select-none"
-                >
-                  💬 Send WhatsApp payment receipt for each updated invoice
-                </label>
-              </div>
-
-              {/* Live Payment Distribution Breakdown */}
-              {previewList.length > 0 && parseFloat(paymentAmount) > 0 && (
-                <div className="border border-gray-200 dark:border-dark-border rounded-xl p-3 bg-gray-50/80 dark:bg-dark-input/40 space-y-2 max-h-44 overflow-y-auto">
-                  <p className="font-bold text-[11px] text-gray-600 dark:text-slate-400 uppercase tracking-wide">
-                    Live Distribution Preview (FIFO Order):
-                  </p>
-
-                  <div className="space-y-1.5">
-                    {previewList.map((item) => (
-                      <div
-                        key={item._id}
-                        className="bg-white dark:bg-dark-card p-2 rounded-lg border border-gray-100 dark:border-dark-border flex items-center justify-between text-[11px]"
-                      >
-                        <div>
-                          <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                            {item.invoice_number}
-                          </span>
-                          <span className="text-gray-400 ml-1.5">
-                            (Dues: ₹{item.invoice_balance})
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-emerald-600">
-                            +₹{item.applied.toLocaleString("en-IN")}
-                          </span>
-                          <span
-                            className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                              item.status_after === "PAID"
-                                ? "bg-green-100 text-green-800"
-                                : item.status_after === "PARTIAL"
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-gray-100 text-gray-600"
-                            }`}
-                          >
-                            {item.status_after}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-gray-100 dark:border-dark-border">
-                <button
-                  type="button"
-                  onClick={() => setIsPaymentModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-dark-subtle rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-
-                <Button
-                  type="submit"
-                  disabled={isRecordingPayment || !parseFloat(paymentAmount)}
-                  className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-                >
-                  {isRecordingPayment ? (
-                    <>
-                      <LoadingSpinner size="sm" /> Recording...
-                    </>
-                  ) : (
-                    <>
-                      <Coins className="w-4 h-4" /> Confirm & Record Payment
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CustomerPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        customer={customer}
+        ledgerSummary={ledgerSummary}
+        invoices={customerResp?.invoices || []}
+        ledgerEntries={ledgerEntries}
+        onRecordPayment={handleRecordBulkPayment}
+        isLoading={isRecordingPayment}
+      />
     </div>
   );
 };

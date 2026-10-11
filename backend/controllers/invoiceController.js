@@ -1090,7 +1090,7 @@ export default class InvoiceController {
     try {
       const { id } = req.params;
       const { user } = req;
-      const { amount, payment_mode } = req.body;
+      const { amount, payment_mode, notes = "", payment_date = new Date() } = req.body;
 
       const paymentAmount = Number(amount);
       if (!paymentAmount || paymentAmount <= 0) {
@@ -1104,33 +1104,12 @@ export default class InvoiceController {
         _id: id,
         shop_id: user.shopId,
         deleted_at: null,
-      });
+      }).populate("customer_id");
 
       if (!invoice) {
         return res
           .status(404)
           .json({ success: false, message: "Invoice not found" });
-      }
-
-      if (invoice.payment_status === "PAID") {
-        return res
-          .status(400)
-          .json({ success: false, message: "Invoice is already fully paid" });
-      }
-
-      const newAmountPaid = Math.min(
-        (invoice.amount_paid || 0) + paymentAmount,
-        invoice.total_amount,
-      );
-      const newAmountDue = Math.max(0, invoice.total_amount - newAmountPaid);
-
-      let newStatus;
-      if (newAmountDue === 0) {
-        newStatus = "PAID";
-      } else if (newAmountPaid > 0) {
-        newStatus = "PARTIAL";
-      } else {
-        newStatus = "UNPAID";
       }
 
       const validPaymentModes = [
@@ -1144,20 +1123,119 @@ export default class InvoiceController {
       const updatedPaymentMode =
         payment_mode && validPaymentModes.includes(payment_mode.toUpperCase())
           ? payment_mode.toUpperCase()
-          : invoice.payment_mode;
+          : (invoice.payment_mode || "CASH");
 
-      const updatedInvoice = await Invoice.findByIdAndUpdate(
-        id,
-        {
-          amount_paid: newAmountPaid,
-          amount_due: newAmountDue,
-          payment_status: newStatus,
-          payment_mode: updatedPaymentMode,
-        },
-        { new: true },
-      )
-        .populate("customer_id")
-        .populate("invoice_items");
+      const currentTotal = Number(invoice.total_amount || 0);
+      const currentPaid = Number(invoice.amount_paid || 0);
+      const currentExcessCredit = Number(invoice.excess_exchange_credit || 0);
+      const currentNetDue = Math.max(0, currentTotal - (currentPaid + currentExcessCredit));
+
+      // 1. Calculate portion to apply to this invoice
+      const paymentForCurrent = Math.min(paymentAmount, currentNetDue);
+      let remainingExcess = paymentAmount - paymentForCurrent;
+
+      const newAmountPaid = currentPaid + paymentForCurrent;
+      const newAmountDue = Math.max(0, currentTotal - (newAmountPaid + currentExcessCredit));
+
+      let newStatus;
+      if (newAmountDue === 0) {
+        newStatus = "PAID";
+      } else if (newAmountPaid > 0) {
+        newStatus = "PARTIAL";
+      } else {
+        newStatus = "UNPAID";
+      }
+
+      invoice.amount_paid = newAmountPaid;
+      invoice.amount_due = newAmountDue;
+      invoice.payment_status = newStatus;
+      invoice.payment_mode = updatedPaymentMode;
+
+      if (paymentForCurrent > 0) {
+        invoice.payments = invoice.payments || [];
+        invoice.payments.push({
+          amount: paymentForCurrent,
+          payment_method: updatedPaymentMode,
+          payment_date: payment_date ? new Date(payment_date) : new Date(),
+          notes: notes || "Payment recorded on invoice",
+          recorded_by: user.userId,
+        });
+      }
+
+      await invoice.save();
+
+      // 2. If there is excess payment, auto-allocate to other unpaid invoices of the customer (FIFO)
+      const reallocatedInvoices = [];
+      let advanceAdded = 0;
+      const customerId = invoice.customer_id?._id || invoice.customer_id;
+
+      if (remainingExcess > 0 && customerId) {
+        const otherUnpaidInvoices = await Invoice.find({
+          customer_id: customerId,
+          shop_id: user.shopId,
+          deleted_at: null,
+          _id: { $ne: invoice._id },
+          payment_status: { $in: ["UNPAID", "PARTIAL"] },
+        }).sort({ invoice_date: 1, createdAt: 1 });
+
+        for (const otherInv of otherUnpaidInvoices) {
+          if (remainingExcess <= 0) break;
+
+          const oTotal = Number(otherInv.total_amount || 0);
+          const oPaid = Number(otherInv.amount_paid || 0);
+          const oCredit = Number(otherInv.excess_exchange_credit || 0);
+          const oNetDue = Math.max(0, oTotal - (oPaid + oCredit));
+
+          if (oNetDue <= 0) continue;
+
+          const allocAmount = Math.min(remainingExcess, oNetDue);
+          const oNewPaid = oPaid + allocAmount;
+          const oNewDue = Math.max(0, oTotal - (oNewPaid + oCredit));
+          const oNewStatus = oNewDue === 0 ? "PAID" : "PARTIAL";
+
+          otherInv.payments = otherInv.payments || [];
+          otherInv.payments.push({
+            amount: allocAmount,
+            payment_method: updatedPaymentMode,
+            payment_date: payment_date ? new Date(payment_date) : new Date(),
+            notes: notes || `Auto-allocated from excess payment on ${invoice.invoice_number}`,
+            recorded_by: user.userId,
+          });
+
+          otherInv.amount_paid = oNewPaid;
+          otherInv.amount_due = oNewDue;
+          otherInv.payment_status = oNewStatus;
+          otherInv.payment_mode = updatedPaymentMode;
+          await otherInv.save();
+
+          remainingExcess -= allocAmount;
+
+          reallocatedInvoices.push({
+            invoice_id: otherInv._id,
+            invoice_number: otherInv.invoice_number,
+            amount_applied: allocAmount,
+            remaining_due: oNewDue,
+            payment_status: oNewStatus,
+          });
+        }
+
+        // 3. If there is still excess left after clearing all other invoices, credit to Customer Advance Balance!
+        if (remainingExcess > 0) {
+          advanceAdded = remainingExcess;
+          const customer = await Customer.findOne({
+            _id: customerId,
+            shop_id: user.shopId,
+          });
+          if (customer) {
+            customer.advance_balance = Number(customer.advance_balance || 0) + remainingExcess;
+            await customer.save();
+          }
+          remainingExcess = 0;
+        }
+      }
+
+      // Populate invoice items for response and PDF regeneration
+      await invoice.populate("invoice_items");
 
       const shop = await Shop.findById(user.shopId);
 
@@ -1165,13 +1243,13 @@ export default class InvoiceController {
       try {
         if (shop && !shop.deleted_at) {
           const invoiceItems =
-            updatedInvoice.invoice_items && updatedInvoice.invoice_items.length > 0
-              ? updatedInvoice.invoice_items
+            invoice.invoice_items && invoice.invoice_items.length > 0
+              ? invoice.invoice_items
               : await InvoiceItem.find({ invoice_id: id, deleted_at: null });
 
           const pdfResult = await invoiceDocumentService.generateAndStoreInvoicePdf({
-            invoice: updatedInvoice,
-            customer: updatedInvoice.customer_id,
+            invoice,
+            customer: invoice.customer_id,
             invoiceItems,
             shop,
             userId: user.userId,
@@ -1180,7 +1258,8 @@ export default class InvoiceController {
           });
 
           if (pdfResult.pdf_url) {
-            updatedInvoice.invoice_pdf = pdfResult.pdf_url;
+            invoice.invoice_pdf = pdfResult.pdf_url;
+            await Invoice.findByIdAndUpdate(id, { invoice_pdf: pdfResult.pdf_url });
           }
         }
       } catch (pdfErr) {
@@ -1189,7 +1268,7 @@ export default class InvoiceController {
 
       // Send payment_received WhatsApp notification (non-fatal)
       try {
-        const customer = updatedInvoice.customer_id;
+        const customer = invoice.customer_id;
         const {
           formatPhoneNumber,
           isValidWhatsAppNumber,
@@ -1203,12 +1282,10 @@ export default class InvoiceController {
           phoneNumber &&
           isValidWhatsAppNumber(phoneNumber)
         ) {
-          // Template payment_received (4 params):
-          // {{1}}: Amount paid, {{2}}: Invoice number, {{3}}: Payment date, {{4}}: Shop name
           const vars = {
             1: paymentAmount.toFixed(2),
             2: invoice.invoice_number || "N/A",
-            3: formatDateForMessage(new Date()),
+            3: formatDateForMessage(payment_date ? new Date(payment_date) : new Date()),
             4: shop.shop_name_hi || shop.shop_name || "",
           };
 
@@ -1229,17 +1306,31 @@ export default class InvoiceController {
         );
       }
 
+      // Construct clear and user-friendly success message
+      let successMsg = `Payment of ₹${paymentAmount.toLocaleString("en-IN")} recorded.`;
+      if (paymentForCurrent > 0) {
+        successMsg += ` ₹${paymentForCurrent.toLocaleString("en-IN")} applied to ${invoice.invoice_number} (${newStatus}).`;
+      }
+      if (reallocatedInvoices.length > 0) {
+        const totalReallocated = reallocatedInvoices.reduce((sum, r) => sum + r.amount_applied, 0);
+        successMsg += ` ₹${totalReallocated.toLocaleString("en-IN")} auto-allocated to ${reallocatedInvoices.length} other pending bill(s).`;
+      }
+      if (advanceAdded > 0) {
+        successMsg += ` ₹${advanceAdded.toLocaleString("en-IN")} credited to customer advance balance.`;
+      }
+
       return res.json({
         success: true,
-        message:
-          newStatus === "PAID"
-            ? "Invoice marked as fully paid"
-            : `Partial payment of ₹${paymentAmount.toFixed(2)} recorded`,
+        message: successMsg,
         data: {
-          invoice: updatedInvoice,
+          invoice,
           amount_paid: newAmountPaid,
           amount_due: newAmountDue,
           payment_status: newStatus,
+          payment_for_current: paymentForCurrent,
+          reallocated_invoices: reallocatedInvoices,
+          advance_added: advanceAdded,
+          total_received: paymentAmount,
         },
       });
     } catch (error) {

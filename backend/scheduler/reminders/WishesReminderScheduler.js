@@ -21,8 +21,70 @@ export default class WishesReminderScheduler extends BaseScheduler {
     super();
     this.messageSender = new MessageSender();
     this.dailySummaryMap = {};
-    this.BATCH_SIZE = 100; // Batch size per worker chunk
-    this.CONCURRENCY_LIMIT = 15; // Parallel workers for MSG91 HTTP requests
+    this.BATCH_SIZE = 50; // Batch size for birthday/anniversary worker chunks
+    this.CONCURRENCY_LIMIT = 5; // Concurrency limit for birthday/anniversary
+
+    // Festival Anti-Spam & Time Window Configurations
+    this.FESTIVAL_BATCH_SIZE = 10; // Small batch size (10 customers per chunk) to avoid spam spikes
+    this.FESTIVAL_BATCH_COOLDOWN_MS = 3000; // 3 seconds cooldown between 10-customer batches
+    this.MIN_DELAY_PER_MSG_MS = 1000; // Never send faster than 1 msg/sec (Meta rate-limit threshold)
+    this.MAX_DELAY_PER_MSG_MS = 3500; // Maximum delay per message for small lists
+    this.CIRCUIT_BREAKER_BACKOFF_MS = 60000; // 60s pause if MSG91/Meta rate-limit or spam flag encountered
+    this.isFestivalRunning = false;
+  }
+
+  /**
+   * Check if current time is within allowed festival sending window (06:00 AM to 07:00 AM IST)
+   * @param {Date} [now]
+   * @returns {boolean}
+   */
+  isWithinAllowedFestivalWindow(now = new Date()) {
+    const istDate = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+    );
+    const hour = istDate.getHours();
+    return hour >= 6 && hour < 7;
+  }
+
+  /**
+   * Get milliseconds remaining until 07:00:00 AM IST today
+   * @param {Date} [now]
+   * @returns {number}
+   */
+  getRemainingWindowMs(now = new Date()) {
+    const istDate = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+    );
+    const target7AM = new Date(istDate);
+    target7AM.setHours(7, 0, 0, 0);
+
+    const diff = target7AM.getTime() - istDate.getTime();
+    return Math.max(0, diff);
+  }
+
+  /**
+   * Calculate optimal anti-spam delay between individual messages.
+   * Spreads pending messages evenly across the 06:00 AM - 07:00 AM IST window.
+   * Enforces a safe floor (>=1000ms) to ensure messages never burst and trigger spam detection.
+   *
+   * @param {number} remainingCount - Remaining customers to send
+   * @param {Date} [now] - Reference time
+   * @returns {number} delay in ms
+   */
+  calculateOptimalMessageDelay(remainingCount, now = new Date()) {
+    const remainingMs = this.getRemainingWindowMs(now);
+
+    if (remainingMs > 0 && remainingCount > 0) {
+      // 5-minute safety margin before 7:00 AM
+      const effectiveWindowMs = Math.max(1000, remainingMs - 5 * 60 * 1000);
+      const idealDelay = Math.floor(effectiveWindowMs / remainingCount);
+      return Math.max(
+        this.MIN_DELAY_PER_MSG_MS,
+        Math.min(this.MAX_DELAY_PER_MSG_MS, idealDelay),
+      );
+    }
+
+    return 1200; // Safe default
   }
 
   /**
@@ -67,23 +129,28 @@ export default class WishesReminderScheduler extends BaseScheduler {
 
   /**
    * Process all wishes reminders
+   * @param {Object} [options] - Options (e.g. forceWindowOverride)
    */
-  async processWishesReminders() {
+  async processWishesReminders(options = {}) {
     try {
       this.logInfo("Processing wishes reminders...");
       this.dailySummaryMap = {};
 
+      // 1. Process birthdays and anniversaries first
       await Promise.all([
         this.processBirthdayWishes(),
         this.processAnniversaryWishes(),
-        this.processFestivalWishes(),
       ]);
 
+      // 2. Deliver morning summary to shop owners immediately
       await Promise.all(
         Object.entries(this.dailySummaryMap).map(([shopId, data]) =>
           this.sendDailySummary(shopId, data.birthdays, data.anniversaries),
         ),
       );
+
+      // 3. Process bulk festival wishes in small, paced anti-spam batches (6:00 AM - 7:00 AM IST)
+      await this.processFestivalWishes(options);
 
       this.logInfo("Wishes reminders processing completed");
     } catch (error) {
@@ -275,7 +342,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         (customer.shop_id ? await Shop.findById(customer.shop_id).lean() : null);
 
       const variables = {
-        1: getFirstName(customer?.full_name),
+        1: getFirstName(customer),
         2: getShopName(shop),
       };
 
@@ -363,7 +430,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         (customer.shop_id ? await Shop.findById(customer.shop_id).lean() : null);
 
       const variables = {
-        1: getFirstName(customer?.full_name),
+        1: getFirstName(customer),
         2: getShopName(shop),
       };
 
@@ -411,14 +478,32 @@ export default class WishesReminderScheduler extends BaseScheduler {
 
   /**
    * Process pending festival wishes
+   * Enforces 06:00 AM - 07:00 AM IST execution window
+   * @param {Object} [options]
    */
-  async processFestivalWishes() {
-    try {
-      this.logInfo("Processing festival wishes...");
+  async processFestivalWishes(options = {}) {
+    if (this.isFestivalRunning) {
+      this.logInfo(
+        "Festival wishes processing is already active in background, skipping duplicate run",
+      );
+      return;
+    }
 
+    this.isFestivalRunning = true;
+    try {
+      const isWithinWindow = this.isWithinAllowedFestivalWindow();
+      if (!isWithinWindow && !options.forceWindowOverride) {
+        this.logInfo(
+          "Current time is outside the allowed festival window (06:00 AM - 07:00 AM IST). Skipping festival send for now.",
+        );
+        return;
+      }
+
+      this.logInfo("Processing festival wishes...");
       const today = getISTTodayParts();
       const festivals = await FestivalSchedule.find({
         status: { $in: ["Pending", "Processing"] },
+        deleted_at: null,
       }).lean();
 
       const todayFestivals = festivals.filter((festival) => {
@@ -426,21 +511,26 @@ export default class WishesReminderScheduler extends BaseScheduler {
         return date === today.date && month === today.month && year === today.year;
       });
 
-      this.logInfo(`Found ${todayFestivals.length} festival schedules for today`);
+      this.logInfo(`Found ${todayFestivals.length} festival schedule(s) for today`);
 
       for (const festival of todayFestivals) {
-        await this.processFestivalForShop(festival);
+        await this.processFestivalForShop(festival, options);
       }
     } catch (error) {
       this.logError("processFestivalWishes", error);
+    } finally {
+      this.isFestivalRunning = false;
     }
   }
 
   /**
-   * Process festival wishes for a shop with high-performance batch streaming (up to 5k+ customers)
+   * Process festival wishes for a shop with robust anti-spam throttling (06:00 AM - 07:00 AM IST window)
+   * Sends in small batches (10 customers) with adaptive spacing (1.0s - 3.5s + jitter) to avoid MSG91 / Meta 131048 rate limits.
+   *
    * @param {Object} festival - FestivalSchedule object
+   * @param {Object} [options] - Options (e.g. forceWindowOverride)
    */
-  async processFestivalForShop(festival) {
+  async processFestivalForShop(festival, options = {}) {
     try {
       this.logInfo(
         `Starting festival wish campaign "${festival.festival_name}" for shop ${festival.shop_id}`,
@@ -449,15 +539,15 @@ export default class WishesReminderScheduler extends BaseScheduler {
       // Pre-fetch shop details once
       const shop = await Shop.findById(festival.shop_id).lean();
 
-      // Query customers in lightweight lean mode
-      const customers = await Customer.find({
+      // Query active customers in lightweight lean mode
+      const allCustomers = await Customer.find({
         shop_id: festival.shop_id,
         deleted_at: null,
       })
-        .select("_id customer_id full_name whatsapp_number shop_id")
+        .select("_id customer_id first_name full_name whatsapp_number shop_id")
         .lean();
 
-      const totalCustomers = customers.length;
+      const totalCustomers = allCustomers.length;
       if (totalCustomers === 0) {
         this.logInfo(`No customers found for shop ${festival.shop_id}`);
         await FestivalSchedule.findByIdAndUpdate(festival._id, {
@@ -467,53 +557,233 @@ export default class WishesReminderScheduler extends BaseScheduler {
         return;
       }
 
-      // Mark status as Processing
-      await FestivalSchedule.findByIdAndUpdate(festival._id, {
-        status: "Processing",
-      });
-
       const templateName = festival.template_name || "festival_wish";
       const customTemplateKey = `${templateName}_${festival._id}`;
-      let totalSentCount = festival.festival_wishes_sent || 0;
 
-      // Process in concurrent batches (100 customers per batch, 15 concurrent workers)
-      await processInConcurrentBatches({
-        items: customers,
-        batchSize: this.BATCH_SIZE,
-        concurrencyLimit: this.CONCURRENCY_LIMIT,
-        batchDelayMs: 50,
-        processorFn: async (customerChunk, chunkStartIndex) => {
-          // Chunk is processed inside worker pool
-          return await this.sendFestivalWish(customerChunk, shop, festival, {
-            templateKey: customTemplateKey,
-          });
-        },
-        onBatchComplete: async ({ processedCount, batchSuccessCount }) => {
-          totalSentCount += batchSuccessCount;
-          // Progress update on FestivalSchedule
-          await FestivalSchedule.findByIdAndUpdate(festival._id, {
-            festival_wishes_sent: totalSentCount,
-          });
-          this.logInfo(
-            `Festival "${festival.festival_name}" Progress: ${processedCount}/${totalCustomers} processed (${totalSentCount} sent)`,
-          );
-        },
+      // 1. Fetch successfully sent ReminderLogs for this festival schedule
+      // Exclude FAILED or spam-limited logs so legitimate failures can be retried
+      const successfulLogs = await ReminderLog.find({
+        shop_id: festival.shop_id,
+        template_name: customTemplateKey,
+        message_status: { $in: ["SENT", "DELIVERED", "READ"] },
+        failure_reason: { $not: /131048|spam/i },
+        deleted_at: null,
+      })
+        .select("entity_id recipient_number")
+        .lean();
+
+      const sentCustomerIdSet = new Set(
+        successfulLogs.map((l) => String(l.entity_id)),
+      );
+      const sentPhoneSet = new Set(
+        successfulLogs
+          .map((l) => formatPhoneNumber(l.recipient_number))
+          .filter(Boolean),
+      );
+
+      // 2. Filter down to customers who have NOT yet received the message
+      const pendingCustomers = allCustomers.filter((c) => {
+        if (sentCustomerIdSet.has(String(c.customer_id))) return false;
+        const phone = formatPhoneNumber(c.whatsapp_number);
+        if (phone && sentPhoneSet.has(phone)) return false;
+        return true;
       });
 
-      // Mark completed
-      await FestivalSchedule.findByIdAndUpdate(festival._id, {
-        festival_wishes_sent: totalSentCount,
-        status: "Completed",
-      });
+      const alreadySentCount = totalCustomers - pendingCustomers.length;
 
       this.logInfo(
-        `Festival "${festival.festival_name}" completed: ${totalSentCount}/${totalCustomers} wishes sent`,
+        `Festival "${festival.festival_name}": ${alreadySentCount}/${totalCustomers} already sent, ${pendingCustomers.length} pending.`,
       );
+
+      // If all customers already received it, mark Completed
+      if (pendingCustomers.length === 0) {
+        await FestivalSchedule.findByIdAndUpdate(festival._id, {
+          festival_wishes_sent: totalCustomers,
+          status: "Completed",
+        });
+        this.logInfo(
+          `Festival "${festival.festival_name}" is already completed (${totalCustomers}/${totalCustomers}).`,
+        );
+        return;
+      }
+
+      // Mark as Processing
+      await FestivalSchedule.findByIdAndUpdate(festival._id, {
+        status: "Processing",
+        festival_wishes_sent: alreadySentCount,
+      });
+
+      let totalSentCount = alreadySentCount;
+      let consecutiveRateLimitHits = 0;
+      const MAX_CONSECUTIVE_RATE_LIMITS = 3;
+
+      // 3. Process in small anti-spam batches (10 customers) with adaptive spacing
+      for (
+        let i = 0;
+        i < pendingCustomers.length;
+        i += this.FESTIVAL_BATCH_SIZE
+      ) {
+        // Enforce 6:00 AM - 7:00 AM IST window
+        if (!options.forceWindowOverride && !this.isWithinAllowedFestivalWindow()) {
+          this.logWarn(
+            `Festival window (06:00 - 07:00 AM IST) closed. Pausing festival campaign "${festival.festival_name}". Progress: ${totalSentCount}/${totalCustomers}`,
+          );
+          await FestivalSchedule.findByIdAndUpdate(festival._id, {
+            festival_wishes_sent: totalSentCount,
+            status: "Processing",
+          });
+          return;
+        }
+
+        const batch = pendingCustomers.slice(i, i + this.FESTIVAL_BATCH_SIZE);
+        const optimalDelayMs = this.calculateOptimalMessageDelay(
+          pendingCustomers.length - i,
+        );
+
+        for (const customer of batch) {
+          // Re-check window before sending each individual message
+          if (!options.forceWindowOverride && !this.isWithinAllowedFestivalWindow()) {
+            this.logWarn("Window reached 7:00 AM IST limit during batch execution. Stopping.");
+            await FestivalSchedule.findByIdAndUpdate(festival._id, {
+              festival_wishes_sent: totalSentCount,
+              status: "Processing",
+            });
+            return;
+          }
+
+          const res = await this.sendFestivalWish(customer, shop, festival, {
+            templateKey: customTemplateKey,
+            skipAlreadySentCheck: true, // already filtered above
+          });
+
+          if (res.success && !res.skipped) {
+            totalSentCount++;
+            consecutiveRateLimitHits = 0;
+          } else if (
+            res.isRateLimit ||
+            (res.error && /spam|rate limit|131048/i.test(res.error))
+          ) {
+            consecutiveRateLimitHits++;
+            this.logWarn(
+              `Rate limit / spam warning detected from MSG91 for customer ${customer.customer_id}. Consecutive hits: ${consecutiveRateLimitHits}. Pausing for ${this.CIRCUIT_BREAKER_BACKOFF_MS / 1000}s cooldown...`,
+            );
+
+            await new Promise((resolve) =>
+              setTimeout(resolve, this.CIRCUIT_BREAKER_BACKOFF_MS),
+            );
+
+            if (consecutiveRateLimitHits >= MAX_CONSECUTIVE_RATE_LIMITS) {
+              this.logError(
+                "processFestivalForShop",
+                new Error(
+                  `Exceeded ${MAX_CONSECUTIVE_RATE_LIMITS} consecutive rate limit errors from MSG91/Meta. Pausing campaign to protect account quality score.`,
+                ),
+              );
+              await FestivalSchedule.findByIdAndUpdate(festival._id, {
+                festival_wishes_sent: totalSentCount,
+                status: "Processing",
+              });
+              return;
+            }
+          }
+
+          // Anti-spam jitter delay (e.g. 1100ms + random 0-300ms)
+          const jitter = Math.floor(Math.random() * 300);
+          await new Promise((resolve) =>
+            setTimeout(resolve, optimalDelayMs + jitter),
+          );
+        }
+
+        // Persist batch progress to DB immediately
+        await FestivalSchedule.findByIdAndUpdate(festival._id, {
+          festival_wishes_sent: totalSentCount,
+        });
+
+        this.logInfo(
+          `Festival "${festival.festival_name}" Progress: ${totalSentCount}/${totalCustomers} sent (${pendingCustomers.length - (i + batch.length)} remaining in queue)`,
+        );
+
+        // Cooldown pause between batches of 10
+        if (i + this.FESTIVAL_BATCH_SIZE < pendingCustomers.length) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.FESTIVAL_BATCH_COOLDOWN_MS),
+          );
+        }
+      }
+
+      // Check if all customers were completed
+      if (totalSentCount >= totalCustomers) {
+        await FestivalSchedule.findByIdAndUpdate(festival._id, {
+          festival_wishes_sent: totalSentCount,
+          status: "Completed",
+        });
+        this.logInfo(
+          `Festival "${festival.festival_name}" completed successfully: ${totalSentCount}/${totalCustomers} wishes sent`,
+        );
+      } else {
+        await FestivalSchedule.findByIdAndUpdate(festival._id, {
+          festival_wishes_sent: totalSentCount,
+          status: "Processing",
+        });
+        this.logInfo(
+          `Festival "${festival.festival_name}" batch finished for now: ${totalSentCount}/${totalCustomers} sent`,
+        );
+      }
     } catch (error) {
       this.logError("processFestivalForShop", error, {
         festivalId: festival._id,
       });
     }
+  }
+
+  /**
+   * Reset spam-flagged or failed reminder logs for a festival schedule
+   * Allows retrying customers who failed due to rate limits or spam restrictions.
+   * @param {string|mongoose.Types.ObjectId} festivalId
+   * @returns {Promise<{ resetCount: number, validSentCount: number }>}
+   */
+  async resetFailedFestivalWishLogs(festivalId) {
+    const festival = await FestivalSchedule.findById(festivalId);
+    if (!festival) throw new Error("Festival schedule not found");
+
+    const templateName = festival.template_name || "festival_wish";
+    const customTemplateKey = `${templateName}_${festival._id}`;
+
+    // Update reminder logs that hit rate limits or failed to FAILED
+    const updateResult = await ReminderLog.updateMany(
+      {
+        shop_id: festival.shop_id,
+        template_name: customTemplateKey,
+        $or: [
+          { message_status: "FAILED" },
+          { failure_reason: /131048|spam/i },
+        ],
+      },
+      {
+        $set: {
+          message_status: "FAILED",
+          deleted_at: new Date(), // Soft-delete so isReminderAlreadySent won't block re-sending
+        },
+      },
+    );
+
+    const validSentCount = await ReminderLog.countDocuments({
+      shop_id: festival.shop_id,
+      template_name: customTemplateKey,
+      message_status: { $in: ["SENT", "DELIVERED", "READ"] },
+      deleted_at: null,
+    });
+
+    await FestivalSchedule.findByIdAndUpdate(festivalId, {
+      festival_wishes_sent: validSentCount,
+      status: "Pending",
+    });
+
+    this.logInfo(
+      `Reset festival ${festival.festival_name}: valid sent = ${validSentCount}, reset logs = ${updateResult.modifiedCount}`,
+    );
+
+    return { resetCount: updateResult.modifiedCount, validSentCount };
   }
 
   /**
@@ -604,7 +874,7 @@ export default class WishesReminderScheduler extends BaseScheduler {
         messageContent = preset.getMessageContent(shopName);
       } else {
         variables = {
-          1: getFirstName(customer?.full_name),
+          1: getFirstName(customer),
           2: festival.festival_name,
           3: shopName,
         };
@@ -641,7 +911,11 @@ export default class WishesReminderScheduler extends BaseScheduler {
         this.logError("sendFestivalWish", new Error(result.error), {
           customerId: customer.customer_id,
         });
-        return { success: false, error: result.error };
+        return {
+          success: false,
+          error: result.error,
+          isRateLimit: result.isRateLimit,
+        };
       }
     } catch (error) {
       this.logError("sendFestivalWish", error, {
@@ -682,12 +956,12 @@ export default class WishesReminderScheduler extends BaseScheduler {
 
       const allCustomers = [
         ...todayBirthdays.map((c) => ({
-          name: getFirstName(c.full_name),
+          name: getFirstName(c),
           whatsapp_number: c.whatsapp_number,
           type: "जन्मदिन",
         })),
         ...todayAnniversaries.map((c) => ({
-          name: getFirstName(c.full_name),
+          name: getFirstName(c),
           whatsapp_number: c.whatsapp_number,
           type: "वर्षगाँठ",
         })),

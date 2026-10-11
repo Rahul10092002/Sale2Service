@@ -41,23 +41,60 @@ export default class MessageSender {
         languageCode: languageCode || "hi",
         campaignName: metadata.campaignName || templateName,
         hospitalId: metadata.shopId || null,
-        userName: getFirstName(metadata.customerName) || metadata.customerName || "",
+        userName:
+          getFirstName(metadata.customerName) || metadata.customerName || "",
         messageType: metadata.messageType || templateName,
       };
 
       // Send via MSG91
       const sendResult = await sendWhatsappMessageViaMSG91(msg91Params);
 
-      // Update reminder log on success
-      if (reminderLogId && sendResult) {
-        await this.updateReminderLogSuccess(reminderLogId, sendResult);
-      }
+      const isSuccess = Boolean(
+        sendResult &&
+        sendResult.success !== false &&
+        (sendResult.success === true ||
+          sendResult.status === "success" ||
+          sendResult.hasError === false) &&
+        sendResult.type !== "error" &&
+        sendResult.status !== "error" &&
+        !sendResult.isRateLimit
+      );
 
-      return {
-        success: true,
-        result: sendResult,
-        provider: "MSG91",
-      };
+      if (isSuccess) {
+        // Update reminder log on success
+        if (reminderLogId) {
+          await this.updateReminderLogSuccess(reminderLogId, sendResult);
+        }
+
+        return {
+          success: true,
+          result: sendResult,
+          provider: "MSG91",
+        };
+      } else {
+        const errMsg =
+          sendResult?.message ||
+          sendResult?.error ||
+          (sendResult?.errors && JSON.stringify(sendResult.errors)) ||
+          "MSG91 WhatsApp send failed or rate limited";
+
+        const isRateLimit = Boolean(
+          sendResult?.isRateLimit ||
+          /rate limit|spam|131048|too many requests/i.test(JSON.stringify(sendResult || ""))
+        );
+
+        if (reminderLogId) {
+          await this.updateReminderLogFailure(reminderLogId, new Error(errMsg));
+        }
+
+        return {
+          success: false,
+          error: errMsg,
+          isRateLimit,
+          result: sendResult,
+          provider: "MSG91",
+        };
+      }
     } catch (error) {
       console.error("MessageSender template send error:", error);
 

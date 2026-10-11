@@ -199,7 +199,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
     return map[n - 1] || `${n}वीं`;
   };
         variables = {
-          1: getFirstName(customer?.full_name),                     // {{1}}
+          1: getFirstName(customer),                     // {{1}}
           2: invoiceItem.product_name,               // {{2}}
           3: invoiceItem.serial_number || "",     // {{3}} ✅ ADD THIS FIELD IN DB
           4: getServiceCountHindi(service.service_number || 1), // {{4}}
@@ -212,7 +212,7 @@ export default class ServiceReminderScheduler extends BaseScheduler {
       case "FOLLOWUP":
         templateName = "service_missed_v1";
         variables = {
-          1: getFirstName(customer?.full_name),
+          1: getFirstName(customer),
           2: invoiceItem.product_name,
           3: getShopName(shop),
         };

@@ -3,16 +3,40 @@
  */
 
 /**
- * Extract first name from a full name string
- * @param {string} name - Full name
+ * Extract first name from a customer object or full name string.
+ * Prioritizes customer.first_name if available, otherwise extracts the first word of full_name.
+ * @param {Object|string} input - Customer object or name string
  * @param {string} fallback - Fallback value if name is empty
  * @returns {string} - First name or fallback
  */
-export const getFirstName = (name, fallback = "") => {
-  if (!name || typeof name !== "string") return fallback;
-  const trimmed = name.trim();
-  if (!trimmed) return fallback;
-  return trimmed.split(/\s+/)[0];
+export const getFirstName = (input, fallback = "") => {
+  if (!input) return fallback;
+
+  if (typeof input === "object") {
+    const firstName =
+      typeof input.first_name === "string" ? input.first_name.trim() : "";
+    if (firstName) return firstName;
+
+    const fullName =
+      typeof input.full_name === "string"
+        ? input.full_name.trim()
+        : typeof input.customer_name === "string"
+        ? input.customer_name.trim()
+        : typeof input.name === "string"
+        ? input.name.trim()
+        : "";
+    if (fullName) return fullName.split(/\s+/)[0];
+
+    return fallback;
+  }
+
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) return fallback;
+    return trimmed.split(/\s+/)[0];
+  }
+
+  return fallback;
 };
 
 /**

@@ -16,6 +16,14 @@ import {
   Smartphone,
   Layers,
   Info,
+  ExternalLink,
+  Copy,
+  Check,
+  Calendar,
+  X,
+  User,
+  Phone,
+  FileText,
 } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import {
@@ -32,6 +40,11 @@ function Logs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const filterRef = useRef(null);
+
+  // Inspector Modal State
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [copiedJson, setCopiedJson] = useState(false);
+  const [copiedRequestId, setCopiedRequestId] = useState(false);
 
   // WhatsApp Tab State
   const [waPage, setWaPage] = useState(1);
@@ -154,20 +167,125 @@ function Logs() {
     setSearchTerm("");
   };
 
+  const formatCurrency = (amount) => {
+    if (amount === undefined || amount === null || amount === "") return "";
+    const num = Number(amount);
+    if (isNaN(num)) return amount;
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+    }).format(num);
+  };
+
   const formatTemplateName = (name) => {
     if (!name) return "General Message";
     const templatesMap = {
       invoice_generated_notification: "Invoice Generated Notification",
       invoice_created: "Invoice Created",
       payment_reminder: "Payment Reminder",
+      payment_reminders: "Payment Reminders",
+      payment_received: "Payment Received",
+      daily_payment_summary: "Daily Payment Summary",
+      daily_summary: "Daily Summary",
       service_reminder: "Service Reminder",
       birthday_wish: "Birthday Wish",
       anniversary_wish: "Anniversary Wish",
       custom_notification: "Custom Notification",
       manual_message: "Manual Message",
+      warranty_expired: "Warranty Expired",
+      warranty_expiry: "Warranty Expiry",
     };
     if (templatesMap[name]) return templatesMap[name];
     return name.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const parseLogContent = (log) => {
+    const raw = log?.content || log?.meta?.content;
+    if (!raw) return null;
+    if (typeof raw === "object") return raw;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const extractContentSummary = (log) => {
+    const content = parseLogContent(log);
+    if (!content) return null;
+
+    const tpl = (log.campaignName || log.messageType || log.meta?.template_name || "").toLowerCase();
+    const getVal = (key) => content[key]?.text || content[key]?.value || "";
+    const document = content.header_1?.document || null;
+    const buttonText = content.button_1?.text || "";
+
+    if (tpl.includes("payment_reminder")) {
+      return {
+        type: "payment_reminder",
+        customerName: getVal("body_1"),
+        amountDue: getVal("body_2"),
+        invoiceNumber: getVal("body_3"),
+        itemOrSerial: getVal("body_4"),
+        dueDate: getVal("body_5"),
+        helpline: getVal("body_6"),
+        storeName: getVal("body_7"),
+        buttonText,
+        document,
+        content,
+      };
+    }
+
+    if (tpl.includes("invoice_generated") || tpl.includes("invoice_created")) {
+      return {
+        type: "invoice_generated",
+        customerName: getVal("body_1"),
+        storeName: getVal("body_2"),
+        invoiceNumber: getVal("body_3"),
+        invoiceDate: getVal("body_4"),
+        totalAmount: getVal("body_5"),
+        paidAmount: getVal("body_6"),
+        balanceDue: getVal("body_7"),
+        paymentStatus: getVal("body_8"),
+        helpline: getVal("body_9"),
+        buttonText,
+        document,
+        content,
+      };
+    }
+
+    // Generic parameter scanning
+    let invoiceNumber = "";
+    let amount = "";
+    let date = "";
+    const fields = [];
+
+    Object.entries(content).forEach(([k, v]) => {
+      const text = v?.text || (typeof v === "string" ? v : "");
+      if (!text) return;
+      if (k.startsWith("body_")) {
+        fields.push({ key: k, text });
+        if (!invoiceNumber && /INV-[\w-]+/i.test(text)) {
+          invoiceNumber = text;
+        } else if (!amount && /^\d+(\.\d{1,2})?$/.test(text)) {
+          amount = text;
+        } else if (!date && /\d{1,2}[-/]\d{1,2}[-/]\d{4}/.test(text)) {
+          date = text;
+        }
+      }
+    });
+
+    return {
+      type: "generic",
+      customerName: getVal("body_1"),
+      invoiceNumber,
+      amount,
+      date,
+      fields,
+      buttonText,
+      document,
+      content,
+    };
   };
 
   const getWhatsappStatusBadge = (log) => {
@@ -358,12 +476,13 @@ function Logs() {
                           >
                             <option value="">All Templates</option>
                             <option value="invoice_generated_notification">Invoice Generated Notification</option>
-                            <option value="payment_reminder">Payment Reminder</option>
+                            <option value="payment_reminders">Payment Reminders</option>
+                            <option value="payment_received">Payment Received</option>
                             <option value="service_reminder">Service Reminder</option>
                             <option value="birthday_wish">Birthday Wish</option>
                             <option value="anniversary_wish">Anniversary Wish</option>
                             {availableTemplates.map((tpl) => (
-                              !["invoice_generated_notification", "invoice_created", "payment_reminder", "service_reminder", "birthday_wish", "anniversary_wish"].includes(tpl) && (
+                              !["invoice_generated_notification", "invoice_created", "payment_reminders", "payment_reminder", "payment_received", "service_reminder", "birthday_wish", "anniversary_wish"].includes(tpl) && (
                                 <option key={tpl} value={tpl}>
                                   {formatTemplateName(tpl)}
                                 </option>
@@ -704,70 +823,173 @@ function Logs() {
                   <table className="min-w-full">
                     <thead className="bg-gray-100 dark:bg-dark-subtle border-b dark:border-dark-border text-xs font-semibold text-gray-600 dark:text-slate-400">
                       <tr>
-                        <th className="text-left px-4 py-3">#</th>
+                        <th className="text-left px-3.5 py-3 w-10">#</th>
                         <th className="text-left px-4 py-3">Recipient & Phone</th>
                         <th className="text-left px-4 py-3">Template / Campaign</th>
+                        <th className="text-left px-4 py-3">Message Content & Details</th>
                         <th className="text-left px-4 py-3">Delivery Status (DLR)</th>
                         <th className="text-left px-4 py-3">Sent & Delivered Time</th>
+                        <th className="text-center px-3 py-3 w-20">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-dark-border text-xs">
                       {waLogs.map((log, index) => {
-                        const deliveryReason = log.meta?.delivery_reason || log.meta?.error;
+                        const summary = extractContentSummary(log);
+                        const rawReason = log.meta?.delivery_reason ?? log.meta?.error;
+                        const isRealError =
+                          rawReason !== null &&
+                          rawReason !== undefined &&
+                          rawReason !== "" &&
+                          rawReason !== "0" &&
+                          rawReason !== 0;
+
                         return (
                           <tr
                             key={log._id}
-                            className="hover:bg-gray-50 dark:hover:bg-dark-subtle/50 transition-colors"
+                            onClick={() => setSelectedLog(log)}
+                            className="hover:bg-gray-50/80 dark:hover:bg-dark-subtle/50 transition-colors cursor-pointer group"
                           >
                             {/* Serial Number */}
-                            <td className="px-4 py-3 text-slate-400 font-mono">
+                            <td className="px-3.5 py-3 text-slate-400 font-mono">
                               {(waPage - 1) * waLimit + index + 1}
                             </td>
 
                             {/* Recipient Info */}
                             <td className="px-4 py-3">
                               <div className="font-semibold text-ink-base dark:text-slate-100 text-sm">
-                                {log.userName || "Customer"}
+                                {log.userName || summary?.customerName || "Customer"}
                               </div>
-                              <div className="text-xs text-indigo-600 dark:text-indigo-400 font-mono">
-                                {log.destination}
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-xs text-indigo-600 dark:text-indigo-400 font-mono">
+                                  {log.destination}
+                                </span>
+                                <a
+                                  href={`https://wa.me/${(log.destination || "").replace(/\D/g, "")}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Chat on WhatsApp"
+                                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 p-0.5 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                >
+                                  <Smartphone className="w-3.5 h-3.5" />
+                                </a>
                               </div>
                             </td>
 
                             {/* Template Name Badge */}
                             <td className="px-4 py-3">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/60">
-                                <Layers className="w-3.5 h-3.5 text-blue-500" />
-                                {formatTemplateName(log.campaignName || log.messageType)}
-                              </span>
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/60">
+                                  <Layers className="w-3.5 h-3.5 text-blue-500" />
+                                  {formatTemplateName(log.campaignName || log.messageType)}
+                                </span>
+                                {summary?.storeName && (
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[170px]" title={summary.storeName}>
+                                    🏪 {summary.storeName}
+                                  </p>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Message Content & Key Details */}
+                            <td className="px-4 py-3">
+                              {summary ? (
+                                <div className="space-y-1.5 max-w-xs">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {summary.invoiceNumber && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono font-bold text-[11px] border border-indigo-200 dark:border-indigo-800">
+                                        #{summary.invoiceNumber}
+                                      </span>
+                                    )}
+
+                                    {(summary.amountDue || summary.totalAmount) && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] border border-emerald-200 dark:border-emerald-800">
+                                        {formatCurrency(summary.amountDue || summary.totalAmount)}
+                                      </span>
+                                    )}
+
+                                    {(summary.dueDate || summary.invoiceDate) && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-[11px] border border-amber-200 dark:border-amber-800">
+                                        <Calendar className="w-3 h-3 text-amber-500" />
+                                        {summary.dueDate ? `Due ${summary.dueDate}` : summary.invoiceDate}
+                                      </span>
+                                    )}
+
+                                    {summary.document?.link && (
+                                      <a
+                                        href={summary.document.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-[11px] border border-rose-200 dark:border-rose-800 hover:bg-rose-100"
+                                        title="View Cloudinary Invoice PDF"
+                                      >
+                                        <FileText className="w-3 h-3 text-rose-500" />
+                                        <span>PDF</span>
+                                        <ExternalLink className="w-2.5 h-2.5" />
+                                      </a>
+                                    )}
+                                  </div>
+
+                                  {summary.itemOrSerial && (
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono">
+                                      Item: {summary.itemOrSerial}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
+                                  Template dispatched
+                                </span>
+                              )}
                             </td>
 
                             {/* Delivery Status Badge & Failure Info */}
                             <td className="px-4 py-3">
                               <div className="flex flex-col items-start gap-1">
                                 {getWhatsappStatusBadge(log)}
-                                {deliveryReason && (
+                                {isRealError && (
                                   <span className="inline-flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400 max-w-xs break-words">
                                     <Info className="w-3 h-3 shrink-0" />
-                                    {typeof deliveryReason === "object"
-                                      ? JSON.stringify(deliveryReason)
-                                      : String(deliveryReason)}
+                                    {typeof rawReason === "object"
+                                      ? JSON.stringify(rawReason)
+                                      : String(rawReason)}
+                                  </span>
+                                )}
+                                {log.meta?.delivery_status === "read" && (
+                                  <span className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">
+                                    Seen by recipient
                                   </span>
                                 )}
                               </div>
                             </td>
 
                             {/* Timestamps */}
-                            <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                            <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                               <div>
                                 <span className="font-medium text-slate-700 dark:text-slate-300">Sent:</span>{" "}
                                 {formatDate(log.createdAt)}
                               </div>
                               {log.meta?.webhook_received_at && (
                                 <div className="text-[11px] text-slate-400 mt-0.5">
-                                  <span>DLR Update:</span> {formatDate(log.meta.webhook_received_at)}
+                                  <span>DLR:</span> {formatDate(log.meta.webhook_received_at)}
                                 </div>
                               )}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-3 py-3 text-center">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedLog(log);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 dark:text-slate-400 dark:hover:text-blue-300 transition-colors"
+                                title="View Message Details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
                             </td>
                           </tr>
                         );
@@ -779,45 +1001,120 @@ function Logs() {
                 {/* Mobile View */}
                 <div className="md:hidden divide-y divide-gray-100 dark:divide-dark-border">
                   {waLogs.map((log, index) => {
-                    const deliveryReason = log.meta?.delivery_reason || log.meta?.error;
+                    const summary = extractContentSummary(log);
+                    const rawReason = log.meta?.delivery_reason ?? log.meta?.error;
+                    const isRealError =
+                      rawReason !== null &&
+                      rawReason !== undefined &&
+                      rawReason !== "" &&
+                      rawReason !== "0" &&
+                      rawReason !== 0;
+
                     return (
-                      <div key={log._id} className="p-3.5 space-y-2">
+                      <div
+                        key={log._id}
+                        onClick={() => setSelectedLog(log)}
+                        className="p-3.5 space-y-2.5 active:bg-gray-50/70 dark:active:bg-dark-subtle/50 transition-colors cursor-pointer"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <h4 className="font-bold text-xs text-ink-base dark:text-slate-100">
-                              {log.userName || "Customer"}
+                              {log.userName || summary?.customerName || "Customer"}
                             </h4>
-                            <p className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400">
-                              {log.destination}
-                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400">
+                                {log.destination}
+                              </span>
+                              <a
+                                href={`https://wa.me/${(log.destination || "").replace(/\D/g, "")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-emerald-600 hover:text-emerald-700"
+                              >
+                                <Smartphone className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
                           </div>
-                          {getWhatsappStatusBadge(log)}
+                          <div className="flex items-center gap-1.5">
+                            {getWhatsappStatusBadge(log)}
+                            <span className="text-[11px] text-slate-400 font-mono">
+                              #{(waPage - 1) * waLimit + index + 1}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="flex items-center justify-between text-xs pt-1">
+                        <div className="flex items-center justify-between text-xs pt-0.5">
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">
                             {formatTemplateName(log.campaignName || log.messageType)}
                           </span>
-                          <span className="text-[11px] text-slate-400 font-mono">
-                            #{(waPage - 1) * waLimit + index + 1}
-                          </span>
+                          {summary?.storeName && (
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[140px]" title={summary.storeName}>
+                              🏪 {summary.storeName}
+                            </span>
+                          )}
                         </div>
 
-                        {deliveryReason && (
-                          <div className="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-2 rounded-md">
-                            <strong>Reason:</strong>{" "}
-                            {typeof deliveryReason === "object"
-                              ? JSON.stringify(deliveryReason)
-                              : String(deliveryReason)}
+                        {/* Content Summary Chips */}
+                        {summary && (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            {summary.invoiceNumber && (
+                              <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono font-bold text-[10px] border border-indigo-200 dark:border-indigo-800">
+                                #{summary.invoiceNumber}
+                              </span>
+                            )}
+                            {(summary.amountDue || summary.totalAmount) && (
+                              <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800">
+                                {formatCurrency(summary.amountDue || summary.totalAmount)}
+                              </span>
+                            )}
+                            {(summary.dueDate || summary.invoiceDate) && (
+                              <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-[10px] border border-amber-200 dark:border-amber-800">
+                                {summary.dueDate ? `Due ${summary.dueDate}` : summary.invoiceDate}
+                              </span>
+                            )}
+                            {summary.document?.link && (
+                              <a
+                                href={summary.document.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-[10px] border border-rose-200 dark:border-rose-800 flex items-center gap-0.5"
+                              >
+                                <FileText className="w-2.5 h-2.5 text-rose-500" />
+                                <span>PDF</span>
+                              </a>
+                            )}
                           </div>
                         )}
 
-                        <div className="text-[10px] text-slate-400 flex justify-between pt-1 border-t border-gray-100 dark:border-dark-border">
+                        {isRealError && (
+                          <div className="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-2 rounded-md">
+                            <strong>Reason:</strong>{" "}
+                            {typeof rawReason === "object"
+                              ? JSON.stringify(rawReason)
+                              : String(rawReason)}
+                          </div>
+                        )}
+
+                        <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1 border-t border-gray-100 dark:border-dark-border">
                           <span>Sent: {formatDate(log.createdAt)}</span>
                           {log.meta?.webhook_received_at && (
                             <span>DLR: {formatDate(log.meta.webhook_received_at)}</span>
                           )}
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedLog(log);
+                          }}
+                          className="w-full py-1.5 px-2 rounded-lg bg-gray-50 dark:bg-dark-input hover:bg-blue-50 dark:hover:bg-blue-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center gap-1 border border-gray-200/80 dark:border-dark-border transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View Message & DLR Report</span>
+                        </button>
                       </div>
                     );
                   })}
@@ -1044,6 +1341,397 @@ function Logs() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* WhatsApp Log Details Inspection Modal */}
+        {selectedLog && (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in"
+            onClick={() => setSelectedLog(null)}
+          >
+            <div
+              className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-dark-border flex items-center justify-between bg-gray-50/70 dark:bg-dark-subtle/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-ink-base dark:text-slate-100 flex items-center gap-2">
+                      <span>{formatTemplateName(selectedLog.campaignName || selectedLog.messageType)}</span>
+                    </h3>
+                    <p className="text-xs text-ink-muted dark:text-slate-400">
+                      WhatsApp Message Content & Delivery Report (DLR)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {getWhatsappStatusBadge(selectedLog)}
+                  <button
+                    onClick={() => setSelectedLog(null)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-dark-subtle transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-5 overflow-y-auto space-y-4 text-xs">
+                {/* Recipient & Direct WhatsApp Action */}
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-dark-input/60 border border-gray-200 dark:border-dark-border flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-ink-base dark:text-slate-100 text-sm">
+                        {selectedLog.userName || "Customer"}
+                      </div>
+                      <div className="font-mono text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                        <Phone className="w-3 h-3" />
+                        {selectedLog.destination}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`https://wa.me/${(selectedLog.destination || "").replace(/\D/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      Chat on WhatsApp
+                    </a>
+                  </div>
+                </div>
+
+                {/* Simulated WhatsApp Chat Bubble */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                    WhatsApp Message Preview
+                  </label>
+                  <div className="bg-[#e5ddd5] dark:bg-[#0b141a] p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-dark-border">
+                    <div className="max-w-md bg-white dark:bg-[#1f2c34] text-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none p-3.5 shadow-sm space-y-2 border border-gray-100 dark:border-slate-800">
+                      
+                      {/* Document Header (if PDF attached) */}
+                      {(() => {
+                        const summary = extractContentSummary(selectedLog);
+                        if (summary?.document) {
+                          return (
+                            <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-dark-card border border-gray-200 dark:border-dark-border flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 flex items-center justify-center shrink-0">
+                                  <FileText className="w-4 h-4" />
+                                </div>
+                                <div className="truncate">
+                                  <p className="font-bold text-xs truncate">
+                                    {summary.document.filename || "Invoice Document.pdf"}
+                                  </p>
+                                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Attached PDF</span>
+                                </div>
+                              </div>
+                              <a
+                                href={summary.document.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] hover:bg-indigo-100 shrink-0 flex items-center gap-1 border border-indigo-200 dark:border-indigo-800"
+                              >
+                                <span>Open PDF</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      {/* Message Body Content */}
+                      {(() => {
+                        const summary = extractContentSummary(selectedLog);
+                        if (!summary) {
+                          return (
+                            <p className="text-xs text-slate-500 italic">
+                              No parameter payload recorded for this message. Dispatched via standard template.
+                            </p>
+                          );
+                        }
+
+                        if (summary.type === "payment_reminder") {
+                          return (
+                            <div className="text-xs space-y-1.5 leading-relaxed">
+                              <p className="font-bold text-slate-900 dark:text-white">
+                                Dear {summary.customerName || selectedLog.userName || "Customer"},
+                              </p>
+                              <p>
+                                This is a friendly reminder that a payment of{" "}
+                                <strong className="text-emerald-700 dark:text-emerald-400 font-extrabold">
+                                  {formatCurrency(summary.amountDue)}
+                                </strong>{" "}
+                                for Invoice{" "}
+                                <span className="font-mono font-bold bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                                  #{summary.invoiceNumber}
+                                </span>
+                                {summary.itemOrSerial ? ` (${summary.itemOrSerial})` : ""} is due on{" "}
+                                <span className="font-bold underline">{summary.dueDate}</span>.
+                              </p>
+                              {summary.storeName && (
+                                <p className="text-slate-600 dark:text-slate-300 font-medium">
+                                  From: <strong>{summary.storeName}</strong>
+                                </p>
+                              )}
+                              {summary.helpline && (
+                                <p className="text-[11px] text-slate-500">
+                                  Helpline: {summary.helpline}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        if (summary.type === "invoice_generated") {
+                          return (
+                            <div className="text-xs space-y-1.5 leading-relaxed">
+                              <p className="font-bold text-slate-900 dark:text-white">
+                                Dear {summary.customerName || selectedLog.userName || "Customer"},
+                              </p>
+                              <p>
+                                Thank you for your purchase from{" "}
+                                <strong>{summary.storeName || "our store"}</strong>!
+                              </p>
+                              <div className="p-2 rounded-lg bg-gray-50 dark:bg-dark-card space-y-1 text-[11px] border border-gray-200/80 dark:border-dark-border">
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">Invoice:</span>
+                                  <span className="font-mono font-bold">#{summary.invoiceNumber}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">Bill Date:</span>
+                                  <span>{summary.invoiceDate}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">Total:</span>
+                                  <span className="font-bold">{formatCurrency(summary.totalAmount)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">Paid:</span>
+                                  <span>{formatCurrency(summary.paidAmount)}</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-indigo-600 dark:text-indigo-400 border-t pt-1 border-dashed">
+                                  <span>Balance Due:</span>
+                                  <span>{formatCurrency(summary.balanceDue)} ({summary.paymentStatus})</span>
+                                </div>
+                              </div>
+                              {summary.helpline && (
+                                <p className="text-[11px] text-slate-500">
+                                  Helpline: {summary.helpline}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-1">
+                            {summary.fields?.map((f) => (
+                              <div key={f.key} className="text-xs">
+                                <span className="text-slate-400 font-mono text-[10px] mr-1">[{f.key}]:</span>
+                                <span className="font-semibold">{f.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Action Button inside WhatsApp bubble */}
+                      {(() => {
+                        const summary = extractContentSummary(selectedLog);
+                        if (summary?.buttonText) {
+                          return (
+                            <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
+                              <div className="w-full text-center py-1.5 px-3 rounded-lg bg-gray-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center gap-1.5">
+                                <Phone className="w-3 h-3" />
+                                <span>Action: {summary.buttonText}</span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      {/* Message Bubble Footer (Time & Status) */}
+                      <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 pt-1">
+                        <span>{new Date(selectedLog.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        <CheckCheck className={`w-3.5 h-3.5 ${
+                          (selectedLog.meta?.delivery_status || "").toLowerCase() === "read"
+                            ? "text-purple-500"
+                            : (selectedLog.meta?.delivery_status || "").toLowerCase() === "delivered"
+                            ? "text-emerald-500"
+                            : "text-slate-400"
+                        }`} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Structured Template Variables Table */}
+                {(() => {
+                  const content = parseLogContent(selectedLog);
+                  if (!content) return null;
+                  const entries = Object.entries(content);
+                  if (!entries.length) return null;
+
+                  return (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                        Template Variables & Parameters ({entries.length})
+                      </label>
+                      <div className="border border-gray-200 dark:border-dark-border rounded-xl overflow-hidden">
+                        <table className="w-full text-xs">
+                          <thead className="bg-gray-50 dark:bg-dark-subtle text-slate-500 font-semibold border-b dark:border-dark-border">
+                            <tr>
+                              <th className="text-left px-3 py-2 w-28">Parameter</th>
+                              <th className="text-left px-3 py-2 w-20">Type</th>
+                              <th className="text-left px-3 py-2">Value</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
+                            {entries.map(([k, v]) => {
+                              const val = v?.text || (v?.document ? v.document.filename || v.document.link : JSON.stringify(v));
+                              return (
+                                <tr key={k} className="hover:bg-gray-50/50 dark:hover:bg-dark-subtle/30 font-mono">
+                                  <td className="px-3 py-1.5 text-indigo-600 dark:text-indigo-400 font-bold">{k}</td>
+                                  <td className="px-3 py-1.5 text-slate-400 text-[11px]">{v?.type || typeof v}</td>
+                                  <td className="px-3 py-1.5 text-ink-base dark:text-slate-200 break-all font-sans font-medium">
+                                    {v?.document?.link ? (
+                                      <a
+                                        href={v.document.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-bold"
+                                      >
+                                        {v.document.filename || "View Attached PDF"}
+                                        <ExternalLink className="w-3 h-3" />
+                                      </a>
+                                    ) : (
+                                      val
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Delivery & Provider Metadata */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                    Delivery Report (DLR) Details
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-dark-input/60 border border-gray-200 dark:border-dark-border">
+                      <span className="text-slate-400 block text-[11px]">MSG91 Request ID</span>
+                      <div className="flex items-center justify-between gap-1 mt-0.5">
+                        <span className="font-mono font-bold text-ink-base dark:text-slate-100 truncate">
+                          {selectedLog.meta?.response?.request_id || "N/A"}
+                        </span>
+                        {selectedLog.meta?.response?.request_id && (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedLog.meta.response.request_id);
+                              setCopiedRequestId(true);
+                              setTimeout(() => setCopiedRequestId(false), 2000);
+                            }}
+                            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            title="Copy Request ID"
+                          >
+                            {copiedRequestId ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-dark-input/60 border border-gray-200 dark:border-dark-border">
+                      <span className="text-slate-400 block text-[11px]">Webhook Received</span>
+                      <span className="font-semibold text-ink-base dark:text-slate-100 block mt-0.5">
+                        {selectedLog.meta?.webhook_received_at
+                          ? formatDate(selectedLog.meta.webhook_received_at)
+                          : "Awaiting callback"}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-dark-input/60 border border-gray-200 dark:border-dark-border">
+                      <span className="text-slate-400 block text-[11px]">Delivery Status</span>
+                      <span className="font-bold capitalize text-ink-base dark:text-slate-100 block mt-0.5">
+                        {selectedLog.meta?.delivery_status || selectedLog.status || "Unknown"}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-dark-input/60 border border-gray-200 dark:border-dark-border">
+                      <span className="text-slate-400 block text-[11px]">Delivery Reason Code</span>
+                      <span className="font-mono text-ink-base dark:text-slate-100 block mt-0.5">
+                        {selectedLog.meta?.delivery_reason === "0"
+                          ? "0 (Delivered Successfully)"
+                          : selectedLog.meta?.delivery_reason || "None"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Raw JSON Payload */}
+                <div className="pt-2 border-t border-gray-100 dark:border-dark-border">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
+                      Full Log JSON Payload
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(selectedLog, null, 2));
+                        setCopiedJson(true);
+                        setTimeout(() => setCopiedJson(false), 2000);
+                      }}
+                      className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                    >
+                      {copiedJson ? (
+                        <>
+                          <Check className="w-3 h-3 text-green-500" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy JSON</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <pre className="p-3 rounded-xl bg-slate-900 text-slate-100 font-mono text-[11px] overflow-x-auto max-h-48 border border-slate-800">
+                    {JSON.stringify(selectedLog, null, 2)}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-5 py-3 border-t border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-subtle/50 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedLog(null)}
+                  className="px-4"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 

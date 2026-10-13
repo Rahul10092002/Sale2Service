@@ -19,6 +19,8 @@ import {
   Activity,
   Calendar,
   ArrowLeft,
+  MessageCircle,
+  BellOff,
 } from "lucide-react";
 import { Button } from "../ui/index.js";
 import { ROUTES } from "../../utils/constants.js";
@@ -69,6 +71,10 @@ export default function MobileInvoiceSummaryBar({
     }).format(amount || 0);
 
   const errorCount = Object.keys(errors).length;
+  const isWhatsAppEnabled = invoice?.send_whatsapp !== false;
+  const invoiceDate = invoice?.invoice_date ? invoice.invoice_date.split("T")[0] : "";
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isBackdated = Boolean(invoiceDate && invoiceDate < todayStr);
 
   useEffect(() => {
     if (errorCount > 0 || submitError) {
@@ -346,6 +352,7 @@ export default function MobileInvoiceSummaryBar({
                   <button
                     type="button"
                     onClick={() =>
+                      updateInvoiceData &&
                       updateInvoiceData({
                         is_tax_inclusive: !(invoice.is_tax_inclusive !== false),
                       })
@@ -359,6 +366,54 @@ export default function MobileInvoiceSummaryBar({
                   {formatCurrency(invoice.tax)}
                 </span>
               </div>
+
+              {/* WhatsApp Notification Setting */}
+              <div className="flex justify-between items-center text-gray-600 dark:text-slate-300 pt-1 border-t border-dashed border-gray-200 dark:border-gray-800">
+                <div className="flex items-center gap-1.5">
+                  {isWhatsAppEnabled ? (
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  ) : (
+                    <BellOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  )}
+                  <span className="font-semibold text-gray-800 dark:text-slate-200">
+                    Send WhatsApp
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateInvoiceData &&
+                    updateInvoiceData({
+                      send_whatsapp: !isWhatsAppEnabled,
+                    })
+                  }
+                  className={`text-[10px] px-2.5 py-1 rounded-full font-bold border transition-all active:scale-95 flex items-center gap-1 ${
+                    isWhatsAppEnabled
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                      : "bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-400 dark:border-amber-700 font-extrabold shadow-xs"
+                  }`}
+                >
+                  {isWhatsAppEnabled ? "ON (Notify)" : "OFF (Silent Mode)"}
+                </button>
+              </div>
+
+              {/* Invoice Date Details */}
+              {invoiceDate && (
+                <div className="flex justify-between items-center text-gray-600 dark:text-slate-300 pt-1 border-t border-dashed border-gray-200 dark:border-gray-800 text-xs">
+                  <span className="flex items-center gap-1 text-gray-600 dark:text-slate-300">
+                    <Calendar className="w-3 h-3 text-indigo-500" />
+                    Invoice Date
+                  </span>
+                  <span className="font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-1.5">
+                    {invoiceDate}
+                    {isBackdated && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 font-bold">
+                        Old Bill
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
 
               {/* Grand Total */}
               <div className="pt-2.5 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center text-sm font-bold text-indigo-600 dark:text-indigo-400">
@@ -425,8 +480,19 @@ export default function MobileInvoiceSummaryBar({
               <Calculator className="w-4 h-4" />
             </div>
             <div className="text-left truncate">
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-semibold leading-none flex items-center gap-0.5">
-                {items.length} Item{items.length === 1 ? "" : "s"}
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-semibold leading-none flex items-center gap-1">
+                <span>{items.length} Item{items.length === 1 ? "" : "s"}</span>
+                {!isWhatsAppEnabled && (
+                  <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-extrabold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800">
+                    <BellOff className="w-2.5 h-2.5" />
+                    Silent
+                  </span>
+                )}
+                {isBackdated && (
+                  <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">
+                    Old
+                  </span>
+                )}
                 <ChevronUp
                   className={`w-3 h-3 text-indigo-500 transition-transform duration-200 ${
                     showDrawer ? "rotate-180" : ""

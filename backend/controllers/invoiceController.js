@@ -549,21 +549,28 @@ export default class InvoiceController {
         },
       });
 
-      // Send WhatsApp notification asynchronously — fire-and-forget IIFE.
+      // Send WhatsApp notification asynchronously — fire-and-forget IIFE (only if enabled).
       // We serve the PDF from our own backend (tempPdfStore) rather than
       // passing the Cloudinary URL directly to Meta. This eliminates error 131053
       // caused by CDN propagation delays where Meta's edge hits a node that
       // hasn't yet received the freshly uploaded file.
-      (async () => {
-        try {
-          const { formatPhoneNumber, isValidWhatsAppNumber } =
-            await import("../scheduler/core/utils.js");
+      const shouldSendWhatsApp =
+        invoice.send_whatsapp !== false &&
+        invoice.send_whatsapp !== "false" &&
+        req.body.send_whatsapp !== false &&
+        req.body.send_whatsapp !== "false";
 
-          const customerNumber = newInvoice.customer_id?.whatsapp_number;
-          const customerName = newInvoice.customer_id?.full_name || "";
-          const formattedNumber = formatPhoneNumber(customerNumber);
-          if (!formattedNumber || !isValidWhatsAppNumber(formattedNumber))
-            return;
+      if (shouldSendWhatsApp) {
+        (async () => {
+          try {
+            const { formatPhoneNumber, isValidWhatsAppNumber } =
+              await import("../scheduler/core/utils.js");
+
+            const customerNumber = newInvoice.customer_id?.whatsapp_number;
+            const customerName = newInvoice.customer_id?.full_name || "";
+            const formattedNumber = formatPhoneNumber(customerNumber);
+            if (!formattedNumber || !isValidWhatsAppNumber(formattedNumber))
+              return;
 
           // const vars = {
           //   1: invoiceNumber,
@@ -684,6 +691,11 @@ export default class InvoiceController {
           });
         }
       })();
+    } else {
+      console.log(
+        `[Invoice] WhatsApp notification skipped for invoice ${invoiceNumber} (send_whatsapp=false)`,
+      );
+    }
     } catch (error) {
       await session.abortTransaction();
       console.error("Invoice creation error:", error);

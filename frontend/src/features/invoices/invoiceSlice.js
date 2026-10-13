@@ -27,6 +27,7 @@ const defaultCurrentInvoice = {
   },
   invoice: {
     invoice_date: new Date().toISOString().split("T")[0],
+    send_whatsapp: true,
     payment_status: "UNPAID",
     payment_mode: "CASH",
     is_tax_inclusive: true,
@@ -157,10 +158,37 @@ const invoiceSlice = createSlice({
 
     // Invoice data
     updateInvoice: (state, action) => {
+      const oldInvoiceDate = state.currentInvoice.invoice.invoice_date;
+      const newInvoiceDate = action.payload.invoice_date;
+
       state.currentInvoice.invoice = {
         ...state.currentInvoice.invoice,
         ...action.payload,
       };
+
+      // If invoice date changed, sync warranty start dates on existing items that matched old date
+      if (
+        newInvoiceDate &&
+        newInvoiceDate !== oldInvoiceDate &&
+        Array.isArray(state.currentInvoice.invoice_items)
+      ) {
+        state.currentInvoice.invoice_items.forEach((item) => {
+          if (!item.warranty_start_date || item.warranty_start_date === oldInvoiceDate) {
+            item.warranty_start_date = newInvoiceDate;
+            if (item.warranty_duration_months) {
+              const startDate = new Date(newInvoiceDate);
+              if (!isNaN(startDate.getTime())) {
+                const endDate = new Date(startDate);
+                endDate.setMonth(
+                  endDate.getMonth() + parseInt(item.warranty_duration_months),
+                );
+                item.warranty_end_date = endDate.toISOString().split("T")[0];
+              }
+            }
+          }
+        });
+      }
+
       // Clear related errors
       Object.keys(action.payload).forEach((key) => {
         delete state.errors[`invoice.${key}`];
@@ -178,6 +206,10 @@ const invoiceSlice = createSlice({
 
     // Invoice items
     addInvoiceItem: (state, action) => {
+      const defaultStartDate =
+        state.currentInvoice.invoice.invoice_date ||
+        new Date().toISOString().split("T")[0];
+
       const newItem = {
         id: Date.now() + Math.random(),
         item_type: "PRODUCT",
@@ -192,7 +224,7 @@ const invoiceSlice = createSlice({
         selling_price: 0,
         quantity: 1,
         warranty_type: "STANDARD",
-        warranty_start_date: new Date().toISOString().split("T")[0],
+        warranty_start_date: defaultStartDate,
         warranty_duration_months: 12,
         warranty_end_date: "",
         pro_warranty_end_date: "",
@@ -212,6 +244,10 @@ const invoiceSlice = createSlice({
     },
 
     addServiceItem: (state, action) => {
+      const defaultStartDate =
+        state.currentInvoice.invoice.invoice_date ||
+        new Date().toISOString().split("T")[0];
+
       const newItem = {
         id: Date.now() + Math.random(),
         item_type: "SERVICE",
@@ -223,7 +259,7 @@ const invoiceSlice = createSlice({
         quantity: 1,
         warranty_type: "STANDARD",
         warranty_duration_months: 0,
-        warranty_start_date: new Date().toISOString().split("T")[0],
+        warranty_start_date: defaultStartDate,
         warranty_end_date: "",
         notes: "",
         cost_price: 0,

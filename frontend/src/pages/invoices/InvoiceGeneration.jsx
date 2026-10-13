@@ -1,6 +1,17 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { Save, X, ChevronDown, ChevronUp, Calculator, ArrowLeft, AlertTriangle } from "lucide-react";
+import {
+  Save,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Calculator,
+  ArrowLeft,
+  AlertTriangle,
+  Calendar,
+  MessageCircle,
+  BellOff,
+} from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
 import {
@@ -302,6 +313,7 @@ const InvoiceGenerationPage = () => {
       const isPaid = currentInvoice.invoice.payment_status === "PAID";
       const invoiceData = { ...currentInvoice.invoice };
       delete invoiceData.invoice_number;
+      const sendWhatsAppFlag = currentInvoice.invoice.send_whatsapp !== false;
 
       const payload = {
         customer: currentInvoice.customer,
@@ -320,7 +332,9 @@ const InvoiceGenerationPage = () => {
           subtotal: Number(currentInvoice.invoice.subtotal || 0),
           tax: Number(currentInvoice.invoice.tax || 0),
           total_amount: Number(currentInvoice.invoice.total_amount || 0),
+          send_whatsapp: sendWhatsAppFlag,
         },
+        send_whatsapp: sendWhatsAppFlag,
         invoice_items: currentInvoice.invoice_items.map((item) => ({
           ...item,
           id: undefined, // Remove UI-only ID
@@ -329,7 +343,11 @@ const InvoiceGenerationPage = () => {
       };
 
       const result = await createInvoice(payload).unwrap();
-      setSubmitResult({ success: true, data: result });
+      setSubmitResult({
+        success: true,
+        data: result,
+        wasSilent: !sendWhatsAppFlag,
+      });
 
       // Clear the form state in Redux so customer/product details are removed
       reset();
@@ -358,14 +376,14 @@ const InvoiceGenerationPage = () => {
       <>
         <div className="compact min-h-screen bg-gray-50 dark:bg-dark-bg py-3">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Save className="w-8 h-8 text-green-600" />
+            <div className="bg-white dark:bg-dark-card rounded-xl shadow-sm border border-gray-200 dark:border-dark-border p-8 text-center">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-950/60 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Save className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">
                 Invoice Created Successfully!
               </h2>
-              <div className="text-gray-600 mb-6 space-y-2">
+              <div className="text-gray-600 dark:text-slate-300 mb-6 space-y-2">
                 <p>
                   Invoice #{submitResult.data.invoice_number} for{" "}
                   {submitResult.data.invoice?.customer_id?.full_name ||
@@ -377,9 +395,15 @@ const InvoiceGenerationPage = () => {
                   Total: {formatCurrency(submitResult.data.total_amount)}.
                   {" "}Amount due: {formatCurrency(submitResult.data.amount_due)}.
                 </p>
+                {submitResult.wasSilent && (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-semibold my-1">
+                    <BellOff className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    Old Bill Mode: Saved into database without sending WhatsApp notification.
+                  </div>
+                )}
                 {submitResult.data.pdf_error && (
-                  <p className="text-amber-700">
-                    PDF generation needs attention: {submitResult.data.pdf_error}
+                  <p className="text-amber-700 dark:text-amber-400 text-xs">
+                    PDF generation notice: {submitResult.data.pdf_error}
                   </p>
                 )}
               </div>
@@ -488,12 +512,22 @@ const InvoiceGenerationPage = () => {
                         Next Invoice: {nextInvoicePreview.invoice_number}
                       </span>
                     )}
+                    <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800 font-semibold flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      Date: {currentInvoice.invoice.invoice_date || "Today"}
+                    </span>
                     <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800 font-semibold">
                       Current Total: {formatCurrency(currentInvoice.invoice.total_amount)}
                     </span>
                     <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800 font-semibold">
                       Amount Due: {formatCurrency(currentInvoice.invoice.amount_due)}
                     </span>
+                    {currentInvoice.invoice.send_whatsapp === false && (
+                      <span className="rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 font-bold px-3 py-1 border border-amber-300 dark:border-amber-800 flex items-center gap-1.5 animate-pulse">
+                        <BellOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        Silent Mode (No WhatsApp)
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                     <div className="flex flex-wrap gap-4 sm:gap-6 items-end flex-1">
@@ -548,6 +582,7 @@ const InvoiceGenerationPage = () => {
                         />
                       </div>
 
+                      {/* Tax Inclusive toggle */}
                       <div className="flex items-center mb-2 sm:mb-0 h-[42px]">
                         <label className="flex items-center cursor-pointer gap-3">
                           <span className="text-xs font-bold text-gray-700 dark:text-slate-100">
@@ -566,6 +601,41 @@ const InvoiceGenerationPage = () => {
 
                             {/* Track */}
                             <div className="w-full h-full rounded-full bg-gray-300 dark:bg-slate-600 peer-checked:bg-indigo-600 transition-colors"></div>
+
+                            {/* Thumb */}
+                            <div className="absolute top-1/2 left-[2px] -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-xs transition-transform duration-200 ease-in-out peer-checked:translate-x-[18px]"></div>
+                          </div>
+                        </label>
+                      </div>
+
+                      {/* Send WhatsApp Quick Toggle */}
+                      <div className="flex items-center mb-2 sm:mb-0 h-[42px] px-3 py-1.5 rounded-xl border border-gray-200 dark:border-dark-border bg-gray-50/80 dark:bg-dark-input/60">
+                        <label className="flex items-center cursor-pointer gap-2.5">
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-slate-100">
+                            <MessageCircle
+                              className={`w-3.5 h-3.5 ${
+                                currentInvoice.invoice.send_whatsapp !== false
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-gray-400"
+                              }`}
+                            />
+                            WhatsApp
+                          </span>
+
+                          <div className="relative w-10 h-6">
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={currentInvoice.invoice.send_whatsapp !== false}
+                              onChange={(e) => {
+                                updateInvoiceData({
+                                  send_whatsapp: e.target.checked,
+                                });
+                              }}
+                            />
+
+                            {/* Track */}
+                            <div className="w-full h-full rounded-full bg-gray-300 dark:bg-slate-600 peer-checked:bg-emerald-600 transition-colors"></div>
 
                             {/* Thumb */}
                             <div className="absolute top-1/2 left-[2px] -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-xs transition-transform duration-200 ease-in-out peer-checked:translate-x-[18px]"></div>
@@ -613,7 +683,9 @@ const InvoiceGenerationPage = () => {
                         ) : (
                           <>
                             <Save className="w-4 h-4" />
-                            Create Invoice
+                            {currentInvoice.invoice.send_whatsapp === false
+                              ? "Save Old Bill (No WhatsApp)"
+                              : "Create Invoice"}
                           </>
                         )}
                       </Button>
@@ -689,7 +761,11 @@ const InvoiceGenerationPage = () => {
           isSubmitting={isSubmitting}
           errors={errors}
           submitError={submitResult?.error}
-          submitLabel="Create Invoice"
+          submitLabel={
+            currentInvoice.invoice.send_whatsapp === false
+              ? "Save Old Bill (No WhatsApp)"
+              : "Create Invoice"
+          }
           loadingLabel="Creating Invoice..."
         />
       </div>

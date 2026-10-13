@@ -470,18 +470,13 @@ export default class PaymentReminderScheduler extends BaseScheduler {
         0,
       );
 
-      // 📋 Customer list (max 10)
-      const limitedEntries = entries.slice(0, 10);
-      let customerList = limitedEntries
+      // 📋 Customer list
+      const customerList = entries
         .map((e) => {
           const phoneStr = e.customerPhone ? ` (${e.customerPhone})` : "";
           return `• ${e.customerName}${phoneStr} — ₹${parseFloat(e.amountDue || 0).toLocaleString("en-IN")} (${e.statusLabel})`;
         })
-        .join(" | ");
-
-      if (entries.length > 10) {
-        customerList += ` | +${entries.length - 10} अन्य ग्राहक`;
-      }
+        .join("\n");
 
       // 📦 MSG91 template variables
       const variables = {

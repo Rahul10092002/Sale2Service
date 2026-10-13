@@ -11,6 +11,7 @@ const MessageLogSchema = new mongoose.Schema({
     default: "failed",
   },
   messageType: { type: String, default: null },
+  content: { type: String, default: null },
   meta: { type: Object, default: {} },
   createdAt: { type: Date, default: Date.now },
 });

@@ -9,6 +9,7 @@ import {
   AlertsPanel,
   PeriodSelector,
   UpcomingReminders,
+  CustomerLedgerSection,
 } from "../../components/dashboard/index.js";
 import {
   useGetDashboardSummaryQuery,
@@ -25,7 +26,10 @@ import {
   Package,
   RefreshCw,
   Shield,
+  Wallet,
+  ArrowRight,
 } from "lucide-react";
+import { ROUTES } from "../../utils/constants.js";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -118,7 +122,7 @@ const Dashboard = () => {
                   <MetricCard
                     title="Total Revenue"
                     // round off to nearest 10 for cleaner display, can adjust as needed
-                    value={`₹${summary.revenue?.total || 0}`}
+                    value={`₹${(summary.revenue?.total || 0).toLocaleString("en-IN")}`}
                     subtitle={`${summary.revenue?.count || 0} invoice${summary.revenue?.count !== 1 ? "s" : ""}`}
                     trend={summary.revenue?.changePercentage}
                     icon={IndianRupee}
@@ -130,6 +134,7 @@ const Dashboard = () => {
                     subtitle={`${summary.invoices?.paid?.count || 0} paid, ${summary.invoices?.unpaid?.count || 0} unpaid`}
                     icon={FileText}
                     color="purple"
+                    onClick={() => navigate(ROUTES.INVOICES)}
                   />
                   <MetricCard
                     title="Customers"
@@ -137,17 +142,42 @@ const Dashboard = () => {
                     subtitle={`${summary.customers?.new || 0} new, ${summary.customers?.active || 0} active`}
                     icon={Users}
                     color="green"
+                    onClick={() => navigate(ROUTES.CUSTOMERS)}
                   />
-                   <MetricCard
+                  <MetricCard
                     title="Service Visits"
                     value={summary.services?.total || 0}
                     subtitle={`${summary.services?.completed || 0} completed, ${summary.services?.scheduled || 0} scheduled`}
                     icon={Wrench}
                     color="orange"
+                    onClick={() => navigate(ROUTES.SERVICES)}
                   />
                 </div>
-                 
               </div>
+
+              {/* Dedicated Customer Ledger & Outstanding Dues Section */}
+              {summary.customerLedger && (
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-semibold text-ink-base dark:text-slate-100">
+                        Customer Ledger &amp; Outstanding Dues
+                      </h2>
+                      <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-[10px] font-medium rounded-full">
+                        All-Time
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => navigate(`${ROUTES.CUSTOMERS}?financial_status=dues`)}
+                      className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+                    >
+                      <span>View Customers ({summary.customerLedger.customersWithDues || 0} with dues)</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <CustomerLedgerSection ledger={summary.customerLedger} />
+                </div>
+              )}
 
               {/* Service Plans, Warranties & Alerts */}
               <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-2 gap-2">

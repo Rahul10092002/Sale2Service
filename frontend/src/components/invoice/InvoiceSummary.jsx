@@ -1,5 +1,12 @@
 import React, { useEffect } from "react";
-import { Calculator, CreditCard, Receipt, Package, Wrench } from "lucide-react";
+import {
+  Calculator,
+  CreditCard,
+  Receipt,
+  Package,
+  Wrench,
+  Wallet,
+} from "lucide-react";
 import { useInvoiceForm } from "../../features/invoices/hooks.js";
 
 const InvoiceSummary = ({ className = "" }) => {
@@ -103,6 +110,16 @@ const InvoiceSummary = ({ className = "" }) => {
               <p className="text-[10px] text-indigo-700 dark:text-indigo-300">
                 Excess exchange value will be added to customer store credit balance.
               </p>
+            </div>
+          )}
+
+          {invoice.use_advance_wallet && Number(invoice.advance_amount_used || 0) > 0 && (
+            <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400 font-semibold">
+              <span className="flex items-center gap-1.5">
+                <Wallet className="w-3.5 h-3.5" />
+                Wallet Advance Used
+              </span>
+              <span>-{formatCurrency(invoice.advance_amount_used)}</span>
             </div>
           )}
 

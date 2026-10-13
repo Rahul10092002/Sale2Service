@@ -8,6 +8,7 @@ import {
   updateCustomer,
   deleteCustomer,
   mergeCustomers,
+  getAllCustomersLedgerSummary,
 } from "../controllers/customerController.js";
 import { authenticate, checkPermission } from "../middleware/auth.js";
 
@@ -24,6 +25,9 @@ customerRouter.post("/merge", checkPermission("customers_edit"), mergeCustomers)
 
 // Get customers list
 customerRouter.get("/", checkPermission("customers_view"), getCustomers);
+
+// Get overall customer ledger summary
+customerRouter.get("/ledger-summary", checkPermission("customers_view"), getAllCustomersLedgerSummary);
 
 // Get customer financial ledger
 customerRouter.get("/:id/ledger", checkPermission("customers_view"), getCustomerLedger);

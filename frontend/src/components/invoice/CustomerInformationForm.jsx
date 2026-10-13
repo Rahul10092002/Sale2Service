@@ -280,10 +280,17 @@ const CustomerInformationForm = () => {
                     <User size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                      {s.first_name
-                        ? `${s.first_name} ${s.last_name || ""}`.trim()
-                        : s.full_name || "Unnamed"}
+                    <div className="text-xs font-bold text-gray-900 dark:text-white truncate flex items-center justify-between gap-1.5">
+                      <span className="truncate">
+                        {s.first_name
+                          ? `${s.first_name} ${s.last_name || ""}`.trim()
+                          : s.full_name || "Unnamed"}
+                      </span>
+                      {Number(s.advance_balance || 0) > 0 && (
+                        <span className="shrink-0 text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                          Adv: ₹{Number(s.advance_balance).toLocaleString("en-IN")}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
                       {s.whatsapp_number} {s.address?.city ? `· ${s.address.city}` : ""}
@@ -294,6 +301,26 @@ const CustomerInformationForm = () => {
             </div>
           )}
         </div>
+
+        {/* Customer Advance Credit Notice */}
+        {Number(customer.advance_balance || 0) > 0 && (
+          <div className="p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50/60 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800/60 flex items-center justify-between gap-2 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="text-base sm:text-lg">💼</span>
+              <div>
+                <span className="text-xs font-bold text-amber-950 dark:text-amber-200 block">
+                  Advance Store Credit Available
+                </span>
+                <span className="text-[11px] text-amber-800 dark:text-amber-400">
+                  Customer has <strong>₹{Number(customer.advance_balance).toLocaleString("en-IN")}</strong> in wallet. You can deduct this from the bill below.
+                </span>
+              </div>
+            </div>
+            <span className="text-xs sm:text-sm font-extrabold text-amber-900 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-900/80 px-2.5 py-1 rounded-lg shrink-0">
+              ₹{Number(customer.advance_balance).toLocaleString("en-IN")}
+            </span>
+          </div>
+        )}
 
         {/* Address Fields */}
         <div className="pt-2 border-t border-gray-100 dark:border-dark-border/60">

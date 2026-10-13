@@ -120,6 +120,16 @@ export const dashboardApi = baseApi.injectEndpoints({
       // Keep warranty stats cache for 5 minutes
       keepUnusedDataFor: 300,
     }),
+
+    /**
+     * Get customer ledger statistics
+     */
+    getCustomerLedgerStats: builder.query({
+      query: () => "/dashboard/customer-ledger",
+      providesTags: ["CustomerLedgerStats"],
+      // Keep customer ledger stats cache for 2 minutes
+      keepUnusedDataFor: 120,
+    }),
   }),
   overrideExisting: false,
 });
@@ -134,4 +144,5 @@ export const {
   useGetUpcomingServiceRemindersQuery,
   useGetUpcomingWarrantyRemindersQuery,
   useGetWarrantyStatsQuery,
+  useGetCustomerLedgerStatsQuery,
 } = dashboardApi;

@@ -11,6 +11,7 @@ import {
   Calendar,
   MessageCircle,
   BellOff,
+  Wallet,
 } from "lucide-react";
 import { Button } from "../../components/ui/index.js";
 import { ROUTES, INVOICE_CONSTANTS } from "../../utils/constants.js";
@@ -64,37 +65,56 @@ const InvoiceGenerationPage = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isFormDirty]);
 
-  const { data: customerResp } = useGetCustomerByIdQuery(customerId, {
-    skip: !customerId,
+  const activeCustomerId = customerId || currentInvoice.customer?._id;
+  const { data: customerResp } = useGetCustomerByIdQuery(activeCustomerId, {
+    skip: !activeCustomerId,
   });
 
   useEffect(() => {
-    if (customerResp?.customer && !hasLoadedCustomerRef.current) {
-      hasLoadedCustomerRef.current = true;
+    if (customerResp?.customer) {
       const c = customerResp.customer;
-      updateCustomerData({
-        _id: c._id,
-        full_name: c.full_name || "",
-        whatsapp_number: c.whatsapp_number || "",
-        email: c.email || "",
-        alternate_phone: c.alternate_phone || "",
-        customer_type: c.customer_type || "RETAIL",
-        gst_number: c.gst_number || "",
-        date_of_birth: c.date_of_birth || "",
-        anniversary_date: c.anniversary_date || "",
-        notes: c.notes || "",
-      });
-      if (c.address) {
-        updateCustomerAddressData({
-          line1: c.address.line1 || "",
-          line2: c.address.line2 || "",
-          city: c.address.city || "",
-          state: c.address.state || "",
-          pincode: c.address.pincode || "",
+      if (!hasLoadedCustomerRef.current && customerId) {
+        hasLoadedCustomerRef.current = true;
+        updateCustomerData({
+          _id: c._id,
+          full_name: c.full_name || "",
+          whatsapp_number: c.whatsapp_number || "",
+          email: c.email || "",
+          alternate_phone: c.alternate_phone || "",
+          customer_type: c.customer_type || "RETAIL",
+          gst_number: c.gst_number || "",
+          date_of_birth: c.date_of_birth || "",
+          anniversary_date: c.anniversary_date || "",
+          notes: c.notes || "",
+          advance_balance: Number(c.advance_balance || 0),
+        });
+        if (c.address) {
+          updateCustomerAddressData({
+            line1: c.address.line1 || "",
+            line2: c.address.line2 || "",
+            city: c.address.city || "",
+            state: c.address.state || "",
+            pincode: c.address.pincode || "",
+          });
+        }
+      } else if (
+        currentInvoice.customer?._id &&
+        String(currentInvoice.customer._id) === String(c._id) &&
+        Number(currentInvoice.customer?.advance_balance || 0) !==
+          Number(c.advance_balance || 0)
+      ) {
+        updateCustomerData({
+          advance_balance: Number(c.advance_balance || 0),
         });
       }
     }
-  }, [customerResp, updateCustomerData, updateCustomerAddressData]);
+  }, [
+    customerResp,
+    customerId,
+    currentInvoice.customer?.advance_balance,
+    updateCustomerData,
+    updateCustomerAddressData,
+  ]);
 
   const { createInvoice } = useInvoiceActions();
   const [submitResult, setSubmitResult] = useState(null);
@@ -332,6 +352,10 @@ const InvoiceGenerationPage = () => {
           subtotal: Number(currentInvoice.invoice.subtotal || 0),
           tax: Number(currentInvoice.invoice.tax || 0),
           total_amount: Number(currentInvoice.invoice.total_amount || 0),
+          use_advance_wallet: Boolean(currentInvoice.invoice.use_advance_wallet),
+          advance_amount_used: Number(
+            currentInvoice.invoice.advance_amount_used || 0,
+          ),
           send_whatsapp: sendWhatsAppFlag,
         },
         send_whatsapp: sendWhatsAppFlag,
@@ -522,6 +546,13 @@ const InvoiceGenerationPage = () => {
                     <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-slate-800 font-semibold">
                       Amount Due: {formatCurrency(currentInvoice.invoice.amount_due)}
                     </span>
+                    {currentInvoice.invoice.use_advance_wallet &&
+                      (currentInvoice.invoice.advance_amount_used || 0) > 0 && (
+                        <span className="rounded-full bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 font-bold px-3 py-1 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5 shadow-xs">
+                          <Wallet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          Wallet Applied: {formatCurrency(currentInvoice.invoice.advance_amount_used)}
+                        </span>
+                    )}
                     {currentInvoice.invoice.send_whatsapp === false && (
                       <span className="rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 font-bold px-3 py-1 border border-amber-300 dark:border-amber-800 flex items-center gap-1.5 animate-pulse">
                         <BellOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />

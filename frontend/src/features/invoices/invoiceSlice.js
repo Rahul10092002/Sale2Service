@@ -17,6 +17,7 @@ const defaultCurrentInvoice = {
     gst_number: "",
     customer_type: "RETAIL",
     notes: "",
+    advance_balance: 0,
     address: {
       line1: "",
       line2: "",
@@ -28,6 +29,8 @@ const defaultCurrentInvoice = {
   invoice: {
     invoice_date: new Date().toISOString().split("T")[0],
     send_whatsapp: true,
+    use_advance_wallet: false,
+    advance_amount_used: 0,
     payment_status: "UNPAID",
     payment_mode: "CASH",
     is_tax_inclusive: true,
@@ -79,18 +82,6 @@ const clearDraft = () => {
   }
 };
 
-const initialState = {
-  // Current invoice being created/edited
-  currentInvoice: loadSavedDraft() || defaultCurrentInvoice,
-  // UI state
-  isSubmitting: false,
-  errors: {},
-  expandedSections: {
-    customerOptional: false,
-    productMetadata: {},
-  },
-};
-
 const calculateInvoiceTotals = (state) => {
   const totals = calculateSharedInvoiceTotals({
     invoice: state.currentInvoice.invoice,
@@ -106,6 +97,60 @@ const calculateInvoiceTotals = (state) => {
   state.currentInvoice.invoice.amount_due = totals.amount_due;
   state.currentInvoice.invoice.payment_status = totals.payment_status;
   state.currentInvoice.invoice.is_tax_inclusive = totals.is_tax_inclusive;
+
+  const advBalance = Number(state.currentInvoice.customer?.advance_balance || 0);
+  if (state.currentInvoice.invoice.use_advance_wallet && advBalance > 0) {
+    const deduct = Math.min(advBalance, totals.total_amount);
+    const remDue = Math.max(0, totals.total_amount - deduct);
+    state.currentInvoice.invoice.advance_amount_used = deduct;
+
+    if (remDue === 0) {
+      state.currentInvoice.invoice.payment_status = "PAID";
+      state.currentInvoice.invoice.payment_mode = "ADVANCE_WALLET";
+      state.currentInvoice.invoice.amount_paid = totals.total_amount;
+      state.currentInvoice.invoice.amount_due = 0;
+      state.currentInvoice.invoice.due_date = "";
+    } else {
+      if (state.currentInvoice.invoice.collect_remaining_counter) {
+        state.currentInvoice.invoice.payment_status = "PAID";
+        if (state.currentInvoice.invoice.payment_mode === "ADVANCE_WALLET") {
+          state.currentInvoice.invoice.payment_mode = "CASH";
+        }
+        state.currentInvoice.invoice.amount_paid = totals.total_amount;
+        state.currentInvoice.invoice.amount_due = 0;
+        state.currentInvoice.invoice.due_date = "";
+      } else {
+        state.currentInvoice.invoice.payment_status = "PARTIAL";
+        state.currentInvoice.invoice.payment_mode = "ADVANCE_WALLET";
+        state.currentInvoice.invoice.amount_paid = deduct;
+        state.currentInvoice.invoice.amount_due = remDue;
+      }
+    }
+  } else {
+    state.currentInvoice.invoice.advance_amount_used = 0;
+    if (state.currentInvoice.invoice.payment_mode === "ADVANCE_WALLET") {
+      state.currentInvoice.invoice.payment_mode = "CASH";
+    }
+  }
+};
+
+const getInitialCurrentInvoice = () => {
+  const loaded = loadSavedDraft() || defaultCurrentInvoice;
+  const tempState = { currentInvoice: loaded, errors: {} };
+  calculateInvoiceTotals(tempState);
+  return tempState.currentInvoice;
+};
+
+const initialState = {
+  // Current invoice being created/edited
+  currentInvoice: getInitialCurrentInvoice(),
+  // UI state
+  isSubmitting: false,
+  errors: {},
+  expandedSections: {
+    customerOptional: false,
+    productMetadata: {},
+  },
 };
 
 const invoiceSlice = createSlice({
@@ -141,6 +186,7 @@ const invoiceSlice = createSlice({
       });
       delete state.errors["customer.first_name"];
       delete state.errors["customer.full_name"];
+      calculateInvoiceTotals(state);
       saveDraft(state.currentInvoice);
     },
 
@@ -298,6 +344,7 @@ const invoiceSlice = createSlice({
       Object.keys(data).forEach((key) => {
         delete state.errors[`item.${id}.${key}`];
       });
+      calculateInvoiceTotals(state);
       saveDraft(state.currentInvoice);
     },
 

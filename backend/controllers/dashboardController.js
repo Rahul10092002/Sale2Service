@@ -318,3 +318,37 @@ export const getWarrantyStats = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get customer ledger statistics
+ * GET /api/dashboard/customer-ledger
+ */
+export const getCustomerLedgerStats = async (req, res) => {
+  try {
+    const shopId = req.user.shopId;
+
+    if (!shopId) {
+      return res.status(400).json({
+        success: false,
+        message: "Shop ID is required",
+      });
+    }
+
+    const stats = await dashboardService.getCustomerLedgerStats(
+      new mongoose.Types.ObjectId(shopId),
+    );
+
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error("Error fetching customer ledger stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching customer ledger stats",
+      error: error.message,
+    });
+  }
+};
+

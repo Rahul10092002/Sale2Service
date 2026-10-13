@@ -34,8 +34,22 @@ const invoiceSchema = new mongoose.Schema(
     },
     payment_mode: {
       type: String,
-      enum: ["CASH", "UPI", "CARD", "BANK_TRANSFER", "MIXED", "CREDIT"],
+      enum: [
+        "CASH",
+        "UPI",
+        "CARD",
+        "BANK_TRANSFER",
+        "MIXED",
+        "CREDIT",
+        "ADVANCE",
+        "ADVANCE_WALLET",
+      ],
       default: "CASH",
+    },
+    advance_amount_used: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     subtotal: {
       type: Number,

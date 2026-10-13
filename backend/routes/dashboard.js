@@ -53,4 +53,10 @@ router.get(
   dashboardController.getWarrantyStats,
 );
 
+// Get customer ledger statistics
+router.get(
+  "/customer-ledger",
+  dashboardController.getCustomerLedgerStats,
+);
+
 export default router;

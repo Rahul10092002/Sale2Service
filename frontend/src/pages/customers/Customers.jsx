@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useDispatch } from "react-redux";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { usePermissions } from "../../hooks/usePermissions.js";
 import { showToast } from "../../features/ui/uiSlice.js";
 import {
@@ -19,7 +19,12 @@ import {
   Hash,
   Building2,
   MessageSquare,
-  Eye
+  Eye,
+  AlertCircle,
+  Coins,
+  CheckCircle2,
+  Filter,
+  X,
 } from "lucide-react";
 import {
   useGetCustomersQuery,
@@ -45,6 +50,9 @@ const selectCls =
 const Customers = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const financialFilter = searchParams.get("financial_status") || "all";
+
   const { canCreate } = usePermissions();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
@@ -61,8 +69,25 @@ const Customers = () => {
     page,
     limit,
     search: searchTerm,
-    sort: "name_asc",
+    sort:
+      financialFilter === "dues"
+        ? "dues_desc"
+        : financialFilter === "credit"
+        ? "credit_desc"
+        : "name_asc",
+    financial_status: financialFilter !== "all" ? financialFilter : undefined,
   });
+
+  const handleFilterChange = (newFilter) => {
+    setPage(1);
+    const next = new URLSearchParams(searchParams);
+    if (newFilter && newFilter !== "all") {
+      next.set("financial_status", newFilter);
+    } else {
+      next.delete("financial_status");
+    }
+    setSearchParams(next);
+  };
 
   const [createCustomer] = useCreateCustomerMutation();
 
@@ -142,12 +167,15 @@ const Customers = () => {
 
   const rawCustomers = response?.customers || [];
   const customers = useMemo(() => {
+    if (financialFilter === "dues" || financialFilter === "credit") {
+      return rawCustomers;
+    }
     return [...rawCustomers].sort((a, b) =>
       (a.full_name || "").localeCompare(b.full_name || "", undefined, {
         sensitivity: "base",
       })
     );
-  }, [rawCustomers]);
+  }, [rawCustomers, financialFilter]);
 
   const pagination = response?.pagination || {
     page: 1,
@@ -184,6 +212,14 @@ const Customers = () => {
         <p className="text-ink-secondary dark:text-slate-400 mb-6">
           {searchTerm
             ? "No customers match your search criteria."
+            : financialFilter === "dues"
+            ? "No customers with pending dues found."
+            : financialFilter === "credit"
+            ? "No customers with store credit or advance balance found."
+            : financialFilter === "invoiced"
+            ? "No customers with invoices found."
+            : financialFilter === "collected"
+            ? "No customers with payment collections found."
             : "Get started by adding your first customer."}
         </p>
         {canCreate("customers") && (
@@ -242,6 +278,10 @@ const Customers = () => {
                     {customer.total_due > 0 ? (
                       <span className="text-[9.5px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                         Due: ₹{customer.total_due.toLocaleString("en-IN")}
+                      </span>
+                    ) : (customer.total_due < 0 || (customer.advance_balance || 0) > 0) ? (
+                      <span className="text-[9.5px] px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        Adv: ₹{Math.abs(customer.total_due || customer.advance_balance || 0).toLocaleString("en-IN")}
                       </span>
                     ) : customer.total_invoiced > 0 ? (
                       <span className="text-[9.5px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -359,6 +399,10 @@ const Customers = () => {
                       <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                         Due: ₹{customer.total_due.toLocaleString("en-IN")}
                       </span>
+                    ) : (customer.total_due < 0 || (customer.advance_balance || 0) > 0) ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        Adv: ₹{Math.abs(customer.total_due || customer.advance_balance || 0).toLocaleString("en-IN")}
+                      </span>
                     ) : customer.total_invoiced > 0 ? (
                       <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         Paid Up
@@ -451,6 +495,80 @@ const Customers = () => {
               </button>
             )}
           </div>
+
+          {/* Financial Filter Pills Toolbar */}
+          <div className="flex items-center justify-between flex-wrap gap-2 px-3 py-2 bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border mb-3 text-xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar flex-wrap">
+              <span className="text-gray-400 dark:text-slate-500 text-[11px] font-semibold flex items-center gap-1 mr-1 shrink-0">
+                <Filter className="w-3.5 h-3.5" /> Ledger Filter:
+              </span>
+              <button
+                onClick={() => handleFilterChange("all")}
+                className={`px-3 py-1 rounded-full font-medium transition-all shrink-0 ${
+                  financialFilter === "all"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "bg-gray-100 text-gray-600 dark:bg-dark-input dark:text-slate-300 hover:bg-gray-200"
+                }`}
+              >
+                All Accounts
+              </button>
+              <button
+                onClick={() => handleFilterChange("dues")}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-all shrink-0 ${
+                  financialFilter === "dues"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200 border border-amber-200 dark:border-amber-800/80 hover:bg-amber-100"
+                }`}
+              >
+                <AlertCircle className="w-3 h-3" />
+                <span>Pending Dues</span>
+              </button>
+              <button
+                onClick={() => handleFilterChange("credit")}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-all shrink-0 ${
+                  financialFilter === "credit"
+                    ? "bg-purple-600 text-white shadow-xs"
+                    : "bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-200 border border-purple-200 dark:border-purple-800/80 hover:bg-purple-100"
+                }`}
+              >
+                <Coins className="w-3 h-3" />
+                <span>Store Credit &amp; Advance</span>
+              </button>
+              <button
+                onClick={() => handleFilterChange("invoiced")}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-all shrink-0 ${
+                  financialFilter === "invoiced"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200 border border-blue-200 dark:border-blue-800/80 hover:bg-blue-100"
+                }`}
+              >
+                <FileText className="w-3 h-3" />
+                <span>Invoiced Accounts</span>
+              </button>
+              <button
+                onClick={() => handleFilterChange("collected")}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-all shrink-0 ${
+                  financialFilter === "collected"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/80 hover:bg-emerald-100"
+                }`}
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Collected / Paid</span>
+              </button>
+            </div>
+
+            {financialFilter !== "all" && (
+              <button
+                onClick={() => handleFilterChange("all")}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 transition-colors ml-auto"
+              >
+                <X className="w-3.5 h-3.5" />
+                Reset filter
+              </button>
+            )}
+          </div>
+
           <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-dark-border">
             {customersSection}
           </div>

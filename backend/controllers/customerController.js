@@ -62,7 +62,7 @@ export const createCustomer = async (req, res) => {
 export const getCustomers = async (req, res) => {
   try {
     const { user } = req;
-    const { page = 1, limit = 25, search, sort = "name_asc" } = req.query;
+    const { page = 1, limit = 25, search, sort = "name_asc", financial_status } = req.query;
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(Math.max(1, parseInt(limit, 10) || 25), 100);
@@ -89,64 +89,149 @@ export const getCustomers = async (req, res) => {
       sortStage = { createdAt: -1 };
     } else if (sort === "name_desc") {
       sortStage = { full_name: -1, createdAt: -1 };
+    } else if (sort === "dues_desc") {
+      sortStage = { total_due: -1, full_name: 1 };
+    } else if (sort === "dues_asc") {
+      sortStage = { total_due: 1, full_name: 1 };
+    } else if (sort === "credit_desc") {
+      sortStage = { total_due: 1, advance_balance: -1, full_name: 1 };
+    } else if (sort === "invoiced_desc") {
+      sortStage = { total_invoiced: -1, full_name: 1 };
+    } else if (sort === "paid_desc") {
+      sortStage = { total_paid: -1, full_name: 1 };
     }
 
-    const result = await Customer.aggregate([
-      { $match: matchQuery },
-      {
+    const hasFinancialFilter = financial_status && financial_status !== "all";
+    const hasFinancialSort =
+      sort &&
+      (sort.startsWith("dues") ||
+        sort.startsWith("credit") ||
+        sort.startsWith("invoiced") ||
+        sort.startsWith("paid"));
+
+    const lookupInvoiceSummary = {
+      $lookup: {
+        from: "invoices",
+        let: { customerId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$customer_id", "$$customerId"] },
+                  { $eq: ["$shop_id", new mongoose.Types.ObjectId(user.shopId)] },
+                  { $eq: ["$deleted_at", null] },
+                ],
+              },
+            },
+          },
+          {
+            $project: {
+              total_amount: { $ifNull: ["$total_amount", 0] },
+              amount_paid: { $ifNull: ["$amount_paid", 0] },
+              excess_exchange_credit: { $ifNull: ["$excess_exchange_credit", 0] },
+            },
+          },
+        ],
+        as: "invoices_summary",
+      },
+    };
+
+    const addFinancialFields = {
+      $addFields: {
+        total_invoiced: { $sum: "$invoices_summary.total_amount" },
+        total_paid: { $sum: "$invoices_summary.amount_paid" },
+        total_exchange_credit: {
+          $sum: { $ifNull: ["$invoices_summary.excess_exchange_credit", 0] },
+        },
+        advance_balance: { $ifNull: ["$advance_balance", 0] },
+        total_due: {
+          $subtract: [
+            { $sum: "$invoices_summary.total_amount" },
+            {
+              $add: [
+                { $sum: "$invoices_summary.amount_paid" },
+                {
+                  $sum: {
+                    $ifNull: ["$invoices_summary.excess_exchange_credit", 0],
+                  },
+                },
+                { $ifNull: ["$advance_balance", 0] },
+              ],
+            },
+          ],
+        },
+        total_invoices: { $size: "$invoices_summary" },
+      },
+    };
+
+    let result;
+
+    if (hasFinancialFilter || hasFinancialSort) {
+      const filterPipeline = [
+        { $match: matchQuery },
+        lookupInvoiceSummary,
+        addFinancialFields,
+        { $project: { invoices_summary: 0 } },
+      ];
+
+      if (financial_status === "dues" || financial_status === "pending") {
+        filterPipeline.push({ $match: { total_due: { $gt: 0 } } });
+        if (!sort || sort === "name_asc") {
+          sortStage = { total_due: -1, full_name: 1 };
+        }
+      } else if (financial_status === "credit" || financial_status === "advance") {
+        filterPipeline.push({
+          $match: {
+            $or: [{ total_due: { $lt: 0 } }, { advance_balance: { $gt: 0 } }],
+          },
+        });
+        if (!sort || sort === "name_asc") {
+          sortStage = { total_due: 1, advance_balance: -1, full_name: 1 };
+        }
+      } else if (financial_status === "invoiced") {
+        filterPipeline.push({ $match: { total_invoices: { $gt: 0 } } });
+      } else if (financial_status === "collected" || financial_status === "paid") {
+        filterPipeline.push({ $match: { total_paid: { $gt: 0 } } });
+      } else if (financial_status === "settled") {
+        filterPipeline.push({
+          $match: {
+            total_invoices: { $gt: 0 },
+            total_due: { $eq: 0 },
+          },
+        });
+      }
+
+      filterPipeline.push({
         $facet: {
           metadata: [{ $count: "total" }],
           customers: [
             { $sort: sortStage },
             { $skip: skip },
             { $limit: limitNum },
-            {
-              $lookup: {
-                from: "invoices",
-                let: { customerId: "$_id" },
-                pipeline: [
-                  {
-                    $match: {
-                      $expr: {
-                        $and: [
-                          { $eq: ["$customer_id", "$$customerId"] },
-                          { $eq: ["$deleted_at", null] },
-                        ],
-                      },
-                    },
-                  },
-                ],
-                as: "invoices_summary",
-              },
-            },
-            {
-              $addFields: {
-                total_invoiced: { $sum: "$invoices_summary.total_amount" },
-                total_paid: { $sum: "$invoices_summary.amount_paid" },
-                total_exchange_credit: { $sum: { $ifNull: ["$invoices_summary.excess_exchange_credit", 0] } },
-                total_due: {
-                  $subtract: [
-                    { $sum: "$invoices_summary.total_amount" },
-                    {
-                      $add: [
-                        { $sum: "$invoices_summary.amount_paid" },
-                        { $sum: { $ifNull: ["$invoices_summary.excess_exchange_credit", 0] } },
-                      ],
-                    },
-                  ],
-                },
-                total_invoices: { $size: "$invoices_summary" },
-              },
-            },
-            {
-              $project: {
-                invoices_summary: 0,
-              },
-            },
           ],
         },
-      },
-    ]);
+      });
+
+      result = await Customer.aggregate(filterPipeline);
+    } else {
+      result = await Customer.aggregate([
+        { $match: matchQuery },
+        {
+          $facet: {
+            metadata: [{ $count: "total" }],
+            customers: [
+              { $sort: sortStage },
+              { $skip: skip },
+              { $limit: limitNum },
+              lookupInvoiceSummary,
+              addFinancialFields,
+              { $project: { invoices_summary: 0 } },
+            ],
+          },
+        },
+      ]);
+    }
 
     const total = result[0]?.metadata[0]?.total || 0;
     const customers = result[0]?.customers || [];
@@ -462,7 +547,26 @@ export const getCustomerLedger = async (req, res) => {
       };
     });
 
-    const totalDue = cumulativeBalance;
+    const advanceBalance = Number(customer.advance_balance || 0);
+    const totalDue = cumulativeBalance - advanceBalance;
+
+    if (advanceBalance > 0) {
+      ledgerEntries.push({
+        _id: `adv_${customer._id}`,
+        invoice_number: "ADVANCE-CREDIT",
+        invoice_date: customer.updatedAt || new Date(),
+        payment_mode: "ADVANCE",
+        payment_status: "PAID",
+        items_summary: "Customer Advance Payment / Store Credit Balance",
+        debit: 0,
+        credit: advanceBalance,
+        amount_paid: advanceBalance,
+        excess_exchange_credit: 0,
+        invoice_balance: -advanceBalance,
+        running_balance: totalDue,
+        is_advance: true,
+      });
+    }
 
     res.json({
       success: true,
@@ -473,11 +577,14 @@ export const getCustomerLedger = async (req, res) => {
           whatsapp_number: customer.whatsapp_number,
           email: customer.email,
           gst_number: customer.gst_number,
+          advance_balance: advanceBalance,
+          advance_history: customer.advance_history || [],
         },
         summary: {
           total_invoiced: totalInvoiced,
           total_paid: totalPaid,
           total_exchange_credit: totalExchangeCredit,
+          advance_balance: advanceBalance,
           total_due: totalDue,
           store_credit_balance: totalDue < 0 ? Math.abs(totalDue) : 0,
           total_invoices: rawInvoices.length,
@@ -503,11 +610,13 @@ export const recordCustomerPayment = async (req, res) => {
     const { id } = req.params;
     const {
       amount,
-      payment_method = "CASH",
+      payment_method: rawMethod,
+      payment_mode: rawMode,
       payment_date = new Date(),
       notes = "",
       send_whatsapp = true,
     } = req.body;
+    const payment_method = rawMethod || rawMode || "CASH";
 
     const numAmount = Number(amount);
     if (!numAmount || numAmount <= 0 || isNaN(numAmount)) {
@@ -548,7 +657,46 @@ export const recordCustomerPayment = async (req, res) => {
 
     if (unpaidInvoices.length === 0) {
       customer.advance_balance = Number(customer.advance_balance || 0) + numAmount;
+      customer.advance_history = customer.advance_history || [];
+      customer.advance_history.push({
+        amount: numAmount,
+        type: "CREDIT",
+        payment_method,
+        payment_date: payment_date ? new Date(payment_date) : new Date(),
+        notes: notes || "Direct advance payment (no pending dues)",
+        recorded_by: user.userId,
+      });
       await customer.save();
+
+      // Send WhatsApp notification if enabled
+      if (send_whatsapp && customer.whatsapp_number) {
+        const { formatPhoneNumber, isValidWhatsAppNumber, formatDateForMessage } = await import("../scheduler/core/utils.js");
+        const { sendWhatsappMessageViaMSG91 } = await import("../config/msg91.js");
+        const formattedPhone = formatPhoneNumber(customer.whatsapp_number);
+        if (formattedPhone && isValidWhatsAppNumber(formattedPhone)) {
+          try {
+            const templateVars = {
+              1: numAmount.toFixed(2),
+              2: "ADVANCE CREDIT",
+              3: formatDateForMessage(payment_date ? new Date(payment_date) : new Date()),
+              4: shop.shop_name_hi || shop.shop_name || "",
+            };
+
+            await sendWhatsappMessageViaMSG91({
+              templateName: "payment_received",
+              to: formattedPhone,
+              components: templateVars,
+              campaignName: "payment_received",
+              hospitalId: shop._id,
+              userName: customer.full_name || "",
+              messageType: "payment_received",
+            });
+          } catch (waErr) {
+            console.error("Failed to send WhatsApp advance payment notification:", waErr);
+          }
+        }
+      }
+
       return res.json({
         success: true,
         message: `Customer has no pending dues. ₹${numAmount.toLocaleString("en-IN")} credited to customer advance balance.`,
@@ -644,6 +792,15 @@ export const recordCustomerPayment = async (req, res) => {
     if (remainingPayment > 0) {
       advanceCredited = remainingPayment;
       customer.advance_balance = Number(customer.advance_balance || 0) + remainingPayment;
+      customer.advance_history = customer.advance_history || [];
+      customer.advance_history.push({
+        amount: remainingPayment,
+        type: "CREDIT",
+        payment_method,
+        payment_date: payment_date ? new Date(payment_date) : new Date(),
+        notes: notes || "Excess payment credited to customer advance",
+        recorded_by: user.userId,
+      });
       await customer.save();
     }
 
@@ -811,4 +968,150 @@ export const mergeCustomers = async (req, res) => {
     });
   }
 };
+
+/**
+ * Calculate overall financial ledger summary across all customers for a given shop
+ * @param {string|mongoose.Types.ObjectId} shopId
+ * @returns {Promise<Object>}
+ */
+export const calculateCustomersLedgerSummary = async (shopId) => {
+  const shopObjectId =
+    shopId instanceof mongoose.Types.ObjectId
+      ? shopId
+      : new mongoose.Types.ObjectId(shopId);
+
+  const result = await Customer.aggregate([
+    {
+      $match: {
+        shop_id: shopObjectId,
+        deleted_at: null,
+      },
+    },
+    {
+      $lookup: {
+        from: "invoices",
+        let: { custId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$customer_id", "$$custId"] },
+                  { $eq: ["$shop_id", shopObjectId] },
+                  { $eq: ["$deleted_at", null] },
+                ],
+              },
+            },
+          },
+          {
+            $project: {
+              total_amount: { $ifNull: ["$total_amount", 0] },
+              amount_paid: { $ifNull: ["$amount_paid", 0] },
+              excess_exchange_credit: { $ifNull: ["$excess_exchange_credit", 0] },
+            },
+          },
+        ],
+        as: "invoices",
+      },
+    },
+    {
+      $project: {
+        total_invoiced: { $sum: "$invoices.total_amount" },
+        total_paid: { $sum: "$invoices.amount_paid" },
+        total_exchange_credit: { $sum: "$invoices.excess_exchange_credit" },
+        advance_balance: { $ifNull: ["$advance_balance", 0] },
+        has_invoices: { $gt: [{ $size: "$invoices" }, 0] },
+        balance: {
+          $subtract: [
+            { $sum: "$invoices.total_amount" },
+            {
+              $add: [
+                { $sum: "$invoices.amount_paid" },
+                { $sum: "$invoices.excess_exchange_credit" },
+                { $ifNull: ["$advance_balance", 0] },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalPendingAmount: {
+          $sum: { $cond: [{ $gt: ["$balance", 0] }, "$balance", 0] },
+        },
+        customersWithDues: {
+          $sum: { $cond: [{ $gt: ["$balance", 0] }, 1, 0] },
+        },
+        totalStoreCredit: {
+          $sum: { $cond: [{ $lt: ["$balance", 0] }, { $abs: "$balance" }, 0] },
+        },
+        customersWithCredit: {
+          $sum: { $cond: [{ $lt: ["$balance", 0] }, 1, 0] },
+        },
+        totalAdvanceBalance: {
+          $sum: "$advance_balance",
+        },
+        netReceivable: { $sum: "$balance" },
+        totalInvoiced: { $sum: "$total_invoiced" },
+        totalPaid: { $sum: "$total_paid" },
+        totalExchangeCredit: { $sum: "$total_exchange_credit" },
+        customersWithInvoices: {
+          $sum: { $cond: ["$has_invoices", 1, 0] },
+        },
+      },
+    },
+  ]);
+
+  const summary = result[0] || {
+    totalPendingAmount: 0,
+    customersWithDues: 0,
+    totalStoreCredit: 0,
+    customersWithCredit: 0,
+    totalAdvanceBalance: 0,
+    netReceivable: 0,
+    totalInvoiced: 0,
+    totalPaid: 0,
+    totalExchangeCredit: 0,
+    customersWithInvoices: 0,
+  };
+
+  return {
+    totalPendingAmount: Math.round((summary.totalPendingAmount || 0) * 100) / 100,
+    customersWithDues: summary.customersWithDues || 0,
+    totalStoreCredit: Math.round((summary.totalStoreCredit || 0) * 100) / 100,
+    customersWithCredit: summary.customersWithCredit || 0,
+    totalAdvanceBalance: Math.round((summary.totalAdvanceBalance || 0) * 100) / 100,
+    netReceivable: Math.round((summary.netReceivable || 0) * 100) / 100,
+    totalInvoiced: Math.round((summary.totalInvoiced || 0) * 100) / 100,
+    totalPaid: Math.round((summary.totalPaid || 0) * 100) / 100,
+    totalExchangeCredit: Math.round((summary.totalExchangeCredit || 0) * 100) / 100,
+    customersWithInvoices: summary.customersWithInvoices || 0,
+  };
+};
+
+/**
+ * Endpoint controller to fetch overall customer ledger stats
+ * GET /api/customers/ledger-summary
+ */
+export const getAllCustomersLedgerSummary = async (req, res) => {
+  try {
+    const { user } = req;
+    const summary = await calculateCustomersLedgerSummary(user.shopId);
+
+    res.json({
+      success: true,
+      data: summary,
+    });
+  } catch (error) {
+    console.error("Get all customers ledger summary error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch customer ledger summary",
+      error: error.message,
+    });
+  }
+};
+
 

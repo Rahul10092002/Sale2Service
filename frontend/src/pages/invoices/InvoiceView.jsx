@@ -230,8 +230,18 @@ const InvoiceView = () => {
     setShowPaymentModal(true);
   };
 
-  const handleRecordPayment = async (amount, paymentMode) => {
-    if (!amount || amount <= 0) {
+  const handleRecordPayment = async (payloadOrAmount, paymentMode) => {
+    let payload = {};
+    if (payloadOrAmount && typeof payloadOrAmount === "object") {
+      payload = { ...payloadOrAmount };
+    } else {
+      payload = {
+        amount: payloadOrAmount,
+        payment_mode: paymentMode,
+      };
+    }
+
+    if (!payload.amount || Number(payload.amount) <= 0) {
       dispatch(
         showToast({ message: "Enter a valid payment amount", type: "error" }),
       );
@@ -241,8 +251,7 @@ const InvoiceView = () => {
     try {
       const result = await recordPayment({
         invoiceId: id,
-        amount,
-        payment_mode: paymentMode,
+        ...payload,
       }).unwrap();
       dispatch(
         showToast({

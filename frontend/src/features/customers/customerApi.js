@@ -84,6 +84,16 @@ export const customerApi = baseApi.injectEndpoints({
         { type: "Invoice", id: "LIST" },
       ],
     }),
+
+    getAllCustomersLedgerSummary: builder.query({
+      query: () => "/customers/ledger-summary",
+      providesTags: [
+        { type: "Customer", id: "LEDGER_SUMMARY" },
+        { type: "Invoice", id: "LIST" },
+      ],
+      keepUnusedDataFor: 120,
+      transformResponse: (response) => response.data,
+    }),
   }),
   overrideExisting: false,
 });
@@ -94,6 +104,7 @@ export const {
   useGetCustomersQuery,
   useGetCustomerByIdQuery,
   useGetCustomerLedgerQuery,
+  useGetAllCustomersLedgerSummaryQuery,
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,

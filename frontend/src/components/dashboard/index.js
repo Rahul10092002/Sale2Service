@@ -6,3 +6,4 @@ export { default as RecentActivity } from "./RecentActivity.jsx";
 export { default as AlertsPanel } from "./AlertsPanel.jsx";
 export { default as PeriodSelector } from "./PeriodSelector.jsx";
 export { default as UpcomingReminders } from "./UpcomingReminders.jsx";
+export { default as CustomerLedgerSection } from "./CustomerLedgerSection.jsx";

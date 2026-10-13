@@ -96,6 +96,42 @@ const customerSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    advance_history: [
+      {
+        amount: {
+          type: Number,
+          required: true,
+        },
+        type: {
+          type: String,
+          enum: ["CREDIT", "DEBIT"],
+          default: "CREDIT",
+        },
+        payment_method: {
+          type: String,
+          default: "CASH",
+        },
+        payment_date: {
+          type: Date,
+          default: Date.now,
+        },
+        notes: {
+          type: String,
+          default: "",
+        },
+        invoice_number: {
+          type: String,
+        },
+        recorded_by: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     // Shop reference
     shop_id: {
       type: mongoose.Schema.Types.ObjectId,

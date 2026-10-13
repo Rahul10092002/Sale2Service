@@ -21,6 +21,7 @@ import {
   ArrowLeft,
   MessageCircle,
   BellOff,
+  Wallet,
 } from "lucide-react";
 import { Button } from "../ui/index.js";
 import { ROUTES } from "../../utils/constants.js";
@@ -424,6 +425,17 @@ export default function MobileInvoiceSummaryBar({
                 <span className="text-base">{formatCurrency(invoice.total_amount)}</span>
               </div>
 
+              {/* Wallet Advance Deduction breakdown */}
+              {invoice.use_advance_wallet && (invoice.advance_amount_used || 0) > 0 && (
+                <div className="pt-1.5 border-t border-dashed border-emerald-200 dark:border-emerald-900/50 flex justify-between items-center text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  <span className="flex items-center gap-1">
+                    <Wallet className="w-3.5 h-3.5" />
+                    Wallet Advance Used
+                  </span>
+                  <span>-{formatCurrency(invoice.advance_amount_used)}</span>
+                </div>
+              )}
+
               {/* Partial Payment breakdown if selected */}
               {invoice.payment_status === "PARTIAL" && (
                 <div className="pt-1.5 border-t border-dashed border-amber-200 dark:border-amber-900/50 flex justify-between items-center text-xs font-bold text-amber-700 dark:text-amber-400">
@@ -482,6 +494,12 @@ export default function MobileInvoiceSummaryBar({
             <div className="text-left truncate">
               <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-semibold leading-none flex items-center gap-1">
                 <span>{items.length} Item{items.length === 1 ? "" : "s"}</span>
+                {invoice.use_advance_wallet && (invoice.advance_amount_used || 0) > 0 && (
+                  <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-extrabold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800">
+                    <Wallet className="w-2.5 h-2.5" />
+                    Wallet
+                  </span>
+                )}
                 {!isWhatsAppEnabled && (
                   <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-extrabold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800">
                     <BellOff className="w-2.5 h-2.5" />

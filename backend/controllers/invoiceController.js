@@ -279,26 +279,132 @@ export default class InvoiceController {
             : [],
       }));
 
+      // Step 4b: Handle customer advance wallet deduction if requested
+      let advanceDeducted = 0;
+      let finalAmountPaid = amountPaid;
+      let finalAmountDue = amountDue;
+      let finalPaymentStatus = derivedPaymentStatus;
+      let finalPaymentMode = invoice.payment_mode || "CASH";
+      let finalDueDate = dueDateToStore;
+      const initialPayments = [];
+
+      const shouldDeductAdvance =
+        Boolean(invoice.use_advance_wallet) ||
+        Boolean(req.body.use_advance_wallet) ||
+        Number(invoice.advance_amount_used || 0) > 0;
+
+      const customerDoc = await Customer.findOne({
+        _id: customerId,
+        shop_id: user.shopId,
+        deleted_at: null,
+      }).session(session);
+
+      if (
+        shouldDeductAdvance &&
+        customerDoc &&
+        Number(customerDoc.advance_balance || 0) > 0
+      ) {
+        const availableAdv = Number(customerDoc.advance_balance || 0);
+        const requestedAdv =
+          Number(invoice.advance_amount_used) > 0
+            ? Number(invoice.advance_amount_used)
+            : availableAdv;
+        advanceDeducted = Math.min(availableAdv, requestedAdv, totalAmount);
+
+        if (advanceDeducted > 0) {
+          customerDoc.advance_balance = Math.max(
+            0,
+            Number((availableAdv - advanceDeducted).toFixed(2)),
+          );
+          customerDoc.advance_history = customerDoc.advance_history || [];
+          customerDoc.advance_history.push({
+            amount: advanceDeducted,
+            type: "DEBIT",
+            payment_method: "ADVANCE_WALLET",
+            payment_date: invoiceDate,
+            notes: `Applied to invoice #${invoiceNumber}`,
+            recorded_by: user.userId,
+          });
+          await customerDoc.save({ session });
+
+          initialPayments.push({
+            amount: advanceDeducted,
+            payment_method: "ADVANCE_WALLET",
+            payment_date: invoiceDate,
+            notes: "Deducted from customer advance wallet balance",
+            recorded_by: user.userId,
+          });
+
+          if (advanceDeducted >= totalAmount) {
+            finalAmountPaid = totalAmount;
+            finalAmountDue = 0;
+            finalPaymentStatus = "PAID";
+            finalPaymentMode = "ADVANCE_WALLET";
+            finalDueDate = null;
+          } else {
+            // Check if counter payment was also provided
+            const counterPayment = Math.max(
+              0,
+              Number(invoice.amount_paid || 0) - advanceDeducted,
+            );
+            if (counterPayment > 0) {
+              initialPayments.push({
+                amount: counterPayment,
+                payment_method: invoice.payment_mode || "CASH",
+                payment_date: invoiceDate,
+                notes: `Counter payment on invoice creation (${invoice.payment_mode || "CASH"})`,
+                recorded_by: user.userId,
+              });
+            }
+
+            finalAmountPaid = Math.min(
+              totalAmount,
+              advanceDeducted + counterPayment,
+            );
+            finalAmountDue = Math.max(0, totalAmount - finalAmountPaid);
+            finalPaymentStatus = finalAmountDue === 0 ? "PAID" : "PARTIAL";
+            finalPaymentMode =
+              advanceDeducted >= totalAmount
+                ? "ADVANCE_WALLET"
+                : counterPayment > 0
+                ? invoice.payment_mode || "MIXED"
+                : "ADVANCE_WALLET";
+            finalDueDate =
+              finalPaymentStatus === "PAID" ? null : invoice.due_date || null;
+          }
+        }
+      } else if (finalAmountPaid > 0) {
+        initialPayments.push({
+          amount: finalAmountPaid,
+          payment_method: finalPaymentMode,
+          payment_date: invoiceDate,
+          notes: `Payment on invoice creation (${finalPaymentMode})`,
+          recorded_by: user.userId,
+        });
+      }
+
       // Step 5: Create invoice
       const newInvoice = new Invoice({
         invoice_number: invoiceNumber,
         customer_id: customerId,
         shop_id: user.shopId,
         invoice_date: invoice.invoice_date || new Date(),
-        payment_status: derivedPaymentStatus,
-        payment_mode: invoice.payment_mode || "CASH",
+        payment_status: finalPaymentStatus,
+        payment_mode: finalPaymentMode,
         subtotal,
         discount,
         old_item_exchange_price: oldItemExchangePrice,
         excess_exchange_credit: totals.excess_exchange_credit || 0,
+        advance_amount_used: advanceDeducted,
         tax,
         total_amount: totalAmount,
-        amount_paid: amountPaid,
-        amount_due: amountDue,
-        due_date: dueDateToStore,
+        amount_paid: finalAmountPaid,
+        amount_due: finalAmountDue,
+        due_date: finalDueDate,
         created_by: user.userId,
         notes: invoice.notes,
         services: embeddedServices,
+        payments: initialPayments,
       });
 
       await newInvoice.save({ session });
@@ -542,8 +648,9 @@ export default class InvoiceController {
           invoice_items: createdInvoiceItems,
           invoice_number: invoiceNumber,
           total_amount: totalAmount,
-          amount_paid: amountPaid,
-          amount_due: amountDue,
+          amount_paid: finalAmountPaid,
+          amount_due: finalAmountDue,
+          advance_amount_used: advanceDeducted,
           pdf_url: newInvoice.invoice_pdf, // Include PDF URL for immediate access
           pdf_error: newInvoice.pdf_error || null,
         },
@@ -1102,7 +1209,14 @@ export default class InvoiceController {
     try {
       const { id } = req.params;
       const { user } = req;
-      const { amount, payment_mode, notes = "", payment_date = new Date() } = req.body;
+      const {
+        amount,
+        payment_mode,
+        payment_method,
+        notes = "",
+        payment_date = new Date(),
+        send_whatsapp = true,
+      } = req.body;
 
       const paymentAmount = Number(amount);
       if (!paymentAmount || paymentAmount <= 0) {
@@ -1132,9 +1246,10 @@ export default class InvoiceController {
         "MIXED",
         "CREDIT",
       ];
+      const rawMode = payment_mode || payment_method;
       const updatedPaymentMode =
-        payment_mode && validPaymentModes.includes(payment_mode.toUpperCase())
-          ? payment_mode.toUpperCase()
+        rawMode && validPaymentModes.includes(rawMode.toUpperCase())
+          ? rawMode.toUpperCase()
           : (invoice.payment_mode || "CASH");
 
       const currentTotal = Number(invoice.total_amount || 0);
@@ -1240,6 +1355,15 @@ export default class InvoiceController {
           });
           if (customer) {
             customer.advance_balance = Number(customer.advance_balance || 0) + remainingExcess;
+            customer.advance_history = customer.advance_history || [];
+            customer.advance_history.push({
+              amount: remainingExcess,
+              type: "CREDIT",
+              payment_method: updatedPaymentMode || "CASH",
+              payment_date: payment_date ? new Date(payment_date) : new Date(),
+              notes: `Excess payment on invoice ${invoice.invoice_number}`,
+              recorded_by: user.userId,
+            });
             await customer.save();
           }
           remainingExcess = 0;
@@ -1289,6 +1413,7 @@ export default class InvoiceController {
         const phoneNumber = formatPhoneNumber(customer?.whatsapp_number);
 
         if (
+          send_whatsapp !== false &&
           shop &&
           !shop.deleted_at &&
           phoneNumber &&

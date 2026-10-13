@@ -8,6 +8,7 @@ import InvoiceItem from "../models/InvoiceItem.js";
 import ReminderLog from "../models/ReminderLog.js";
 import * as reminderUtils from "./reminderUtils.js";
 import { createDateRange } from "../scheduler/core/utils.js";
+import { calculateCustomersLedgerSummary } from "../controllers/customerController.js";
 
 /**
  * Dashboard Service
@@ -646,6 +647,7 @@ export const getDashboardSummary = async (shopId, period = "today") => {
     revenueStats,
     invoiceStats,
     customerStats,
+    customerLedgerStats,
     serviceStats,
     servicePlanStats,
     alerts,
@@ -655,6 +657,7 @@ export const getDashboardSummary = async (shopId, period = "today") => {
     getRevenueStats(shopId, period),
     getInvoiceStats(shopId, period),
     getCustomerStats(shopId, period),
+    calculateCustomersLedgerSummary(shopId),
     getServiceStats(shopId, period),
     getServicePlanStats(shopId),
     getAlerts(shopId),
@@ -667,12 +670,20 @@ export const getDashboardSummary = async (shopId, period = "today") => {
     revenue: revenueStats,
     invoices: invoiceStats,
     customers: customerStats,
+    customerLedger: customerLedgerStats,
     services: serviceStats,
     servicePlans: servicePlanStats,
     alerts,
     wishes,
     festivals
   };
+};
+
+/**
+ * Get customer ledger stats (all customers total dues & credits)
+ */
+export const getCustomerLedgerStats = async (shopId) => {
+  return calculateCustomersLedgerSummary(shopId);
 };
 
 /**

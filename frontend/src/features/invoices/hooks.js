@@ -23,7 +23,7 @@ import {
   useCreateInvoiceMutation,
   useSearchCustomerMutation,
 } from "./invoiceApi.js";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 /** UI/backend fields when line item product_category is BATTERY */
 export const INVOICE_ITEM_BATTERY_FIELDS = [
@@ -35,6 +35,8 @@ export const INVOICE_ITEM_BATTERY_FIELDS = [
 export const useInvoiceForm = () => {
   const dispatch = useDispatch();
   const currentInvoice = useSelector(selectCurrentInvoice);
+  const currentInvoiceRef = useRef(currentInvoice);
+  currentInvoiceRef.current = currentInvoice;
   const errors = useSelector(selectInvoiceErrors);
   const isSubmitting = useSelector(selectIsSubmitting);
   const expandedSections = useSelector(selectExpandedSections);
@@ -67,14 +69,14 @@ export const useInvoiceForm = () => {
       } else if (field === "invoice") {
         dispatch(updateInvoice(data));
       } else if (field === "invoice_items") {
-        const currentData = { ...currentInvoice };
+        const currentData = { ...currentInvoiceRef.current };
         currentData.invoice_items = data;
         dispatch(setInvoiceData(currentData));
       } else {
         dispatch(updateInvoice(data));
       }
     },
-    [dispatch, currentInvoice],
+    [dispatch],
   );
 
   const addItem = useCallback(

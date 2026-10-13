@@ -134,10 +134,10 @@ export const invoiceApi = baseApi.injectEndpoints({
 
     // Record a payment (full or partial) against an invoice
     recordPayment: builder.mutation({
-      query: ({ invoiceId, amount, payment_mode }) => ({
+      query: ({ invoiceId, amount, payment_mode, ...rest }) => ({
         url: `/invoices/${invoiceId}/record-payment`,
         method: "POST",
-        body: { amount, payment_mode },
+        body: { amount, payment_mode, ...rest },
       }),
       invalidatesTags: (result, error, { invoiceId }) => [
         { type: "Invoice", id: invoiceId },

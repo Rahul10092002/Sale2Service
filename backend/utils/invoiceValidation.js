@@ -9,6 +9,8 @@ const VALID_PAYMENT_MODES = new Set([
   "BANK_TRANSFER",
   "MIXED",
   "CREDIT",
+  "ADVANCE",
+  "ADVANCE_WALLET",
 ]);
 const VALID_PAYMENT_STATUSES = new Set(["PAID", "PARTIAL", "UNPAID"]);
 

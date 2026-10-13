@@ -405,12 +405,12 @@ const CustomerView = () => {
                     {ledgerSummary.total_due.toLocaleString("en-IN")}
                   </span>
                 </div>
-              ) : ledgerSummary.total_due < 0 ? (
+              ) : (ledgerSummary.total_due < 0 || (ledgerSummary.store_credit_balance || 0) > 0 || (customer?.advance_balance || 0) > 0) ? (
                 <div className="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 text-xs font-bold flex items-center gap-1.5">
                   <Coins className="w-4 h-4 text-indigo-600" />
                   <span>
                     Store Credit: ₹
-                    {Math.abs(ledgerSummary.total_due).toLocaleString("en-IN")}
+                    {(ledgerSummary.store_credit_balance || Math.abs(ledgerSummary.total_due) || customer?.advance_balance || 0).toLocaleString("en-IN")}
                   </span>
                 </div>
               ) : (
@@ -541,14 +541,14 @@ const CustomerView = () => {
             className={`p-3.5 rounded-xl border shadow-xs flex items-center justify-between transition-colors ${
               ledgerSummary.total_due > 0
                 ? "bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
-                : ledgerSummary.total_due < 0
+                : (ledgerSummary.total_due < 0 || (ledgerSummary.store_credit_balance || 0) > 0)
                 ? "bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800"
                 : "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800"
             }`}
           >
             <div>
               <p className="text-xs font-medium text-gray-600 dark:text-slate-300">
-                {ledgerSummary.total_due < 0
+                {ledgerSummary.total_due < 0 || (ledgerSummary.store_credit_balance || 0) > 0
                   ? "Store Credit / Advance"
                   : "Net Outstanding Dues"}
               </p>
@@ -556,27 +556,32 @@ const CustomerView = () => {
                 className={`text-lg font-bold mt-0.5 ${
                   ledgerSummary.total_due > 0
                     ? "text-amber-700 dark:text-amber-300"
-                    : ledgerSummary.total_due < 0
+                    : (ledgerSummary.total_due < 0 || (ledgerSummary.store_credit_balance || 0) > 0)
                     ? "text-indigo-700 dark:text-indigo-300"
                     : "text-emerald-700 dark:text-emerald-300"
                 }`}
               >
-                {ledgerSummary.total_due < 0
-                  ? `₹${Math.abs(ledgerSummary.total_due).toLocaleString("en-IN")}`
+                {ledgerSummary.total_due < 0 || (ledgerSummary.store_credit_balance || 0) > 0
+                  ? `₹${(ledgerSummary.store_credit_balance || Math.abs(ledgerSummary.total_due)).toLocaleString("en-IN")}`
                   : `₹${ledgerSummary.total_due.toLocaleString("en-IN")}`}
               </p>
-              {ledgerSummary.total_due > 0 && canEdit("customers") ? (
+              {canEdit("customers") ? (
                 <button
                   onClick={() => setIsPaymentModalOpen(true)}
-                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-900/60 px-2 py-0.5 rounded hover:bg-amber-300 transition-colors"
+                  className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded transition-colors ${
+                    ledgerSummary.total_due > 0
+                      ? "text-amber-900 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-900/60 hover:bg-amber-300"
+                      : "text-indigo-900 dark:text-indigo-100 bg-indigo-200/80 dark:bg-indigo-900/60 hover:bg-indigo-300"
+                  }`}
                 >
-                  <Coins className="w-3 h-3" /> Receive Payment
+                  <Coins className="w-3 h-3" />
+                  {ledgerSummary.total_due > 0 ? "Receive Payment" : "Add Advance / Payment"}
                 </button>
               ) : (
                 <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
                   {ledgerSummary.total_due > 0
                     ? "Pending customer payment"
-                    : ledgerSummary.total_due < 0
+                    : (ledgerSummary.total_due < 0 || (ledgerSummary.store_credit_balance || 0) > 0)
                     ? "Available customer credit balance"
                     : "All dues settled"}
                 </p>
@@ -586,12 +591,12 @@ const CustomerView = () => {
               className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
                 ledgerSummary.total_due > 0
                   ? "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
-                  : ledgerSummary.total_due < 0
+                  : (ledgerSummary.total_due < 0 || (ledgerSummary.store_credit_balance || 0) > 0)
                   ? "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
                   : "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
               }`}
             >
-              {ledgerSummary.total_due < 0 ? (
+              {(ledgerSummary.total_due < 0 || (ledgerSummary.store_credit_balance || 0) > 0) ? (
                 <Coins className="w-4 h-4" />
               ) : (
                 <AlertTriangle className="w-4 h-4" />
@@ -707,29 +712,37 @@ const CustomerView = () => {
                 {ledgerEntries.map((entry) => (
                   <div key={entry._id} className="py-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span
-                        className="font-bold text-xs text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline"
-                        onClick={() =>
-                          navigate(`${ROUTES.INVOICES}/${entry._id}`, {
-                            state: {
-                              from: location.pathname,
-                              label: "Customers",
-                            },
-                          })
-                        }
-                      >
-                        {entry.invoice_number}
-                      </span>
+                      {entry.is_advance ? (
+                        <span className="font-bold text-xs text-purple-600 dark:text-purple-400">
+                          {entry.invoice_number}
+                        </span>
+                      ) : (
+                        <span
+                          className="font-bold text-xs text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline"
+                          onClick={() =>
+                            navigate(`${ROUTES.INVOICES}/${entry._id}`, {
+                              state: {
+                                from: location.pathname,
+                                label: "Customers",
+                              },
+                            })
+                          }
+                        >
+                          {entry.invoice_number}
+                        </span>
+                      )}
                       <span
                         className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                          entry.payment_status === "PAID"
+                          entry.is_advance
+                            ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+                            : entry.payment_status === "PAID"
                             ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300"
                             : entry.payment_status === "PARTIAL"
                             ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200"
                             : "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300"
                         }`}
                       >
-                        {entry.payment_status}
+                        {entry.is_advance ? "ADVANCE CREDIT" : entry.payment_status}
                       </span>
                     </div>
 
@@ -817,18 +830,26 @@ const CustomerView = () => {
                         <td className="py-2.5 px-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">
                           {formatDate(entry.invoice_date)}
                         </td>
-                        <td
-                          className="py-2.5 px-3 font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline whitespace-nowrap"
-                          onClick={() =>
-                            navigate(`${ROUTES.INVOICES}/${entry._id}`, {
-                              state: {
-                                from: location.pathname,
-                                label: "Customers",
-                              },
-                            })
-                          }
-                        >
-                          {entry.invoice_number}
+                        <td className="py-2.5 px-3 font-bold whitespace-nowrap">
+                          {entry.is_advance ? (
+                            <span className="text-purple-600 dark:text-purple-400">
+                              {entry.invoice_number}
+                            </span>
+                          ) : (
+                            <span
+                              className="text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline"
+                              onClick={() =>
+                                navigate(`${ROUTES.INVOICES}/${entry._id}`, {
+                                  state: {
+                                    from: location.pathname,
+                                    label: "Customers",
+                                  },
+                                })
+                              }
+                            >
+                              {entry.invoice_number}
+                            </span>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 text-gray-800 dark:text-slate-200 truncate max-w-[220px]">
                           {entry.items_summary}
@@ -876,31 +897,39 @@ const CustomerView = () => {
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <span
                             className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                              entry.payment_status === "PAID"
+                              entry.is_advance
+                                ? "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+                                : entry.payment_status === "PAID"
                                 ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300"
                                 : entry.payment_status === "PARTIAL"
                                 ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200"
                                 : "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300"
                             }`}
                           >
-                            {entry.payment_status}
+                            {entry.is_advance ? "ADVANCE CREDIT" : entry.payment_status}
                           </span>
                         </td>
                         <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                          <button
-                            onClick={() =>
-                              navigate(`${ROUTES.INVOICES}/${entry._id}`, {
-                                state: {
-                                  from: location.pathname,
-                                  label: "Customers",
-                                },
-                              })
-                            }
-                            className="p-1 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors"
-                            title="View Invoice"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
+                          {!entry.is_advance ? (
+                            <button
+                              onClick={() =>
+                                navigate(`${ROUTES.INVOICES}/${entry._id}`, {
+                                  state: {
+                                    from: location.pathname,
+                                    label: "Customers",
+                                  },
+                                })
+                              }
+                              className="p-1 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors"
+                              title="View Invoice"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <span className="p-1 text-purple-500 inline-block" title="Advance Balance">
+                              <Coins className="w-4 h-4" />
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -8,21 +8,17 @@ import mongoose from "mongoose";
 
 /** Resolve shop from denormalized log.shop_id or linked invoice / service / product */
 function buildReminderLogShopScopeStages(shopId) {
-  if (shopId == null || shopId === "") return [];
+  if (shopId == null || shopId === "" || !mongoose.Types.ObjectId.isValid(shopId)) return [];
   const shopOid = new mongoose.Types.ObjectId(shopId);
   return [
     {
       $addFields: {
         entityObjectId: {
-          $cond: {
-            if: {
-              $and: [
-                { $ne: ["$entity_id", null] },
-                { $ne: ["$entity_id", ""] },
-              ],
-            },
-            then: { $toObjectId: "$entity_id" },
-            else: null,
+          $convert: {
+            input: "$entity_id",
+            to: "objectId",
+            onError: null,
+            onNull: null,
           },
         },
       },
@@ -120,11 +116,16 @@ export const getReminderLogs = async (req, res) => {
     const pipeline = [
       { $match: match },
 
-      // 🔹 Convert entity_id → ObjectId
+      // 🔹 Convert entity_id → ObjectId safely (returns null if string is not a valid 24-char hex ObjectId)
       {
         $addFields: {
           entityObjectId: {
-            $toObjectId: "$entity_id",
+            $convert: {
+              input: "$entity_id",
+              to: "objectId",
+              onError: null,
+              onNull: null,
+            },
           },
         },
       },
@@ -181,7 +182,7 @@ export const getReminderLogs = async (req, res) => {
         },
       },
 
-      ...(shop_id
+      ...(shop_id && mongoose.Types.ObjectId.isValid(shop_id)
         ? [
             {
               $match: {

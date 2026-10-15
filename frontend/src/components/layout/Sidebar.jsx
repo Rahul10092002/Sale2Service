@@ -38,6 +38,13 @@ const navItems = [
     permission: "invoices_view",
   },
   {
+    key: "customers",
+    label: "Customers",
+    icon: <User className="w-4 h-4" />,
+    path: ROUTES.CUSTOMERS,
+    permission: "customers_view",
+  },
+  {
     key: "products",
     label: "Products",
     icon: <Box className="w-4 h-4" />,
@@ -58,13 +65,7 @@ const navItems = [
     path: ROUTES.WARRANTY,
     permission: "inventory_view",
   },
-  {
-    key: "customers",
-    label: "Customers",
-    icon: <User className="w-4 h-4" />,
-    path: ROUTES.CUSTOMERS,
-    permission: "customers_view",
-  },
+
   {
     key: "users",
     label: "Users",

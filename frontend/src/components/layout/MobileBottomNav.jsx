@@ -43,18 +43,18 @@ const primaryItems = [
     isExact: true,
   },
   {
-    icon: Box,
-    label: "Products",
-    path: ROUTES.PRODUCTS,
-    permission: "products_view",
-    matchPrefix: "/products",
-  },
-  {
     icon: User,
     label: "Customers",
     path: ROUTES.CUSTOMERS,
     permission: "customers_view",
     matchPrefix: "/customers",
+  },
+  {
+    icon: Box,
+    label: "Products",
+    path: ROUTES.PRODUCTS,
+    permission: "products_view",
+    matchPrefix: "/products",
   },
   {
     icon: Table,

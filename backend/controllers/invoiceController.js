@@ -383,6 +383,12 @@ export default class InvoiceController {
         });
       }
 
+      const shouldSendWhatsApp =
+        invoice.send_whatsapp !== false &&
+        invoice.send_whatsapp !== "false" &&
+        req.body.send_whatsapp !== false &&
+        req.body.send_whatsapp !== "false";
+
       // Step 5: Create invoice
       const newInvoice = new Invoice({
         invoice_number: invoiceNumber,
@@ -405,6 +411,7 @@ export default class InvoiceController {
         notes: invoice.notes,
         services: embeddedServices,
         payments: initialPayments,
+        send_whatsapp: shouldSendWhatsApp,
       });
 
       await newInvoice.save({ session });
@@ -653,6 +660,7 @@ export default class InvoiceController {
           advance_amount_used: advanceDeducted,
           pdf_url: newInvoice.invoice_pdf, // Include PDF URL for immediate access
           pdf_error: newInvoice.pdf_error || null,
+          send_whatsapp: shouldSendWhatsApp,
         },
       });
 
@@ -661,12 +669,6 @@ export default class InvoiceController {
       // passing the Cloudinary URL directly to Meta. This eliminates error 131053
       // caused by CDN propagation delays where Meta's edge hits a node that
       // hasn't yet received the freshly uploaded file.
-      const shouldSendWhatsApp =
-        invoice.send_whatsapp !== false &&
-        invoice.send_whatsapp !== "false" &&
-        req.body.send_whatsapp !== false &&
-        req.body.send_whatsapp !== "false";
-
       if (shouldSendWhatsApp) {
         (async () => {
           try {
@@ -785,6 +787,7 @@ export default class InvoiceController {
               userId: user.userId,
               delayMs: 90000, // 90 seconds (1.5 minutes)
               attempt: 1,
+              sendWhatsapp: true,
             });
           }
         } catch (waErr) {
@@ -795,6 +798,7 @@ export default class InvoiceController {
             userId: user.userId,
             delayMs: 90000, // 90 seconds (1.5 minutes)
             attempt: 1,
+            sendWhatsapp: true,
           });
         }
       })();
@@ -802,6 +806,20 @@ export default class InvoiceController {
       console.log(
         `[Invoice] WhatsApp notification skipped for invoice ${invoiceNumber} (send_whatsapp=false)`,
       );
+      // If PDF generation failed during creation, schedule retry for PDF generation ONLY (never send WhatsApp)
+      if (!newInvoice.invoice_pdf || newInvoice.pdf_error) {
+        console.log(
+          `[Invoice] Scheduling PDF generation retry for invoice ${invoiceNumber} (WhatsApp delivery disabled)...`,
+        );
+        schedulePdfAndWhatsappRetry({
+          invoiceId: newInvoice._id,
+          shopId: user.shopId,
+          userId: user.userId,
+          delayMs: 30000, // 30 seconds
+          attempt: 1,
+          sendWhatsapp: false,
+        });
+      }
     }
     } catch (error) {
       await session.abortTransaction();
@@ -1046,6 +1064,12 @@ export default class InvoiceController {
           .status(500)
           .json({ success: false, message: "Failed to send WhatsApp message" });
       }
+
+      await Invoice.findByIdAndUpdate(invoice._id, {
+        whatsapp_sent: true,
+        whatsapp_sent_at: new Date(),
+        pdf_error: null,
+      }).catch(() => {});
 
       return res.json({
         success: true,
@@ -2421,6 +2445,11 @@ export default class InvoiceController {
       existingInvoice.warranty_months = parseInt(invoice.warranty_months || 0);
       existingInvoice.notes = invoice.notes || "";
       existingInvoice.services = embeddedUpdateServices;
+      if (typeof invoice.send_whatsapp === "boolean") {
+        existingInvoice.send_whatsapp = invoice.send_whatsapp;
+      } else if (typeof req.body.send_whatsapp === "boolean") {
+        existingInvoice.send_whatsapp = req.body.send_whatsapp;
+      }
       existingInvoice.updated_at = new Date();
 
       await existingInvoice.save({ session });

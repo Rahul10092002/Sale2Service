@@ -109,6 +109,10 @@ const invoiceSchema = new mongoose.Schema(
     pdf_error: {
       type: String, // Recorded error message if PDF auto-generation failed
     },
+    send_whatsapp: {
+      type: Boolean,
+      default: true,
+    },
     whatsapp_sent: {
       type: Boolean,
       default: false,

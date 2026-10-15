@@ -1,4 +1,4 @@
-import randomUUID from "crypto";
+import { randomUUID } from "crypto";
 import Invoice from "../models/Invoice.js";
 import Shop from "../models/Shop.js";
 import InvoiceItem from "../models/InvoiceItem.js";
@@ -12,7 +12,7 @@ export const tempPdfRetryStore = new Map();
 
 /**
  * Schedules a delayed retry (1.5 - 2 minutes by default) to generate invoice PDF if missing/failed,
- * and deliver the WhatsApp invoice notification.
+ * and deliver the WhatsApp invoice notification (only if WhatsApp notification is enabled for the invoice).
  */
 export function schedulePdfAndWhatsappRetry({
   invoiceId,
@@ -20,14 +20,16 @@ export function schedulePdfAndWhatsappRetry({
   userId,
   delayMs = 90000, // 90 seconds (1.5 minutes)
   attempt = 1,
+  sendWhatsapp = null, // explicitly specify if WhatsApp notification is enabled
 }) {
   console.log(
     `[Invoice PDF/WhatsApp Retry] Scheduled retry #${attempt} for invoice ${invoiceId} in ${Math.round(
       delayMs / 1000,
-    )}s.`,
+    )}s (sendWhatsapp=${sendWhatsapp === null ? "auto" : sendWhatsapp}).`,
   );
 
   setTimeout(async () => {
+    let isWhatsAppEnabled = true;
     try {
       console.log(
         `[Invoice PDF/WhatsApp Retry] Executing retry #${attempt} for invoice ${invoiceId}...`,
@@ -45,10 +47,22 @@ export function schedulePdfAndWhatsappRetry({
         return;
       }
 
-      // If already sent via WhatsApp, abort retry
-      if (invoice.whatsapp_sent) {
+      // Check whether WhatsApp notification is enabled for this invoice
+      isWhatsAppEnabled =
+        sendWhatsapp !== null
+          ? sendWhatsapp !== false && sendWhatsapp !== "false"
+          : invoice.send_whatsapp !== false && invoice.send_whatsapp !== "false";
+
+      const isWhatsAppAlreadySent = Boolean(invoice.whatsapp_sent);
+      const hasValidPdf = Boolean(invoice.invoice_pdf && !invoice.pdf_error);
+      const needsWhatsApp = isWhatsAppEnabled && !isWhatsAppAlreadySent;
+
+      // If PDF already exists and WhatsApp delivery is not needed (either disabled or already completed), abort retry
+      if (hasValidPdf && !needsWhatsApp) {
         console.log(
-          `[Invoice PDF/WhatsApp Retry] Invoice ${invoice.invoice_number} WhatsApp message already delivered. Aborting.`,
+          `[Invoice PDF/WhatsApp Retry] Invoice ${invoice.invoice_number}: PDF already exists and WhatsApp notification is ${
+            isWhatsAppAlreadySent ? "already delivered" : "disabled"
+          }. Aborting retry.`,
         );
         return;
       }
@@ -100,6 +114,30 @@ export function schedulePdfAndWhatsappRetry({
             pdf_error: pdfErr.message,
           }).catch(() => {});
         }
+      }
+
+      // If WhatsApp notification is not required (disabled or already sent), finish here
+      if (!needsWhatsApp) {
+        if (!pdfUrl) {
+          console.warn(
+            `[Invoice PDF/WhatsApp Retry] PDF generation failed for ${invoice.invoice_number} on attempt #${attempt} (WhatsApp disabled).`,
+          );
+          if (attempt < 2) {
+            schedulePdfAndWhatsappRetry({
+              invoiceId,
+              shopId,
+              userId,
+              delayMs: 180000,
+              attempt: attempt + 1,
+              sendWhatsapp: false,
+            });
+          }
+        } else {
+          console.log(
+            `[Invoice PDF/WhatsApp Retry] PDF successfully generated for ${invoice.invoice_number}. WhatsApp notification was disabled. Finished retry.`,
+          );
+        }
+        return;
       }
 
       // Step 2: Format phone number & check WhatsApp readiness
@@ -215,6 +253,7 @@ export function schedulePdfAndWhatsappRetry({
             userId,
             delayMs: 180000, // 3 minutes for attempt 2
             attempt: attempt + 1,
+            sendWhatsapp: true,
           });
         }
       }
@@ -230,6 +269,7 @@ export function schedulePdfAndWhatsappRetry({
           userId,
           delayMs: 180000, // 3 minutes for attempt 2
           attempt: attempt + 1,
+          sendWhatsapp: isWhatsAppEnabled,
         });
       }
     }
@@ -237,30 +277,43 @@ export function schedulePdfAndWhatsappRetry({
 }
 
 /**
- * Scans DB for any unsent invoices in the last 24 hours and retries PDF generation & WhatsApp delivery.
+ * Scans DB for any pending invoices in the last 24 hours and retries PDF generation and/or WhatsApp delivery.
+ * Differentiates invoices where WhatsApp is disabled (only retries PDF) from invoices where WhatsApp is enabled.
  */
 export async function processUnsentPdfInvoices() {
   try {
     const cutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // last 24 hours
     const pendingInvoices = await Invoice.find({
       deleted_at: null,
-      whatsapp_sent: { $ne: true },
       createdAt: { $gte: cutoffDate },
+      $or: [
+        // Case 1: Invoices missing PDF or having generation error (needs PDF generation)
+        { invoice_pdf: { $in: [null, ""] } },
+        { invoice_pdf: { $exists: false } },
+        { pdf_error: { $ne: null } },
+        // Case 2: Invoices where WhatsApp notification is enabled but not yet sent
+        {
+          send_whatsapp: { $ne: false },
+          whatsapp_sent: { $ne: true },
+        },
+      ],
     }).limit(20);
 
     if (!pendingInvoices || pendingInvoices.length === 0) return;
 
     console.log(
-      `[Invoice PDF/WhatsApp Scanner] Found ${pendingInvoices.length} unsent invoices. Retrying PDF generation & WhatsApp delivery...`,
+      `[Invoice PDF/WhatsApp Scanner] Found ${pendingInvoices.length} invoices needing PDF generation or WhatsApp delivery. Processing...`,
     );
 
     for (const inv of pendingInvoices) {
+      const isWhatsAppEnabled = inv.send_whatsapp !== false;
       schedulePdfAndWhatsappRetry({
         invoiceId: inv._id,
         shopId: inv.shop_id,
         userId: inv.created_by,
         delayMs: 5000, // immediate 5s delay
         attempt: 1,
+        sendWhatsapp: isWhatsAppEnabled,
       });
     }
   } catch (err) {

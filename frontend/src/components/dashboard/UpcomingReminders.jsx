@@ -47,19 +47,47 @@ const UpcomingReminders = ({
   const getReminderColor = (type) => {
     switch (type) {
       case "service":
-        return { bg: "bg-blue-50 dark:bg-blue-900/30",     icon: "text-blue-600 dark:text-blue-400",     badge: "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300" };
+        return { 
+          bg: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/40", 
+          icon: "text-blue-600 dark:text-blue-400", 
+          badge: "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 font-bold" 
+        };
       case "warranty":
-        return { bg: "bg-purple-50 dark:bg-purple-900/30", icon: "text-purple-600 dark:text-purple-400", badge: "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300" };
+        return { 
+          bg: "bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/40", 
+          icon: "text-purple-600 dark:text-purple-400", 
+          badge: "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60 font-bold" 
+        };
       case "birthday":
-        return { bg: "bg-pink-50 dark:bg-pink-900/30",     icon: "text-pink-600 dark:text-pink-400",     badge: "bg-pink-100 dark:bg-pink-900/40 text-pink-800 dark:text-pink-300" };
+        return { 
+          bg: "bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 border border-pink-200/50 dark:border-pink-800/40", 
+          icon: "text-pink-600 dark:text-pink-400", 
+          badge: "bg-pink-50 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 border border-pink-200/60 dark:border-pink-800/60 font-bold" 
+        };
       case "anniversary":
-        return { bg: "bg-rose-50 dark:bg-rose-900/30",     icon: "text-rose-600 dark:text-rose-400",     badge: "bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300" };
+        return { 
+          bg: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/40", 
+          icon: "text-rose-600 dark:text-rose-400", 
+          badge: "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60 font-bold" 
+        };
       case "festival":
-        return { bg: "bg-amber-50 dark:bg-amber-900/30",   icon: "text-amber-600 dark:text-amber-400",   badge: "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300" };
+        return { 
+          bg: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40", 
+          icon: "text-amber-600 dark:text-amber-400", 
+          badge: "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 font-bold" 
+        };
       case "payment":
-        return { bg: "bg-emerald-50 dark:bg-emerald-900/30", icon: "text-emerald-600 dark:text-emerald-400", badge: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300" };
+        return { 
+          bg: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40", 
+          icon: "text-emerald-600 dark:text-emerald-400", 
+          badge: "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 font-bold" 
+        };
       default:
-        return { bg: "bg-gray-50 dark:bg-dark-subtle",    icon: "text-gray-600 dark:text-slate-400",    badge: "bg-gray-100 dark:bg-dark-hover text-gray-800 dark:text-slate-300" };
+        return { 
+          bg: "bg-slate-50 dark:bg-dark-subtle text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-dark-border", 
+          icon: "text-slate-600 dark:text-slate-300", 
+          badge: "bg-slate-100 dark:bg-dark-hover text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-border font-bold" 
+        };
     }
   };
 
@@ -72,26 +100,26 @@ const UpcomingReminders = ({
 
   if (allReminders.length === 0) {
     return (
-      <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-3">
-        <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100 mb-2">
+      <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-slate-200/80 dark:border-dark-border p-3.5">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-2">
           Upcoming Reminders - {getPeriodLabel()}
         </h3>
-        <div className="text-center py-4 text-xs text-ink-muted dark:text-slate-500">
-          <CalendarClock className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-slate-600" />
-          <p>No reminders scheduled for {getPeriodLabel().toLowerCase()}</p>
+        <div className="text-center py-6 text-xs text-slate-500 dark:text-slate-400">
+          <CalendarClock className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+          <p className="font-medium">No reminders scheduled for {getPeriodLabel().toLowerCase()}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-gray-100 dark:border-dark-border p-3">
+    <div className="bg-white dark:bg-dark-card rounded-lg shadow-sm dark:shadow-glass-dark border border-slate-200/80 dark:border-dark-border p-3.5">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <h3 className="text-sm font-semibold text-ink-base dark:text-slate-100">
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
           Upcoming Reminders - {getPeriodLabel()}
         </h3>
-        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-[10px] font-medium rounded-full shrink-0">
+        <span className="px-2.5 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold rounded-full border border-blue-200/60 dark:border-blue-800/60 shrink-0">
           {allReminders.length} scheduled
         </span>
       </div>
@@ -106,7 +134,7 @@ const UpcomingReminders = ({
           return (
             <div
               key={`${reminder.reminderType}-${reminder.id}-${index}`}
-              className="flex items-center gap-2 p-1.5 rounded-lg border border-gray-200 dark:border-dark-border hover:border-gray-300 dark:hover:border-slate-500 hover:shadow-sm transition-all"
+              className="flex items-center gap-2.5 p-2 rounded-lg border border-slate-200/80 dark:border-dark-border hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-xs transition-all bg-white dark:bg-dark-subtle/40"
             >
               <div className={`p-1.5 rounded-md ${colors.bg} shrink-0`}>
                 <Icon className={`w-3.5 h-3.5 ${colors.icon}`} />
@@ -115,10 +143,10 @@ const UpcomingReminders = ({
               <div className="flex-1 min-w-0 flex flex-col justify-center">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${colors.badge} shrink-0`}>
+                    <span className={`px-1.5 py-0.5 text-[10px] rounded ${colors.badge} shrink-0`}>
                       {reminder.label || reminder.reminderType.charAt(0).toUpperCase() + reminder.reminderType.slice(1)}
                     </span>
-                    <p className="text-xs font-semibold text-ink-base dark:text-slate-100 truncate">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
                       {reminder.reminderType === "service"
                         ? `${reminder.serviceName} - Visit #${reminder.serviceNumber}`
                         : reminder.reminderType === "warranty"
@@ -130,17 +158,17 @@ const UpcomingReminders = ({
                   </div>
                   
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <div className="flex items-center gap-1 text-[10px] text-ink-secondary dark:text-slate-400">
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                       <Clock className="w-2.5 h-2.5" />
                       <span>{getDaysLabel(reminder.daysUntil)}</span>
                     </div>
                     {reminder.reminderStatus && (
-                      <span className={`text-[10px] px-1 py-0.5 rounded font-bold uppercase tracking-tighter ${
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold uppercase tracking-tight ${
                         ["SENT", "DELIVERED", "READ"].includes(reminder.reminderStatus) 
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          ? "bg-green-50 text-green-700 dark:bg-green-950/60 dark:text-green-300 border border-green-200/60 dark:border-green-800/60"
                           : reminder.reminderStatus === "FAILED"
-                          ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                          : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                          ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60"
+                          : "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60"
                       }`}>
                         {reminder.reminderStatus === "SENT" || reminder.reminderStatus === "DELIVERED" || reminder.reminderStatus === "READ" 
                           ? "Sent" : reminder.reminderStatus}
@@ -150,12 +178,12 @@ const UpcomingReminders = ({
                 </div>
 
                 <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <p className="text-[11px] text-ink-secondary dark:text-slate-400 truncate">
+                  <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 truncate">
                     {reminder.reminderType === "festival" 
                       ? "Special Occasion"
                       : `${reminder.customerName}${reminder.customerPhone ? ` · ${reminder.customerPhone}` : ""}`}
                   </p>
-                  <p className="text-[10px] font-medium text-ink-base dark:text-slate-300 shrink-0">
+                  <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">
                     {reminderDate ? format(new Date(reminderDate), "MMM dd") : "N/A"}
                   </p>
                 </div>
@@ -166,32 +194,32 @@ const UpcomingReminders = ({
       </div>
 
       {/* Footer */}
-      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-dark-border">
-        <div className="flex justify-center flex-wrap gap-y-2 divide-x divide-gray-200 dark:divide-dark-border">
+      <div className="mt-2.5 pt-2.5 border-t border-slate-200/80 dark:border-dark-border">
+        <div className="flex justify-center flex-wrap gap-y-2 divide-x divide-slate-200 dark:divide-dark-border">
           <div className="px-3 text-center">
-            <span className="text-sm font-bold text-blue-600 dark:text-blue-400 mr-1">
+            <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 mr-1.5">
               {serviceReminders.length}
             </span>
-            <span className="text-[10px] text-ink-muted dark:text-slate-500 uppercase tracking-wider">Service</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">Service</span>
           </div>
           <div className="px-3 text-center">
-            <span className="text-sm font-bold text-purple-600 dark:text-purple-400 mr-1">
+            <span className="text-sm font-extrabold text-purple-600 dark:text-purple-400 mr-1.5">
               {warrantyReminders.length}
             </span>
-            <span className="text-[10px] text-ink-muted dark:text-slate-500 uppercase tracking-wider">Warranty</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">Warranty</span>
           </div>
           <div className="px-3 text-center">
-            <span className="text-sm font-bold text-pink-600 dark:text-pink-400 mr-1">
+            <span className="text-sm font-extrabold text-pink-600 dark:text-pink-400 mr-1.5">
               {wishes.length}
             </span>
-            <span className="text-[10px] text-ink-muted dark:text-slate-500 uppercase tracking-wider">Wishes</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">Wishes</span>
           </div>
           {festivals.length > 0 && (
             <div className="px-3 text-center">
-              <span className="text-sm font-bold text-amber-600 dark:text-amber-400 mr-1">
+              <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400 mr-1.5">
                 {festivals.length}
               </span>
-              <span className="text-[10px] text-ink-muted dark:text-slate-500 uppercase tracking-wider">Festivals</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">Festivals</span>
             </div>
           )}
         </div>

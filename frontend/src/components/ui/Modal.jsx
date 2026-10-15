@@ -57,10 +57,10 @@ const Dialog = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
       <div
         ref={dialogRef}
-        className={`bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-modal animate-slide-in w-full ${maxWidthClasses[maxWidth]} max-h-[90vh] overflow-hidden flex flex-col ${className}`}
+        className={`bg-white dark:bg-dark-card border border-slate-200/90 dark:border-dark-border rounded-2xl shadow-modal animate-slide-in w-full ${maxWidthClasses[maxWidth]} max-h-[90vh] overflow-hidden flex flex-col ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -81,33 +81,33 @@ const DialogHeader = ({
 
   return (
     <div
-      className={`px-6 py-4 border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input rounded-t-xl flex items-center justify-between ${className}`}
+      className={`px-5 sm:px-6 py-4 border-b border-slate-200/80 dark:border-dark-border bg-slate-50/80 dark:bg-dark-input rounded-t-2xl flex items-center justify-between ${className}`}
     >
       <div className="flex items-center space-x-3">
         {icon && (
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
+          <div className="p-2 bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-xl">
             {icon}
           </div>
         )}
         <div>
           {typeof headingContent === "string" ? (
-            <h2 className="text-xl font-semibold text-ink-base dark:text-slate-100">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               {headingContent}
             </h2>
           ) : (
-            <div className="text-xl font-semibold text-ink-base dark:text-slate-100">
+            <div className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               {headingContent}
             </div>
           )}
           {subtitle && (
-            <p className="text-sm text-ink-secondary dark:text-slate-400">{subtitle}</p>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
       {onClose && (
         <button
           onClick={onClose}
-          className="p-2 text-ink-muted dark:text-slate-500 hover:text-ink-base dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-all duration-200 inline-flex items-center justify-center border-transparent"
+          className="p-1.5 text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-hover rounded-lg transition-all duration-150 inline-flex items-center justify-center border-transparent"
           aria-label="Close dialog"
         >
           <X className="w-5 h-5" />
@@ -119,7 +119,7 @@ const DialogHeader = ({
 
 const DialogBody = ({ children, className = "" }) => (
   <div
-    className={`px-6 py-4 custom-scrollbar overflow-y-auto flex-1 bg-white dark:bg-dark-card text-ink-base dark:text-slate-100 ${className}`}
+    className={`px-5 sm:px-6 py-4 custom-scrollbar overflow-y-auto flex-1 bg-white dark:bg-dark-card text-slate-900 dark:text-slate-100 ${className}`}
   >
     {children}
   </div>
@@ -127,7 +127,7 @@ const DialogBody = ({ children, className = "" }) => (
 
 const DialogFooter = ({ children, className = "" }) => (
   <div
-    className={`px-6 py-4 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input rounded-b-xl flex justify-end space-x-2 ${className}`}
+    className={`px-5 sm:px-6 py-3.5 border-t border-slate-200/80 dark:border-dark-border bg-slate-50/80 dark:bg-dark-input rounded-b-2xl flex justify-end space-x-2.5 ${className}`}
   >
     {children}
   </div>

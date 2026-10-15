@@ -150,12 +150,12 @@ const Sidebar = () => {
             to={item.path}
             className={`flex items-center gap-2.5 rounded-lg p-2 transition-all duration-200 group ${
               isActive(item.path)
-                ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 border-r-2 border-blue-500 dark:text-blue-300 shadow-sm"
-                : "text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-dark-hover hover:text-blue-600 dark:hover:text-slate-100"
+                ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-r-2 border-blue-600 dark:border-blue-400 shadow-xs"
+                : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-hover hover:text-blue-600 dark:hover:text-white"
             }`}
           >
             <span
-              className={`shrink-0 ${isActive(item.path) ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400"}`}
+              className={`shrink-0 ${isActive(item.path) ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400"}`}
             >
               {item.icon}
             </span>
@@ -167,10 +167,10 @@ const Sidebar = () => {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-gray-100 dark:border-dark-border bg-gray-50/30 dark:bg-dark-subtle/20">
+      <div className="p-3 border-t border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-dark-subtle/20">
         <div className="flex items-center space-x-2">
-          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-[10px] text-gray-500 dark:text-slate-500 font-bold uppercase tracking-wider">
+          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
             Enterprise Edition
           </span>
         </div>

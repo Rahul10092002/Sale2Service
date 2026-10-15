@@ -1,50 +1,62 @@
 @import "tailwindcss";
 
 /* ─── Dark mode: class-based (Tailwind v4 syntax) ───────────────────── */
-@variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ─── Design Tokens via @theme (Tailwind v4 — replaces tailwind.config) ── */
 @theme {
-  /* Colors — Primary */
+  /* Fonts: Expressive modern Plus Jakarta Sans + Inter + Monospace */
+  --font-sans:       'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont,
+                     'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-heading:    'Plus Jakarta Sans', sans-serif;
+  --font-mono:       'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Semantic Color Tokens (Dynamically reactive to CSS variables) */
+  --color-ink-base:          var(--ink-base);
+  --color-ink-secondary:     var(--ink-secondary);
+  --color-ink-muted:         var(--ink-muted);
+  --color-ink-faint:         var(--ink-faint);
+
+  /* Surface tokens */
+  --color-surface-bg:        var(--surface-bg);
+  --color-surface-card:      var(--surface-card);
+  --color-surface-input:     var(--surface-input);
+  --color-surface-subtle:    var(--surface-subtle);
+  --color-surface-hover:     var(--surface-hover);
+  --color-surface-border:    var(--surface-border);
+
+  /* Card alias for components */
+  --color-card:              var(--surface-card);
+  --color-card-foreground:   var(--ink-base);
+
+  /* Dark mode surface tokens (direct references used in components) */
+  --color-dark-bg:           var(--dark-bg);
+  --color-dark-card:         var(--dark-card);
+  --color-dark-input:        var(--dark-input);
+  --color-dark-subtle:       var(--dark-subtle);
+  --color-dark-hover:        var(--dark-hover);
+  --color-dark-border:       var(--dark-border);
+
+  /* Colors — Primary Brand (Vibrant Indigo-Blue) */
   --color-primary:           #2563eb;
   --color-primary-hover:     #1d4ed8;
-  --color-primary-light:     rgba(37,99,235,0.08);
+  --color-primary-light:     rgba(37, 99, 235, 0.08);
   --color-primary-dark:      #3b82f6;
 
   /* Colors — Success */
   --color-success:           #059669;
-  --color-success-light:     rgba(5,150,105,0.08);
+  --color-success-light:     rgba(5, 150, 105, 0.08);
   --color-success-dark:      #34d399;
 
   /* Colors — Danger */
   --color-danger:            #dc2626;
-  --color-danger-light:      rgba(220,38,38,0.08);
+  --color-danger-light:      rgba(220, 38, 38, 0.08);
   --color-danger-dark:       #f87171;
 
   /* Colors — Purple / GST */
   --color-purple-gst:        #7c3aed;
-  --color-purple-gst-light:  rgba(124,58,237,0.08);
+  --color-purple-gst-light:  rgba(124, 58, 237, 0.08);
   --color-purple-gst-dark:   #a78bfa;
-
-  /* Colors — Surface (light mode backgrounds) */
-  --color-surface-bg:        #f0f2f5;
-  --color-surface-card:      rgba(255,255,255,0.92);
-  --color-surface-input:     #ffffff;
-  --color-surface-subtle:    #f8fafc;
-  --color-surface-hover:     #f1f5f9;
-
-  /* Colors — Dark mode surfaces */
-  --color-dark-bg:           #0f172a;
-  --color-dark-card:         rgba(30,41,59,0.92);
-  --color-dark-input:        #1e293b;
-  --color-dark-subtle:       rgba(30,41,59,0.5);
-  --color-dark-hover:        #334155;
-  --color-dark-border:       rgba(51,65,85,0.8);
-
-  /* Colors — Ink / Text */
-  --color-ink-base:          #111827;
-  --color-ink-secondary:     #6b7280;
-  --color-ink-muted:         #9ca3af;
 
   /* Font — Scale */
   --font-size-xs:   0.70rem;
@@ -64,11 +76,6 @@
   --line-height-xl:   2.25rem;
   --line-height-2xl:  2.5rem;
 
-  /* Font family */
-  --font-family-sans: 'Inter', ui-sans-serif, system-ui, -apple-system,
-                      BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-                      Arial, 'Noto Sans', sans-serif;
-
   /* Border radius */
   --radius-sm:  6px;
   --radius:     8px;
@@ -77,24 +84,24 @@
   --radius-xl:  16px;
   --radius-2xl: 20px;
 
-  /* Box shadows */
-  --shadow-glass:       0 4px 24px rgba(0,0,0,0.06);
-  --shadow-glass-dark:  0 4px 24px rgba(0,0,0,0.2);
-  --shadow-card:        0 2px 8px rgba(37,99,235,0.25);
-  --shadow-card-hover:  0 4px 12px rgba(37,99,235,0.3);
-  --shadow-modal:       0 20px 60px rgba(0,0,0,0.2);
-  --shadow-dropdown:    0 8px 24px rgba(0,0,0,0.12);
-  --shadow-toast:       0 8px 24px rgba(0,0,0,0.12);
+  /* Box shadows — Refined depth for light and dark modes */
+  --shadow-glass:       0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+  --shadow-glass-dark:  0 8px 32px -4px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.35);
+  --shadow-card:        0 1px 3px 0 rgba(15, 23, 42, 0.07), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+  --shadow-card-hover:  0 6px 16px -2px rgba(37, 99, 235, 0.12), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-modal:       0 20px 60px -10px rgba(0, 0, 0, 0.35);
+  --shadow-dropdown:    0 10px 30px -5px rgba(15, 23, 42, 0.15), 0 4px 10px -2px rgba(15, 23, 42, 0.05);
+  --shadow-toast:       0 12px 36px -4px rgba(0, 0, 0, 0.2);
 
   /* Custom width / spacing */
-  --width-sidebar:  260px;
-  --spacing-sidebar: 260px;
+  --width-sidebar:      260px;
+  --spacing-sidebar:    260px;
 
   /* Backdrop blur */
   --backdrop-blur-glass: 20px;
 
   /* Keyframes */
-  --animate-toast-slide: toast-slide 0.3s ease;
+  --animate-toast-slide: toast-slide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-pulse-dot:   pulse-dot 1.5s ease-in-out infinite;
   --animate-spin-slow:   spin 1s linear infinite;
 
@@ -109,27 +116,110 @@
   }
 }
 
+/* ─── CSS Custom Properties (Theme Switcher) ────────────────────────── */
+:root {
+  /* Safe area insets */
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+
+  /* ── Light Mode Color System ──
+     Engineered for high contrast, zero eye-fatigue, and crisp hierarchy */
+  --ink-base:          #0f172a; /* Slate 900: Crisp headings and body text (17.5:1 contrast) */
+  --ink-secondary:     #334155; /* Slate 700: Readable labels & table text (9.6:1 contrast) */
+  --ink-muted:         #64748b; /* Slate 500: Clear tertiary/meta text (4.6:1 contrast, passes WCAG AA) */
+  --ink-faint:         #94a3b8; /* Slate 400: Subdued placeholder & icon hints */
+
+  --surface-bg:        #f8fafc; /* Slate 50: Clean, airy modern canvas */
+  --surface-card:      #ffffff; /* Pure white card surface */
+  --surface-input:     #ffffff; /* Clean white input container */
+  --surface-subtle:    #f1f5f9; /* Slate 100: Table header, secondary pills */
+  --surface-hover:     #e2e8f0; /* Slate 200: Interactive hover */
+  --surface-border:    #e2e8f0; /* Slate 200: Crisp card & component borders */
+
+  /* Dark mode surface variables */
+  --dark-bg:           #0b0f19; /* Obsidian Slate: Rich deep backdrop */
+  --dark-card:         #131b2e; /* Elevated Navy/Slate: Clear card container */
+  --dark-input:        #1a243b; /* Distinct input field */
+  --dark-subtle:       #19243d; /* Elevated sub-surface / table header */
+  --dark-hover:        #263558; /* Interactive hover */
+  --dark-border:       rgba(148, 163, 184, 0.18); /* Clean separator */
+}
+
+.dark {
+  /* ── Dark Mode Color System ──
+     Engineered for premium glass-depth, luminous text, and strong separation */
+  --ink-base:          #f8fafc; /* Slate 50: Brilliant legible text (15.5:1 contrast) */
+  --ink-secondary:     #cbd5e1; /* Slate 300: High clarity secondary text (10.8:1 contrast) */
+  --ink-muted:         #94a3b8; /* Slate 400: Readable tertiary meta text (6.8:1 contrast) */
+  --ink-faint:         #64748b; /* Slate 500: Subdued hint */
+
+  --surface-bg:        #0b0f19; /* Obsidian Slate */
+  --surface-card:      #131b2e; /* Elevated Navy/Slate */
+  --surface-input:     #1a243b; /* Distinct input field */
+  --surface-subtle:    #19243d; /* Elevated sub-surface */
+  --surface-hover:     #263558; /* Interactive hover */
+  --surface-border:    rgba(148, 163, 184, 0.18); /* Clean separator */
+}
+
 /* ─── Base layer ────────────────────────────────────────────────────── */
 @layer base {
   html {
-    font-family: var(--font-family-sans);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     transition: background-color 0.2s ease, color 0.15s ease;
   }
 
   body {
-    @apply text-ink-base dark:text-slate-100;
+    background-color: var(--surface-bg);
+    color: var(--ink-base);
     transition-property: color, background-color;
     transition-duration: 200ms;
+    min-height: 100vh;
+  }
+
+  /* Selection highlighting */
+  ::selection {
+    background-color: rgba(37, 99, 235, 0.25);
+    color: inherit;
+  }
+
+  /* Numeric alignment for invoices, currency, serials */
+  table,
+  .tabular-nums,
+  [data-numeric="true"] {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Slim scrollbar (global) */
-  ::-webkit-scrollbar        { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track  { background: transparent; }
-  ::-webkit-scrollbar-thumb  {
-    background: rgba(156,163,175,0.4);
-    border-radius: 3px;
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(107,114,128,0.6); }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.65);
+  }
+
+  :is(.dark *) ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.25);
+  }
+  :is(.dark *) ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.45);
+  }
+
+  /* Accessible focus indicators */
+  *:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
 
   /* Hide number input spinners */
   input[type="number"]::-webkit-outer-spin-button,
@@ -146,7 +236,7 @@
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
-    -webkit-text-fill-color: #111827 !important;
+    -webkit-text-fill-color: #0f172a !important;
     -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
     transition: background-color 5000s ease-in-out 0s;
   }
@@ -155,17 +245,12 @@
   :is(.dark *) input:-webkit-autofill:hover,
   :is(.dark *) input:-webkit-autofill:focus,
   :is(.dark *) input:-webkit-autofill:active {
-    -webkit-text-fill-color: #f1f5f9 !important;
-    -webkit-box-shadow: 0 0 0px 1000px #1e293b inset !important;
+    -webkit-text-fill-color: #f8fafc !important;
+    -webkit-box-shadow: 0 0 0px 1000px #1a243b inset !important;
   }
 }
-/* Enable safe area support */
-:root {
-  --safe-top: env(safe-area-inset-top);
-  --safe-bottom: env(safe-area-inset-bottom);
-}
 
-/* Utility classes */
+/* ─── Safe area utility classes ─────────────────────────────────────── */
 .safe-top {
   padding-top: var(--safe-top);
 }
@@ -173,6 +258,7 @@
 .safe-bottom {
   padding-bottom: var(--safe-bottom);
 }
+
 /* ─── Utility layer ─────────────────────────────────────────────────── */
 @layer utilities {
   /* Scrollbar helpers */
@@ -183,9 +269,12 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar        { width: 6px; }
-  .custom-scrollbar::-webkit-scrollbar-track  { background: #f1f5f9; border-radius: 9999px; }
-  .custom-scrollbar::-webkit-scrollbar-thumb  { background: #d1d5db; border-radius: 9999px; }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+  .custom-scrollbar::-webkit-scrollbar-track  { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb  { background: rgba(148, 163, 184, 0.4); border-radius: 9999px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.65); }
+
+  :is(.dark *) .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); }
+  :is(.dark *) .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.45); }
 
   /* Gradient helpers */
   .gradient-primary {
@@ -196,15 +285,15 @@
   }
 
   /* Inline animation helpers */
-  .animate-fade-in  { animation: fadeIn  0.3s ease-in-out; }
-  .animate-slide-in { animation: slideIn 0.3s ease-in-out; }
+  .animate-fade-in  { animation: fadeIn  0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+  .animate-slide-in { animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 
   @keyframes fadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }
   }
   @keyframes slideIn {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 }
@@ -219,9 +308,9 @@
   }
 }
 
-/* ultra compact mode */
+/* ─── Ultra compact mode ────────────────────────────────────────────── */
 .compact, .compact * {
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .compact input,

@@ -6,9 +6,9 @@ import ToastContainer from "../ui/ToastContainer.jsx";
 
 const Layout = ({ children, title }) => {
   return (
-    <div className="h-screen flex bg-gray-50 dark:bg-dark-bg text-ink-base dark:text-slate-100 transition-colors duration-200">
+    <div className="h-screen flex bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-slate-50 transition-colors duration-200">
       {/* Left: fixed full-height sidebar (desktop) */}
-      <div className="hidden lg:block h-screen sticky top-0 overflow-auto no-scrollbar border-r border-gray-200 dark:border-dark-border">
+      <div className="hidden lg:block h-screen sticky top-0 overflow-auto no-scrollbar border-r border-slate-200/90 dark:border-dark-border">
         <Sidebar />
       </div>
 
@@ -27,9 +27,9 @@ const Layout = ({ children, title }) => {
         <ToastContainer />
 
         <main
-          className={`flex-1 overflow-auto pb-[80px] lg:pb-0 transition-all duration-200 ease-in-out bg-gray-50 dark:bg-dark-bg text-ink-base dark:text-slate-100`}
+          className="flex-1 overflow-auto pb-[80px] lg:pb-0 transition-all duration-200 ease-in-out bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-slate-50"
         >
-          <div className="max-w-7xl mx-auto bg-gray-50 dark:bg-dark-bg">
+          <div className="max-w-7xl mx-auto bg-slate-50 dark:bg-dark-bg">
             {children}
           </div>
         </main>

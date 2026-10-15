@@ -40,10 +40,10 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
             </button>
 
             <div className={`${isNotDashboard ? "ml-1 lg:ml-3" : "ml-1 sm:ml-3"}`}>
-              <h1 className="text-lg sm:text-xl font-semibold text-ink-base dark:text-slate-100 truncate max-w-[200px] sm:max-w-none">
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50 truncate max-w-[200px] sm:max-w-none">
                 {title}
               </h1>
-              <div className="text-[11px] sm:text-xs text-ink-muted dark:text-slate-500">
+              <div className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">
                 WarrantyDesk Professional
               </div>
             </div>
@@ -83,10 +83,10 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
             {/* User name + role — hidden on mobile */}
             <div className="hidden sm:flex sm:items-center sm:space-x-3">
               <div className="text-right">
-                <div className="text-sm font-medium text-ink-base dark:text-slate-100 capitalize">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 capitalize">
                   {user?.ownerName || user?.name || "Owner"}
                 </div>
-                <div className="text-xs text-ink-muted dark:text-slate-500">
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {role || user?.role || "Owner"}
                 </div>
               </div>
@@ -96,7 +96,7 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
             <div className="relative">
               <button
                 onClick={() => setOpen((s) => !s)}
-                className="flex items-center space-x-2 p-1 rounded-lg hover:bg-surface-hover dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200"
+                className="flex items-center space-x-2 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-dark-hover focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200"
                 aria-haspopup="true"
                 aria-expanded={open}
               >
@@ -109,9 +109,9 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
                       )}&background=2563eb&color=fff&bold=true`
                     }
                     alt="User avatar"
-                    className="w-8 h-8 rounded-lg border-2 border-gray-200 dark:border-dark-border shadow-sm"
+                    className="w-8 h-8 rounded-lg border-2 border-slate-200 dark:border-dark-border shadow-xs"
                   />
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-dark-input rounded-full" />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-dark-input rounded-full" />
                 </div>
               </button>
 
@@ -124,13 +124,13 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
                     onClick={() => setOpen(false)}
                   />
 
-                  <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-dark-card rounded-lg shadow-dropdown dark:shadow-glass-dark border border-gray-200 dark:border-dark-border py-1 z-20 animate-fade-in">
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-dark-card rounded-xl shadow-dropdown dark:shadow-glass-dark border border-slate-200/90 dark:border-dark-border py-1.5 z-20 animate-fade-in">
                     {/* User info header */}
-                    <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-border">
-                      <div className="text-sm font-medium text-ink-base dark:text-slate-100">
+                    <div className="px-4 py-3 border-b border-slate-100 dark:border-dark-border/70">
+                      <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
                         {user?.ownerName || user?.name || "Owner"}
                       </div>
-                      <div className="text-xs text-ink-muted dark:text-slate-500 truncate">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
                         {user?.email ||
                           user?.email_address ||
                           user?.emailAddress ||
@@ -149,26 +149,26 @@ const TopNav = ({ onToggleSidebar, title = "Dashboard" }) => {
                         toggleDarkMode();
                         setOpen(false);
                       }}
-                      className="w-full text-left flex items-center justify-between px-4 py-2 text-sm text-ink-secondary dark:text-slate-300 hover:bg-surface-hover dark:hover:bg-dark-hover transition-colors duration-150"
+                      className="w-full text-left flex items-center justify-between px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-hover transition-colors duration-150"
                     >
                       <span className="flex items-center gap-3">
                         {isDarkMode ? (
-                          <Sun className="w-4 h-4" />
+                          <Sun className="w-4 h-4 text-amber-500" />
                         ) : (
-                          <Moon className="w-4 h-4" />
+                          <Moon className="w-4 h-4 text-indigo-500" />
                         )}
                         {isDarkMode ? "Light mode" : "Dark mode"}
                       </span>
                       {/* visual pill indicator */}
                       <span
-                        className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors duration-200 ${isDarkMode ? "bg-primary justify-end" : "bg-gray-200 justify-start"}`}
+                        className={`w-9 h-5 rounded-full flex items-center px-0.5 transition-colors duration-200 ${isDarkMode ? "bg-primary justify-end" : "bg-slate-300 justify-start"}`}
                       >
-                        <span className="w-3 h-3 rounded-full bg-white shadow-sm" />
+                        <span className="w-4 h-4 rounded-full bg-white shadow-xs" />
                       </span>
                     </button>
 
-                    <button className="w-full text-left flex items-center px-4 py-2 text-sm text-ink-secondary dark:text-slate-300 hover:bg-surface-hover dark:hover:bg-dark-hover transition-colors duration-150">
-                      <User className="w-4 h-4 mr-3" />
+                    <button className="w-full text-left flex items-center px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-hover transition-colors duration-150">
+                      <User className="w-4 h-4 mr-3 text-slate-400" />
                       Profile
                     </button>
 

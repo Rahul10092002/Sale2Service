@@ -209,13 +209,13 @@ const updateURL = (newState) => {
   const getPaymentStatusColor = (status) => {
     switch (status) {
       case "PAID":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+        return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60";
       case "PARTIAL":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+        return "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60";
       case "UNPAID":
-        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+        return "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+        return "bg-slate-100 text-slate-700 dark:bg-dark-subtle dark:text-slate-200 border border-slate-200/70 dark:border-dark-border";
     }
   };
   return (
@@ -702,7 +702,7 @@ const updateURL = (newState) => {
             ) : (
               <div className="">
                 {/* Desktop Header */}
-                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 text-gray-500 dark:text-slate-400 text-xs font-semibold bg-gray-200 dark:bg-dark-subtle p-4 rounded-t-lg">
+                <div className="hidden md:grid grid-cols-[60px_2fr_1fr_1fr_120px] gap-2 text-slate-700 dark:text-slate-200 text-xs font-bold bg-slate-100/90 dark:bg-dark-subtle/80 p-3.5 rounded-t-lg border-b border-slate-200 dark:border-dark-border">
                   <div>S No.</div>
                   <div>Invoice Details</div>
                   <div>Items</div>
@@ -1025,9 +1025,9 @@ const updateURL = (newState) => {
 
             {/* Pagination */}
             {pagination.total > 0 && (
-              <div className="px-4 sm:px-3 py-2 border-t border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-input rounded-b-lg">
+              <div className="px-4 sm:px-3 py-2.5 border-t border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-card rounded-b-lg">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-4 text-xs text-ink-muted dark:text-slate-400">
+                  <div className="flex items-center gap-4 text-xs font-medium text-slate-600 dark:text-slate-300">
                     <span>
                       Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                       {Math.min(
@@ -1037,11 +1037,11 @@ const updateURL = (newState) => {
                       of {pagination.total} invoices
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <span>Rows per page:</span>
+                      <span className="text-slate-500 dark:text-slate-400">Rows per page:</span>
                       <select
                         value={limit}
                         onChange={(e) => handleLimitChange(Number(e.target.value))}
-                        className="px-2 py-1 text-xs border border-gray-300 dark:border-dark-border rounded-md bg-white dark:bg-dark-input text-ink-base dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        className="px-2 py-1 text-xs border border-slate-300 dark:border-dark-border rounded-md bg-white dark:bg-dark-input text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                       >
                         <option value={10}>10</option>
                         <option value={20}>20</option>

@@ -130,9 +130,9 @@ export default function MobileInvoiceSummaryBar({
 
       {/* Slide-Up Navigation Drawer */}
       {showNavDrawer && (
-        <div className="fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 rounded-t-3xl px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl animate-in slide-in-from-bottom duration-250 border-t border-slate-200 dark:border-slate-800">
+        <div className="fixed bottom-0 left-0 right-0 z-[60] bg-white dark:bg-dark-card rounded-t-3xl px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl animate-in slide-in-from-bottom duration-250 border-t border-slate-200/90 dark:border-dark-border">
           {/* Grab Bar */}
-          <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
+          <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-3" />
 
           {/* Header */}
           <div className="flex justify-between items-center mb-3.5 px-1">
@@ -141,7 +141,7 @@ export default function MobileInvoiceSummaryBar({
                 <LayoutGrid className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   Navigate Pages
                 </h3>
                 <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
@@ -152,7 +152,7 @@ export default function MobileInvoiceSummaryBar({
             <button
               type="button"
               onClick={() => setShowNavDrawer(false)}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full bg-slate-100 dark:bg-slate-800 active:scale-95 transition-transform"
+              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full bg-slate-100 dark:bg-dark-subtle active:scale-95 transition-transform"
               aria-label="Close navigation drawer"
             >
               <X size={18} />
@@ -167,7 +167,7 @@ export default function MobileInvoiceSummaryBar({
                 setShowNavDrawer(false);
                 navigate(ROUTES.INVOICES);
               }}
-              className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs active:scale-95 transition-all"
+              className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-100 dark:bg-dark-subtle hover:bg-slate-200 dark:hover:bg-dark-hover text-slate-700 dark:text-slate-200 font-bold text-xs active:scale-95 transition-all border border-slate-200/60 dark:border-dark-border"
             >
               <ArrowLeft size={15} />
               <span>Back to Invoices List</span>
@@ -197,12 +197,12 @@ export default function MobileInvoiceSummaryBar({
                     setShowNavDrawer(false);
                     navigate(item.path);
                   }}
-                  className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 text-center active:scale-95 transition-all"
+                  className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-50 dark:bg-dark-subtle/80 hover:bg-slate-100 dark:hover:bg-dark-hover border border-slate-200/70 dark:border-dark-border text-center active:scale-95 transition-all"
                 >
                   <div className={`p-2 rounded-xl ${item.color}`}>
                     <Icon size={18} />
                   </div>
-                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 leading-tight truncate max-w-full">
+                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-tight truncate max-w-full">
                     {item.label}
                   </span>
                 </button>
@@ -215,7 +215,7 @@ export default function MobileInvoiceSummaryBar({
       {/* Floating/Sticky Action Bar Container */}
       <div
         ref={drawerRef}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200/80 dark:border-gray-800 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border-t border-slate-200/90 dark:border-dark-border shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-all duration-300"
         style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}
         role="region"
         aria-label="Mobile Invoice Actions"
@@ -250,9 +250,9 @@ export default function MobileInvoiceSummaryBar({
 
         {/* Expandable Slide-Up Breakdown Drawer */}
         {showDrawer && (
-          <div className="px-4 pt-2 pb-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50/95 dark:bg-dark-card/95 max-h-[70vh] overflow-y-auto space-y-3.5 animate-in slide-in-from-bottom duration-250">
+          <div className="px-4 pt-2.5 pb-3 border-b border-slate-200/80 dark:border-dark-border bg-slate-50/95 dark:bg-dark-card/95 max-h-[70vh] overflow-y-auto space-y-3.5 animate-in slide-in-from-bottom duration-250">
             {/* Grab Handle */}
-            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto" />
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto" />
 
             <div className="flex items-center justify-between pt-1">
               <div className="flex items-center gap-2">
@@ -260,10 +260,10 @@ export default function MobileInvoiceSummaryBar({
                   <Calculator className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-gray-900 dark:text-slate-100 uppercase tracking-wide">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wide">
                     Invoice Breakdown
                   </h4>
-                  <span className="text-[10px] text-gray-500 dark:text-slate-400">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                     {items.length} item{items.length === 1 ? "" : "s"} included
                   </span>
                 </div>
@@ -271,7 +271,7 @@ export default function MobileInvoiceSummaryBar({
               <button
                 type="button"
                 onClick={() => setShowDrawer(false)}
-                className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-200/50 dark:hover:bg-gray-800"
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-dark-hover"
                 aria-label="Close summary breakdown"
               >
                 <ChevronDown className="w-5 h-5" />
@@ -279,17 +279,17 @@ export default function MobileInvoiceSummaryBar({
             </div>
 
             {/* Detailed Calculation Rows */}
-            <div className="space-y-2.5 text-xs font-medium bg-white dark:bg-dark-bg p-3 rounded-xl border border-gray-200/70 dark:border-dark-border">
-              <div className="flex justify-between items-center text-gray-600 dark:text-slate-300">
+            <div className="space-y-2.5 text-xs font-medium bg-white dark:bg-dark-subtle p-3.5 rounded-xl border border-slate-200/80 dark:border-dark-border">
+              <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
                 <span>Subtotal</span>
-                <span className="font-semibold text-gray-900 dark:text-slate-100">
+                <span className="font-bold text-slate-900 dark:text-slate-100">
                   {formatCurrency(invoice.subtotal)}
                 </span>
               </div>
 
               {/* Quick Discount Input */}
-              <div className="flex justify-between items-center gap-3 pt-1 border-t border-dashed border-gray-200 dark:border-gray-800">
-                <span className="text-gray-600 dark:text-slate-300 flex items-center gap-1">
+              <div className="flex justify-between items-center gap-3 pt-1 border-t border-dashed border-slate-200 dark:border-dark-border/80">
+                <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium">
                   <Percent className="w-3 h-3 text-amber-600" />
                   Discount (₹)
                 </span>
@@ -311,14 +311,14 @@ export default function MobileInvoiceSummaryBar({
                     }}
                     onBlur={() => setRawDiscount(null)}
                     placeholder="0.00"
-                    className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-dark-border dark:bg-dark-input rounded-lg font-bold text-xs text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 dark:border-dark-border bg-white dark:bg-dark-input text-slate-800 dark:text-slate-100 rounded-lg font-bold text-xs text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
 
               {/* Old Item / Battery Exchange Input */}
-              <div className="flex justify-between items-center gap-3 pt-1 border-t border-dashed border-gray-200 dark:border-gray-800">
-                <span className="text-gray-600 dark:text-slate-300 flex items-center gap-1">
+              <div className="flex justify-between items-center gap-3 pt-1 border-t border-dashed border-slate-200 dark:border-dark-border/80">
+                <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium">
                   <Receipt className="w-3 h-3 text-amber-600" />
                   Old Item / Exchange (₹)
                 </span>
@@ -341,13 +341,13 @@ export default function MobileInvoiceSummaryBar({
                     }}
                     onBlur={() => setLocalRawOldItem(null)}
                     placeholder="0.00"
-                    className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-dark-border dark:bg-dark-input rounded-lg font-bold text-xs text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 dark:border-dark-border bg-white dark:bg-dark-input text-slate-800 dark:text-slate-100 rounded-lg font-bold text-xs text-right focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
 
               {/* Tax Settings */}
-              <div className="flex justify-between items-center text-gray-600 dark:text-slate-300 pt-1 border-t border-dashed border-gray-200 dark:border-gray-800">
+              <div className="flex justify-between items-center text-slate-600 dark:text-slate-300 pt-1 border-t border-dashed border-slate-200 dark:border-dark-border/80">
                 <div className="flex items-center gap-2">
                   <span>GST Tax (18%)</span>
                   <button
@@ -363,7 +363,7 @@ export default function MobileInvoiceSummaryBar({
                     {invoice.is_tax_inclusive !== false ? "Inclusive" : "Exclusive"}
                   </button>
                 </div>
-                <span className="font-semibold text-gray-900 dark:text-slate-100">
+                <span className="font-bold text-slate-900 dark:text-slate-100">
                   {formatCurrency(invoice.tax)}
                 </span>
               </div>
@@ -469,7 +469,7 @@ export default function MobileInvoiceSummaryBar({
               setShowDrawer(false);
               setShowNavDrawer(true);
             }}
-            className="flex flex-col items-center justify-center px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all shrink-0 min-w-[50px] h-[46px] border border-slate-200/80 dark:border-slate-700"
+            className="flex flex-col items-center justify-center px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-dark-subtle text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-dark-hover active:scale-95 transition-all shrink-0 min-w-[50px] h-[46px] border border-slate-200/80 dark:border-dark-border"
             title="Navigate to other pages"
             aria-label="Navigate to other pages"
           >
@@ -484,15 +484,15 @@ export default function MobileInvoiceSummaryBar({
               setShowNavDrawer(false);
               setShowDrawer((prev) => !prev);
             }}
-            className="flex items-center gap-1.5 sm:gap-2 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800/80 active:scale-95 transition-all focus:outline-none min-w-0"
+            className="flex items-center gap-1.5 sm:gap-2 p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-dark-subtle active:scale-95 transition-all focus:outline-none min-w-0"
             aria-expanded={showDrawer}
             aria-label="Toggle invoice summary breakdown"
           >
-            <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/50">
+            <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/60">
               <Calculator className="w-4 h-4" />
             </div>
             <div className="text-left truncate">
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-semibold leading-none flex items-center gap-1">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold leading-none flex items-center gap-1">
                 <span>{items.length} Item{items.length === 1 ? "" : "s"}</span>
                 {invoice.use_advance_wallet && (invoice.advance_amount_used || 0) > 0 && (
                   <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-extrabold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800">
@@ -517,7 +517,7 @@ export default function MobileInvoiceSummaryBar({
                   }`}
                 />
               </span>
-              <strong className="text-xs sm:text-sm font-extrabold text-gray-900 dark:text-slate-100 leading-tight block truncate">
+              <strong className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 leading-tight block truncate">
                 {formatCurrency(invoice.total_amount)}
               </strong>
             </div>

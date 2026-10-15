@@ -12,20 +12,21 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
 
     <!-- Dynamic PWA Theme Colors -->
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f0f2f5" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172a" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0f19" />
 
     <!-- Prevent dark mode flash -->
     <script>
       (function () {
-        const savedTheme = localStorage.getItem("theme");
-        const hasSystemDarkMode = window.matchMedia(
-          "(prefers-color-scheme: dark)",
-        ).matches;
-
-        if (savedTheme === "dark" || (!savedTheme && hasSystemDarkMode)) {
-          document.documentElement.classList.add("dark");
-        }
+        try {
+          const savedTheme = localStorage.getItem("theme");
+          const hasSystemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (savedTheme === "dark" || (!savedTheme && hasSystemDark)) {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
+        } catch (_) {}
       })();
     </script>
   </head>

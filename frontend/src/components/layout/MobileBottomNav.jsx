@@ -92,7 +92,7 @@ export default function MobileBottomNav() {
       {/* PWA Mobile Bottom Navigation Bar */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] px-1 pt-1 pb-[calc(0.35rem+env(safe-area-inset-bottom,0px))] flex items-center justify-between"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border-t border-slate-200/90 dark:border-dark-border shadow-[0_-4px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)] px-1 pt-1 pb-[calc(0.35rem+env(safe-area-inset-bottom,0px))] flex items-center justify-between"
       >
         {filteredItems.map((item) => {
           const Icon = item.icon;
@@ -110,8 +110,8 @@ export default function MobileBottomNav() {
               <div
                 className={`relative flex items-center justify-center w-9 sm:w-10 h-6.5 sm:h-7 rounded-full transition-all duration-200 ${
                   isActive
-                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                    : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+                    ? "bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400"
+                    : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200"
                 }`}
               >
                 <Icon size={18} strokeWidth={isActive ? 2.4 : 1.8} />
@@ -123,7 +123,7 @@ export default function MobileBottomNav() {
                 className={`text-[9px] sm:text-[10px] leading-tight mt-0.5 tracking-tight text-center truncate max-w-full px-0.5 transition-colors duration-150 ${
                   isActive
                     ? "text-blue-600 dark:text-blue-400 font-bold"
-                    : "text-slate-500 dark:text-slate-400 font-medium"
+                    : "text-slate-600 dark:text-slate-300 font-medium"
                 }`}
               >
                 {item.label}
@@ -143,8 +143,8 @@ export default function MobileBottomNav() {
             <div
               className={`relative flex items-center justify-center w-9 sm:w-10 h-6.5 sm:h-7 rounded-full transition-all duration-200 ${
                 isMoreActive
-                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                  : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+                  ? "bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400"
+                  : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200"
               }`}
             >
               <MoreHorizontal size={18} strokeWidth={isMoreActive ? 2.4 : 1.8} />
@@ -156,7 +156,7 @@ export default function MobileBottomNav() {
               className={`text-[9px] sm:text-[10px] leading-tight mt-0.5 tracking-tight text-center truncate max-w-full px-0.5 transition-colors duration-150 ${
                 isMoreActive
                   ? "text-blue-600 dark:text-blue-400 font-bold"
-                  : "text-slate-500 dark:text-slate-400 font-medium"
+                  : "text-slate-600 dark:text-slate-300 font-medium"
               }`}
             >
               More
@@ -173,7 +173,7 @@ export default function MobileBottomNav() {
             onClick={() => setShowDrawer(false)}
           />
 
-          <div className="fixed bottom-0 left-0 right-0 z-[70] bg-white dark:bg-slate-900 rounded-t-3xl px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl animate-in slide-in-from-bottom duration-250 border-t border-slate-200 dark:border-slate-800">
+          <div className="fixed bottom-0 left-0 right-0 z-[70] bg-white dark:bg-dark-card rounded-t-3xl px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl animate-in slide-in-from-bottom duration-250 border-t border-slate-200 dark:border-dark-border">
             {/* Grab Bar */}
             <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
 

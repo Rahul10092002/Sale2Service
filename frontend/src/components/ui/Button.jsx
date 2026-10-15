@@ -10,27 +10,27 @@ import clsx from 'clsx';
 
 const variants = {
   primary:
-    'bg-primary text-white shadow-card hover:bg-primary-hover hover:shadow-card-hover hover:-translate-y-px active:translate-y-0',
+    'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow active:scale-[0.98] font-semibold',
   secondary:
-    'bg-white dark:bg-dark-input text-ink-base dark:text-slate-100 border border-gray-200 dark:border-dark-border hover:bg-surface-hover dark:hover:bg-dark-hover',
+    'bg-white dark:bg-dark-input text-slate-800 dark:text-slate-100 border border-slate-300/80 dark:border-dark-border hover:bg-slate-50 dark:hover:bg-dark-hover shadow-xs active:scale-[0.98] font-medium',
   danger:
-    'bg-danger/10 text-danger hover:bg-danger/20',
+    'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-200/70 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/60 active:scale-[0.98] font-medium',
   ghost:
-    'bg-transparent text-ink-secondary hover:bg-gray-100 dark:hover:bg-dark-subtle',
+    'bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-subtle hover:text-slate-900 dark:hover:text-white font-medium',
   success:
-    'bg-success text-white hover:opacity-90',
+    'bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-700 dark:hover:bg-emerald-600 shadow-sm active:scale-[0.98] font-semibold',
   outline:
-    'border-2 border-primary text-primary hover:bg-primary-light focus:ring-primary/30',
+    'border border-primary text-primary dark:text-primary-dark dark:border-primary-dark/80 hover:bg-primary/5 dark:hover:bg-primary/15 focus:ring-primary/30 font-medium',
   gradient:
-    'bg-gradient-to-r from-primary to-success text-white hover:opacity-90 shadow-card hover:shadow-card-hover',
+    'bg-gradient-to-r from-blue-600 to-emerald-600 text-white hover:opacity-95 shadow-sm active:scale-[0.98] font-semibold',
 };
 
 const sizes = {
-  xs: 'px-2 py-1 text-xs gap-1',
-  sm: 'px-3 py-2 text-sm gap-1.5',
-  md: 'px-5 py-2.5 text-base gap-2',
-  lg: 'px-6 py-3 text-lg gap-2.5',
-  xl: 'px-8 py-4 text-xl gap-3',
+  xs: 'px-2.5 py-1 text-xs gap-1',
+  sm: 'px-3 py-1.5 text-sm gap-1.5',
+  md: 'px-4 py-2 text-sm sm:text-base gap-2',
+  lg: 'px-5 py-2.5 text-base gap-2.5',
+  xl: 'px-7 py-3.5 text-lg gap-3',
 };
 
 export function Button({
@@ -52,12 +52,12 @@ export function Button({
       onClick={onClick}
       disabled={isDisabled}
       className={clsx(
-        'inline-flex items-center justify-center font-sans font-medium rounded',
+        'inline-flex items-center justify-center font-sans rounded-lg',
         'border-none cursor-pointer transition-all duration-150',
-        'focus:outline-none focus:ring-2 focus:ring-offset-1',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2',
         sizes[size],
         variants[variant],
-        isDisabled && 'opacity-60 cursor-not-allowed translate-y-0 shadow-none pointer-events-none',
+        isDisabled && 'opacity-60 cursor-not-allowed shadow-none pointer-events-none active:scale-100',
         className,
       )}
       {...props}

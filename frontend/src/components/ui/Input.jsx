@@ -21,7 +21,7 @@ const Input = forwardRef(
     return (
       <div className={clsx("w-full", className)}>
         {label && (
-          <label className="block text-xs font-medium text-ink-secondary dark:text-slate-300 mb-1">
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
             {label}
             {required && <span className="text-danger ml-1">*</span>}
           </label>
@@ -38,12 +38,12 @@ const Input = forwardRef(
           data-error={Boolean(error)}
           aria-invalid={Boolean(error)}
           className={clsx(
-            // ✅ MATCH SELECT FIELD EXACTLY
-            "w-full h-9 sm:h-8 px-3 rounded-lg text-sm sm:text-xs",
-            "border border-gray-300 dark:border-dark-border",
+            // MATCH SELECT FIELD EXACTLY
+            "w-full h-9 sm:h-8 px-3 rounded-lg text-sm sm:text-xs font-medium",
+            "border border-slate-300/90 dark:border-dark-border",
             "bg-white dark:bg-dark-input",
-            "text-ink-base dark:text-slate-100",
-            "placeholder:text-ink-muted dark:placeholder:text-slate-500",
+            "text-slate-900 dark:text-slate-50",
+            "placeholder:text-slate-400 dark:placeholder:text-slate-400",
 
             // focus
             "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
@@ -52,7 +52,7 @@ const Input = forwardRef(
             // states
             error && "border-danger focus:ring-danger/20 focus:border-danger",
             disabled &&
-              "bg-surface-subtle dark:bg-dark-subtle opacity-70 cursor-not-allowed",
+              "bg-slate-100 dark:bg-dark-subtle opacity-70 cursor-not-allowed",
             inputClassName
           )}
           {...props}

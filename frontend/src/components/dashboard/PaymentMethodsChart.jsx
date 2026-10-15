@@ -9,20 +9,20 @@ import {
 } from "recharts";
 
 /**
- * Custom Tooltip Component
+ * Custom Tooltip Component with dark mode support
  */
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-3 rounded shadow-lg border border-gray-200">
-        <p className="text-sm font-medium text-gray-900">{payload[0].name}</p>
+      <div className="bg-white dark:bg-dark-card p-3 rounded-xl shadow-lg border border-slate-200 dark:border-dark-border">
+        <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">{payload[0].name}</p>
         <p
-          className="text-sm font-semibold"
+          className="text-sm font-bold mt-0.5"
           style={{ color: payload[0].payload.color }}
         >
           ₹{payload[0].value.toLocaleString("en-IN")}
         </p>
-        <p className="text-xs text-gray-500">
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
           {payload[0].payload.count} transaction
           {payload[0].payload.count > 1 ? "s" : ""}
         </p>
@@ -34,16 +34,16 @@ const CustomTooltip = ({ active, payload }) => {
 
 /**
  * PaymentMethodsChart Component
- * Displays payment method distribution using a donut chart
+ * Displays payment method distribution using a donut chart with dual-theme readability
  */
 const PaymentMethodsChart = ({ data, height = 300 }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 min-w-0 overflow-hidden">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+      <div className="bg-white dark:bg-dark-card rounded-xl shadow-xs border border-slate-200/90 dark:border-dark-border p-4 sm:p-6 min-w-0 overflow-hidden">
+        <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 mb-4">
           Payment Methods
         </h3>
-        <div className="flex items-center justify-center h-64 text-gray-400">
+        <div className="flex items-center justify-center h-64 text-slate-400 dark:text-slate-500 text-xs sm:text-sm">
           No data available
         </div>
       </div>
@@ -75,8 +75,8 @@ const PaymentMethodsChart = ({ data, height = 300 }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 min-w-0 overflow-hidden">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+    <div className="bg-white dark:bg-dark-card rounded-xl shadow-xs border border-slate-200/90 dark:border-dark-border p-4 sm:p-6 min-w-0 overflow-hidden">
+      <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 mb-4">
         Payment Methods
       </h3>
       <ResponsiveContainer width="100%" height={height}>
@@ -97,7 +97,7 @@ const PaymentMethodsChart = ({ data, height = 300 }) => {
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
-          <Legend />
+          <Legend wrapperStyle={{ paddingTop: "8px", fontSize: "12px" }} />
         </PieChart>
       </ResponsiveContainer>
     </div>

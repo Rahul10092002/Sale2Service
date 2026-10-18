@@ -15,27 +15,80 @@ import { calculateCustomersLedgerSummary } from "../controllers/customerControll
  * Provides aggregated data for dashboard metrics and insights using MongoDB Aggregation Pipelines
  */
 
+// India Standard Time offset: UTC+5:30
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+const getISTDayStartUTC = (daysOffset = 0) => {
+  const nowIST = Date.now() + IST_OFFSET_MS;
+  const istMidnightMs = nowIST - (nowIST % (24 * 60 * 60 * 1000));
+  return new Date(
+    istMidnightMs + daysOffset * 24 * 60 * 60 * 1000 - IST_OFFSET_MS,
+  );
+};
+
 /**
- * Get date range based on period
+ * Get date range based on period with IST boundaries and comparison period.
+ * Supports:
+ * - "today": Current IST calendar day (00:00:00 to 23:59:59 IST). Comparison: Yesterday.
+ * - "week": Current calendar week (Monday 00:00:00 IST to Sunday 23:59:59 IST / Next Monday 00:00:00 IST). Comparison: Previous week.
+ * - "month": Current calendar month (1st of month 00:00:00 IST to last day of month / 1st of next month 00:00:00 IST). Comparison: Previous month.
+ * - "7d": Rolling last 7 days. Comparison: Preceding 7 days.
+ * - "30d": Rolling last 30 days. Comparison: Preceding 30 days.
  */
 const getDateRange = (period) => {
-  const todayRange = createDateRange(0);
-  
+  const nowIST = new Date(Date.now() + IST_OFFSET_MS);
+  const year = nowIST.getUTCFullYear();
+  const month = nowIST.getUTCMonth();
+  const dayOfWeek = nowIST.getUTCDay(); // 0 = Sunday, 1 = Monday, ...
+
   switch (period) {
-    case "today":
-      return todayRange;
-    case "week":
-      return {
-        start: todayRange.start,
-        end: createDateRange(7).end,
-      };
-    case "month":
-      return {
-        start: todayRange.start,
-        end: createDateRange(30).end,
-      };
-    default:
-      return todayRange;
+    case "today": {
+      const start = getISTDayStartUTC(0);
+      const end = getISTDayStartUTC(1);
+      const prevStart = getISTDayStartUTC(-1);
+      const prevEnd = start;
+      return { start, end, prevStart, prevEnd };
+    }
+    case "week": {
+      // Monday is start of the week: (dayOfWeek + 6) % 7 days ago
+      const daysSinceMonday = (dayOfWeek + 6) % 7;
+      const start = getISTDayStartUTC(-daysSinceMonday);
+      const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const prevStart = new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const prevEnd = start;
+      return { start, end, prevStart, prevEnd };
+    }
+    case "month": {
+      // 1st of current month in IST
+      const start = new Date(Date.UTC(year, month, 1) - IST_OFFSET_MS);
+      // 1st of next month in IST
+      const end = new Date(Date.UTC(year, month + 1, 1) - IST_OFFSET_MS);
+      // 1st of previous month in IST
+      const prevStart = new Date(Date.UTC(year, month - 1, 1) - IST_OFFSET_MS);
+      const prevEnd = start;
+      return { start, end, prevStart, prevEnd };
+    }
+    case "7d": {
+      const start = getISTDayStartUTC(-6);
+      const end = getISTDayStartUTC(1);
+      const prevStart = getISTDayStartUTC(-13);
+      const prevEnd = getISTDayStartUTC(-6);
+      return { start, end, prevStart, prevEnd };
+    }
+    case "30d": {
+      const start = getISTDayStartUTC(-29);
+      const end = getISTDayStartUTC(1);
+      const prevStart = getISTDayStartUTC(-59);
+      const prevEnd = getISTDayStartUTC(-29);
+      return { start, end, prevStart, prevEnd };
+    }
+    default: {
+      const start = getISTDayStartUTC(0);
+      const end = getISTDayStartUTC(1);
+      const prevStart = getISTDayStartUTC(-1);
+      const prevEnd = start;
+      return { start, end, prevStart, prevEnd };
+    }
   }
 };
 
@@ -43,7 +96,7 @@ const getDateRange = (period) => {
  * Get revenue statistics
  */
 export const getRevenueStats = async (shopId, period = "today") => {
-  const { start, end } = getDateRange(period);
+  const { start, end, prevStart, prevEnd } = getDateRange(period);
   const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
   // Current period revenue
@@ -65,10 +118,6 @@ export const getRevenueStats = async (shopId, period = "today") => {
   ]);
 
   // Previous period for comparison
-  const periodLength = end - start;
-  const prevStart = new Date(start.getTime() - periodLength);
-  const prevEnd = start;
-
   const previousRevenue = await Invoice.aggregate([
     {
       $match: {
@@ -91,6 +140,8 @@ export const getRevenueStats = async (shopId, period = "today") => {
   const change =
     previous.total > 0
       ? ((current.total - previous.total) / previous.total) * 100
+      : current.total > 0
+      ? 100
       : 0;
 
   return {

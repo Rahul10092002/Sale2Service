@@ -131,7 +131,7 @@ const Dashboard = () => {
                   <MetricCard
                     title="Invoices"
                     value={summary.invoices?.total || 0}
-                    subtitle={`${summary.invoices?.paid?.count || 0} paid, ${summary.invoices?.unpaid?.count || 0} unpaid`}
+                    subtitle={`${summary.invoices?.paid?.count || 0} paid${summary.invoices?.partial?.count ? `, ${summary.invoices.partial.count} partial` : ""}, ${summary.invoices?.unpaid?.count || 0} unpaid`}
                     icon={FileText}
                     color="purple"
                     onClick={() => navigate(ROUTES.INVOICES)}

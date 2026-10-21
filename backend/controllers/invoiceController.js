@@ -1598,11 +1598,34 @@ export default class InvoiceController {
       // ---------------- SEARCH RESOLUTION (INDEX-SAFE) ----------------
       if (search && search.trim()) {
         const searchTrimmed = search.trim();
-        const regex = new RegExp(searchTrimmed, "i");
+        const escapedSearch = searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(escapedSearch, "i");
         const searchNumber = Number(searchTrimmed);
         const isNumber = !isNaN(searchNumber);
         const searchDate = new Date(searchTrimmed);
         const isValidDate = !isNaN(searchDate.getTime());
+
+        // Extract clean digits for phone numbers (handles +91, dashes, spaces, 10-digit formats)
+        const cleanDigits = searchTrimmed.replace(/\D/g, "");
+        const phoneRegexList = [regex];
+        if (cleanDigits.length >= 3) {
+          phoneRegexList.push(new RegExp(cleanDigits, "i"));
+          if (cleanDigits.length >= 10) {
+            phoneRegexList.push(new RegExp(cleanDigits.slice(-10), "i"));
+          }
+        }
+
+        const buildPhoneConditions = () => {
+          const conditions = [];
+          for (const pRegex of phoneRegexList) {
+            conditions.push(
+              { whatsapp_number: pRegex },
+              { alternate_phone: pRegex },
+              { phone: pRegex },
+            );
+          }
+          return conditions;
+        };
 
         if (search_in === "invoice_number") {
           match.invoice_number = regex;
@@ -1613,11 +1636,16 @@ export default class InvoiceController {
             full_name: regex,
           });
           match.customer_id = { $in: customerIds };
-        } else if (search_in === "whatsapp_number") {
+        } else if (
+          search_in === "whatsapp_number" ||
+          search_in === "phone" ||
+          search_in === "alternate_phone" ||
+          search_in === "alternate_number"
+        ) {
           const customerIds = await Customer.distinct("_id", {
             shop_id: match.shop_id,
             deleted_at: null,
-            $or: [{ whatsapp_number: regex }, { phone: regex }, { alternate_phone: regex }],
+            $or: buildPhoneConditions(),
           });
           match.customer_id = { $in: customerIds };
         } else if (search_in === "product_name") {
@@ -1650,8 +1678,7 @@ export default class InvoiceController {
               deleted_at: null,
               $or: [
                 { full_name: regex },
-                { whatsapp_number: regex },
-                { phone: regex },
+                ...buildPhoneConditions(),
                 { email: regex },
               ],
             }),
@@ -2098,12 +2125,31 @@ export default class InvoiceController {
         });
       }
 
-      const regex = new RegExp(searchTerm, "i");
+      const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escapedTerm, "i");
+      const cleanDigits = searchTerm.replace(/\D/g, "");
+      const phoneRegexList = [regex];
+      if (cleanDigits.length >= 3) {
+        phoneRegexList.push(new RegExp(cleanDigits, "i"));
+        if (cleanDigits.length >= 10) {
+          phoneRegexList.push(new RegExp(cleanDigits.slice(-10), "i"));
+        }
+      }
+
+      const phoneConditions = [];
+      for (const pRegex of phoneRegexList) {
+        phoneConditions.push(
+          { whatsapp_number: pRegex },
+          { alternate_phone: pRegex },
+          { phone: pRegex },
+        );
+      }
+
       const customers = await Customer.find({
         shop_id: user.shopId,
         deleted_at: null,
         $or: [
-          { whatsapp_number: regex },
+          ...phoneConditions,
           { first_name: regex },
           { last_name: regex },
           { full_name: regex },

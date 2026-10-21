@@ -74,12 +74,32 @@ export const getCustomers = async (req, res) => {
     };
 
     if (search && search.trim()) {
-      const regex = new RegExp(search.trim(), "i");
+      const searchTrimmed = search.trim();
+      const escapedSearch = searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escapedSearch, "i");
+      const cleanDigits = searchTrimmed.replace(/\D/g, "");
+      const phoneRegexList = [regex];
+      if (cleanDigits.length >= 3) {
+        phoneRegexList.push(new RegExp(cleanDigits, "i"));
+        if (cleanDigits.length >= 10) {
+          phoneRegexList.push(new RegExp(cleanDigits.slice(-10), "i"));
+        }
+      }
+
+      const phoneConditions = [];
+      for (const pRegex of phoneRegexList) {
+        phoneConditions.push(
+          { whatsapp_number: pRegex },
+          { alternate_phone: pRegex },
+          { phone: pRegex },
+        );
+      }
+
       matchQuery.$or = [
         { first_name: regex },
         { last_name: regex },
         { full_name: regex },
-        { whatsapp_number: regex },
+        ...phoneConditions,
         { email: regex },
       ];
     }

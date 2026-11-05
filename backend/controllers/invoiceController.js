@@ -18,6 +18,7 @@ import {
 import { validateInvoicePayload } from "../utils/invoiceValidation.js";
 import { schedulePdfAndWhatsappRetry, tempPdfRetryStore } from "../services/invoicePdfRetryService.js";
 import { PaymentService } from "../services/paymentService.js";
+import { PaymentReminderService } from "../services/paymentReminderService.js";
 
 const getNextInvoiceSequence = async (shopId, datePart, session) => {
   const counter = await InvoiceCounter.findOneAndUpdate(
@@ -1088,20 +1089,20 @@ export default class InvoiceController {
 
   /**
    * Send payment reminder via WhatsApp for an unpaid/partial invoice
+   * Dispatches a consolidated customer-level reminder based on authoritative ledger balance.
    * POST /invoices/:id/send-payment-reminder
    */
   async sendPaymentReminder(req, res) {
     try {
       const { id } = req.params;
       const { user } = req;
+      const { force } = req.body || {};
 
       const invoice = await Invoice.findOne({
         _id: id,
         shop_id: user.shopId,
         deleted_at: null,
-      })
-        .populate("customer_id")
-        .populate("invoice_items");
+      });
 
       if (!invoice) {
         return res
@@ -1117,104 +1118,29 @@ export default class InvoiceController {
         });
       }
 
-      const shop = await Shop.findById(user.shopId);
-      if (!shop || shop.deleted_at) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Shop not found" });
-      }
-
-      const customer = invoice.customer_id;
-      if (!customer) {
+      if (!invoice.customer_id) {
         return res.status(400).json({
           success: false,
           message: "Customer not found for this invoice",
         });
       }
 
-      const { formatPhoneNumber, isValidWhatsAppNumber, formatDateForMessage } =
-        await import("../scheduler/core/utils.js");
+      const result = await PaymentReminderService.sendCustomerPaymentReminder({
+        shopId: user.shopId,
+        customerId: invoice.customer_id,
+        isManual: true,
+        force: Boolean(force || req.query?.force),
+        recordedBy: user.userId || user._id,
+      });
 
-      const phoneNumber = formatPhoneNumber(customer.whatsapp_number);
-      if (!phoneNumber || !isValidWhatsAppNumber(phoneNumber)) {
-        return res.status(400).json({
-          success: false,
-          message: "Customer does not have a valid WhatsApp number",
-        });
-      }
-
-      // Template variables matching payment_reminders template (7 params):
-      // {{1}}: Customer name, {{2}}: Pending amount, {{3}}: Invoice number,
-      // {{4}}: Product serial number, {{5}}: Due date, {{6}}: Shop contact info, {{7}}: Shop name
-      const serialNumber = invoice.invoice_items?.[0]?.serial_number || "N/A";
-      const shopContact = formatPhoneNumber(shop?.phone) || "";
-      const customerName = customer.full_name || invoice.customer_name || "";
-
-      // Determine if invoice is overdue (past due date)
-      const isOverdue =
-        invoice.due_date && new Date() > new Date(invoice.due_date);
-      const templateName = isOverdue ? "payment_missed" : "payment_reminders";
-
-      let vars;
-      if (templateName === "payment_missed") {
-        // payment_missed template variables:
-        // {{1}}: Customer name, {{2}}: Pending amount, {{3}}: Due date (missed date),
-        // {{4}}: Invoice number, {{5}}: Product serial number,
-        // {{6}}: Shop contact info, {{7}}: Shop name
-        vars = {
-          1: customerName,
-          2:
-            typeof invoice.amount_due === "number"
-              ? invoice.amount_due.toFixed(2)
-              : String(invoice.amount_due || "0"),
-          3: formatDateForMessage(invoice.due_date),
-          4: invoice.invoice_number || "N/A",
-          5: serialNumber,
-          6: shopContact,
-          7: shop.shop_name_hi || shop.shop_name || "",
-        };
-      } else {
-        // payment_reminders template variables:
-        // {{1}}: Customer name, {{2}}: Pending amount, {{3}}: Invoice number,
-        // {{4}}: Product serial number, {{5}}: Due date,
-        // {{6}}: Shop contact info, {{7}}: Shop name
-        vars = {
-          1: customerName,
-          2:
-            typeof invoice.amount_due === "number"
-              ? invoice.amount_due.toFixed(2)
-              : String(invoice.amount_due || "0"),
-          3: invoice.invoice_number || "N/A",
-          4: serialNumber,
-          5: formatDateForMessage(invoice.due_date),
-          6: shopContact,
-          7: shop.shop_name_hi || shop.shop_name || "",
-        };
-      }
-
-      const msgConfig = {
-        templateName: templateName,
-        to: phoneNumber,
-        components: vars,
-        buttons: [{ subtype: "url", value: shopContact }],
-        campaignName: templateName,
-        hospitalId: shop._id,
-        userName: customer.full_name || "",
-        messageType: templateName,
-      };
-
-      const sendResp = await sendWhatsappMessageViaMSG91(msgConfig);
-
-      if (!sendResp) {
-        return res
-          .status(500)
-          .json({ success: false, message: "Failed to send payment reminder" });
+      if (!result.success) {
+        return res.status(400).json(result);
       }
 
       return res.json({
         success: true,
-        message: "Payment reminder sent via WhatsApp",
-        data: sendResp,
+        message: result.message || "Payment reminder sent via WhatsApp",
+        data: result.data || result,
       });
     } catch (error) {
       console.error("sendPaymentReminder error:", error);

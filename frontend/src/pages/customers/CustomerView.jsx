@@ -38,6 +38,7 @@ import {
   Smartphone,
   ExternalLink,
   Plus,
+  Bell,
 } from "lucide-react";
 import {
   useGetCustomerByIdQuery,
@@ -46,6 +47,7 @@ import {
   useDeleteCustomerMutation,
   useRecordCustomerPaymentMutation,
   useReversePaymentMutation,
+  useSendCustomerPaymentReminderMutation,
 } from "../../features/customers/customerApi.js";
 import { useGetCurrentUserQuery } from "../../features/auth/authApi.js";
 import Button from "../../components/ui/Button.jsx";
@@ -132,6 +134,8 @@ const CustomerView = () => {
     useRecordCustomerPaymentMutation();
   const [reversePayment, { isLoading: isReversingPayment }] =
     useReversePaymentMutation();
+  const [sendReminderMutation, { isLoading: isSendingReminder }] =
+    useSendCustomerPaymentReminderMutation();
 
   const customer = customerResp?.customer;
   const invoices = customerResp?.invoices || [];
@@ -320,6 +324,29 @@ const CustomerView = () => {
     window.print();
   };
 
+  const handleSendPaymentReminder = async () => {
+    if (!customer) return;
+    try {
+      const res = await sendReminderMutation({ id: customer._id }).unwrap();
+      dispatch(
+        showToast({
+          message: res?.message || "Payment reminder sent via WhatsApp",
+          type: "success",
+        })
+      );
+      refetchLedger();
+    } catch (err) {
+      console.error("sendReminder error:", err);
+      dispatch(
+        showToast({
+          message:
+            err?.data?.message || err?.message || "Failed to send payment reminder",
+          type: "error",
+        })
+      );
+    }
+  };
+
   const clearLedgerFilters = () => {
     setLedgerStartDate("");
     setLedgerEndDate("");
@@ -422,6 +449,18 @@ const CustomerView = () => {
                 className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs py-2 sm:py-1.5 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800"
               >
                 <Share2 className="w-3.5 h-3.5 text-emerald-600" /> Share Statement
+              </Button>
+            )}
+            {customer?.whatsapp_number && (ledgerSummary.total_due > 0 || overdueAmount > 0) && canEdit("customers") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendPaymentReminder}
+                disabled={isSendingReminder}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs py-2 sm:py-1.5 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800"
+              >
+                <Bell className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                {isSendingReminder ? "Sending..." : "Send Reminder"}
               </Button>
             )}
             {canEdit("customers") && (

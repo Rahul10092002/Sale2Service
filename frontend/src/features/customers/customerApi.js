@@ -128,6 +128,18 @@ export const customerApi = baseApi.injectEndpoints({
       keepUnusedDataFor: 120,
       transformResponse: (response) => response.data,
     }),
+
+    sendCustomerPaymentReminder: builder.mutation({
+      query: ({ id, category, force }) => ({
+        url: `/customers/${id}/send-payment-reminder`,
+        method: "POST",
+        body: { category, force },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Customer", id: `${id}-LEDGER` },
+      ],
+      transformResponse: (response) => response,
+    }),
   }),
   overrideExisting: false,
 });
@@ -145,4 +157,5 @@ export const {
   useDeleteCustomerMutation,
   useRecordCustomerPaymentMutation,
   useReversePaymentMutation,
+  useSendCustomerPaymentReminderMutation,
 } = customerApi;

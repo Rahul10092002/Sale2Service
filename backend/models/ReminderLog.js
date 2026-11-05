@@ -21,6 +21,29 @@ const reminderLogSchema = new mongoose.Schema(
       enum: ["INVOICE", "PRODUCT", "SERVICE", "CUSTOMER"],
       required: true,
     },
+    customer_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Customer",
+    },
+    reminder_category: {
+      type: String,
+      enum: ["UPCOMING", "OVERDUE"],
+    },
+    invoice_count: {
+      type: Number,
+    },
+    outstanding_amount: {
+      type: Number,
+    },
+    due_date: {
+      type: Date,
+    },
+    invoice_ids: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Invoice",
+      },
+    ],
     shop_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Shop",

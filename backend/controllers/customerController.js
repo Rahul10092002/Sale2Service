@@ -9,6 +9,7 @@ import Shop from "../models/Shop.js";
 import ReminderLog from "../models/ReminderLog.js";
 import { CustomerLedgerService } from "../services/customerLedgerService.js";
 import { PaymentService } from "../services/paymentService.js";
+import { PaymentReminderService } from "../services/paymentReminderService.js";
 
 // Create a new customer
 export const createCustomer = async (req, res) => {
@@ -912,5 +913,52 @@ export const getAllCustomersLedgerSummary = async (req, res) => {
     });
   }
 };
+
+/**
+ * Send consolidated payment reminder via WhatsApp for a customer
+ * POST /v1/customers/:id/send-payment-reminder
+ */
+export const sendCustomerPaymentReminder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user } = req;
+    const { category, force } = req.body || {};
+
+    const customer = await Customer.findOne({
+      _id: id,
+      shop_id: user.shopId,
+      deleted_at: null,
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const result = await PaymentReminderService.sendCustomerPaymentReminder({
+      shopId: user.shopId,
+      customerId: customer._id,
+      category: category || null,
+      isManual: true,
+      force: Boolean(force),
+      recordedBy: user.userId || user._id,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.json(result);
+  } catch (error) {
+    console.error("sendCustomerPaymentReminder error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to send customer payment reminder",
+    });
+  }
+};
+
 
 

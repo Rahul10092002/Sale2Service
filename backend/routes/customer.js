@@ -11,6 +11,7 @@ import {
   deleteCustomer,
   mergeCustomers,
   getAllCustomersLedgerSummary,
+  sendCustomerPaymentReminder,
 } from "../controllers/customerController.js";
 import { authenticate, checkPermission } from "../middleware/auth.js";
 
@@ -37,6 +38,9 @@ customerRouter.get("/:id/ledger", checkPermission("customers_view"), getCustomer
 // Record customer payment (FIFO, Manual, or Advance deposit)
 customerRouter.post("/:id/record-payment", checkPermission("customers_edit"), recordCustomerPayment);
 customerRouter.post("/:id/payments", checkPermission("customers_edit"), recordCustomerPayment);
+
+// Send consolidated WhatsApp payment reminder
+customerRouter.post("/:id/send-payment-reminder", checkPermission("customers_edit"), sendCustomerPaymentReminder);
 
 // Get all payment receipts for a customer
 customerRouter.get("/:id/payments", checkPermission("customers_view"), getCustomerPayments);

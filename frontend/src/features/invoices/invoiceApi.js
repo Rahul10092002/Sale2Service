@@ -29,6 +29,16 @@ export const invoiceApi = baseApi.injectEndpoints({
       transformResponse: (response) => response.data,
     }),
 
+    // Get payments for an invoice
+    getInvoicePayments: builder.query({
+      query: (invoiceId) => `/invoices/${invoiceId}/payments`,
+      providesTags: (result, error, invoiceId) => [
+        { type: "Invoice", id: `${invoiceId}-PAYMENTS` },
+        { type: "Invoice", id: invoiceId },
+      ],
+      transformResponse: (response) => response.data,
+    }),
+
     // Create new invoice
     createInvoice: builder.mutation({
       query: (invoiceData) => ({
@@ -220,6 +230,7 @@ baseApi.enhanceEndpoints({
 export const {
   useGetInvoicesQuery,
   useGetInvoiceByIdQuery,
+  useGetInvoicePaymentsQuery,
   useCreateInvoiceMutation,
   useUpdateInvoiceMutation,
   useDeleteInvoiceMutation,

@@ -9,10 +9,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Coins,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button, Input, SelectField } from "../../components/ui/index.js";
-import { useGetInvoicesQuery } from "../../features/invoices/invoiceApi.js";
+import { useGetInvoicesQuery, useRecordPaymentMutation } from "../../features/invoices/invoiceApi.js";
+import { RecordPaymentModal } from "../../components/invoice/index.js";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../features/ui/uiSlice.js";
 import { usePermissions } from "../../hooks/usePermissions.js";
 import { ROUTES } from "../../utils/constants.js";
 import { useSearchParams } from "react-router-dom";
@@ -33,7 +37,7 @@ const Chip = ({ label, onRemove }) => {
 const InvoiceList = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { canCreate, canEdit, canDelete } = usePermissions();
+  const { canCreate, canEdit } = usePermissions();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchTerm, setSearchTerm] = useState(
@@ -41,6 +45,35 @@ const InvoiceList = () => {
   );
   const [searchIn, setSearchIn] = useState(searchParams.get("search_in") || "");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedPaymentInvoice, setSelectedPaymentInvoice] = useState(null);
+  const [recordPayment, { isLoading: isRecordingPayment }] = useRecordPaymentMutation();
+  const dispatch = useDispatch();
+
+  const handleRecordInvoicePayment = async (payload) => {
+    if (!selectedPaymentInvoice) return;
+    try {
+      const res = await recordPayment({
+        invoiceId: selectedPaymentInvoice._id,
+        ...payload,
+      }).unwrap();
+      dispatch(
+        showToast({
+          message: res.message || "Payment recorded successfully",
+          type: "success",
+        })
+      );
+      setSelectedPaymentInvoice(null);
+      refetch();
+    } catch (err) {
+      console.error("List record payment error:", err);
+      dispatch(
+        showToast({
+          message: err?.data?.message || err?.message || "Failed to record payment",
+          type: "error",
+        })
+      );
+    }
+  };
   const [currentPage, setCurrentPage] = useState(
     Number(searchParams.get("page")) || 1,
   );
@@ -852,9 +885,20 @@ const updateURL = (newState) => {
                                   </div>
 
                                   <div
-                                    className="flex items-center gap-1"
+                                    className="flex items-center gap-1.5"
                                     onClick={(e) => e.stopPropagation()}
                                   >
+                                    {canEdit("invoices") && invoice.payment_status !== "PAID" && (
+                                      <button
+                                        type="button"
+                                        className="px-2 py-1 rounded-md text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold"
+                                        onClick={() => setSelectedPaymentInvoice(invoice)}
+                                        aria-label="Collect Payment"
+                                      >
+                                        <Coins className="w-3 h-3 text-amber-500" />
+                                        <span>Pay</span>
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
                                       className="px-2.5 py-1 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-semibold"
@@ -993,13 +1037,23 @@ const updateURL = (newState) => {
                             )}
                           </div>
                         </div>
-                        <div>
+                        <div className="flex items-center gap-1.5">
+                          {canEdit("invoices") && invoice.payment_status !== "PAID" && (
+                            <button
+                              className="bg-emerald-600 text-white px-2.5 py-1.5 rounded-md text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-1 shadow-2xs"
+                              onClick={() => setSelectedPaymentInvoice(invoice)}
+                              title="Record Payment"
+                            >
+                              <Coins className="w-3.5 h-3.5 text-amber-300" />
+                              <span>Pay</span>
+                            </button>
+                          )}
                           <button
                             className="bg-blue-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-blue-600 transition-colors flex items-center gap-1"
                             onClick={() => handleViewInvoice(invoice._id)}
                           >
                             <Eye className="w-4 h-4" />
-                            View Details
+                            View
                           </button>
                         </div>
                       </div>
@@ -1127,6 +1181,16 @@ const updateURL = (newState) => {
           </div>
         </div>
       </div>
+
+      {selectedPaymentInvoice && (
+        <RecordPaymentModal
+          isOpen={Boolean(selectedPaymentInvoice)}
+          onClose={() => setSelectedPaymentInvoice(null)}
+          invoice={selectedPaymentInvoice}
+          onRecordPayment={handleRecordInvoicePayment}
+          isLoading={isRecordingPayment}
+        />
+      )}
     </>
   );
 };

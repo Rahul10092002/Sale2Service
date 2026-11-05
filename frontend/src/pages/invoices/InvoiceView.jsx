@@ -28,6 +28,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Receipt,
 } from "lucide-react";
 import {
   Button,
@@ -36,6 +37,7 @@ import {
 } from "../../components/ui/index.js";
 import {
   useGetInvoiceByIdQuery,
+  useGetInvoicePaymentsQuery,
   useDeleteInvoiceMutation,
   useSendInvoiceMutation,
   useSendPaymentReminderMutation,
@@ -75,6 +77,9 @@ const InvoiceView = () => {
     location.state?.label || routeLabels[location.state?.from] || "Invoices";
 
   const { data: invoice, isLoading, error } = useGetInvoiceByIdQuery(id);
+  const { data: invoicePaymentsData, isLoading: paymentsLoading } =
+    useGetInvoicePaymentsQuery(id, { skip: !id });
+  const invoicePayments = invoicePaymentsData?.payments || [];
 
   // Helper to extract all valid image URLs from a product or service line item
   const getItemImages = (item) => {
@@ -138,7 +143,6 @@ const InvoiceView = () => {
   const [previewPDF] = usePreviewInvoicePDFMutation();
   const dispatch = useDispatch();
 
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
@@ -159,7 +163,6 @@ const InvoiceView = () => {
   };
 
   const confirmDelete = async () => {
-    setIsDeleting(true);
     try {
       await deleteInvoice(id).unwrap();
       dispatch(showToast({ message: "Invoice deleted", type: "success" }));
@@ -173,9 +176,6 @@ const InvoiceView = () => {
           type: "error",
         }),
       );
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteModal(false);
     }
   };
 
@@ -987,6 +987,104 @@ const InvoiceView = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* ── PAYMENT TRANSACTIONS & RECEIPTS SECTION ── */}
+            <div className="bg-white dark:bg-dark-card rounded-xl border border-gray-200 dark:border-dark-border shadow-xs overflow-hidden">
+              <div className="p-3.5 sm:p-4 border-b border-gray-100 dark:border-dark-border flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
+                    <Receipt className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
+                      Payment History & Receipts ({invoicePayments.length})
+                    </h3>
+                    <p className="text-[11px] text-gray-500 dark:text-slate-400">
+                      Complete audit trail of all payments applied to this invoice
+                    </p>
+                  </div>
+                </div>
+                {canEdit("invoices") && invoiceObj.payment_status !== "PAID" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={openPaymentModal}
+                    className="text-xs font-bold flex items-center gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Record Payment
+                  </Button>
+                )}
+              </div>
+
+              {paymentsLoading ? (
+                <div className="py-6 flex justify-center">
+                  <LoadingSpinner />
+                </div>
+              ) : invoicePayments.length === 0 ? (
+                <div className="p-6 text-center text-xs text-gray-500">
+                  <Receipt className="w-8 h-8 text-gray-300 dark:text-slate-600 mx-auto mb-1.5" />
+                  No individual payment receipts recorded yet for this invoice.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 dark:bg-dark-subtle/50 text-gray-600 dark:text-slate-400 uppercase text-[10px]">
+                      <tr>
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Receipt #</th>
+                        <th className="py-2.5 px-3 text-right">Amount Applied</th>
+                        <th className="py-2.5 px-3">Mode</th>
+                        <th className="py-2.5 px-3">Ref / UTR #</th>
+                        <th className="py-2.5 px-3">Notes</th>
+                        <th className="py-2.5 px-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
+                      {invoicePayments.map((p, idx) => (
+                        <tr
+                          key={p.receipt_id || idx}
+                          className={`hover:bg-gray-50/50 ${
+                            p.status === "REVERSED" ? "opacity-60 bg-red-50/20" : ""
+                          }`}
+                        >
+                          <td className="py-2.5 px-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">
+                            {formatDate(p.payment_date)}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                            {p.receipt_number || "—"}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                            {formatCurrency(p.amount)}
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 dark:bg-dark-subtle text-gray-800 dark:text-slate-200">
+                              {p.payment_method}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-gray-500 whitespace-nowrap">
+                            {p.transaction_reference || "—"}
+                          </td>
+                          <td className="py-2.5 px-3 text-gray-600 dark:text-slate-300 max-w-xs truncate">
+                            {p.notes || "—"}
+                          </td>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                p.status === "REVERSED"
+                                  ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300"
+                                  : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              }`}
+                            >
+                              {p.status || "APPLIED"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
 

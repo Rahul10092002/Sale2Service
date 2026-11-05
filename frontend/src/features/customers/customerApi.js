@@ -37,6 +37,19 @@ export const customerApi = baseApi.injectEndpoints({
       transformResponse: (response) => response.data,
     }),
 
+    getCustomerPayments: builder.query({
+      query: ({ id, ...params }) => ({
+        url: `/customers/${id}/payments`,
+        params: params || {},
+      }),
+      providesTags: (result, error, { id }) => [
+        { type: "Customer", id: `${id}-PAYMENTS` },
+        { type: "Customer", id },
+      ],
+      keepUnusedDataFor: 180,
+      transformResponse: (response) => response.data,
+    }),
+
     createCustomer: builder.mutation({
       query: (payload) => ({
         url: "/customers",
@@ -80,9 +93,30 @@ export const customerApi = baseApi.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [
         { type: "Customer", id },
         { type: "Customer", id: `${id}-LEDGER` },
+        { type: "Customer", id: `${id}-PAYMENTS` },
         { type: "Customer", id: "LIST" },
         { type: "Invoice", id: "LIST" },
+        "Invoice",
+        "DashboardSummary",
+        "InvoiceStats",
       ],
+    }),
+
+    reversePayment: builder.mutation({
+      query: ({ receiptId, reason }) => ({
+        url: `/customers/payments/${receiptId}/reverse`,
+        method: "POST",
+        body: { reason },
+      }),
+      invalidatesTags: [
+        { type: "Customer", id: "LIST" },
+        { type: "Invoice", id: "LIST" },
+        "Customer",
+        "Invoice",
+        "DashboardSummary",
+        "InvoiceStats",
+      ],
+      transformResponse: (response) => response,
     }),
 
     getAllCustomersLedgerSummary: builder.query({
@@ -104,9 +138,11 @@ export const {
   useGetCustomersQuery,
   useGetCustomerByIdQuery,
   useGetCustomerLedgerQuery,
+  useGetCustomerPaymentsQuery,
   useGetAllCustomersLedgerSummaryQuery,
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
   useRecordCustomerPaymentMutation,
+  useReversePaymentMutation,
 } = customerApi;

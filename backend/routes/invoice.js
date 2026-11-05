@@ -121,6 +121,13 @@ invoiceRouter.post(
   (req, res) => invoiceController.recordPayment(req, res),
 );
 
+// Get all payments recorded for an invoice
+invoiceRouter.get(
+  "/:id/payments",
+  checkPermission("invoices_view"),
+  (req, res) => invoiceController.getInvoicePayments(req, res),
+);
+
 // Generate and download invoice PDF
 invoiceRouter.get(
   "/:id/pdf",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Modal as Dialog,
   DialogHeader,
@@ -10,28 +10,32 @@ import { formatDate } from "../../utils/date.js";
 import {
   AlertCircle,
   Calendar,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   Coins,
-  CreditCard,
-  FileText,
-  Package,
   Receipt,
-  RotateCcw,
-  Sparkles,
   Wallet,
   Smartphone,
   MessageSquare,
+  Hash,
+  Check,
 } from "lucide-react";
 
+const generateIdempotencyKey = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return "idem-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9);
+};
+
 /**
- * CustomerPaymentModal provides a touch-first, mobile PWA-friendly modal
- * to record bulk or partial customer payments across pending invoices (FIFO).
- * It shows a live auto-distribution breakdown across unpaid bills, credits any
- * excess amount to the customer's advance wallet, and confirms allocations before submit.
+ * Universal CustomerPaymentModal
+ * Outer component handles open/closed mount lifecycle
  */
-export default function CustomerPaymentModal({
+export default function CustomerPaymentModal(props) {
+  if (!props.isOpen) return null;
+  return <CustomerPaymentModalContent {...props} />;
+}
+
+function CustomerPaymentModalContent({
   isOpen,
   onClose,
   customer = {},
@@ -40,20 +44,10 @@ export default function CustomerPaymentModal({
   ledgerEntries = [],
   onRecordPayment,
   isLoading = false,
+  initialMode = "AUTO_FIFO",
 }) {
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("CASH");
-  const [paymentDate, setPaymentDate] = useState(
-    () => new Date().toISOString().split("T")[0]
-  );
-  const [paymentNotes, setPaymentNotes] = useState("");
-  const [sendWhatsapp, setSendWhatsapp] = useState(true);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [showBillsDetails, setShowBillsDetails] = useState(true);
-
   // Normalize unpaid invoices sorted chronologically (FIFO - oldest date first)
   const unpaidInvoices = useMemo(() => {
-    // Prefer full invoice objects from customer data if provided
     if (Array.isArray(invoices) && invoices.length > 0) {
       return invoices
         .filter((inv) => {
@@ -69,11 +63,13 @@ export default function CustomerPaymentModal({
           const paid = Number(inv.amount_paid || 0);
           const credit = Number(inv.excess_exchange_credit || 0);
           let itemsSummary = "";
-          if (Array.isArray(inv.services) && inv.services.length > 0) {
+          if (Array.isArray(inv.invoice_items) && inv.invoice_items.length > 0) {
+            itemsSummary = inv.invoice_items.map((s) => s.product_name).join(", ");
+          } else if (Array.isArray(inv.services) && inv.services.length > 0) {
             itemsSummary = inv.services.map((s) => s.product_name).join(", ");
           }
           return {
-            _id: inv._id,
+            _id: String(inv._id),
             invoice_number: inv.invoice_number,
             invoice_date: inv.invoice_date || inv.createdAt,
             total_amount: total,
@@ -90,16 +86,15 @@ export default function CustomerPaymentModal({
         );
     }
 
-    // Fallback to ledger entries
     if (Array.isArray(ledgerEntries) && ledgerEntries.length > 0) {
       return ledgerEntries
-        .filter((e) => (e.invoice_balance || 0) > 0)
+        .filter((e) => (e.invoice_balance || 0) > 0 && !e.is_advance)
         .map((e) => ({
-          _id: e._id,
+          _id: String(e._id),
           invoice_number: e.invoice_number,
           invoice_date: e.invoice_date,
           total_amount: Number(e.debit || 0),
-          amount_paid: Number(e.amount_paid || 0),
+          amount_paid: Number(e.credit || 0),
           netDue: Number(e.invoice_balance || 0),
           items_summary: e.items_summary,
           payment_status: e.payment_status,
@@ -114,39 +109,81 @@ export default function CustomerPaymentModal({
     return [];
   }, [invoices, ledgerEntries]);
 
-  // Total customer dues (from ledger summary or sum of unpaid invoices)
+  // Total customer dues
   const totalDue = useMemo(() => {
     if (ledgerSummary?.total_due !== undefined && Number(ledgerSummary.total_due) > 0) {
       return Number(ledgerSummary.total_due);
     }
     return unpaidInvoices.reduce((sum, inv) => sum + inv.netDue, 0);
-  }, [ledgerSummary?.total_due, unpaidInvoices]);
+  }, [ledgerSummary, unpaidInvoices]);
 
   const advanceBalance = Number(customer?.advance_balance || 0);
 
-  // Initialize or reset fields when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setPaymentAmount(totalDue > 0 ? String(totalDue) : "");
-      setPaymentMethod("CASH");
-      setPaymentDate(new Date().toISOString().split("T")[0]);
-      setPaymentNotes("");
-      setSendWhatsapp(true);
-      setShowConfirmation(false);
-      setShowBillsDetails(true);
-    }
-  }, [isOpen, totalDue]);
+  // Default mode computed during initialization
+  const defaultMode = initialMode || (totalDue > 0 ? "AUTO_FIFO" : "ADVANCE_ONLY");
+  const [allocationMode, setAllocationMode] = useState(defaultMode);
+  const [paymentAmount, setPaymentAmount] = useState(() =>
+    defaultMode === "ADVANCE_ONLY" ? "" : totalDue > 0 ? String(totalDue) : ""
+  );
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [paymentDate, setPaymentDate] = useState(
+    () => new Date().toISOString().split("T")[0]
+  );
+  const [transactionReference, setTransactionReference] = useState("");
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [sendWhatsapp, setSendWhatsapp] = useState(true);
+  const [manualAllocations, setManualAllocations] = useState(() => {
+    const initialManual = {};
+    unpaidInvoices.forEach((inv) => {
+      initialManual[inv._id] = 0;
+    });
+    return initialManual;
+  });
+  const [idempotencyKey] = useState(() => generateIdempotencyKey());
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // Real-time calculations for distribution
   const numEntered = parseFloat(paymentAmount) || 0;
-  const appliedToBills = Math.min(numEntered, totalDue);
-  const excessAmount = Math.max(0, numEntered - totalDue);
 
-  // FIFO simulated distribution across pending invoices
-  const simulatedAllocation = useMemo(() => {
-    if (numEntered <= 0 || unpaidInvoices.length === 0) return [];
+  // Real-time calculation based on mode
+  const { appliedToBills, excessToAdvance, simulatedAllocation } = useMemo(() => {
+    if (allocationMode === "ADVANCE_ONLY") {
+      return {
+        appliedToBills: 0,
+        excessToAdvance: numEntered,
+        simulatedAllocation: [],
+      };
+    }
+
+    if (allocationMode === "MANUAL") {
+      let totalManual = 0;
+      const list = [];
+      for (const inv of unpaidInvoices) {
+        const allocated = Math.min(
+          Number(manualAllocations[inv._id] || 0),
+          inv.netDue
+        );
+        if (allocated > 0) {
+          totalManual += allocated;
+          list.push({
+            ...inv,
+            allocated,
+            remainingDueAfter: Math.max(0, inv.netDue - allocated),
+            statusAfter: inv.netDue - allocated <= 0 ? "PAID" : "PARTIAL",
+          });
+        }
+      }
+      const excess = Math.max(0, numEntered - totalManual);
+      return {
+        appliedToBills: totalManual,
+        excessToAdvance: excess,
+        simulatedAllocation: list,
+      };
+    }
+
+    // AUTO_FIFO
     let rem = numEntered;
     const list = [];
+    let totalApplied = 0;
     for (const inv of unpaidInvoices) {
       if (rem <= 0) break;
       const alloc = Math.min(rem, inv.netDue);
@@ -157,19 +194,52 @@ export default function CustomerPaymentModal({
         remainingDueAfter,
         statusAfter: remainingDueAfter === 0 ? "PAID" : "PARTIAL",
       });
+      totalApplied += alloc;
       rem -= alloc;
     }
-    return list;
-  }, [numEntered, unpaidInvoices]);
+    const excess = Math.max(0, numEntered - totalApplied);
+    return {
+      appliedToBills: totalApplied,
+      excessToAdvance: excess,
+      simulatedAllocation: list,
+    };
+  }, [allocationMode, numEntered, unpaidInvoices, manualAllocations]);
 
-  if (!isOpen) return null;
+  const handleManualAllocationChange = (invId, value) => {
+    const val = Math.max(0, parseFloat(value) || 0);
+    const updated = { ...manualAllocations, [invId]: val };
+    setManualAllocations(updated);
+
+    // Automatically sync total paymentAmount with sum of manual allocations
+    const sum = Object.values(updated).reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0);
+    setPaymentAmount(String(sum));
+  };
+
+  const handleManualSelectAll = () => {
+    const updated = {};
+    let sum = 0;
+    unpaidInvoices.forEach((inv) => {
+      updated[inv._id] = inv.netDue;
+      sum += inv.netDue;
+    });
+    setManualAllocations(updated);
+    setPaymentAmount(String(sum));
+  };
+
+  const handleManualClearAll = () => {
+    const updated = {};
+    unpaidInvoices.forEach((inv) => {
+      updated[inv._id] = 0;
+    });
+    setManualAllocations(updated);
+    setPaymentAmount("");
+  };
 
   const handleInitialSubmit = (e) => {
     e?.preventDefault();
     if (!numEntered || numEntered <= 0) return;
 
-    // If customer has unpaid dues and payment exceeds them, ask confirmation for advance wallet credit
-    if (totalDue > 0 && excessAmount > 0) {
+    if (allocationMode === "AUTO_FIFO" && totalDue > 0 && excessToAdvance > 0) {
       setShowConfirmation(true);
     } else {
       executeRecord();
@@ -178,13 +248,29 @@ export default function CustomerPaymentModal({
 
   const executeRecord = () => {
     if (!onRecordPayment) return;
-    onRecordPayment({
+
+    const payload = {
       amount: numEntered,
       payment_method: paymentMethod,
+      payment_mode: paymentMethod,
       payment_date: paymentDate,
+      transaction_reference: transactionReference,
       notes: paymentNotes,
       send_whatsapp: sendWhatsapp,
-    });
+      allocation_mode: allocationMode,
+      idempotency_key: idempotencyKey,
+    };
+
+    if (allocationMode === "MANUAL") {
+      payload.allocations = Object.entries(manualAllocations)
+        .filter(([, amt]) => Number(amt) > 0)
+        .map(([invId, amt]) => ({
+          invoice_id: invId,
+          amount_applied: Number(amt),
+        }));
+    }
+
+    onRecordPayment(payload);
   };
 
   const handleQuickAdd = (increment) => {
@@ -194,15 +280,15 @@ export default function CustomerPaymentModal({
 
   const paymentModes = [
     { id: "CASH", label: "Cash 💵" },
-    { id: "UPI", label: "UPI / QR 📲" },
+    { id: "UPI", label: "UPI / QR 📱" },
     { id: "CARD", label: "Card 💳" },
-    { id: "NET_BANKING", label: "Net Banking 🏦" },
+    { id: "BANK_TRANSFER", label: "Bank Transfer 🏦" },
     { id: "CHEQUE", label: "Cheque 📝" },
   ];
 
   return (
-    <Dialog open={isOpen} onClose={onClose} maxWidth="lg" className="sm:max-w-lg">
-      {/* PWA Touch-First Modal Header */}
+    <Dialog open={isOpen} onClose={onClose} maxWidth="lg" className="sm:max-w-xl">
+      {/* Header */}
       <DialogHeader onClose={onClose} className="py-3 px-4 sm:px-6">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs">
@@ -210,10 +296,18 @@ export default function CustomerPaymentModal({
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-bold text-ink-base dark:text-slate-100 leading-tight">
-              {showConfirmation ? "Confirm Advance Allocation" : "Record Customer Payment"}
+              {showConfirmation
+                ? "Confirm Advance Allocation"
+                : allocationMode === "ADVANCE_ONLY"
+                ? "Add Customer Advance Deposit"
+                : "Receive Customer Payment"}
             </h2>
             <p className="text-xs text-ink-secondary dark:text-slate-400">
-              Apply lump sum across pending invoices (FIFO order)
+              {allocationMode === "ADVANCE_ONLY"
+                ? "Credit customer wallet for future billing"
+                : allocationMode === "MANUAL"
+                ? "Select specific invoices and custom amounts"
+                : "Auto-distribute lump sum across unpaid invoices (FIFO)"}
             </p>
           </div>
         </div>
@@ -222,8 +316,8 @@ export default function CustomerPaymentModal({
       <DialogBody className="p-4 sm:p-6 max-h-[78vh] overflow-y-auto overscroll-contain">
         {!showConfirmation ? (
           <form onSubmit={handleInitialSubmit} className="space-y-4">
-            {/* Customer & Dues Summary Card */}
-            <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl p-3.5 space-y-2.5 shadow-xs">
+            {/* Customer & Dues Summary Bar */}
+            <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl p-3 space-y-2.5 shadow-xs">
               <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0">
                   <p className="font-bold text-gray-900 dark:text-white text-xs sm:text-sm truncate">
@@ -235,438 +329,458 @@ export default function CustomerPaymentModal({
                   </p>
                 </div>
                 {advanceBalance > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
-                    <Wallet className="w-3 h-3" />
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                    <Wallet className="w-3.5 h-3.5" />
                     Adv: ₹{advanceBalance.toLocaleString("en-IN")}
                   </span>
                 )}
               </div>
 
               {/* Dues Metric Grid */}
-              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-blue-100 dark:border-blue-900/40 text-center">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 border-t border-blue-100 dark:border-blue-900/40 text-center">
                 <div className="bg-white/80 dark:bg-dark-card/80 p-2 rounded-lg border border-gray-100 dark:border-dark-border">
                   <span className="block text-[10px] text-gray-500 dark:text-slate-400">
-                    Total Billed
+                    Total Invoiced
                   </span>
-                  <span className="font-semibold text-gray-900 dark:text-white text-xs">
+                  <span className="font-bold text-xs text-gray-800 dark:text-slate-200">
                     ₹{Number(ledgerSummary?.total_invoiced || 0).toLocaleString("en-IN")}
                   </span>
                 </div>
-
                 <div className="bg-white/80 dark:bg-dark-card/80 p-2 rounded-lg border border-gray-100 dark:border-dark-border">
                   <span className="block text-[10px] text-gray-500 dark:text-slate-400">
-                    Total Paid
+                    Total Settled
                   </span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs">
+                  <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400">
                     ₹{Number(ledgerSummary?.total_paid || 0).toLocaleString("en-IN")}
                   </span>
                 </div>
-
-                <div className="bg-red-50/80 dark:bg-red-950/30 p-2 rounded-lg border border-red-100 dark:border-red-900/50">
-                  <span className="block text-[10px] text-red-600 dark:text-red-400 font-bold">
-                    Total Due
+                <div className="bg-white/80 dark:bg-dark-card/80 p-2 rounded-lg border border-gray-100 dark:border-dark-border col-span-2 sm:col-span-1">
+                  <span className="block text-[10px] text-gray-500 dark:text-slate-400">
+                    Current Dues
                   </span>
-                  <span className="font-extrabold text-red-600 dark:text-red-400 text-xs sm:text-sm font-mono">
+                  <span className="font-bold text-xs text-amber-600 dark:text-amber-400">
                     ₹{totalDue.toLocaleString("en-IN")}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Received Amount Input */}
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-xs font-semibold text-ink-base dark:text-slate-200">
-                  Received Amount (₹) <span className="text-red-500">*</span>
+            {/* Mode Selection Tabs */}
+            <div className="flex bg-gray-100 dark:bg-dark-subtle p-1 rounded-xl gap-1 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setAllocationMode("AUTO_FIFO");
+                  if (!paymentAmount && totalDue > 0) setPaymentAmount(String(totalDue));
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                  allocationMode === "AUTO_FIFO"
+                    ? "bg-white dark:bg-dark-card text-blue-600 dark:text-blue-400 shadow-xs"
+                    : "text-gray-600 dark:text-slate-400 hover:text-gray-900"
+                }`}
+              >
+                Auto Settle (FIFO)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAllocationMode("MANUAL");
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                  allocationMode === "MANUAL"
+                    ? "bg-white dark:bg-dark-card text-blue-600 dark:text-blue-400 shadow-xs"
+                    : "text-gray-600 dark:text-slate-400 hover:text-gray-900"
+                }`}
+              >
+                Select Invoices
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAllocationMode("ADVANCE_ONLY");
+                  setPaymentAmount("");
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center ${
+                  allocationMode === "ADVANCE_ONLY"
+                    ? "bg-white dark:bg-dark-card text-purple-600 dark:text-purple-400 shadow-xs"
+                    : "text-gray-600 dark:text-slate-400 hover:text-gray-900"
+                }`}
+              >
+                Advance Wallet Only
+              </button>
+            </div>
+
+            {/* Manual Invoice Allocation List */}
+            {allocationMode === "MANUAL" && (
+              <div className="border border-gray-200 dark:border-dark-border rounded-xl p-3 bg-gray-50/50 dark:bg-dark-subtle/30 space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-gray-700 dark:text-slate-300">
+                    Open Invoices ({unpaidInvoices.length})
+                  </span>
+                  <div className="flex gap-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={handleManualSelectAll}
+                      className="text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                    >
+                      Select All
+                    </button>
+                    <span>·</span>
+                    <button
+                      type="button"
+                      onClick={handleManualClearAll}
+                      className="text-gray-500 hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                {unpaidInvoices.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-3">
+                    No unpaid invoices found. Use Advance Wallet mode to record a credit.
+                  </p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                    {unpaidInvoices.map((inv) => {
+                      const currentAlloc = manualAllocations[inv._id] || 0;
+                      const isSelected = currentAlloc > 0;
+                      return (
+                        <div
+                          key={inv._id}
+                          className={`p-2 rounded-lg border text-xs flex items-center justify-between gap-2 transition-colors ${
+                            isSelected
+                              ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800"
+                              : "bg-white dark:bg-dark-card border-gray-200 dark:border-dark-border"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-gray-900 dark:text-white">
+                                {inv.invoice_number}
+                              </span>
+                              <span className="text-[10px] text-gray-400">
+                                ({formatDate(inv.invoice_date)})
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                              Due: ₹{inv.netDue.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-gray-500 font-semibold">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max={inv.netDue}
+                              step="any"
+                              value={manualAllocations[inv._id] || ""}
+                              placeholder="0"
+                              onChange={(e) =>
+                                handleManualAllocationChange(inv._id, e.target.value)
+                              }
+                              className="w-24 px-2 py-1 border border-gray-200 dark:border-dark-border rounded-md text-right text-xs font-bold bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleManualAllocationChange(
+                                  inv._id,
+                                  currentAlloc === inv.netDue ? 0 : inv.netDue
+                                )
+                              }
+                              className={`p-1 rounded text-[10px] font-bold ${
+                                currentAlloc === inv.netDue
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-gray-100 dark:bg-dark-subtle text-gray-700 dark:text-slate-300"
+                              }`}
+                              title="Toggle Full Settle"
+                            >
+                              Full
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Total Amount Input */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-200">
+                  Amount Received (₹) <span className="text-red-500">*</span>
                 </label>
-                {totalDue > 0 && (
+                {totalDue > 0 && allocationMode !== "MANUAL" && (
                   <button
                     type="button"
                     onClick={() => setPaymentAmount(String(totalDue))}
-                    className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-semibold underline active:opacity-75"
+                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
                   >
-                    Full Due: ₹{totalDue.toLocaleString("en-IN")}
+                    Set Full Due (₹{totalDue.toLocaleString("en-IN")})
                   </button>
                 )}
               </div>
 
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-base">
+              <div className="relative rounded-xl shadow-2xs">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 font-bold text-base">
                   ₹
                 </span>
                 <input
                   type="number"
-                  inputMode="decimal"
                   min="0.01"
                   step="any"
+                  required
+                  placeholder="0.00"
+                  disabled={allocationMode === "MANUAL"}
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="Enter received amount..."
-                  required
-                  className="w-full pl-8 pr-3 py-3 text-base sm:text-lg font-bold border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full pl-8 pr-4 py-2.5 text-base sm:text-lg font-bold rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-dark-subtle"
                 />
               </div>
 
-              {/* Mobile Quick-Fill Action Chips */}
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                <span className="text-[11px] text-gray-400 font-medium mr-0.5">
-                  Quick:
-                </span>
-                {totalDue > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setPaymentAmount(String(totalDue))}
-                    className="px-2.5 py-1 text-xs rounded-lg font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 hover:bg-blue-200 transition-colors"
-                  >
-                    Full Due
-                  </button>
-                )}
-                {[500, 1000, 2000, 5000].map((inc) => (
-                  <button
-                    key={inc}
-                    type="button"
-                    onClick={() => handleQuickAdd(inc)}
-                    className="px-2.5 py-1 text-xs rounded-lg font-medium bg-gray-100 dark:bg-dark-input hover:bg-gray-200 dark:hover:bg-dark-border text-gray-700 dark:text-slate-200 border border-gray-200/60 dark:border-dark-border transition-colors"
-                  >
-                    +{inc.toLocaleString("en-IN")}
-                  </button>
-                ))}
-                {paymentAmount && (
-                  <button
-                    type="button"
-                    onClick={() => setPaymentAmount("")}
-                    className="px-2 py-1 text-xs rounded-lg text-gray-500 hover:text-red-600 transition-colors flex items-center gap-1 ml-auto"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    Reset
-                  </button>
-                )}
-              </div>
+              {/* Quick Add Pills */}
+              {allocationMode !== "MANUAL" && (
+                <div className="flex items-center gap-1.5 pt-1 overflow-x-auto text-xs">
+                  <span className="text-[10px] text-gray-400 shrink-0">Quick Add:</span>
+                  {[500, 1000, 2000, 5000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => handleQuickAdd(amt)}
+                      className="px-2 py-0.5 rounded-full font-medium text-[11px] bg-gray-100 hover:bg-gray-200 dark:bg-dark-subtle dark:hover:bg-dark-card text-gray-700 dark:text-slate-300 transition-colors shrink-0"
+                    >
+                      +₹{amt.toLocaleString("en-IN")}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Payment Method Selector (PWA Touch Chips) */}
-            <div>
-              <label className="block text-xs font-semibold text-ink-base dark:text-slate-200 mb-1.5">
-                Payment Method
+            {/* Payment Method Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-gray-700 dark:text-slate-200">
+                Payment Mode <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                {paymentModes.map((m) => (
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                {paymentModes.map((mode) => (
                   <button
-                    key={m.id}
+                    key={mode.id}
                     type="button"
-                    onClick={() => setPaymentMethod(m.id)}
-                    className={`py-2 px-2 text-xs font-semibold rounded-xl border text-center transition-all ${
-                      paymentMethod === m.id
-                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                        : "bg-white dark:bg-dark-input text-gray-700 dark:text-slate-300 border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-subtle"
+                    onClick={() => setPaymentMethod(mode.id)}
+                    className={`py-2 px-1 text-center rounded-lg text-xs font-bold border transition-all ${
+                      paymentMethod === mode.id
+                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                        : "bg-white dark:bg-dark-card text-gray-700 dark:text-slate-300 border-gray-200 dark:border-dark-border hover:bg-gray-50"
                     }`}
                   >
-                    {m.label}
+                    {mode.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Payment Date & Reference Grid */}
+            {/* Date and Transaction Reference */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-ink-base dark:text-slate-200 mb-1">
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-200">
                   Payment Date
                 </label>
                 <div className="relative">
+                  <Calendar className="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" />
                   <input
                     type="date"
                     value={paymentDate}
                     onChange={(e) => setPaymentDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-gray-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-ink-base dark:text-slate-200 mb-1">
-                  Notes / Reference
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-700 dark:text-slate-200">
+                  Ref / UTR / Cheque #
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. UTR / Cheque / Note"
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
+                <div className="relative">
+                  <Hash className="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="e.g. UPI 4123891823"
+                    value={transactionReference}
+                    onChange={(e) => setTransactionReference(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* WhatsApp Receipt Toggle */}
-            <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 p-2.5 rounded-xl flex items-center gap-2.5">
+            {/* Notes */}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-gray-700 dark:text-slate-200">
+                Notes / Remarks (Optional)
+              </label>
               <input
-                type="checkbox"
-                id="sendWhatsappCustomer"
-                checked={sendWhatsapp}
-                onChange={(e) => setSendWhatsapp(e.target.checked)}
-                className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                type="text"
+                placeholder="e.g. Received via phonepe counter QR"
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
               />
-              <label
-                htmlFor="sendWhatsappCustomer"
-                className="text-xs font-semibold text-emerald-900 dark:text-emerald-200 cursor-pointer select-none leading-tight"
-              >
-                💬 Send WhatsApp payment receipt for updated invoices
+            </div>
+
+            {/* WhatsApp Receipt Toggle */}
+            <div className="flex items-center justify-between p-2.5 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-semibold text-emerald-900 dark:text-emerald-200">
+                  Send WhatsApp Receipt Confirmation
+                </span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendWhatsapp}
+                  onChange={(e) => setSendWhatsapp(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
               </label>
             </div>
 
-            {/* Live Auto-Distribution Breakdown Card (Like RecordPaymentModal) */}
+            {/* Live Distribution Preview Card */}
             {numEntered > 0 && (
-              <div className="bg-gray-50/90 dark:bg-dark-input/40 border border-gray-200 dark:border-dark-border rounded-xl p-3.5 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-gray-800 dark:text-slate-200">
-                    <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <span>Auto-Distribution Breakdown (FIFO)</span>
-                  </div>
-                  {excessAmount > 0 && (
-                    <span className="px-2 py-0.5 text-xs font-extrabold rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
-                      Wallet: +₹{excessAmount.toLocaleString("en-IN")}
+              <div className="bg-slate-50 dark:bg-dark-card/90 border border-slate-200 dark:border-dark-border rounded-xl p-3 space-y-2 text-xs">
+                <div className="flex justify-between items-center font-bold text-gray-700 dark:text-slate-300">
+                  <span>Allocation Breakdown</span>
+                  <span className="text-blue-600 font-mono">Total: ₹{numEntered.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="space-y-1 text-[11px]">
+                  <div className="flex justify-between text-gray-600 dark:text-slate-400">
+                    <span>Applied to Invoices:</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      ₹{appliedToBills.toLocaleString("en-IN")}
                     </span>
-                  )}
-                </div>
-
-                {/* Summary Rows */}
-                <div className="space-y-2 text-xs">
-                  {appliedToBills > 0 && (
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border">
-                      <span className="text-gray-700 dark:text-slate-300 flex items-center gap-1.5 font-medium">
-                        <Receipt className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        Applied to Unpaid Bills ({simulatedAllocation.length}):
-                      </span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        ₹{appliedToBills.toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  )}
-
-                  {excessAmount > 0 && (
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50/80 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/40">
-                      <span className="text-gray-700 dark:text-slate-300 flex items-center gap-1.5 font-medium">
-                        <Wallet className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                        Customer Advance Wallet:
-                      </span>
-                      <span className="font-bold text-amber-700 dark:text-amber-300">
-                        +₹{excessAmount.toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Detailed Breakdown of Individual Bills */}
-                {simulatedAllocation.length > 0 && (
-                  <div className="pt-2 border-t border-gray-200 dark:border-dark-border">
-                    <button
-                      type="button"
-                      onClick={() => setShowBillsDetails(!showBillsDetails)}
-                      className="w-full flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-slate-300 hover:text-gray-900 transition-colors py-1"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        Details of bills being cleared ({simulatedAllocation.length})
-                      </span>
-                      {showBillsDetails ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
-
-                    {showBillsDetails && (
-                      <div className="mt-2 space-y-2 max-h-52 overflow-y-auto pr-1 overscroll-contain">
-                        {simulatedAllocation.map((b) => (
-                          <div
-                            key={b._id}
-                            className="bg-white dark:bg-dark-card rounded-xl p-2.5 border border-gray-100 dark:border-dark-border shadow-2xs space-y-1.5"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <span className="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">
-                                  {b.invoice_number}
-                                </span>
-                                <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
-                                  <Calendar className="w-3 h-3 text-gray-400" />
-                                  <span>{formatDate(b.invoice_date)}</span>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <span className="font-extrabold text-xs text-emerald-600 dark:text-emerald-400 block">
-                                  +₹{b.allocated.toLocaleString("en-IN")}
-                                </span>
-                                {b.remainingDueAfter === 0 ? (
-                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold bg-green-100 dark:bg-green-900/60 text-green-800 dark:text-green-200 px-1.5 py-0.5 rounded-full mt-0.5">
-                                    <CheckCircle2 className="w-2.5 h-2.5" />
-                                    Cleared (PAID)
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded-full mt-0.5">
-                                    Rem. Due: ₹{b.remainingDueAfter.toLocaleString("en-IN")}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-gray-100 dark:border-dark-border text-gray-600 dark:text-slate-400">
-                              <span>Bill Total: ₹{b.total_amount.toLocaleString("en-IN")}</span>
-                              <span>Prior Due: ₹{b.netDue.toLocaleString("en-IN")}</span>
-                            </div>
-
-                            {/* Item/Product Summary if available */}
-                            {b.items_summary && (
-                              <div className="flex items-center gap-1 text-[10.5px] text-gray-500 dark:text-slate-400 truncate">
-                                <Package className="w-3 h-3 shrink-0 text-gray-400" />
-                                <span className="truncate">{b.items_summary}</span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                )}
+                  {excessToAdvance > 0 && (
+                    <div className="flex justify-between text-purple-700 dark:text-purple-300 font-bold bg-purple-50 dark:bg-purple-950/40 p-1.5 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <span>Credited to Advance Wallet:</span>
+                      <span>+₹{excessToAdvance.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-dark-border font-bold">
+                    <span>Remaining Customer Dues:</span>
+                    <span className="text-amber-600 dark:text-amber-400">
+                      ₹{Math.max(0, totalDue - appliedToBills).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+
+                  {simulatedAllocation.length > 0 && allocationMode === "AUTO_FIFO" && (
+                    <div className="pt-2 border-t border-gray-200 dark:border-dark-border space-y-1">
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
+                        Invoices Settling ({simulatedAllocation.length}):
+                      </span>
+                      {simulatedAllocation.map((item) => (
+                        <div key={item._id} className="flex justify-between text-[11px]">
+                          <span className="text-gray-700 dark:text-slate-300">
+                            {item.invoice_number} ({item.statusAfter})
+                          </span>
+                          <span className="font-bold text-emerald-600">
+                            ₹{item.allocated.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </form>
         ) : (
-          /* Confirmation Step View (Excess Payment Prompt like RecordPaymentModal) */
-          <div className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs">
-              <div className="flex items-start gap-2.5">
-                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-bold text-sm text-amber-950 dark:text-amber-100 mb-0.5">
-                    Confirm Advance Wallet Deposit
-                  </h3>
-                  <p className="text-[12px] leading-relaxed text-amber-800 dark:text-amber-300">
-                    You entered <span className="font-extrabold">₹{numEntered.toLocaleString("en-IN")}</span>, which is{" "}
-                    <span className="font-extrabold text-amber-900 dark:text-amber-200">+₹{excessAmount.toLocaleString("en-IN")}</span> more than the customer's total outstanding dues (₹{totalDue.toLocaleString("en-IN")}).
-                  </p>
-                  <p className="text-[11.5px] mt-1.5 text-amber-700 dark:text-amber-400">
-                    The extra ₹{excessAmount.toLocaleString("en-IN")} will be credited to {customer?.full_name}'s Advance Wallet for upcoming invoices.
-                  </p>
-                </div>
+          /* Confirmation Screen when payment exceeds dues */
+          <div className="space-y-4 py-2">
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm">Excess Payment Confirmation</p>
+                <p className="mt-1">
+                  Customer owes <strong>₹{totalDue.toLocaleString("en-IN")}</strong>. You are receiving <strong>₹{numEntered.toLocaleString("en-IN")}</strong>.
+                </p>
               </div>
             </div>
 
-            {/* Allocation Breakdown Summary Card */}
-            <div className="rounded-xl border border-gray-200 dark:border-dark-border divide-y divide-gray-100 dark:divide-dark-border bg-white dark:bg-dark-card overflow-hidden text-xs sm:text-sm shadow-2xs">
-              <div className="p-3 bg-gray-50/80 dark:bg-dark-subtle/80 flex justify-between items-center">
-                <span className="font-medium text-ink-secondary dark:text-slate-400">
-                  Total Payment Receiving:
-                </span>
-                <span className="font-extrabold text-base text-ink-base dark:text-slate-100">
-                  ₹{numEntered.toLocaleString("en-IN")}{" "}
-                  <span className="text-xs font-semibold text-gray-500 font-mono">
-                    ({paymentMethod})
-                  </span>
-                </span>
+            <div className="p-3 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-500">All pending invoices settled:</span>
+                <span className="font-bold text-emerald-600">₹{appliedToBills.toLocaleString("en-IN")}</span>
               </div>
-
-              {appliedToBills > 0 && (
-                <div className="p-3 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <div>
-                      <span className="font-semibold text-ink-base dark:text-slate-100 block">
-                        Cleared Across Invoices ({simulatedAllocation.length})
-                      </span>
-                      <span className="text-[11px] text-gray-500 dark:text-slate-400">
-                        All pending dues will become ₹0.00
-                      </span>
-                    </div>
-                  </div>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    ₹{appliedToBills.toLocaleString("en-IN")} ➔ PAID
-                  </span>
-                </div>
-              )}
-
-              {excessAmount > 0 && (
-                <div className="p-3 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-amber-600 shrink-0" />
-                    <div>
-                      <span className="font-semibold text-ink-base dark:text-slate-100 block">
-                        Customer Advance Wallet
-                      </span>
-                      <span className="text-[11px] text-gray-500 dark:text-slate-400">
-                        Store credit for future billings
-                      </span>
-                    </div>
-                  </div>
-                  <span className="font-bold text-amber-600 dark:text-amber-400">
-                    +₹{excessAmount.toLocaleString("en-IN")}
-                  </span>
-                </div>
-              )}
+              <div className="flex justify-between font-bold text-purple-700 dark:text-purple-300">
+                <span>Credit to Advance Wallet:</span>
+                <span>+₹{excessToAdvance.toLocaleString("en-IN")}</span>
+              </div>
+              <div className="flex justify-between pt-1.5 border-t border-gray-100 dark:border-dark-border text-gray-700 dark:text-slate-300">
+                <span>New Advance Balance:</span>
+                <span className="font-bold">₹{(advanceBalance + excessToAdvance).toLocaleString("en-IN")}</span>
+              </div>
             </div>
 
-            {/* Quick list of invoices getting cleared */}
-            {simulatedAllocation.length > 0 && (
-              <div className="bg-gray-50 dark:bg-dark-subtle/50 rounded-xl p-3 border border-gray-200/80 dark:border-dark-border text-xs space-y-1.5">
-                <span className="font-semibold text-gray-700 dark:text-slate-300 block mb-1">
-                  Invoices Receiving Payment:
-                </span>
-                {simulatedAllocation.map((b) => (
-                  <div key={b._id} className="flex justify-between items-center text-[11.5px]">
-                    <span className="font-mono text-gray-600 dark:text-slate-300">
-                      {b.invoice_number} ({formatDate(b.invoice_date)})
-                    </span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                      +₹{b.allocated.toLocaleString("en-IN")}
-                      {b.remainingDueAfter === 0 && " (Cleared)"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="text-xs text-gray-500 dark:text-slate-400 text-center">
+              The excess will be safely stored in the customer's wallet and can be applied to future invoices.
+            </p>
           </div>
         )}
       </DialogBody>
 
-      {/* PWA Friendly Touch Footer */}
-      <DialogFooter className="px-4 py-3 sm:px-6 bg-gray-50 dark:bg-dark-input/50 flex flex-col-reverse sm:flex-row gap-2 sm:gap-2">
-        {!showConfirmation ? (
+      <DialogFooter className="py-3 px-4 sm:px-6 flex items-center justify-between gap-2 border-t border-gray-100 dark:border-dark-border">
+        {showConfirmation ? (
           <>
             <Button
               variant="outline"
-              onClick={onClose}
+              size="sm"
+              onClick={() => setShowConfirmation(false)}
               disabled={isLoading}
-              className="w-full sm:w-auto py-2.5 text-xs sm:text-sm font-semibold"
             >
-              Cancel
+              Back to Edit
             </Button>
             <Button
-              onClick={handleInitialSubmit}
-              loading={isLoading}
-              disabled={isLoading || !numEntered || numEntered <= 0}
-              className="w-full sm:w-auto py-2.5 text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+              variant="primary"
+              size="sm"
+              onClick={executeRecord}
+              disabled={isLoading}
+              className="bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
             >
-              {totalDue > 0 && excessAmount > 0
-                ? "Review Advance Allocation"
-                : "Confirm & Record Payment"}
+              {isLoading ? (
+                <>Recording...</>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" /> Confirm & Credit Wallet
+                </>
+              )}
             </Button>
           </>
         ) : (
           <>
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmation(false)}
-              disabled={isLoading}
-              className="w-full sm:w-auto py-2.5 text-xs sm:text-sm font-semibold"
-            >
-              Change Amount
+            <Button variant="outline" size="sm" onClick={onClose} disabled={isLoading}>
+              Cancel
             </Button>
             <Button
-              onClick={executeRecord}
-              loading={isLoading}
-              disabled={isLoading}
-              className="w-full sm:w-auto py-2.5 text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+              variant="primary"
+              size="sm"
+              onClick={handleInitialSubmit}
+              disabled={isLoading || !numEntered || numEntered <= 0}
+              className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1.5"
             >
-              Confirm & Record (₹{numEntered.toLocaleString("en-IN")})
+              {isLoading ? (
+                <>Processing...</>
+              ) : (
+                <>
+                  <Coins className="w-4 h-4" />
+                  {allocationMode === "ADVANCE_ONLY"
+                    ? `Add ₹${numEntered > 0 ? numEntered.toLocaleString("en-IN") : "0"} to Wallet`
+                    : `Receive ₹${numEntered > 0 ? numEntered.toLocaleString("en-IN") : "0"}`}
+                </>
+              )}
             </Button>
           </>
         )}

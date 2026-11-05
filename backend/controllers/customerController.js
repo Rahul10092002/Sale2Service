@@ -7,6 +7,8 @@ import ServiceSchedule from "../models/ServiceSchedule.js";
 import ServiceVisit from "../models/ServiceVisit.js";
 import Shop from "../models/Shop.js";
 import ReminderLog from "../models/ReminderLog.js";
+import { CustomerLedgerService } from "../services/customerLedgerService.js";
+import { PaymentService } from "../services/paymentService.js";
 
 // Create a new customer
 export const createCustomer = async (req, res) => {
@@ -480,150 +482,57 @@ export const getCustomerLedger = async (req, res) => {
   try {
     const { user } = req;
     const { id } = req.params;
-    const { startDate, endDate, status } = req.query;
+    const { startDate, endDate, status, type } = req.query;
 
-    const customer = await Customer.findOne({
-      _id: id,
-      shop_id: user.shopId,
-      deleted_at: null,
+    const ledgerData = await CustomerLedgerService.getCustomerLedger({
+      shopId: user.shopId,
+      customerId: id,
+      startDate,
+      endDate,
+      status,
+      type,
     });
 
-    if (!customer) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Customer not found" });
-    }
-
-    const matchQuery = {
-      customer_id: new mongoose.Types.ObjectId(id),
-      shop_id: new mongoose.Types.ObjectId(user.shopId),
-      deleted_at: null,
-    };
-
-    if (startDate || endDate) {
-      matchQuery.invoice_date = {};
-      if (startDate) matchQuery.invoice_date.$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        matchQuery.invoice_date.$lte = end;
-      }
-    }
-
-    if (status && status !== "ALL") {
-      matchQuery.payment_status = status.toUpperCase();
-    }
-
-    // Fetch invoices sorted chronologically for correct running balance calculation
-    const rawInvoices = await Invoice.find(matchQuery)
-      .sort({ invoice_date: 1, createdAt: 1 })
-      .lean();
-
-    let cumulativeBalance = 0;
-    let totalInvoiced = 0;
-    let totalPaid = 0;
-    let totalExchangeCredit = 0;
-    let paidCount = 0;
-    let partialCount = 0;
-    let unpaidCount = 0;
-
-    const ledgerEntries = rawInvoices.map((inv) => {
-      const debit = Number(inv.total_amount || 0);
-      const amountPaid = Number(inv.amount_paid || 0);
-      const excessCredit = Number(inv.excess_exchange_credit || 0);
-      const credit = amountPaid + excessCredit;
-      const netBalance = debit - credit;
-
-      cumulativeBalance += netBalance;
-      totalInvoiced += debit;
-      totalPaid += amountPaid;
-      totalExchangeCredit += excessCredit;
-
-      if (inv.payment_status === "PAID") paidCount++;
-      else if (inv.payment_status === "PARTIAL") partialCount++;
-      else unpaidCount++;
-
-      // Construct a concise items summary string
-      let itemsSummary = "";
-      if (Array.isArray(inv.services) && inv.services.length > 0) {
-        itemsSummary = inv.services.map((s) => s.product_name).join(", ");
-      } else {
-        itemsSummary = "Standard Invoice";
-      }
-
-      return {
-        _id: inv._id,
-        invoice_number: inv.invoice_number,
-        invoice_date: inv.invoice_date || inv.createdAt,
-        payment_mode: inv.payment_mode || "CASH",
-        payment_status: inv.payment_status || "UNPAID",
-        items_summary: itemsSummary,
-        debit,
-        credit,
-        amount_paid: amountPaid,
-        excess_exchange_credit: excessCredit,
-        invoice_balance: netBalance,
-        running_balance: cumulativeBalance,
-      };
-    });
-
-    const advanceBalance = Number(customer.advance_balance || 0);
-    const totalDue = cumulativeBalance - advanceBalance;
-
-    if (advanceBalance > 0) {
-      ledgerEntries.push({
-        _id: `adv_${customer._id}`,
-        invoice_number: "ADVANCE-CREDIT",
-        invoice_date: customer.updatedAt || new Date(),
-        payment_mode: "ADVANCE",
-        payment_status: "PAID",
-        items_summary: "Customer Advance Payment / Store Credit Balance",
-        debit: 0,
-        credit: advanceBalance,
-        amount_paid: advanceBalance,
-        excess_exchange_credit: 0,
-        invoice_balance: -advanceBalance,
-        running_balance: totalDue,
-        is_advance: true,
-      });
-    }
+    // Provide both the new double-entry statement AND mapped legacy ledger_entries
+    const legacyLedgerEntries = ledgerData.statement.entries.map((ev) => ({
+      _id: ev._id,
+      invoice_number: ev.reference_number,
+      invoice_date: ev.effective_date,
+      payment_mode: ev.payment_mode || "CASH",
+      payment_status: ev.payment_status || "COMPLETED",
+      items_summary: ev.description,
+      debit: ev.debit,
+      credit: ev.credit,
+      amount_paid: ev.credit,
+      excess_exchange_credit: ev.excess_exchange_credit || 0,
+      invoice_balance: ev.debit - ev.credit,
+      running_balance: ev.running_balance,
+      is_advance: ev.event_type === "ADVANCE_DEPOSIT" || ev.category === "ADVANCE",
+      event_type: ev.event_type,
+      category: ev.category,
+      recorded_by: ev.recorded_by,
+      meta: ev.meta,
+    }));
 
     res.json({
       success: true,
       data: {
-        customer: {
-          _id: customer._id,
-          full_name: customer.full_name,
-          whatsapp_number: customer.whatsapp_number,
-          email: customer.email,
-          gst_number: customer.gst_number,
-          advance_balance: advanceBalance,
-          advance_history: customer.advance_history || [],
-        },
-        summary: {
-          total_invoiced: totalInvoiced,
-          total_paid: totalPaid,
-          total_exchange_credit: totalExchangeCredit,
-          advance_balance: advanceBalance,
-          total_due: totalDue,
-          store_credit_balance: totalDue < 0 ? Math.abs(totalDue) : 0,
-          total_invoices: rawInvoices.length,
-          paid_count: paidCount,
-          partial_count: partialCount,
-          unpaid_count: unpaidCount,
-        },
-        ledger_entries: ledgerEntries,
+        customer: ledgerData.customer,
+        summary: ledgerData.summary,
+        statement: ledgerData.statement,
+        ledger_entries: legacyLedgerEntries,
       },
     });
   } catch (error) {
     console.error("Get customer ledger error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch customer ledger" });
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch customer ledger",
+    });
   }
 };
 
-// Record bulk payment for customer across unpaid invoices (FIFO)
+// Record payment for customer (Auto FIFO, Manual allocation, or Direct Advance deposit)
 export const recordCustomerPayment = async (req, res) => {
   try {
     const { user } = req;
@@ -633,222 +542,92 @@ export const recordCustomerPayment = async (req, res) => {
       payment_method: rawMethod,
       payment_mode: rawMode,
       payment_date = new Date(),
+      transaction_reference = "",
       notes = "",
       send_whatsapp = true,
+      idempotency_key,
+      allocation_mode = "AUTO_FIFO",
+      allocations = [],
     } = req.body;
+
     const payment_method = rawMethod || rawMode || "CASH";
 
-    const numAmount = Number(amount);
-    if (!numAmount || numAmount <= 0 || isNaN(numAmount)) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid positive payment amount is required",
-      });
-    }
-
-    const customer = await Customer.findOne({
-      _id: id,
-      shop_id: user.shopId,
-      deleted_at: null,
+    const result = await PaymentService.recordPayment({
+      shopId: user.shopId,
+      customerId: id,
+      amount,
+      payment_method,
+      payment_date,
+      transaction_reference,
+      notes,
+      recorded_by: user.userId,
+      idempotency_key,
+      allocation_mode,
+      allocations,
+      send_whatsapp: send_whatsapp !== false,
     });
-
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
-    }
-
-    const shop = await Shop.findById(user.shopId);
-    if (!shop) {
-      return res.status(404).json({
-        success: false,
-        message: "Shop not found",
-      });
-    }
-
-    // Fetch unpaid or partially paid invoices sorted by oldest invoice_date first (FIFO)
-    const unpaidInvoices = await Invoice.find({
-      customer_id: id,
-      shop_id: user.shopId,
-      deleted_at: null,
-      payment_status: { $in: ["UNPAID", "PARTIAL"] },
-    }).sort({ invoice_date: 1, createdAt: 1 });
-
-    if (unpaidInvoices.length === 0) {
-      customer.advance_balance = Number(customer.advance_balance || 0) + numAmount;
-      customer.advance_history = customer.advance_history || [];
-      customer.advance_history.push({
-        amount: numAmount,
-        type: "CREDIT",
-        payment_method,
-        payment_date: payment_date ? new Date(payment_date) : new Date(),
-        notes: notes || "Direct advance payment (no pending dues)",
-        recorded_by: user.userId,
-      });
-      await customer.save();
-
-      // Send WhatsApp notification if enabled
-      if (send_whatsapp && customer.whatsapp_number) {
-        const { formatPhoneNumber, isValidWhatsAppNumber, formatDateForMessage } = await import("../scheduler/core/utils.js");
-        const { sendWhatsappMessageViaMSG91 } = await import("../config/msg91.js");
-        const formattedPhone = formatPhoneNumber(customer.whatsapp_number);
-        if (formattedPhone && isValidWhatsAppNumber(formattedPhone)) {
-          try {
-            const templateVars = {
-              1: numAmount.toFixed(2),
-              2: "ADVANCE CREDIT",
-              3: formatDateForMessage(payment_date ? new Date(payment_date) : new Date()),
-              4: shop.shop_name_hi || shop.shop_name || "",
-            };
-
-            await sendWhatsappMessageViaMSG91({
-              templateName: "payment_received",
-              to: formattedPhone,
-              components: templateVars,
-              campaignName: "payment_received",
-              hospitalId: shop._id,
-              userName: customer.full_name || "",
-              messageType: "payment_received",
-            });
-          } catch (waErr) {
-            console.error("Failed to send WhatsApp advance payment notification:", waErr);
-          }
-        }
-      }
-
-      return res.json({
-        success: true,
-        message: `Customer has no pending dues. ₹${numAmount.toLocaleString("en-IN")} credited to customer advance balance.`,
-        data: {
-          total_received: numAmount,
-          total_applied: 0,
-          excess_balance: numAmount,
-          advance_balance: customer.advance_balance,
-          updated_invoices: [],
-        },
-      });
-    }
-
-    let remainingPayment = numAmount;
-    const updatedInvoices = [];
-    const { formatPhoneNumber, isValidWhatsAppNumber, formatDateForMessage } = await import("../scheduler/core/utils.js");
-    const { sendWhatsappMessageViaMSG91 } = await import("../config/msg91.js");
-
-    for (const inv of unpaidInvoices) {
-      if (remainingPayment <= 0) break;
-
-      const currentPaid = Number(inv.amount_paid || 0);
-      const excessCredit = Number(inv.excess_exchange_credit || 0);
-      const netDue = Number(inv.total_amount || 0) - (currentPaid + excessCredit);
-
-      if (netDue <= 0) continue;
-
-      const paymentForThisInv = Math.min(remainingPayment, netDue);
-      const newAmountPaid = currentPaid + paymentForThisInv;
-      const newAmountDue = Math.max(0, Number(inv.total_amount || 0) - (newAmountPaid + excessCredit));
-      const newStatus = newAmountDue === 0 ? "PAID" : "PARTIAL";
-
-      // Add payment log to invoice
-      inv.payments = inv.payments || [];
-      inv.payments.push({
-        amount: paymentForThisInv,
-        payment_method,
-        payment_date: payment_date ? new Date(payment_date) : new Date(),
-        notes: notes || "Lump sum customer ledger payment",
-        recorded_by: user.userId,
-      });
-
-      inv.amount_paid = newAmountPaid;
-      inv.amount_due = newAmountDue;
-      inv.payment_status = newStatus;
-      inv.payment_mode = payment_method;
-
-      await inv.save();
-      remainingPayment -= paymentForThisInv;
-
-      let whatsappSent = false;
-      // Send WhatsApp payment_received template for each updated invoice if enabled
-      if (send_whatsapp && customer.whatsapp_number) {
-        const formattedPhone = formatPhoneNumber(customer.whatsapp_number);
-        if (formattedPhone && isValidWhatsAppNumber(formattedPhone)) {
-          try {
-            const templateVars = {
-              1: paymentForThisInv.toFixed(2),
-              2: inv.invoice_number || "N/A",
-              3: formatDateForMessage(payment_date ? new Date(payment_date) : new Date()),
-              4: shop.shop_name_hi || shop.shop_name || "",
-            };
-
-            const msgConfig = {
-              templateName: "payment_received",
-              to: formattedPhone,
-              components: templateVars,
-              campaignName: "payment_received",
-              hospitalId: shop._id,
-              userName: customer.full_name || "",
-              messageType: "payment_received",
-            };
-
-            const waResp = await sendWhatsappMessageViaMSG91(msgConfig);
-            if (waResp) whatsappSent = true;
-          } catch (waErr) {
-            console.error(`Failed to send WhatsApp payment notification for invoice ${inv.invoice_number}:`, waErr);
-          }
-        }
-      }
-
-      updatedInvoices.push({
-        invoice_id: inv._id,
-        invoice_number: inv.invoice_number,
-        amount_applied: paymentForThisInv,
-        remaining_due: newAmountDue,
-        payment_status: newStatus,
-        whatsapp_sent: whatsappSent,
-      });
-    }
-
-    let advanceCredited = 0;
-    if (remainingPayment > 0) {
-      advanceCredited = remainingPayment;
-      customer.advance_balance = Number(customer.advance_balance || 0) + remainingPayment;
-      customer.advance_history = customer.advance_history || [];
-      customer.advance_history.push({
-        amount: remainingPayment,
-        type: "CREDIT",
-        payment_method,
-        payment_date: payment_date ? new Date(payment_date) : new Date(),
-        notes: notes || "Excess payment credited to customer advance",
-        recorded_by: user.userId,
-      });
-      await customer.save();
-    }
-
-    let summaryMsg = `Payment of ₹${numAmount.toLocaleString("en-IN")} recorded across ${updatedInvoices.length} invoice(s)`;
-    if (advanceCredited > 0) {
-      summaryMsg += ` and ₹${advanceCredited.toLocaleString("en-IN")} credited to advance balance`;
-    }
 
     return res.json({
       success: true,
-      message: summaryMsg,
+      message: result.message,
       data: {
-        total_received: numAmount,
-        total_applied: numAmount - remainingPayment,
-        excess_balance: advanceCredited,
-        advance_balance: customer.advance_balance || 0,
-        updated_invoices: updatedInvoices,
+        total_received: Number(amount),
+        total_applied: (result.updated_invoices || []).reduce((s, i) => s + (i.amount_applied || 0), 0),
+        excess_balance: result.advance_credited || 0,
+        advance_balance: result.customer?.advance_balance || 0,
+        updated_invoices: result.updated_invoices || [],
+        receipt: result.receipt,
       },
     });
-    } catch (error) {
-      console.error("Record customer payment error:", error);
-      return res.status(500).json({
+  } catch (error) {
+    console.error("Record customer payment error:", error);
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to record customer payment",
+    });
+  }
+};
+
+// Get all payment receipts for a customer
+export const getCustomerPayments = async (req, res) => {
+  try {
+    const { user } = req;
+    const { id } = req.params;
+    const receipts = await PaymentService.getCustomerReceipts(user.shopId, id);
+    res.json({ success: true, data: { receipts } });
+  } catch (error) {
+    console.error("Get customer receipts error:", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to fetch customer payments" });
+  }
+};
+
+// Reverse a payment receipt
+export const reversePaymentReceipt = async (req, res) => {
+  try {
+    const { user } = req;
+    const { receiptId } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || !String(reason).trim()) {
+      return res.status(400).json({
         success: false,
-        message: "Failed to record customer payment",
-        error: error.message,
+        message: "A reason is required to reverse a payment receipt",
       });
     }
-  };
+
+    const result = await PaymentService.reversePayment({
+      shopId: user.shopId,
+      receiptId,
+      userId: user.userId,
+      reason,
+    });
+
+    res.json({ success: true, message: result.message, data: result });
+  } catch (error) {
+    console.error("Reverse payment receipt error:", error);
+    res.status(400).json({ success: false, message: error.message || "Failed to reverse payment" });
+  }
+};
 
 // Merge duplicate customers into a single primary customer
 export const mergeCustomers = async (req, res) => {

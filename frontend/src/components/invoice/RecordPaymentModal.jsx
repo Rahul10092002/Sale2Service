@@ -42,6 +42,8 @@ export default function RecordPaymentModal({
     () => new Date().toISOString().split("T")[0]
   );
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [transactionReference, setTransactionReference] = useState("");
+  const [idempotencyKey, setIdempotencyKey] = useState("");
   const [sendWhatsapp, setSendWhatsapp] = useState(true);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showOtherBillsDetails, setShowOtherBillsDetails] = useState(true);
@@ -73,6 +75,12 @@ export default function RecordPaymentModal({
       setPaymentMethod(invoice.payment_mode || "CASH");
       setPaymentDate(new Date().toISOString().split("T")[0]);
       setPaymentNotes("");
+      setTransactionReference("");
+      setIdempotencyKey(
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : "idem-" + Date.now() + "-" + Math.random().toString(36).substring(2, 9)
+      );
       setSendWhatsapp(true);
       setShowConfirmation(false);
       setShowOtherBillsDetails(true);
@@ -166,8 +174,10 @@ export default function RecordPaymentModal({
       payment_mode: paymentMethod,
       payment_method: paymentMethod,
       payment_date: paymentDate,
+      transaction_reference: transactionReference,
       notes: paymentNotes,
       send_whatsapp: sendWhatsapp,
+      idempotency_key: idempotencyKey,
     };
     // Call onRecordPayment supporting both object payload and positional args
     onRecordPayment(payload, paymentMethod, payload);
@@ -372,16 +382,29 @@ export default function RecordPaymentModal({
 
               <div>
                 <label className="block text-xs font-semibold text-ink-base dark:text-slate-200 mb-1">
-                  Notes / Reference
+                  Ref / UTR / Cheque #
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. UTR / Cheque / Note"
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  placeholder="e.g. UPI 4123891823"
+                  value={transactionReference}
+                  onChange={(e) => setTransactionReference(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink-base dark:text-slate-200 mb-1">
+                Notes / Remarks (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Received at counter"
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-dark-border rounded-xl bg-white dark:bg-dark-input text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
             </div>
 
             {/* WhatsApp Receipt Toggle */}

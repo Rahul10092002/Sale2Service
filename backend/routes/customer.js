@@ -5,6 +5,8 @@ import {
   getCustomerById,
   getCustomerLedger,
   recordCustomerPayment,
+  getCustomerPayments,
+  reversePaymentReceipt,
   updateCustomer,
   deleteCustomer,
   mergeCustomers,
@@ -32,8 +34,15 @@ customerRouter.get("/ledger-summary", checkPermission("customers_view"), getAllC
 // Get customer financial ledger
 customerRouter.get("/:id/ledger", checkPermission("customers_view"), getCustomerLedger);
 
-// Record bulk customer payment across unpaid invoices (FIFO)
+// Record customer payment (FIFO, Manual, or Advance deposit)
 customerRouter.post("/:id/record-payment", checkPermission("customers_edit"), recordCustomerPayment);
+customerRouter.post("/:id/payments", checkPermission("customers_edit"), recordCustomerPayment);
+
+// Get all payment receipts for a customer
+customerRouter.get("/:id/payments", checkPermission("customers_view"), getCustomerPayments);
+
+// Reverse a payment receipt
+customerRouter.post("/payments/:receiptId/reverse", checkPermission("customers_edit"), reversePaymentReceipt);
 
 // Get single customer and their invoices
 customerRouter.get("/:id", checkPermission("customers_view"), getCustomerById);

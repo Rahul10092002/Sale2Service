@@ -48,7 +48,7 @@ router.post("/prepare", checkPermission("schedules_create"), action(req => prepa
 })));
 router.post("/start", checkPermission("schedules_edit"), action(req => {
   if (req.body.webhookConfirmed !== true) throw new Error("Confirm the delivery webhook is configured with crqid and the authentication header.");
-  return setCampaignRunning(true);
+  return setCampaignRunning(true, req.body.sendUntil);
 }));
 router.post("/pause", checkPermission("schedules_edit"), action(() => setCampaignRunning(false)));
 router.post("/retry/:recipientId", checkPermission("schedules_edit"), action(req => retryFailed(req.params.recipientId)));

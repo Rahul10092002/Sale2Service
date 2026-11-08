@@ -7,14 +7,14 @@ import MessageLog from "../models/MessageLog.js";
 import { handleMsg91WhatsappWebhook } from "../controllers/webhookController.js";
 import diwaliCampaignRouter from "../routes/diwaliCampaign.js";
 import { DiwaliCampaign, DiwaliRecipient, DiwaliAttempt } from "../models/DiwaliCampaign.js";
-import { processCampaignTick, applyCampaignWebhook, retryFailed, webhookAuthorized, prepareCampaign, campaignScope } from "../services/diwaliCampaignService.js";
-import { normalizeCampaignPhone, deliveryStatus, allowedPreviousStatuses } from "../../shared/diwaliCampaign.js";
+import { processCampaignTick, applyCampaignWebhook, retryFailed, webhookAuthorized, prepareCampaign, setCampaignRunning, campaignScope } from "../services/diwaliCampaignService.js";
+import { normalizeCampaignPhone, deliveryStatus, allowedPreviousStatuses, campaignDeadlineReached } from "../../shared/diwaliCampaign.js";
 
 // No connection, dotenv, app startup, or real provider requests. All model I/O is mocked.
 const query = value => ({ sort() { return this; }, select() { return this; }, lean: async () => value });
 function workerMocks(t, overrides = {}) {
   const calls = { campaign: [], recipients: [], attempts: [], network: [] };
-  const campaign = { ...campaignScope, state: "RUNNING", interval_ms: 5000, recipient_cap: 100, shop_name_hi: "परीक्षण दुकान" };
+  const campaign = { ...campaignScope, state: "RUNNING", interval_ms: 5000, recipient_cap: 100, shop_name_hi: "परीक्षण दुकान", send_until: overrides.deadline || new Date(Date.now() + 86400000) };
   const recipient = { _id: "recipient", ...campaignScope, customer_id: "customer", phone: "919876543210", status: "QUEUED" };
   let attempt;
   t.mock.method(DiwaliCampaign, "findOneAndUpdate", filter => {
@@ -81,6 +81,38 @@ test("another worker holding lease prevents any provider call", async t => {
   const calls = workerMocks(t, { noLease: true });
   await processCampaignTick();
   assert.equal(calls.network.length, 0);
+});
+
+test("fixed initial cutoff stops at 7 PM IST and never moves forward the next day", () => {
+  assert.equal(campaignDeadlineReached({}, new Date("2026-11-08T18:59:59+05:30")), false);
+  assert.equal(campaignDeadlineReached({}, new Date("2026-11-08T19:00:00+05:30")), true);
+  assert.equal(campaignDeadlineReached({}, new Date("2026-11-09T10:56:00+05:30")), true);
+  assert.equal(campaignDeadlineReached({ send_until: "invalid" }), true);
+});
+
+test("expired sending window pauses on restart and preserves the unsent queue", async t => {
+  const calls = workerMocks(t, { deadline: new Date(Date.now() - 1) });
+  await processCampaignTick();
+  assert.equal(calls.network.length, 0);
+  assert.equal(calls.recipients.length, 0);
+  assert.ok(calls.campaign.some(call => call.update.$set.state === "PAUSED" && call.update.$set.reason.includes("cutoff")));
+});
+
+test("manual resume rejects expired deadline and accepts an explicitly chosen future cutoff", async t => {
+  const config = ["MSG91_AUTHKEY", "MSG91_API_ENDPOINT", "MSG91_NUMBER", "MSG91_NAMESPACE", "MSG91_WEBHOOK_TOKEN"];
+  const old = Object.fromEntries(config.map(key => [key, process.env[key]]));
+  for (const key of config) process.env[key] = "offline-test";
+  t.after(() => { for (const key of config) { if (old[key] === undefined) delete process.env[key]; else process.env[key] = old[key]; } });
+  t.mock.method(DiwaliCampaign, "findOne", () => query({ send_until: new Date(Date.now() - 60000) }));
+  let saved;
+  t.mock.method(DiwaliCampaign, "updateOne", async (filter, update) => { saved = update.$set; assert.deepEqual(filter.state.$in, ["PAUSED", "COMPLETED"]); return { matchedCount: 1 }; });
+  await assert.rejects(setCampaignRunning(true), /cutoff reached/);
+  await assert.rejects(setCampaignRunning(true, "2026-11-09T19:00"), /timezone/);
+  assert.equal(saved, undefined);
+  const future = new Date(Date.now() + 3600000).toISOString();
+  await setCampaignRunning(true, future);
+  assert.equal(saved.state, "RUNNING");
+  assert.equal(saved.send_until.toISOString(), future);
 });
 
 test("pause after recipient claim prevents provider submission", async t => {

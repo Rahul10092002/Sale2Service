@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import Customer from "../models/Customer.js";
 import Shop from "../models/Shop.js";
 import { DiwaliCampaign, DiwaliRecipient, DiwaliAttempt } from "../models/DiwaliCampaign.js";
-import { DIWALI_SHOP_ID, DIWALI_CAMPAIGN_ID, DIWALI_TEMPLATE, normalizeCampaignPhone, deliveryStatus, isThrottle, allowedPreviousStatuses } from "../../shared/diwaliCampaign.js";
+import { DIWALI_SHOP_ID, DIWALI_CAMPAIGN_ID, DIWALI_TEMPLATE, DIWALI_INITIAL_DEADLINE, campaignDeadlineReached, normalizeCampaignPhone, deliveryStatus, isThrottle, allowedPreviousStatuses } from "../../shared/diwaliCampaign.js";
 
 const shopId = new mongoose.Types.ObjectId(DIWALI_SHOP_ID);
 export const campaignScope = { shop_id: shopId, campaign_id: DIWALI_CAMPAIGN_ID };
@@ -51,7 +51,7 @@ export async function prepareCampaign({ intervalSeconds, recipientCap, exclusion
     if (!preview.shop_name_hi.trim()) throw new Error("The shop Hindi name must be configured before preparing.");
     try {
       await DiwaliCampaign.create({ ...campaignQuery, state: "PREPARING", shop_name_hi: preview.shop_name_hi.trim(),
-        interval_ms: intervalSeconds * 1000, recipient_cap: recipientCap, exclusions: normalized, reason: "Preparing audience" });
+        interval_ms: intervalSeconds * 1000, recipient_cap: recipientCap, send_until: new Date(DIWALI_INITIAL_DEADLINE), exclusions: normalized, reason: "Preparing audience" });
     } catch (error) { if (error.code !== 11000) throw error; }
     existing = await DiwaliCampaign.findOne(campaignQuery).lean();
   }
@@ -71,12 +71,21 @@ export async function prepareCampaign({ intervalSeconds, recipientCap, exclusion
   }
 }
 
-export async function setCampaignRunning(running) {
+export async function setCampaignRunning(running, requestedDeadline) {
   if (running && !["MSG91_AUTHKEY", "MSG91_API_ENDPOINT", "MSG91_NUMBER", "MSG91_NAMESPACE", "MSG91_WEBHOOK_TOKEN"].every(key => process.env[key])) {
     throw new Error("MSG91 and authenticated delivery webhook configuration are required.");
   }
-  const result = await DiwaliCampaign.updateOne({ ...campaignQuery, state: { $in: ["PAUSED", "RUNNING", "COMPLETED"] } }, {
-    $set: { state: running ? "RUNNING" : "PAUSED", reason: running ? "" : "Paused manually" },
+  const settings = { state: running ? "RUNNING" : "PAUSED", reason: running ? "" : "Paused manually" };
+  if (running) {
+    const campaign = await DiwaliCampaign.findOne(campaignQuery).lean();
+    if (!campaign) throw new Error("Prepare the campaign first.");
+    // Explicit date with offset only; never use server-local date interpretation.
+    if (requestedDeadline !== undefined && (typeof requestedDeadline !== "string" || !/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(requestedDeadline))) throw new Error("Provide an explicit sending deadline with timezone.");
+    settings.send_until = new Date(requestedDeadline ?? campaign.send_until ?? DIWALI_INITIAL_DEADLINE);
+    if (campaignDeadlineReached(settings)) throw new Error("Sending cutoff reached. Select a new future cutoff in the UI, then resume manually.");
+  }
+  const result = await DiwaliCampaign.updateOne({ ...campaignQuery, state: { $in: running ? ["PAUSED", "COMPLETED"] : ["PAUSED", "RUNNING", "COMPLETED"] } }, {
+    $set: settings,
   });
   if (!result.matchedCount) throw new Error("Prepare the campaign first.");
 }
@@ -124,12 +133,18 @@ export async function applyCampaignWebhook(event) {
 export async function processCampaignTick() {
   const now = new Date();
   const token = randomUUID();
+  const due = [{ next_send_at: null }, { next_send_at: { $lte: now } }, { send_until: { $lte: now } }];
+  if (now >= new Date(DIWALI_INITIAL_DEADLINE)) due.push({ send_until: null });
   const campaign = await DiwaliCampaign.findOneAndUpdate({ ...campaignQuery, state: "RUNNING",
     $and: [{ $or: [{ lease_until: null }, { lease_until: { $lte: now } }] },
-      { $or: [{ next_send_at: null }, { next_send_at: { $lte: now } }] }] },
+      { $or: due }] },
   { $set: { lease_until: new Date(Date.now() + leaseMs), lease_token: token } }, { new: true }).lean();
   if (!campaign) return;
   try {
+    if (campaignDeadlineReached(campaign)) {
+      await DiwaliCampaign.updateOne({ ...campaignQuery, lease_token: token }, { $set: { state: "PAUSED", reason: "Sending cutoff reached. Remaining recipients stay queued. Choose a new cutoff and resume manually; no automatic next-day sending." } });
+      return;
+    }
     // A crash after a provider request is ambiguous: never automatically resend it.
     const stale = await DiwaliRecipient.find({ ...campaignScope, status: "SENDING", updatedAt: { $lte: new Date(Date.now() - leaseMs) } }).lean();
     for (const recipient of stale) {
@@ -166,8 +181,8 @@ export async function processCampaignTick() {
     // Persist pacing before network I/O, including failures and restart recovery.
     await DiwaliCampaign.updateOne({ ...campaignQuery, lease_token: token }, { $set: { next_send_at: new Date(Date.now() + campaign.interval_ms) } });
     // Recheck after persistence: a pause or long DB stall may have invalidated the lease.
-    if (!await DiwaliCampaign.exists({ ...campaignQuery, state: "RUNNING", lease_token: token, lease_until: { $gt: new Date() } })) {
-      const stopped = { status: "FAILED", reason: "Not submitted: campaign paused or worker lease expired before sending" };
+    if (campaignDeadlineReached(campaign) || !await DiwaliCampaign.exists({ ...campaignQuery, state: "RUNNING", lease_token: token, lease_until: { $gt: new Date() } })) {
+      const stopped = { status: "FAILED", reason: "Not submitted: sending cutoff reached, campaign paused or worker lease expired before sending" };
       await DiwaliAttempt.updateOne({ _id: attemptId, ...campaignScope, status: "SENDING" }, { $set: stopped });
       await DiwaliRecipient.updateOne({ _id: recipient._id, ...campaignScope, latest_attempt: attemptId, status: "SENDING" }, { $set: stopped });
       return;

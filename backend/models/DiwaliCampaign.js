@@ -8,6 +8,7 @@ const campaignSchema = new mongoose.Schema({
   shop_name_hi: String,
   interval_ms: Number,
   recipient_cap: Number,
+  send_until: Date,
   exclusions: [String],
   reason: String,
   next_send_at: Date,

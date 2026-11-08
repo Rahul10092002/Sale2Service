@@ -1,6 +1,13 @@
 export const DIWALI_SHOP_ID = "69bd050b4f47d2c7e3d5c433";
 export const DIWALI_CAMPAIGN_ID = "dipawali_wish_2026";
 export const DIWALI_TEMPLATE = "dipawali_wish";
+// Fixed initial window: never roll this forward automatically after a restart.
+export const DIWALI_INITIAL_DEADLINE = "2026-11-08T19:00:00+05:30";
+
+export function campaignDeadlineReached(campaign, now = new Date()) {
+  const deadline = new Date(campaign.send_until || DIWALI_INITIAL_DEADLINE).getTime();
+  return !Number.isFinite(deadline) || now.getTime() >= deadline;
+}
 
 export function normalizeCampaignPhone(value) {
   let digits = String(value || "").replace(/\D/g, "");

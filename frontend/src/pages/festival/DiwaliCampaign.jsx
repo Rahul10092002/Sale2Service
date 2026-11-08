@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
-import { DIWALI_SHOP_ID } from "../../../../shared/diwaliCampaign.js";
+import { DIWALI_SHOP_ID, DIWALI_INITIAL_DEADLINE } from "../../../../shared/diwaliCampaign.js";
 import { usePermissions } from "../../hooks/usePermissions.js";
 import { useGetDiwaliCampaignQuery, useGetDiwaliAttemptsQuery, useDiwaliActionMutation } from "../../features/festival/diwaliCampaignApi.js";
 
@@ -9,6 +9,7 @@ const statuses = ["QUEUED", "SKIPPED", "SENDING", "UNKNOWN", "ACCEPTED", "SENT",
 const inputClass = "rounded border border-slate-300 p-2 bg-white dark:bg-slate-900 w-full";
 const buttonClass = "rounded bg-blue-600 text-white px-4 py-2 disabled:opacity-40";
 const date = value => value ? new Date(value).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—";
+const deadlineInput = value => new Date(new Date(value).getTime() + 330 * 60000).toISOString().slice(0, 16);
 
 function CampaignProgress({ counts = {}, updatedAt, refreshing, stale }) {
   const success = (counts.DELIVERED || 0) + (counts.READ || 0);
@@ -73,11 +74,13 @@ function CampaignPanel() {
   const [webhookConfirmed, setWebhookConfirmed] = useState(false);
   const [historyId, setHistoryId] = useState(null);
   const [notice, setNotice] = useState("");
+  const [sendUntil, setSendUntil] = useState(null);
   const { data, error, isLoading, isFetching, fulfilledTimeStamp, refetch } = useGetDiwaliCampaignQuery({ page, status }, {
     pollingInterval: 3000, skipPollingIfUnfocused: true, refetchOnFocus: true, refetchOnReconnect: true,
   });
   const [mutate, { isLoading: busy }] = useDiwaliActionMutation();
   const campaign = data?.campaign;
+  const selectedDeadline = sendUntil ?? deadlineInput(campaign?.send_until || DIWALI_INITIAL_DEADLINE);
   const act = async (action, body) => {
     setNotice("");
     try { await mutate({ action, body }).unwrap(); setNotice("Saved."); refetch(); }
@@ -95,16 +98,19 @@ function CampaignPanel() {
       <h2 className="font-semibold">{campaign?.state || "Not prepared"}</h2>
       <p>{campaign?.reason}</p>
       <p>Hindi shop name: <strong>{campaign?.shop_name_hi || data?.preview?.shop_name_hi || "Missing — configure in shop settings"}</strong></p>
+      <p className="font-semibold">Sending cutoff: {date(campaign?.send_until || DIWALI_INITIAL_DEADLINE)} IST</p>
+      <p className="text-sm">The initial queue stops on 8 November 2026 at 7:00 PM IST. Remaining recipients stay queued; nothing rolls over to tomorrow automatically. An already submitted message may be delivered after the cutoff.</p>
       {!ready ? <>
         <p>{data?.preview ? `${data.preview.total} customers · ${data.preview.eligible} mobile-format numbers · ${data.preview.skipped} invalid numbers` : "Preparation was interrupted. Retry with the original settings."}</p>
         <p className="text-sm">Customer-care short codes and numbers outside Indian mobile format are skipped. Mobile format alone does not confirm WhatsApp availability; delivery failures appear below.</p>
         <div className="grid md:grid-cols-2 gap-4">
           <label>Seconds between messages<input className={inputClass} type="number" min="5" max="3600" value={intervalSeconds} onChange={event => setIntervalSeconds(event.target.value)} /></label>
-          <label>Maximum attempts in a rolling 24 hours<input className={inputClass} type="number" min="1" max="100000" placeholder="Enter your chosen cap" value={recipientCap} onChange={event => setRecipientCap(event.target.value)} /></label>
+          <label>Safety cap: attempts in the preceding 24 hours<input className={inputClass} type="number" min="1" max="100000" placeholder="Enter your chosen cap" value={recipientCap} onChange={event => setRecipientCap(event.target.value)} /></label>
         </div>
         <label className="block">Additional mobile numbers to exclude (optional)<textarea className={inputClass} value={exclusions} onChange={event => setExclusions(event.target.value)} placeholder="One number per line, or separated by commas" /></label>
         <label className="flex gap-2"><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} />I reviewed the recipients and exclusions.</label>
         <p className="text-sm">Preparation saves the recipient list; it does not send messages. At 5 seconds each, 2,711 attempts take about 3 hours 46 minutes before pauses. The cap counts campaign attempts including retries; other account traffic also uses provider limits.</p>
+        <p className="text-sm">The 24-hour cap is a safety ceiling, not a 24-hour sending schedule. A cap smaller than your audience will pause the queue before everyone is attempted.</p>
         <button className={buttonClass} disabled={busy || !reviewed || !recipientCap || !hasPermission("schedules_create")} onClick={() => act("prepare", {
           intervalSeconds: Number(intervalSeconds), recipientCap: Number(recipientCap), exclusions: exclusions.split(/[\n,]+/).map(value => value.trim()).filter(Boolean), exclusionsReviewed: reviewed,
         })}>Prepare recipient list</button>
@@ -112,8 +118,10 @@ function CampaignPanel() {
         <p>One attempt every {campaign.interval_ms / 1000} seconds · cap {campaign.recipient_cap} attempts per rolling 24 hours · {data.attemptCount} total attempts</p>
         <p className="text-sm">Pacing reduces rate-limit risk; provider quality and recipient limits can still block messages. The campaign pauses on rate/quality restrictions or uncertain outcomes. Pausing allows an in-flight request to finish.</p>
         <label className="flex gap-2"><input type="checkbox" checked={webhookConfirmed} onChange={event => setWebhookConfirmed(event.target.checked)} />Delivery webhook is configured and tested with attempt correlation and authentication.</label>
+        <label className="block max-w-sm">Sending cutoff for this start / resume (IST)<input className={inputClass} type="datetime-local" value={selectedDeadline} disabled={campaign.state === "RUNNING" || !hasPermission("schedules_edit")} onChange={event => setSendUntil(event.target.value)} /></label>
+        <p className="text-sm">After the cutoff, choose a new future cutoff here and resume manually. Failed recipients also need Queue retry; delivered/read messages are not resent.</p>
         <div className="flex flex-wrap gap-3">
-          <button className={buttonClass} disabled={busy || campaign.state === "RUNNING" || !webhookConfirmed || !hasPermission("schedules_edit")} onClick={() => act("start", { webhookConfirmed })}>Start / resume queue</button>
+          <button className={buttonClass} disabled={busy || campaign.state === "RUNNING" || !webhookConfirmed || !selectedDeadline || !hasPermission("schedules_edit")} onClick={() => act("start", { webhookConfirmed, sendUntil: `${selectedDeadline}:00+05:30` })}>Start / resume queue</button>
           <button className={buttonClass} disabled={busy || campaign.state !== "RUNNING" || !hasPermission("schedules_edit")} onClick={() => act("pause")}>Pause</button>
           <button className={buttonClass} onClick={refetch}>Refresh</button>
         </div>

@@ -2,20 +2,30 @@ import MessageLog from "../models/MessageLog.js";
 import Invoice from "../models/Invoice.js";
 import Customer from "../models/Customer.js";
 import ReminderLog from "../models/ReminderLog.js";
+import { applyCampaignWebhook, webhookAuthorized } from "../services/diwaliCampaignService.js";
+import { DIWALI_TEMPLATE } from "../../shared/diwaliCampaign.js";
 
 /**
  * Handle incoming MSG91 WhatsApp Delivery Report (DLR) Webhook
  * MSG91 posts status updates (submitted, sent, delivered, read, failed)
  */
 export const handleMsg91WhatsappWebhook = async (req, res) => {
+  let campaignEvent = false;
   try {
     const payload = req.body || {};
-    console.log("[MSG91 Webhook] Received status payload:", JSON.stringify(payload));
 
     // MSG91 DLR payloads can come as an object or array of status events
     const events = Array.isArray(payload) ? payload : [payload];
 
     for (const evt of events) {
+      if (!evt || typeof evt !== "object") continue;
+      // Festival reports must never reach the legacy phone-based invoice updater.
+      if (evt.templateName === DIWALI_TEMPLATE || evt.campaignName === DIWALI_TEMPLATE || String(evt.crqid || "").startsWith("diwali:")) {
+        campaignEvent = true;
+        if (!webhookAuthorized(req)) return res.status(503).json({ success: false, message: "Campaign webhook authentication required" });
+        await applyCampaignWebhook(evt);
+        continue;
+      }
       const requestId =
         evt.requestId ||
         evt.request_id ||
@@ -50,13 +60,13 @@ export const handleMsg91WhatsappWebhook = async (req, res) => {
 
       let normalizedStatus = "sent";
       if (rawStatus.includes("read")) normalizedStatus = "read";
-      else if (rawStatus.includes("deliver")) normalizedStatus = "delivered";
       else if (
         rawStatus.includes("fail") ||
         rawStatus.includes("reject") ||
         rawStatus.includes("undeliver")
       )
         normalizedStatus = "failed";
+      else if (rawStatus.includes("deliver")) normalizedStatus = "delivered";
       else if (rawStatus.includes("sent") || rawStatus.includes("submit"))
         normalizedStatus = "sent";
 
@@ -235,6 +245,7 @@ export const handleMsg91WhatsappWebhook = async (req, res) => {
 
     res.status(200).json({ success: true, message: "MSG91 Webhook processed successfully" });
   } catch (err) {
+    if (campaignEvent) return res.status(503).json({ success: false, message: "Campaign delivery tracking temporarily unavailable" });
     console.error("[MSG91 Webhook Error]:", err);
     res.status(200).json({ success: false, message: "Webhook payload logged" });
   }

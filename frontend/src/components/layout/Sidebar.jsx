@@ -1,4 +1,6 @@
 import React from "react";
+import { useSelector } from "react-redux";
+import { DIWALI_SHOP_ID } from "../../../../shared/diwaliCampaign.js";
 import {
   Home,
   Settings,
@@ -16,6 +18,14 @@ import { ROUTES } from "../../utils/constants.js";
 import { usePermissions } from "../../hooks/usePermissions.js";
 
 const navItems = [
+  {
+    key: "diwali-campaign",
+    label: "Diwali Wishes",
+    icon: <Activity className="w-4 h-4" />,
+    path: ROUTES.DIWALI_CAMPAIGN,
+    permission: "schedules_view",
+    shopId: DIWALI_SHOP_ID,
+  },
   {
     key: "dashboard",
     label: "Dashboard",
@@ -106,6 +116,7 @@ const navItems = [
 const Sidebar = () => {
   const location = useLocation();
   const { hasPermission } = usePermissions();
+  const shopId = useSelector(state => state.auth.shopId);
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -144,7 +155,7 @@ const Sidebar = () => {
       {/* Navigation */}
       <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto no-scrollbar">
         {navItems
-          .filter(item => hasPermission(item.permission))
+          .filter(item => hasPermission(item.permission) && (!item.shopId || String(shopId) === item.shopId))
           .map((item) => (
           <Link
             key={item.key}

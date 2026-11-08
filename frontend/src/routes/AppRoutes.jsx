@@ -33,6 +33,7 @@ import WarrantyLookup from "../pages/warranty/WarrantyLookup.jsx";
 // Dynamic import for Logs component using React.lazy()
 import { lazy, Suspense } from "react";
 import FestivalSchedule from "../pages/festival/Festival.jsx";
+import DiwaliCampaign from "../pages/festival/DiwaliCampaign.jsx";
 import LandingPage from "../pages/landingpage/LandingPage.jsx";
 import PrivacyPolicy from "../pages/legal/PrivacyPolicy.jsx";
 import RecycleBin from "../pages/recycleBin/RecycleBin.jsx";
@@ -262,6 +263,7 @@ const AppRoutes = () => {
           </PrivateRoute>
         }
       />
+      <Route path={ROUTES.DIWALI_CAMPAIGN} element={<PrivateRoute title="Diwali Wishes"><DiwaliCampaign /></PrivateRoute>} />
       <Route
         path={ROUTES.SETTINGS}
         element={

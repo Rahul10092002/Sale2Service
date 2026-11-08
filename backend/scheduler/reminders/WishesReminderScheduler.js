@@ -3,6 +3,7 @@ import MessageSender from "../messaging/MessageSender.js";
 import Customer from "../../models/Customer.js";
 import FestivalSchedule from "../../models/FestivalSchedule.js";
 import Shop from "../../models/Shop.js";
+import { DIWALI_SHOP_ID, DIWALI_TEMPLATE } from "../../../shared/diwaliCampaign.js";
 import {
   getISTTodayParts,
   getISTDateParts,
@@ -531,6 +532,8 @@ export default class WishesReminderScheduler extends BaseScheduler {
    * @param {Object} [options] - Options (e.g. forceWindowOverride)
    */
   async processFestivalForShop(festival, options = {}) {
+    // This shop's temporary campaign owns dipawali_wish pacing, deduplication and tracking.
+    if (String(festival.shop_id) === DIWALI_SHOP_ID && festival.template_name === DIWALI_TEMPLATE) return;
     try {
       this.logInfo(
         `Starting festival wish campaign "${festival.festival_name}" for shop ${festival.shop_id}`,

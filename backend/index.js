@@ -21,6 +21,8 @@ import inventoryRouter from "./routes/inventory.js";
 import warrantyRouter from "./routes/warranty.js";
 import recycleBinRouter from "./routes/recycleBin.js";
 import { webhookRouter } from "./routes/webhook.js";
+import diwaliCampaignRouter from "./routes/diwaliCampaign.js";
+import { startDiwaliCampaignWorker } from "./services/diwaliCampaignService.js";
 import { validateEnv } from "./utils/validateEnv.js";
 
 dotenv.config();
@@ -69,6 +71,7 @@ app.use("/v1/logs", logsRouter);
 app.use("/v1/festival-schedule", festivalScheduleRouter);
 app.use("/v1/recycle-bin", recycleBinRouter);
 app.use("/v1/webhooks", webhookRouter);
+app.use("/v1/diwali-campaign", diwaliCampaignRouter);
 // Dev-only debug endpoints
 app.use("/v1/debug", debugRouter);
 
@@ -118,6 +121,7 @@ const initializeServices = async () => {
   try {
     // Connect DB AFTER server starts
     await MongoDb();
+    startDiwaliCampaignWorker();
 
     // Start reminder scheduler
     const scheduler = new SchedulerService();

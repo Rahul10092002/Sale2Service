@@ -29,6 +29,7 @@ export const ROUTES = {
   SERVICES: "/services",
   LOGS: "/logs",
   FESTIVAL_SCHEDULE: "/festival-schedule",
+  DIWALI_CAMPAIGN: "/diwali-campaign",
   SETTINGS: "/settings",
   RECYCLE_BIN: "/recycle-bin",
   PRIVACY_POLICY: "/privacy-policy",

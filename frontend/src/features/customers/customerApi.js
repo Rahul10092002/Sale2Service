@@ -140,6 +140,15 @@ export const customerApi = baseApi.injectEndpoints({
       ],
       transformResponse: (response) => response,
     }),
+
+    exportPendingCustomersLedgerPdf: builder.mutation({
+      query: (params) => ({
+        url: "/customers/export-pending-ledger-pdf",
+        method: "GET",
+        params: params || {},
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -158,4 +167,5 @@ export const {
   useRecordCustomerPaymentMutation,
   useReversePaymentMutation,
   useSendCustomerPaymentReminderMutation,
+  useExportPendingCustomersLedgerPdfMutation,
 } = customerApi;

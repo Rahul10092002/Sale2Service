@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { usePermissions } from "../../hooks/usePermissions.js";
@@ -8,6 +8,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   User,
   Users as UsersIcon,
   Phone,
@@ -25,11 +26,14 @@ import {
   CheckCircle2,
   Filter,
   X,
+  Printer,
+  Download,
 } from "lucide-react";
 import {
   useGetCustomersQuery,
   useCreateCustomerMutation,
   useRecordCustomerPaymentMutation,
+  useExportPendingCustomersLedgerPdfMutation,
 } from "../../features/customers/customerApi.js";
 import CustomerPaymentModal from "../../components/customer/CustomerPaymentModal.jsx";
 import Button from "../../components/ui/Button.jsx";
@@ -123,6 +127,70 @@ const Customers = () => {
   };
 
   const [createCustomer] = useCreateCustomerMutation();
+
+  const [exportPendingCustomersLedgerPdf, { isLoading: isExportingPdf }] =
+    useExportPendingCustomersLedgerPdfMutation();
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleExportPendingLedger = async (mode = "preview") => {
+    setShowExportMenu(false);
+    try {
+      const blob = await exportPendingCustomersLedgerPdf({
+        search: searchTerm || undefined,
+      }).unwrap();
+
+      const pdfUrl = URL.createObjectURL(blob);
+
+      if (mode === "download") {
+        const link = document.createElement("a");
+        link.href = pdfUrl;
+        const dateStr = new Date().toISOString().slice(0, 10);
+        link.download = `Pending_Customers_Ledger_${dateStr}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(pdfUrl), 2000);
+        dispatch(
+          showToast({
+            message: "Outstanding customer ledger PDF downloaded",
+            type: "success",
+          })
+        );
+      } else {
+        const newWindow = window.open(pdfUrl, "_blank");
+        if (newWindow) {
+          newWindow.document.title = "Outstanding Customer Ledger";
+        }
+        setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000);
+        dispatch(
+          showToast({
+            message: "Outstanding customer ledger opened for print & calling",
+            type: "success",
+          })
+        );
+      }
+    } catch (err) {
+      console.error("Failed to export customer ledger PDF:", err);
+      dispatch(
+        showToast({
+          message:
+            err?.data?.message || err?.message || "Failed to generate customer ledger PDF",
+          type: "error",
+        })
+      );
+    }
+  };
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -539,15 +607,63 @@ const Customers = () => {
               </div>
             </div>
 
-            {canCreate("customers") && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-xs font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600"
-              >
-                <Plus className="w-4 h-4" />
-                Create Customer
-              </button>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Export Pending Dues PDF Button & Dropdown */}
+              <div className="relative" ref={exportMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowExportMenu((prev) => !prev)}
+                  disabled={isExportingPdf}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 rounded-md text-xs font-semibold shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                  title="Export all customers with pending dues as PDF for calling & printing"
+                >
+                  {isExportingPdf ? (
+                    <LoadingSpinner size="sm" className="w-3.5 h-3.5" />
+                  ) : (
+                    <Printer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  )}
+                  <span>Pending Dues PDF</span>
+                  <ChevronDown className="w-3 h-3 text-amber-700 dark:text-amber-300" />
+                </button>
+
+                {showExportMenu && (
+                  <div className="absolute right-0 sm:left-0 sm:right-auto mt-1 w-60 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl shadow-xl z-30 py-1.5 animate-in fade-in-50 duration-100">
+                    <button
+                      type="button"
+                      onClick={() => handleExportPendingLedger("preview")}
+                      className="w-full text-left px-3.5 py-2.5 text-xs flex items-center gap-2.5 text-ink-base dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-dark-subtle transition-colors cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-slate-100">Open &amp; Print PDF</div>
+                        <div className="text-[10.5px] text-ink-secondary dark:text-slate-400">View in new tab for direct printing or mobile calling</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportPendingLedger("download")}
+                      className="w-full text-left px-3.5 py-2.5 text-xs flex items-center gap-2.5 text-ink-base dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-dark-subtle transition-colors border-t border-gray-100 dark:border-dark-border/60 cursor-pointer"
+                    >
+                      <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-slate-100">Download PDF</div>
+                        <div className="text-[10.5px] text-ink-secondary dark:text-slate-400">Save offline ledger document (.pdf)</div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {canCreate("customers") && (
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 border-blue-500 text-blue-500 rounded-md text-xs font-medium hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Customer
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Financial Filter Pills Toolbar */}

@@ -8,6 +8,7 @@ import ServiceVisit from "../models/ServiceVisit.js";
 import Shop from "../models/Shop.js";
 import ReminderLog from "../models/ReminderLog.js";
 import { CustomerLedgerService } from "../services/customerLedgerService.js";
+import { customerLedgerPdfService } from "../services/customerLedgerPDFService.js";
 import { PaymentService } from "../services/paymentService.js";
 import { PaymentReminderService } from "../services/paymentReminderService.js";
 
@@ -959,6 +960,167 @@ export const sendCustomerPaymentReminder = async (req, res) => {
     });
   }
 };
+
+/**
+ * Export all customers with pending dues as a printable / calling-optimized PDF ledger.
+ * GET /v1/customers/export-pending-ledger-pdf
+ */
+export const exportPendingCustomersLedgerPdf = async (req, res) => {
+  try {
+    const { user } = req;
+    const { search, min_due } = req.query;
+
+    const shopObjectId = new mongoose.Types.ObjectId(user.shopId);
+
+    const matchQuery = {
+      shop_id: shopObjectId,
+      deleted_at: null,
+    };
+
+    if (search && search.trim()) {
+      const searchTrimmed = search.trim();
+      const escapedSearch = searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escapedSearch, "i");
+      const cleanDigits = searchTrimmed.replace(/\D/g, "");
+      const phoneConditions = [{ whatsapp_number: regex }, { alternate_phone: regex }];
+      if (cleanDigits.length >= 3) {
+        const digitRegex = new RegExp(cleanDigits, "i");
+        phoneConditions.push({ whatsapp_number: digitRegex }, { alternate_phone: digitRegex });
+      }
+
+      matchQuery.$or = [
+        { first_name: regex },
+        { last_name: regex },
+        { full_name: regex },
+        ...phoneConditions,
+      ];
+    }
+
+    const minDueThreshold = parseFloat(min_due) || 0;
+
+    const pipeline = [
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: "invoices",
+          let: { customerId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$customer_id", "$$customerId"] },
+                    { $eq: ["$shop_id", shopObjectId] },
+                    { $eq: ["$deleted_at", null] },
+                  ],
+                },
+              },
+            },
+            {
+              $project: {
+                total_amount: { $ifNull: ["$total_amount", 0] },
+                amount_paid: { $ifNull: ["$amount_paid", 0] },
+                excess_exchange_credit: { $ifNull: ["$excess_exchange_credit", 0] },
+                invoice_date: 1,
+                createdAt: 1,
+              },
+            },
+            { $sort: { invoice_date: -1, createdAt: -1 } },
+          ],
+          as: "invoices_summary",
+        },
+      },
+      {
+        $addFields: {
+          total_invoiced: { $sum: "$invoices_summary.total_amount" },
+          total_paid: { $sum: "$invoices_summary.amount_paid" },
+          total_exchange_credit: {
+            $sum: { $ifNull: ["$invoices_summary.excess_exchange_credit", 0] },
+          },
+          advance_balance: { $ifNull: ["$advance_balance", 0] },
+          total_due: {
+            $subtract: [
+              { $sum: "$invoices_summary.total_amount" },
+              {
+                $add: [
+                  { $sum: "$invoices_summary.amount_paid" },
+                  {
+                    $sum: {
+                      $ifNull: ["$invoices_summary.excess_exchange_credit", 0],
+                    },
+                  },
+                  { $ifNull: ["$advance_balance", 0] },
+                ],
+              },
+            ],
+          },
+          total_invoices: { $size: "$invoices_summary" },
+          last_invoice_date: {
+            $ifNull: [
+              { $arrayElemAt: ["$invoices_summary.invoice_date", 0] },
+              { $arrayElemAt: ["$invoices_summary.createdAt", 0] },
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          total_due: { $gt: minDueThreshold },
+        },
+      },
+      {
+        $project: {
+          invoices_summary: 0,
+        },
+      },
+      {
+        $sort: {
+          total_due: -1,
+          full_name: 1,
+        },
+      },
+    ];
+
+    const [customers, shop] = await Promise.all([
+      Customer.aggregate(pipeline),
+      Shop.findById(user.shopId).lean(),
+    ]);
+
+    if (!shop) {
+      return res.status(404).json({
+        success: false,
+        message: "Shop profile not found",
+      });
+    }
+
+    const summary = {
+      totalCustomers: customers.length,
+      totalPendingAmount: customers.reduce((sum, c) => sum + (c.total_due || 0), 0),
+      totalBilled: customers.reduce((sum, c) => sum + (c.total_invoiced || 0), 0),
+      totalPaid: customers.reduce((sum, c) => sum + (c.total_paid || 0), 0),
+    };
+
+    const pdfResult = await customerLedgerPdfService.generatePendingCustomersLedgerPDF({
+      shop,
+      customers,
+      summary,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${pdfResult.filename}"`);
+    res.setHeader("Content-Length", pdfResult.buffer.length);
+
+    return res.send(pdfResult.buffer);
+  } catch (error) {
+    console.error("Export pending customer ledger PDF error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to export pending customer ledger PDF",
+      error: error.message,
+    });
+  }
+};
+
 
 
 

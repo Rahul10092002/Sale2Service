@@ -18,24 +18,49 @@ const __dirname = dirname(__filename);
  *  3. Fall back to whatever puppeteer.executablePath() returns
  */
 function resolveChromePath() {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH && fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
     return process.env.PUPPETEER_EXECUTABLE_PATH;
   }
 
-  // Project-local cache: backend/.cache/puppeteer/chrome/<version>/chrome-linux64/chrome
+  // 1. Project-local cache: backend/.cache/puppeteer/chrome/<version>/chrome-linux64/chrome
   const localCacheDir = resolve(__dirname, "../.cache/puppeteer/chrome");
   if (fs.existsSync(localCacheDir)) {
     const versions = fs.readdirSync(localCacheDir);
     if (versions.length > 0) {
-      // Pick the latest version directory
       const latest = versions.sort().at(-1);
-      const candidate = join(localCacheDir, latest, "chrome-linux64", "chrome");
-      if (fs.existsSync(candidate)) return candidate;
+      const candidateLinux = join(localCacheDir, latest, "chrome-linux64", "chrome");
+      if (fs.existsSync(candidateLinux)) return candidateLinux;
+      const candidateWin = join(localCacheDir, latest, "chrome-win64", "chrome.exe");
+      if (fs.existsSync(candidateWin)) return candidateWin;
     }
   }
 
-  // Last resort: let puppeteer decide (works locally / when HOME is stable)
-  return puppeteer.executablePath();
+  // 2. Standard installed Chrome / Edge (Windows, Linux, macOS)
+  const systemCandidates = [
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  ];
+
+  for (const p of systemCandidates) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 3. Fall back to puppeteer.executablePath() if it exists on disk
+  try {
+    const puppeteerPath = puppeteer.executablePath();
+    if (puppeteerPath && fs.existsSync(puppeteerPath)) return puppeteerPath;
+  } catch {
+    // Puppeteer couldn't find its cached binary
+  }
+
+  return undefined;
 }
 
 export class PDFGenerator {
@@ -53,6 +78,7 @@ export class PDFGenerator {
 
   // Convert HTML to PDF
   async generatePDF(htmlContent, outputPath, options = {}) {
+    const chromePath = resolveChromePath();
     const launchOptions = {
       args: [
         "--no-sandbox",
@@ -61,24 +87,28 @@ export class PDFGenerator {
         "--disable-gpu",
       ],
       headless: true,
-      executablePath: resolveChromePath(),
+      ...(chromePath ? { executablePath: chromePath } : {}),
     };
     const browser = await puppeteer.launch(launchOptions);
 
     try {
       const page = await browser.newPage();
-      // Wait for network to be mostly idle so external resources (images) load
-      await page.setContent(htmlContent, { waitUntil: "networkidle2" });
+      page.setDefaultNavigationTimeout(60000);
+      page.setDefaultTimeout(60000);
+      const waitUntil = options.waitUntil || "domcontentloaded";
+      const timeout = options.timeout !== undefined ? options.timeout : 60000;
+      await page.setContent(htmlContent, { waitUntil, timeout });
 
-      // Ensure all images have finished loading (resolves even on error)
+      // Ensure all images have finished loading (resolves on load, error, or 2.5s safety timeout)
       await page.evaluate(() =>
         Promise.all(
           Array.from(document.images).map((img) =>
             img.complete
               ? Promise.resolve()
               : new Promise((res) => {
-                  img.addEventListener("load", res);
-                  img.addEventListener("error", res);
+                  img.addEventListener("load", res, { once: true });
+                  img.addEventListener("error", res, { once: true });
+                  setTimeout(res, 2500);
                 }),
           ),
         ),
@@ -118,6 +148,7 @@ export class PDFGenerator {
 
   // Generate PDF and return buffer instead of saving to file
   async generatePDFBuffer(htmlContent, options = {}) {
+    const chromePath = resolveChromePath();
     const launchOptions = {
       args: [
         "--no-sandbox",
@@ -126,24 +157,28 @@ export class PDFGenerator {
         "--disable-gpu",
       ],
       headless: true,
-      executablePath: resolveChromePath(),
+      ...(chromePath ? { executablePath: chromePath } : {}),
     };
     const browser = await puppeteer.launch(launchOptions);
 
     try {
       const page = await browser.newPage();
-      // Wait for network to be mostly idle so external resources (images) load
-      await page.setContent(htmlContent, { waitUntil: "networkidle2" });
+      page.setDefaultNavigationTimeout(60000);
+      page.setDefaultTimeout(60000);
+      const waitUntil = options.waitUntil || "domcontentloaded";
+      const timeout = options.timeout !== undefined ? options.timeout : 60000;
+      await page.setContent(htmlContent, { waitUntil, timeout });
 
-      // Ensure all images have finished loading (resolves even on error)
+      // Ensure all images have finished loading (resolves on load, error, or 2.5s safety timeout)
       await page.evaluate(() =>
         Promise.all(
           Array.from(document.images).map((img) =>
             img.complete
               ? Promise.resolve()
               : new Promise((res) => {
-                  img.addEventListener("load", res);
-                  img.addEventListener("error", res);
+                  img.addEventListener("load", res, { once: true });
+                  img.addEventListener("error", res, { once: true });
+                  setTimeout(res, 2500);
                 }),
           ),
         ),

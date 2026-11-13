@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outstanding Customer Ledger - <%= shop.shop_name || shop.name || 'Shop' %></title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 8mm 10mm 10mm 10mm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Nirmala UI", "Mangal", sans-serif;
+            font-size: 8.5pt;
+            line-height: 1.35;
+            color: #1e293b;
+            background: #ffffff;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .report-container {
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* ── Header ── */
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .shop-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .shop-logo {
+            width: 52px;
+            height: 52px;
+            object-fit: contain;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            padding: 2px;
+            background: #ffffff;
+        }
+
+        .shop-details h1 {
+            font-size: 15pt;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+        }
+
+        .shop-meta {
+            font-size: 8pt;
+            color: #475569;
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+
+        .report-title-card {
+            text-align: right;
+        }
+
+        .badge-title {
+            display: inline-block;
+            background: #dc2626;
+            color: #ffffff;
+            font-size: 9pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 3px 10px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+        }
+
+        .report-subtitle {
+            font-size: 8pt;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .report-date {
+            font-size: 7.5pt;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* ── KPI Summary Strip ── */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-card {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .kpi-card.pending {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+
+        .kpi-card.debtors {
+            background: #fffbeb;
+            border-color: #fde68a;
+        }
+
+        .kpi-card.invoiced {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+
+        .kpi-card.collected {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        .kpi-label {
+            font-size: 7pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        .kpi-card.pending .kpi-label { color: #991b1b; }
+        .kpi-card.debtors .kpi-label { color: #92400e; }
+        .kpi-card.invoiced .kpi-label { color: #1e40af; }
+        .kpi-card.collected .kpi-label { color: #166534; }
+
+        .kpi-value {
+            font-size: 11pt;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .kpi-card.pending .kpi-value { color: #b91c1c; }
+        .kpi-card.debtors .kpi-value { color: #b45309; }
+        .kpi-card.invoiced .kpi-value { color: #1d4ed8; }
+        .kpi-card.collected .kpi-value { color: #15803d; }
+
+        /* ── Ledger Table ── */
+        table.ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+        }
+
+        table.ledger-table thead {
+            display: table-header-group;
+        }
+
+        table.ledger-table th {
+            background: #0f172a !important;
+            color: #ffffff !important;
+            font-weight: 700;
+            text-align: left;
+            padding: 6px 8px;
+            font-size: 7.5pt;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            border: 1px solid #1e293b;
+        }
+
+        table.ledger-table th.text-right {
+            text-align: right;
+        }
+
+        table.ledger-table th.text-center {
+            text-align: center;
+        }
+
+        table.ledger-table tbody tr {
+            page-break-inside: avoid;
+        }
+
+        table.ledger-table td {
+            padding: 5px 7px;
+            border: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+
+        table.ledger-table tbody tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        table.ledger-table tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .customer-name {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 8.5pt;
+        }
+
+        .badge-type {
+            display: inline-block;
+            font-size: 6.5pt;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        .badge-retail {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-business {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
+
+        .badge-dealer {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .phone-link {
+            color: #0369a1;
+            text-decoration: none;
+            font-weight: 700;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 8.5pt;
+            display: inline-block;
+        }
+
+        .phone-link:hover {
+            text-decoration: underline;
+        }
+
+        .alt-phone {
+            font-size: 7pt;
+            color: #64748b;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            margin-top: 1px;
+        }
+
+        .address-text {
+            color: #475569;
+            font-size: 7.5pt;
+            max-width: 140px;
+            line-height: 1.25;
+        }
+
+        .city-bold {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .currency-val {
+            font-variant-numeric: tabular-nums;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 8pt;
+        }
+
+        .due-amount {
+            color: #b91c1c;
+            font-weight: 800;
+            font-size: 9pt;
+            background: #fef2f2;
+            padding: 2px 4px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .bills-count {
+            font-size: 7.5pt;
+            color: #475569;
+            text-align: center;
+        }
+
+        .last-date {
+            font-size: 6.8pt;
+            color: #64748b;
+        }
+
+        /* ── Calling Follow-up Notes Box ── */
+        .followup-box {
+            border: 1px dashed #cbd5e1;
+            border-radius: 4px;
+            padding: 3px 5px;
+            background: #ffffff;
+            font-size: 6.8pt;
+            color: #64748b;
+            line-height: 1.2;
+            min-height: 26px;
+        }
+
+        .followup-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
+
+        .followup-check span {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .check-square {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border: 1px solid #94a3b8;
+            border-radius: 1px;
+            background: #fff;
+        }
+
+        .followup-line {
+            border-bottom: 1px dotted #cbd5e1;
+            height: 10px;
+            width: 100%;
+        }
+
+        /* ── Table Footer Summary ── */
+        tfoot tr td {
+            background: #f1f5f9 !important;
+            font-weight: 800;
+            border-top: 2px solid #0f172a;
+            border-bottom: 2px solid #0f172a;
+            padding: 7px 8px;
+            font-size: 8.5pt;
+            color: #0f172a;
+        }
+
+        /* ── Document Footer ── */
+        .report-footer {
+            margin-top: 10px;
+            padding-top: 6px;
+            border-top: 1px solid #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 7pt;
+            color: #64748b;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .empty-title {
+            font-size: 12pt;
+            font-weight: 700;
+            color: #15803d;
+            margin-bottom: 4px;
+        }
+
+        .empty-desc {
+            font-size: 8.5pt;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <!-- ── Shop Header & Document Title ── -->
+        <header class="report-header">
+            <div class="shop-brand">
+                <% if (shop.logo_url) { %>
+                    <img src="<%= shop.logo_url %>" alt="<%= shop.shop_name || shop.name || 'Shop' %>" class="shop-logo" />
+                <% } %>
+                <div class="shop-details">
+                    <h1><%= shop.shop_name || shop.name || "WarrantyDesk Merchant" %></h1>
+                    <div class="shop-meta">
+                        <% if (shop.address) { %>
+                            <span><%= typeof shop.address === 'string' ? shop.address : [shop.address.line1, shop.address.city, shop.address.state, shop.address.pincode].filter(Boolean).join(', ') %></span> · 
+                        <% } %>
+                        <% if (shop.phone) { %>
+                            <span>Phone: <strong><%= shop.phone %></strong></span>
+                        <% } %>
+                        <% if (shop.email) { %>
+                            · <span>Email: <%= shop.email %></span>
+                        <% } %>
+                        <% if (shop.gst_number || shop.gstin) { %>
+                            <br><span>GSTIN: <strong><%= shop.gst_number || shop.gstin %></strong></span>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <div class="report-title-card">
+                <span class="badge-title">Outstanding Debtors Ledger</span>
+                <div class="report-subtitle">Customer Dues &amp; Payment Recovery Sheet</div>
+                <div class="report-date">Generated: <%= generatedAt %> · Confidential</div>
+            </div>
+        </header>
+
+        <!-- ── KPI Strip ── -->
+        <section class="kpi-strip">
+            <div class="kpi-card debtors">
+                <div class="kpi-label">Customers With Dues</div>
+                <div class="kpi-value"><%= summary.totalCustomers %></div>
+            </div>
+            <div class="kpi-card pending">
+                <div class="kpi-label">Total Outstanding Dues</div>
+                <div class="kpi-value"><%= summary.formattedTotalPending %></div>
+            </div>
+            <div class="kpi-card invoiced">
+                <div class="kpi-label">Total Amount Billed</div>
+                <div class="kpi-value"><%= summary.formattedTotalBilled %></div>
+            </div>
+            <div class="kpi-card collected">
+                <div class="kpi-label">Total Collections Received</div>
+                <div class="kpi-value"><%= summary.formattedTotalPaid %></div>
+            </div>
+        </section>
+
+        <!-- ── Debtors Table ── -->
+        <% if (customers && customers.length > 0) { %>
+            <table class="ledger-table">
+                <thead>
+                    <tr>
+                        <th style="width: 32px;" class="text-center">#</th>
+                        <th style="width: 17%;">Customer Details</th>
+                        <th style="width: 16%;">Contact &amp; Calling</th>
+                        <th style="width: 13%;">Location / Address</th>
+                        <th style="width: 9%;" class="text-right">Billed (₹)</th>
+                        <th style="width: 9%;" class="text-right">Paid (₹)</th>
+                        <th style="width: 11%;" class="text-right">Pending Due (₹)</th>
+                        <th style="width: 7%;" class="text-center">Invoices</th>
+                        <th style="width: 18%;">Calling &amp; Follow-up Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% customers.forEach((c, index) => { %>
+                        <tr>
+                            <!-- S.No -->
+                            <td class="text-center" style="font-weight: 600; color: #64748b;"><%= index + 1 %></td>
+
+                            <!-- Customer Name & Badge -->
+                            <td>
+                                <div class="customer-name"><%= c.full_name %></div>
+                                <div>
+                                    <span class="badge-type <%= c.customer_type === 'BUSINESS' ? 'badge-business' : c.customer_type === 'DEALER' ? 'badge-dealer' : 'badge-retail' %>">
+                                        <%= c.customer_type || 'RETAIL' %>
+                                    </span>
+                                    <% if (c.gst_number) { %>
+                                        <span style="font-size: 6.8pt; color: #64748b; font-family: monospace;">GST: <%= c.gst_number %></span>
+                                    <% } %>
+                                </div>
+                            </td>
+
+                            <!-- Phone & Calling (Clickable) -->
+                            <td>
+                                <a href="tel:<%= c.calling_phone %>" class="phone-link" title="Tap to call <%= c.full_name %>">
+                                    <%= c.formatted_phone %>
+                                </a>
+                                <% if (c.alternate_phone) { %>
+                                    <div class="alt-phone">Alt: <a href="tel:<%= c.alternate_phone %>" style="color: #64748b; text-decoration: none;"><%= c.alternate_phone %></a></div>
+                                <% } %>
+                                <% if (c.email) { %>
+                                    <div style="font-size: 6.8pt; color: #64748b; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= c.email %></div>
+                                <% } %>
+                            </td>
+
+                            <!-- Location / Address -->
+                            <td>
+                                <div class="address-text">
+                                    <% if (c.city) { %>
+                                        <div class="city-bold"><%= c.city %> <%= c.pincode ? '· ' + c.pincode : '' %></div>
+                                    <% } %>
+                                    <% if (c.address_line) { %>
+                                        <div><%= c.address_line %></div>
+                                    <% } %>
+                                    <% if (!c.city && !c.address_line) { %>
+                                        <span style="color: #94a3b8;">—</span>
+                                    <% } %>
+                                </div>
+                            </td>
+
+                            <!-- Billed Amount -->
+                            <td class="text-right currency-val">
+                                <%= c.formatted_invoiced %>
+                            </td>
+
+                            <!-- Paid Amount -->
+                            <td class="text-right currency-val" style="color: #166534;">
+                                <%= c.formatted_paid %>
+                            </td>
+
+                            <!-- Outstanding Due Amount -->
+                            <td class="text-right">
+                                <span class="due-amount currency-val"><%= c.formatted_due %></span>
+                            </td>
+
+                            <!-- Invoices count & last date -->
+                            <td class="text-center">
+                                <div class="bills-count"><%= c.total_invoices %> bill<%= c.total_invoices === 1 ? '' : 's' %></div>
+                                <% if (c.last_invoice_formatted) { %>
+                                    <div class="last-date"><%= c.last_invoice_formatted %></div>
+                                <% } %>
+                            </td>
+
+                            <!-- Blank follow-up / calling note block for pen notation -->
+                            <td>
+                                <div class="followup-box">
+                                    <div class="followup-check">
+                                        <span><i class="check-square"></i> Called</span>
+                                        <span><i class="check-square"></i> Promised</span>
+                                        <span style="color: #94a3b8;">Date: _____</span>
+                                    </div>
+                                    <div class="followup-line"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" style="text-align: right; text-transform: uppercase; font-size: 8pt; letter-spacing: 0.04em;">
+                            Total Outstanding (<%= customers.length %> Debtors):
+                        </td>
+                        <td class="text-right currency-val"><%= summary.formattedTotalBilled %></td>
+                        <td class="text-right currency-val" style="color: #166534;"><%= summary.formattedTotalPaid %></td>
+                        <td class="text-right currency-val" style="color: #b91c1c; font-size: 9.5pt;"><%= summary.formattedTotalPending %></td>
+                        <td colspan="2" style="font-size: 7.5pt; color: #64748b; font-weight: normal;">
+                            Average Due: <%= summary.formattedAverageDue %>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        <% } else { %>
+            <div class="empty-state">
+                <div class="empty-title">All Customer Accounts Settled!</div>
+                <div class="empty-desc">There are currently no customers with outstanding pending dues for this shop.</div>
+            </div>
+        <% } %>
+
+        <!-- ── Footer ── -->
+        <footer class="report-footer">
+            <div>
+                <strong>WarrantyDesk</strong> · Automated Customer Ledger &amp; Receivables System · Single-Shop Isolated Data
+            </div>
+            <div>
+                Printed / Generated on <%= generatedAt %> · Page 1 of 1
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

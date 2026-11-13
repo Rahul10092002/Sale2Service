@@ -11,6 +11,7 @@ import {
   deleteCustomer,
   mergeCustomers,
   getAllCustomersLedgerSummary,
+  exportPendingCustomersLedgerPdf,
   sendCustomerPaymentReminder,
 } from "../controllers/customerController.js";
 import { authenticate, checkPermission } from "../middleware/auth.js";
@@ -31,6 +32,9 @@ customerRouter.get("/", checkPermission("customers_view"), getCustomers);
 
 // Get overall customer ledger summary
 customerRouter.get("/ledger-summary", checkPermission("customers_view"), getAllCustomersLedgerSummary);
+
+// Export pending customers ledger as PDF (for calling debtors & printing)
+customerRouter.get("/export-pending-ledger-pdf", checkPermission("customers_view"), exportPendingCustomersLedgerPdf);
 
 // Get customer financial ledger
 customerRouter.get("/:id/ledger", checkPermission("customers_view"), getCustomerLedger);

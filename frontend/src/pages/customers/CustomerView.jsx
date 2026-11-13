@@ -433,6 +433,15 @@ const CustomerView = () => {
           </div>
 
           <div className="flex items-center gap-2 pt-1 sm:pt-0 border-t border-gray-100 dark:border-gray-800 sm:border-0 flex-wrap">
+            {customer?.whatsapp_number && (
+              <a
+                href={`tel:${customer.whatsapp_number.replace(/[^\d+]/g, "")}`}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 text-xs py-2 sm:py-1.5 px-3 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 font-semibold transition-colors shadow-2xs"
+                title={`Call ${customer.whatsapp_number}`}
+              >
+                <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Call
+              </a>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -556,14 +565,24 @@ const CustomerView = () => {
                       <span className="text-gray-500 flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-gray-400" /> Primary Phone
                       </span>
-                      <a
-                        href={`https://wa.me/${customer.whatsapp_number.replace(/[^\d]/g, "")}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-mono font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        {customer.whatsapp_number}
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`tel:${customer.whatsapp_number.replace(/[^\d+]/g, "")}`}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+                          title="Call on phone app"
+                        >
+                          <Phone className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <span>Call</span>
+                        </a>
+                        <a
+                          href={`https://wa.me/${customer.whatsapp_number.replace(/[^\d]/g, "")}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          {customer.whatsapp_number}
+                        </a>
+                      </div>
                     </div>
                   )}
                   {customer.alternate_phone && (
@@ -571,7 +590,17 @@ const CustomerView = () => {
                       <span className="text-gray-500 flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-gray-400" /> Alternate Phone
                       </span>
-                      <span className="font-mono">{customer.alternate_phone}</span>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`tel:${customer.alternate_phone.replace(/[^\d+]/g, "")}`}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+                          title="Call alternate phone on phone app"
+                        >
+                          <Phone className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <span>Call</span>
+                        </a>
+                        <span className="font-mono">{customer.alternate_phone}</span>
+                      </div>
                     </div>
                   )}
                   {customer.email && (
@@ -1404,7 +1433,23 @@ const CustomerView = () => {
                   </button>
                 )}
 
-                {/* 4. Share Statement on WhatsApp */}
+                {/* 4. Call Customer Directly */}
+                {customer?.whatsapp_number && (
+                  <a
+                    href={`tel:${customer.whatsapp_number.replace(/[^\d+]/g, "")}`}
+                    className="w-full flex items-center justify-between p-2.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+                    title={`Call ${customer.whatsapp_number}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Call Directly
+                    </span>
+                    <span className="text-[11px] font-mono text-emerald-600/80 dark:text-emerald-400/80">
+                      {customer.whatsapp_number}
+                    </span>
+                  </a>
+                )}
+
+                {/* 5. Share Statement on WhatsApp */}
                 {customer?.whatsapp_number && (
                   <button
                     onClick={handleShareWhatsAppStatement}

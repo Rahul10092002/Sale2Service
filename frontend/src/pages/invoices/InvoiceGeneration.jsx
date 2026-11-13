@@ -1,3 +1,4 @@
+import { validateEmi } from "../../../../shared/emiSchedule.js";
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
@@ -131,7 +132,7 @@ const InvoiceGenerationPage = () => {
 
   // Comprehensive validation for all sections
   const validateAllSections = useCallback(() => {
-    const newErrors = {};
+    const newErrors = { ...validateEmi(currentInvoice.invoice) };
     const { customer, invoice, invoice_items } = currentInvoice;
 
     // Customer validation

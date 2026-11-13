@@ -33,6 +33,7 @@ const defaultCurrentInvoice = {
     advance_amount_used: 0,
     payment_status: "UNPAID",
     payment_mode: "CASH",
+    emi: { amount: "", installments: "", first_due_date: "", reminder_days_before: 3, enabled: true },
     is_tax_inclusive: true,
     subtotal: 0,
     discount: 0,

@@ -1,3 +1,4 @@
+import EmiReminderScheduler from "./reminders/EmiReminderScheduler.js";
 import cron from "node-cron";
 import ServiceReminderScheduler from "./reminders/ServiceReminderScheduler.js";
 import WarrantyReminderScheduler from "./reminders/WarrantyReminderScheduler.js";
@@ -15,6 +16,7 @@ export default class SchedulerService {
     this.serviceScheduler = new ServiceReminderScheduler();
     this.warrantyScheduler = new WarrantyReminderScheduler();
     this.paymentScheduler = new PaymentReminderScheduler();
+    this.emiScheduler = new EmiReminderScheduler();
     this.wishesScheduler = new WishesReminderScheduler();
   }
 
@@ -107,6 +109,15 @@ export default class SchedulerService {
       ist,
     );
 
+    // Hourly daytime recovery for reminders missed while the server was offline.
+    cron.schedule("0 9-18 * * *", async () => {
+      try {
+        await this.emiScheduler.processEmiReminders();
+      } catch (error) {
+        console.error("[SchedulerService] EMI reminders failed:", error.message);
+      }
+    }, ist);
+
     // Every 15 minutes — recovery check for unsent invoice PDFs / WhatsApp messages
     cron.schedule(
       "*/15 * * * *",
@@ -154,6 +165,7 @@ export default class SchedulerService {
         this.serviceScheduler.processServiceReminders(),
         this.warrantyScheduler.processWarrantyReminders(),
         this.paymentScheduler.processPaymentReminders(),
+        this.emiScheduler.processEmiReminders(),
       ]);
 
       console.log("[SchedulerService] All reminders processed successfully");
@@ -186,6 +198,9 @@ export default class SchedulerService {
         case "warranty":
           await this.warrantyScheduler.processWarrantyReminders();
           break;
+        case "emi":
+          await this.emiScheduler.processEmiReminders();
+          break;
         case "payment":
           await this.paymentScheduler.processPaymentReminders();
           break;
@@ -196,6 +211,7 @@ export default class SchedulerService {
             this.serviceScheduler.processServiceReminders(forceResend),
             this.warrantyScheduler.processWarrantyReminders(),
             this.paymentScheduler.processPaymentReminders(),
+            this.emiScheduler.processEmiReminders(),
           ]);
           break;
       }
@@ -223,6 +239,7 @@ export default class SchedulerService {
         service: this.serviceScheduler.constructor.name,
         warranty: this.warrantyScheduler.constructor.name,
         payment: this.paymentScheduler.constructor.name,
+        emi: this.emiScheduler.constructor.name,
       },
       environment: {
         msg91Configured: !!process.env.MSG91_API_ENDPOINT,

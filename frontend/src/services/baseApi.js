@@ -66,6 +66,8 @@ export const baseApi = createApi({
     "RecycleBin",
     "Warranty",
     "DeletePasswordStatus",
+    "GoogleContacts",
+    "GoogleContactsLogs",
   ],
 
   // Prevent unnecessary API calls on focus/navigation
@@ -233,6 +235,115 @@ export const baseApi = createApi({
       }),
       invalidatesTags: ["ReminderLogs", "LogStats"],
     }),
+
+    // Google Contacts Auto-Sync Endpoints
+    getGoogleContactsStatus: build.query({
+      query: () => "/google-contacts/status",
+      providesTags: ["GoogleContacts"],
+    }),
+
+    getGoogleAuthUrl: build.query({
+      query: (params) => ({
+        url: "/google-contacts/auth-url",
+        params,
+      }),
+    }),
+
+    exchangeGoogleCode: build.mutation({
+      query: (data) => ({
+        url: "/google-contacts/exchange-code",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["GoogleContacts", "GoogleContactsLogs"],
+    }),
+
+    disconnectGoogleAccount: build.mutation({
+      query: () => ({
+        url: "/google-contacts/disconnect",
+        method: "POST",
+      }),
+      invalidatesTags: ["GoogleContacts", "GoogleContactsLogs"],
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(
+            showToast({
+              message: "Google Account disconnected successfully",
+              type: "success",
+            })
+          );
+        } catch (err) {
+          dispatch(
+            showToast({
+              message: err?.data?.message || "Failed to disconnect Google Account",
+              type: "error",
+            })
+          );
+        }
+      },
+    }),
+
+    toggleGoogleAutoSync: build.mutation({
+      query: (data) => ({
+        url: "/google-contacts/toggle-auto-sync",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["GoogleContacts"],
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            showToast({
+              message: data?.message || "Settings updated",
+              type: "success",
+            })
+          );
+        } catch (err) {
+          dispatch(
+            showToast({
+              message: err?.data?.message || "Failed to update setting",
+              type: "error",
+            })
+          );
+        }
+      },
+    }),
+
+    retryGoogleContactsSync: build.mutation({
+      query: () => ({
+        url: "/google-contacts/retry-sync",
+        method: "POST",
+      }),
+      invalidatesTags: ["GoogleContacts", "GoogleContactsLogs"],
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            showToast({
+              message: data?.message || "Sync retry completed",
+              type: "success",
+            })
+          );
+        } catch (err) {
+          dispatch(
+            showToast({
+              message: err?.data?.message || "Failed to retry sync",
+              type: "error",
+            })
+          );
+        }
+      },
+    }),
+
+    getGoogleContactsLogs: build.query({
+      query: (params) => ({
+        url: "/google-contacts/logs",
+        params,
+      }),
+      providesTags: ["GoogleContactsLogs"],
+    }),
   }),
 });
 
@@ -252,4 +363,11 @@ export const {
   useGetReminderLogByIdQuery,
   useGetLogsSummaryQuery,
   useRetryReminderMutation,
+  useGetGoogleContactsStatusQuery,
+  useLazyGetGoogleAuthUrlQuery,
+  useExchangeGoogleCodeMutation,
+  useDisconnectGoogleAccountMutation,
+  useToggleGoogleAutoSyncMutation,
+  useRetryGoogleContactsSyncMutation,
+  useGetGoogleContactsLogsQuery,
 } = baseApi;

@@ -154,6 +154,33 @@ const customerSchema = new mongoose.Schema(
         type: String,
       },
     ],
+    google_sync: {
+      synced: {
+        type: Boolean,
+        default: false,
+      },
+      status: {
+        type: String,
+        enum: ["NOT_SYNCED", "SYNCED", "SKIPPED_DUPLICATE", "FAILED"],
+        default: "NOT_SYNCED",
+      },
+      google_resource_name: {
+        type: String,
+        default: null,
+      },
+      synced_at: {
+        type: Date,
+        default: null,
+      },
+      error_message: {
+        type: String,
+        default: null,
+      },
+      retry_count: {
+        type: Number,
+        default: 0,
+      },
+    },
     deleted_at: {
       type: Date,
       default: null,

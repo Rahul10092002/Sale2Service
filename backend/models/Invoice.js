@@ -35,6 +35,7 @@ const invoiceSchema = new mongoose.Schema(
     payment_mode: {
       type: String,
       enum: [
+        "EMI",
         "CASH",
         "UPI",
         "CARD",
@@ -45,6 +46,16 @@ const invoiceSchema = new mongoose.Schema(
         "ADVANCE_WALLET",
       ],
       default: "CASH",
+    },
+    emi: {
+      type: new mongoose.Schema({
+        amount: { type: Number, required: true, min: 0.01 },
+        installments: { type: Number, required: true, min: 1, max: 360 },
+        first_due_date: { type: String, required: true },
+        reminder_days_before: { type: Number, default: 3, min: 1, max: 28 },
+        enabled: { type: Boolean, default: true },
+      }, { _id: false }),
+      default: null,
     },
     advance_amount_used: {
       type: Number,

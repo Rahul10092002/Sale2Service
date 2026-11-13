@@ -37,6 +37,7 @@ import DiwaliCampaign from "../pages/festival/DiwaliCampaign.jsx";
 import LandingPage from "../pages/landingpage/LandingPage.jsx";
 import PrivacyPolicy from "../pages/legal/PrivacyPolicy.jsx";
 import RecycleBin from "../pages/recycleBin/RecycleBin.jsx";
+import GoogleOAuthCallback from "../pages/auth/GoogleOAuthCallback.jsx";
 
 // Lazy load the Logs component to avoid build issues
 const LogsPage = lazy(() => import("../pages/logs/Logs.jsx"));
@@ -277,6 +278,14 @@ const AppRoutes = () => {
         element={
           <PrivateRoute>
             <RecycleBin />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/auth/google/callback"
+        element={
+          <PrivateRoute>
+            <GoogleOAuthCallback />
           </PrivateRoute>
         }
       />

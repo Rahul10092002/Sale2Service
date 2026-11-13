@@ -186,6 +186,7 @@ export const INVOICE_CONSTANTS = {
     UNPAID: "UNPAID",
   },
   PAYMENT_MODES: {
+    EMI: "EMI",
     CASH: "CASH",
     UPI: "UPI",
     CARD: "CARD",

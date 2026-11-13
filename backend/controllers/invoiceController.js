@@ -1,3 +1,4 @@
+import { normalizeEmi } from "../../shared/emiSchedule.js";
 import { randomUUID } from "crypto";
 import mongoose from "mongoose";
 import Customer from "../models/Customer.js";
@@ -399,6 +400,7 @@ export default class InvoiceController {
         invoice_date: invoice.invoice_date || new Date(),
         payment_status: finalPaymentStatus,
         payment_mode: finalPaymentMode,
+        emi: normalizeEmi(invoice),
         subtotal,
         discount,
         old_item_exchange_price: oldItemExchangePrice,
@@ -665,6 +667,32 @@ export default class InvoiceController {
           send_whatsapp: shouldSendWhatsApp,
         },
       });
+
+      // Google Contacts Auto-Sync — fire-and-forget asynchronous execution
+      (async () => {
+        try {
+          const customerDoc = await Customer.findOne({
+            _id: customerId,
+            shop_id: user.shopId,
+            deleted_at: null,
+          });
+          if (customerDoc) {
+            const { syncCustomerToGoogleContacts } = await import(
+              "../services/googleContactsService.js"
+            );
+            await syncCustomerToGoogleContacts({
+              shopId: user.shopId,
+              customer: customerDoc,
+              invoiceId: newInvoice._id,
+            });
+          }
+        } catch (syncErr) {
+          console.error(
+            "Google Contacts auto-sync background trigger error:",
+            syncErr
+          );
+        }
+      })();
 
       // Send WhatsApp notification asynchronously — fire-and-forget IIFE (only if enabled).
       // We serve the PDF from our own backend (tempPdfStore) rather than
@@ -2261,6 +2289,7 @@ export default class InvoiceController {
         invoice.invoice_number || existingInvoice.invoice_number;
       existingInvoice.invoice_date = new Date(invoice.invoice_date);
       existingInvoice.payment_mode = invoice.payment_mode || "CASH";
+      existingInvoice.emi = normalizeEmi(invoice);
       existingInvoice.payment_status = totals.payment_status;
       existingInvoice.subtotal = totals.subtotal;
       existingInvoice.discount = totals.discount;

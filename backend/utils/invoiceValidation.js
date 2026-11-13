@@ -1,8 +1,11 @@
 import { calculateInvoiceTotals } from "../../shared/invoiceMath.js";
 
+import { validateEmi } from "../../shared/emiSchedule.js";
+
 const EMAIL_REGEX = /\S+@\S+\.\S+/;
 const WHATSAPP_REGEX = /^\+?[\d\s-()]{10,15}$/;
 const VALID_PAYMENT_MODES = new Set([
+  "EMI",
   "CASH",
   "UPI",
   "CARD",
@@ -78,6 +81,8 @@ export const validateInvoicePayload = ({
   if (!VALID_PAYMENT_MODES.has(paymentMode)) {
     errors.push("Payment mode is invalid");
   }
+
+  errors.push(...Object.values(validateEmi(invoice)));
 
   const totals = calculateInvoiceTotals({
     invoice: {

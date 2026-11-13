@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../features/ui/uiSlice.js";
 import { PdfSettingsTab } from "./PdfSettingsTab.jsx";
+import { GoogleContactsTab } from "./GoogleContactsTab.jsx";
 import {
   useGetDeletePasswordStatusQuery,
   useSetDeletePasswordMutation,
@@ -14,6 +16,7 @@ import {
   useRegenerateInvoicesPdfMutation,
   useGetPdfRegenerationStatusQuery,
   usePreviewPdfSettingsMutation,
+  useGetGoogleContactsStatusQuery,
 } from "../../services/baseApi.js";
 import {
   Store,
@@ -42,6 +45,7 @@ import {
   AlertCircle,
   FileCheck,
   ExternalLink,
+  Users,
 } from "lucide-react";
 
 const DEFAULT_PDF_SETTINGS = {
@@ -167,7 +171,20 @@ const ToggleSwitch = ({ label, description, checked, onChange }) => (
 );
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState("general"); // "general" | "pdf"
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(
+    tabFromUrl === "google" ? "google" : tabFromUrl === "pdf" ? "pdf" : "general"
+  );
+  const { data: googleStatus } = useGetGoogleContactsStatusQuery();
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && ["general", "pdf", "google"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -568,7 +585,10 @@ const Settings = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("pdf")}
+          onClick={() => {
+            setActiveTab("pdf");
+            setSearchParams({ tab: "pdf" });
+          }}
           className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all shrink-0 min-h-[44px] ${
             activeTab === "pdf"
               ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-900 shadow-2xs"
@@ -578,9 +598,38 @@ const Settings = () => {
           <Printer className="w-4 h-4 shrink-0" />
           <span>PDF & Invoice Customization</span>
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("google");
+            setSearchParams({ tab: "google" });
+          }}
+          className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all shrink-0 min-h-[44px] ${
+            activeTab === "google"
+              ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-900 shadow-2xs"
+              : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 hover:bg-gray-100/60 dark:hover:bg-dark-input"
+          }`}
+        >
+          <Users className="w-4 h-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
+          <span>Google Contacts Sync</span>
+          {googleStatus?.data?.is_connected ? (
+            <span
+              className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
+              title="Connected"
+            />
+          ) : (
+            <span
+              className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"
+              title="Not connected"
+            />
+          )}
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      {activeTab === "google" ? (
+        <GoogleContactsTab />
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Tab 1: General & Business Settings */}
         {activeTab === "general" && (
           <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-150">
@@ -901,6 +950,7 @@ const Settings = () => {
           </div>
         </div>
       </form>
+      )}
 
       {/* Delete Protection Password Section (Shown under General tab) */}
       {activeTab === "general" && <DeleteProtectionCard />}

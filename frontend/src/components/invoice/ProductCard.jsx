@@ -330,11 +330,13 @@ const ProductCard = React.memo(function ProductCard({
                     type="text"
                     value={item.serial_number || ""}
                     onChange={(e) =>
-                      updateItem(item.id, { serial_number: e.target.value })
+                      updateItem(item.id, {
+                        serial_number: e.target.value.toUpperCase(),
+                      })
                     }
                     placeholder="Enter or scan serial"
                     error={errors[`item.${item.id}.serial_number`]}
-                    inputClassName="h-9 sm:h-8 text-xs font-semibold"
+                    inputClassName="h-9 sm:h-8 text-xs font-semibold uppercase"
                   />
                 </div>
                 <button
@@ -353,7 +355,10 @@ const ProductCard = React.memo(function ProductCard({
             {showScanner && !(item.has_no_serial || (item.serial_number && item.serial_number.startsWith("NS-"))) && (
               <SerialScanner
                 onScan={(value) => {
-                  updateItemImmediate(item.id, { serial_number: value, has_no_serial: false });
+                  updateItemImmediate(item.id, {
+                    serial_number: (value || "").toUpperCase(),
+                    has_no_serial: false,
+                  });
                   setShowScanner(false);
                 }}
                 onClose={() => setShowScanner(false)}
@@ -525,6 +530,7 @@ const ProductCard = React.memo(function ProductCard({
                       }
                       placeholder="e.g. MH12AB1234"
                       error={errors[`item.${item.id}.vehicle_number_plate`]}
+                      inputClassName="uppercase"
                     />
                   </div>
                 </>

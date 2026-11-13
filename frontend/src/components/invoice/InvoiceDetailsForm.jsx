@@ -52,12 +52,6 @@ const InvoiceDetailsForm = () => {
     });
   };
 
-  const isPaidOrPartial =
-    invoice.payment_status === INVOICE_CONSTANTS.PAYMENT_STATUSES.PAID ||
-    invoice.payment_status === INVOICE_CONSTANTS.PAYMENT_STATUSES.PARTIAL ||
-    invoice.payment_status === "PAID" ||
-    invoice.payment_status === "PARTIAL";
-
   const isUnpaidOrPartial =
     invoice.payment_status === INVOICE_CONSTANTS.PAYMENT_STATUSES.UNPAID ||
     invoice.payment_status === INVOICE_CONSTANTS.PAYMENT_STATUSES.PARTIAL ||
@@ -356,7 +350,7 @@ const InvoiceDetailsForm = () => {
           </div>
 
           {/* Payment Mode (only for PAID or PARTIAL) */}
-          {isPaidOrPartial && (
+          {(
             <div>
               {invoice.use_advance_wallet && totalAmount <= advanceBalance ? (
                 <div>
@@ -382,7 +376,7 @@ const InvoiceDetailsForm = () => {
                       : invoice.payment_mode || "CASH"
                   }
                   onChange={(e) =>
-                    updateInvoiceData({ payment_mode: e.target.value })
+                    updateInvoiceData({ payment_mode: e.target.value, ...(e.target.value === "EMI" ? { use_advance_wallet: false } : {}) })
                   }
                   options={Object.entries(INVOICE_CONSTANTS.PAYMENT_MODES)
                     .filter(([key]) => key !== "ADVANCE_WALLET")
@@ -463,6 +457,39 @@ const InvoiceDetailsForm = () => {
             </div>
           )}
         </div>
+
+        {invoice.payment_mode === "EMI" && (
+          <div className="p-3 rounded-xl border border-indigo-200 dark:border-indigo-900 space-y-3">
+            <h3 className="text-sm font-bold">Third-party finance / EMI reminders</h3>
+            <p className="text-xs text-gray-600 dark:text-slate-400">
+              EMI is paid to the finance company. Payment Status above records money received by your shop.
+              These informative reminders continue even for PAID invoices.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                ["amount", "Monthly EMI amount (INR)", "number", "0.01", "0.01", undefined],
+                ["installments", "Number of EMIs", "number", "1", "1", "360"],
+                ["first_due_date", "First EMI due date (monthly)", "date", invoice.invoice_date, undefined, undefined],
+                ["reminder_days_before", "Remind days before due date", "number", "1", "1", "28"],
+              ].map(([key, label, type, min, step, max]) => (
+                <div key={key}>
+                  <label htmlFor={`emi-${key}`} className="block text-xs font-medium mb-1">{label} *</label>
+                  <Input id={`emi-${key}`} type={type} min={min} max={max} step={step}
+                    value={invoice.emi?.[key] ?? (key === "reminder_days_before" ? 3 : "")}
+                    onChange={(e) => updateInvoiceData({ emi: { ...invoice.emi, [key]: e.target.value } })}
+                    error={errors[`invoice.emi.${key}`]} />
+                </div>
+              ))}
+            </div>
+            <label className="flex gap-2 items-center text-xs">
+              <input type="checkbox" checked={invoice.emi?.enabled !== false}
+                onChange={(e) => updateInvoiceData({ emi: { ...invoice.emi, enabled: e.target.checked } })} />
+              Enable monthly EMI WhatsApp reminders (independent of invoice PDF notification)
+            </label>
+            <p className="text-xs text-gray-600 dark:text-slate-400">Monthly on the selected date; shorter months use the last day. Reminders stop after the selected number of EMIs. No finance-company payment tracking.</p>
+            {errors["invoice.emi"] && <p className="text-xs text-rose-600">{errors["invoice.emi"]}</p>}
+          </div>
+        )}
 
         {/* WhatsApp Notification Delivery Settings */}
         <div

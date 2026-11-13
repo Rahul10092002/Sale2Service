@@ -1,3 +1,4 @@
+import { validateEmi } from "../../../../shared/emiSchedule.js";
 import React, { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Save, X, ArrowLeft, ChevronDown, ChevronUp, Calculator } from "lucide-react";
@@ -102,6 +103,7 @@ const InvoiceEdit = () => {
             ? new Date(src.invoice_date).toISOString().split("T")[0]
             : new Date().toISOString().split("T")[0],
           payment_mode: src.payment_mode || "CASH",
+          emi: src.emi || { amount: "", installments: "", first_due_date: "", reminder_days_before: 3, enabled: true },
           payment_status: src.payment_status || "UNPAID",
           is_tax_inclusive: src.is_tax_inclusive !== false,
           subtotal: src.subtotal || 0,
@@ -155,7 +157,7 @@ const InvoiceEdit = () => {
 
   // Validation function matching InvoiceGeneration.jsx
   const validateAllSections = useCallback(() => {
-    const newErrors = {};
+    const newErrors = { ...validateEmi(currentInvoice.invoice) };
     const { customer, invoice, invoice_items } = currentInvoice;
 
     // Customer validation

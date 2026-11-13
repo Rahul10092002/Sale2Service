@@ -205,7 +205,7 @@ const SerialScanner = ({ onScan, onScanSuccess, onClose }) => {
           playBeep();
 
           if (typeof onScanRef.current === "function") {
-            onScanRef.current(decodedText.trim());
+            onScanRef.current(decodedText.trim().toUpperCase());
           }
         };
 
@@ -491,7 +491,7 @@ const SerialScanner = ({ onScan, onScanSuccess, onClose }) => {
       if (navigator.vibrate) navigator.vibrate(80);
       playBeep();
       if (typeof onScanRef.current === "function") {
-        onScanRef.current(decodedText.trim());
+        onScanRef.current(decodedText.trim().toUpperCase());
       }
     } catch {
       // Still couldn't decode — hand control back to the live scanner.
@@ -513,7 +513,7 @@ const SerialScanner = ({ onScan, onScanSuccess, onClose }) => {
   };
 
   const submitManual = () => {
-    const trimmed = manualValue.trim();
+    const trimmed = manualValue.trim().toUpperCase();
     if (!trimmed) return;
     if (typeof onScanRef.current === "function") {
       onScanRef.current(trimmed);
@@ -639,10 +639,10 @@ const SerialScanner = ({ onScan, onScanSuccess, onClose }) => {
               autoFocus
               type="text"
               value={manualValue}
-              onChange={(e) => setManualValue(e.target.value)}
+              onChange={(e) => setManualValue(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && submitManual()}
               placeholder="Enter serial number"
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase"
             />
             <button
               type="button"
